@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Pharmacokinetic Simulator</title>
-<meta name="description" content="Interactive pharmacokinetics simulator and unlimited PK practice problems with worked solutions. Three routes, patient physiology, steady-state analytics. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare regimens against a baseline, model loading and missed doses, watch accumulation toward steady state, and learn through 10 guided lessons plus unlimited practice problems with worked solutions. Built for pharmacy students and educators.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -75,6 +75,7 @@
   /* layout */
   .app{padding:14px 0 24px}
   .grid{display:grid;grid-template-columns:368px 1fr;gap:20px;align-items:start}
+  .grid>*{min-width:0}
   .panel{background:var(--panel);border:1px solid var(--glass-line);border-radius:var(--r);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 24px 60px rgba(0,0,0,.45);position:relative}
   .panel::before{content:"";position:absolute;top:0;left:14%;right:14%;height:1px;background:linear-gradient(90deg,transparent,rgba(124,150,255,.35),transparent)}
@@ -256,6 +257,86 @@
   .pr-sol .step{display:block}
   .pr-foot{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
 
+  /* time budget */
+  .budget{padding:12px 22px 0}
+  .bud-bar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:rgba(120,150,255,.08)}
+  .bud-bar span{display:block;height:100%;transition:width .2s ease}
+  .bud-bar .b-lo{background:var(--amber);opacity:.75}
+  .bud-bar .b-in{background:var(--green);opacity:.8}
+  .bud-bar .b-hi{background:var(--rose);opacity:.85}
+  .bud-k{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
+  .bud-k i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+  .bud-k i.lo{background:var(--amber)} .bud-k i.in{background:var(--green)} .bud-k i.hi{background:var(--rose)}
+  .bud-k b{font-family:'JetBrains Mono',monospace;color:#C4CCE4;font-weight:500;margin-left:3px}
+  .bud-k .of{margin-left:auto;color:var(--muted-2);font-family:'JetBrains Mono',monospace}
+
+  /* lesson banner */
+  .lesson{margin:16px 22px 0;padding:15px 17px;border-radius:var(--r-sm);
+    background:linear-gradient(180deg,rgba(61,242,224,.08),rgba(61,242,224,.02));border:1px solid rgba(61,242,224,.28)}
+  .lesson[hidden]{display:none}
+  .lesson-top{display:flex;align-items:center;gap:10px}
+  .ltag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);background:rgba(61,242,224,.08);
+    border:1px solid rgba(61,242,224,.2);border-radius:5px;padding:1px 7px}
+  .lesson-k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2)}
+  .lesson-x{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:6px}
+  .lesson-x:hover{color:#fff}
+  .lesson-x:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .lesson-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;margin-top:8px}
+  .lesson-p{font-size:12.5px;color:#B9BEDF;line-height:1.65;margin-top:6px;max-width:78ch}
+  .lesson-foot{display:flex;gap:12px;align-items:center;margin-top:11px;flex-wrap:wrap}
+  .lesson-try{font-size:12.5px;color:var(--muted);flex:1;min-width:220px;line-height:1.6}
+  .lesson-try b{color:var(--cyan);font-weight:600;margin-right:6px}
+  .lesson-btns{display:flex;gap:8px}
+
+  /* lessons tab */
+  .lsv{display:none;padding:18px 22px 24px}
+  .lsv.show{display:block}
+  .ls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ls-card{text-align:left;cursor:pointer;color:var(--text);background:rgba(5,8,16,.5);border:1px solid var(--glass-line);
+    border-radius:var(--r-sm);padding:14px 15px;transition:all .16s ease;font-family:inherit}
+  .ls-card:hover{border-color:rgba(61,242,224,.5);box-shadow:0 0 18px rgba(61,242,224,.12);transform:translateY(-1px)}
+  .ls-card:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .ls-h{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:#D6DCEF}
+  .ls-p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:7px}
+
+  /* steady-state panel */
+  .ssp{margin:14px 22px 2px;padding:14px 12px 14px;border-radius:var(--r-sm);background:rgba(5,8,16,.55);border:1px solid var(--glass-line)}
+  .ssp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding:0 6px}
+  .ss-key{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);align-items:center}
+  .ss-key i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  #ssPlot{display:block;width:100%;height:auto;margin-top:6px}
+  .ss-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;padding:0 6px}
+  .ss-stat .k{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+  .ss-stat .v{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;color:var(--text)}
+  .ss-stat .s{font-size:10.5px;color:var(--muted-2)}
+
+  /* compare */
+  .cmp-empty{margin:14px 22px 2px;padding:13px 15px;border-radius:var(--r-sm);border:1px dashed var(--glass-line-2);
+    display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12.5px;color:var(--muted);line-height:1.6}
+  .cmp-empty b{color:#C4CCE4}
+  .cmp{margin:14px 22px 2px;padding:15px 17px;border-radius:var(--r-sm);background:rgba(5,8,16,.55);border:1px solid var(--glass-line-2)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .chip{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#C9D0E6;border:1px solid var(--glass-line-2);border-radius:999px;
+    padding:4px 10px;background:rgba(13,18,32,.7)}
+  .chip b{color:var(--cyan);font-weight:500}
+  .chip.eff{border-color:rgba(124,107,255,.4);color:#B9BEDF}
+  .chip.eff b{color:#B7A9FF}
+  .why{list-style:none;margin-top:12px;display:grid;gap:8px}
+  .why li{font-size:12.5px;color:#B9BEDF;line-height:1.65;padding-left:15px;position:relative}
+  .why li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--violet)}
+  .why b{color:#fff;font-weight:600}
+  .tbl-wrap{overflow-x:auto;margin-top:14px}
+  .cmp-tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+  .cmp-tbl th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:500;text-align:right;
+    padding:6px 8px;border-bottom:1px solid var(--glass-line)}
+  .cmp-tbl th:first-child,.cmp-tbl td:first-child{text-align:left;font-family:'Inter',sans-serif;color:#B9C1D9;padding-left:0}
+  .cmp-tbl td{padding:7px 8px;text-align:right;color:var(--text);border-bottom:1px solid rgba(120,150,255,.07);white-space:nowrap}
+  .cmp-tbl td.base{color:var(--ghost)}
+  .cmp-tbl td.up{color:var(--cyan)}
+  .cmp-tbl td.down{color:#B7A9FF}
+  .cmp-tbl td.flat{color:var(--muted-2)}
+  .cmp-tbl small{color:var(--muted-2);font-size:10px;margin-left:5px;font-family:'JetBrains Mono',monospace}
+
   .foot{padding:26px 0 46px;color:var(--muted-2);font-size:12.5px;max-width:80ch;position:relative;z-index:1}
   .foot .disc{display:flex;gap:11px;align-items:flex-start;padding:14px 16px;border:1px solid var(--glass-line);border-radius:var(--r-sm);
     background:rgba(13,18,32,.55);backdrop-filter:blur(8px);color:var(--muted)}
@@ -267,10 +348,21 @@
     .controls{position:static;max-height:none}
     .ro-grid{grid-template-columns:repeat(2,1fr)}
     .learn-grid{grid-template-columns:1fr}
+    .ss-stats{grid-template-columns:repeat(2,1fr);row-gap:12px}
+  }
+  @media (max-width:640px){
+    .ls-grid{grid-template-columns:1fr}
   }
   @media (max-width:480px){
     .wrap{padding-left:16px;padding-right:16px}
     .drugs{grid-template-columns:1fr}
+    .plot-head,.legend,.readouts,.budget,.learn-grid,.lsv,.practice,.tabbar{padding-left:14px;padding-right:14px}
+    .lesson,.cmp,.cmp-empty,.ssp,.ss-note{margin-left:14px;margin-right:14px}
+    .tabbar button{padding:9px 12px}
+    .cmp{padding:14px 13px}
+    .cmp-tbl{font-size:10.5px}
+    .cmp-tbl th,.cmp-tbl td{padding:6px 5px}
+    .cmp-tbl td:first-child{white-space:normal;min-width:78px}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -296,7 +388,7 @@
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">A full one-compartment PK laboratory: three routes of administration, patient physiology, a teaching drug library, curve comparison, and steady-state analytics — all live.</p>
+    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, baseline comparisons that explain what changed, steady-state analytics and one-click lessons.</p>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
   </section>
 
@@ -358,11 +450,12 @@
           <div class="sec">
             <p class="sec-label">Analyze &amp; Export</p>
             <div class="actions">
-              <button class="abtn" id="pinBtn">◈ Pin curve</button>
-              <button class="abtn" id="clearPinBtn">✕ Clear pin</button>
+              <button class="abtn" id="pinBtn">◈ Set baseline</button>
+              <button class="abtn" id="clearPinBtn">✕ Clear baseline</button>
               <button class="abtn" id="csvBtn">↓ CSV data</button>
               <button class="abtn" id="pngBtn">↓ PNG image</button>
             </div>
+            <p class="lib-note">A baseline freezes the current curve, so every change after it is compared and explained. Loading a lesson replaces it.</p>
           </div>
 
         </div>
@@ -372,13 +465,34 @@
       <section class="panel">
         <div class="tabbar" role="tablist">
           <button id="tabSim" class="on" role="tab" aria-selected="true">Simulator</button>
+          <button id="tabLs" role="tab" aria-selected="false">Lessons</button>
           <button id="tabPr" role="tab" aria-selected="false">Practice<span class="count" id="prCount"></span></button>
         </div>
 
         <div id="simView">
+        <div class="lesson" id="lessonBar" hidden>
+          <div class="lesson-top">
+            <span class="ltag" id="lsTag"></span><span class="lesson-k" id="lsNum">Lesson</span>
+            <button class="lesson-x" id="lsClose" aria-label="Exit lesson">✕</button>
+          </div>
+          <div class="lesson-t" id="lsTitle"></div>
+          <p class="lesson-p" id="lsText"></p>
+          <div class="lesson-foot">
+            <p class="lesson-try"><b>Try this</b><span id="lsTry"></span></p>
+            <div class="lesson-btns">
+              <button class="abtn" id="lsReset">↺ Reset</button>
+              <button class="abtn" id="lsNext">Next lesson →</button>
+            </div>
+          </div>
+        </div>
+
         <div class="plot-head">
           <div class="plot-title">Plasma concentration–time<span id="regimeLabel">Single oral dose</span></div>
           <div class="plot-tools">
+            <div class="mini-seg" id="viewSeg" role="group" aria-label="Time range" style="display:none">
+              <button data-view="full" class="on">FULL</button>
+              <button data-view="last">FINAL τ</button>
+            </div>
             <div class="mini-seg" id="scaleSeg" role="group" aria-label="Y-axis scale">
               <button data-scale="lin" class="on">LINEAR</button>
               <button data-scale="log">LOG</button>
@@ -388,7 +502,7 @@
 
         <div class="legend">
           <div class="li"><span class="lk c"></span>Current</div>
-          <div class="li" id="ghostLegend" style="display:none"><span class="lk g"></span><span id="ghostLabel">Pinned</span></div>
+          <div class="li" id="ghostLegend" style="display:none"><span class="lk g"></span><span id="ghostLabel">Baseline</span></div>
           <div class="li"><span class="lk band"></span>Therapeutic</div>
           <div class="li"><span class="lk tox"></span>Toxic</div>
         </div>
@@ -402,7 +516,34 @@
           <div class="ro-grid" id="readouts"></div>
         </div>
 
+        <div class="budget" id="budget"></div>
+
         <div class="ss-note" id="ssNote"></div>
+
+        <div class="ssp" id="ssPanel" style="display:none">
+          <div class="ssp-head">
+            <div class="plot-title" style="font-size:16px">Steady-state build-up<span>Peak &amp; trough of every dose interval</span></div>
+            <div class="ss-key">
+              <span><i style="background:var(--cyan)"></i>Peak</span>
+              <span><i style="background:var(--violet)"></i>Trough</span>
+              <span id="ssKeyBase" style="display:none"><i style="background:transparent;border:1.5px solid var(--ghost)"></i>Baseline</span>
+            </div>
+          </div>
+          <svg id="ssPlot" viewBox="0 0 760 240" role="img" aria-label="Peak and trough concentration by dose number"></svg>
+          <div class="ss-stats" id="ssStats"></div>
+        </div>
+
+        <div class="cmp-empty" id="cmpEmpty">
+          <span><b>Compare against a baseline.</b> Freeze this curve, change anything, and DoseCurve explains what moved and why.</span>
+          <button class="abtn" id="cmpSet">◈ Set baseline</button>
+        </div>
+
+        <div class="cmp" id="cmpPanel" style="display:none">
+          <div class="plot-title" style="font-size:16px">What changed<span id="cmpSub"></span></div>
+          <div class="chips" id="cmpChips"></div>
+          <ul class="why" id="cmpWhy"></ul>
+          <div class="tbl-wrap"><table class="cmp-tbl" id="cmpTbl"></table></div>
+        </div>
 
         <div class="learn">
           <div class="plot-head" style="padding-top:6px">
@@ -425,9 +566,20 @@
               <div class="body">With repeated dosing, drug accumulates until input = elimination. ~90% of steady state arrives after <b>3.3 half-lives</b> regardless of dose or interval. A loading dose jumps you there immediately — toggle it and compare.</div></details>
             <details class="card"><summary><span class="tag">TW</span>Therapeutic window<span class="chev">›</span></summary>
               <div class="body">The band between minimum effective (MEC) and toxic (MTC) concentration. Good regimens maximize <b>time in window</b> — tracked live in the readouts. Narrow-window drugs like theophylline make this a genuine engineering problem.</div></details>
+            <details class="card"><summary><span class="tag">LD</span>Loading dose<span class="chev">›</span></summary>
+              <div class="body">Getting to a target and staying there are different jobs. Conceptually, <b>LD ≈ C_target·V / F</b>: filling the volume sets the load. The maintenance rate <b>≈ C_target·CL / F</b>: clearance sets what it takes to stay. A load changes how fast you arrive, not where you settle.</div></details>
+            <details class="card"><summary><span class="tag">✕</span>Missed dose<span class="chev">›</span></summary>
+              <div class="body">Skipping a dose leaves a gap in the input while elimination carries on, so the next trough dips well below the usual one. Recovery back to the regular pattern takes roughly as long as reaching steady state in the first place, which is <b>a few half-lives</b>. Set one with the missed dose slider.</div></details>
           </div>
         </div>
         </div><!-- /simView -->
+
+        <div class="lsv" id="lsView">
+          <div class="pr-top">
+            <div class="plot-title" style="font-size:16px">Lessons<span>10 one-click scenarios · each replaces the baseline with its own</span></div>
+          </div>
+          <div class="ls-grid" id="lsGrid"></div>
+        </div>
 
         <div class="practice" id="prView">
           <div class="pr-top">
@@ -464,7 +616,7 @@
       </div>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
-        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition for repeated doses.
+        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out).
       </div>
     </div>
   </main>
@@ -475,26 +627,35 @@
 (function(){
   /* ================= STATE ================= */
   const state = {
-    route:"oral", dosing:"single", scale:"lin",
+    route:"oral", dosing:"single", scale:"lin", view:"full",
     D:500, F:0.9, ka:1.2, thalf:4, V:35, tinf:1,
-    tau:8, nDoses:6, loadMult:1,
+    tau:8, nDoses:6, loadMult:1, missed:1,
     wt:70, clFn:100,
     mec:2, mtc:12,
     duration:24,
     drug:null
   };
-  let ghost=null; // {pts:[{t,c}], label}
+  // Keys that define a scenario. The time window, thresholds and scale are view settings shared by baseline and current.
+  const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn"];
+  const DEFAULTS={route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100};
+  const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); return o; };
+  let baseline=null; // {p:scenario snapshot, label}
+  let lesson=null;   // active LESSONS entry
+  const byId=id=>document.getElementById(id);
 
+  const ALL=["oral","iv","inf"];
   const SLIDERS = {
-    D:    {name:"Dose",               sym:"D",   min:25,  max:2000, step:25,   unit:"mg",  routes:["oral","iv","inf"]},
+    D:    {name:"Dose",               sym:"D",   min:25,  max:2000, step:25,   unit:"mg",  routes:ALL},
     F:    {name:"Bioavailability",    sym:"F",   min:0.1, max:1,    step:0.05, unit:"",    routes:["oral"]},
     ka:   {name:"Absorption rate",    sym:"kₐ",  min:0.1, max:3,    step:0.05, unit:"h⁻¹", routes:["oral"]},
     tinf: {name:"Infusion duration",  sym:"T·inf",min:0.25,max:96,  step:0.25, unit:"h",   routes:["inf"]},
-    thalf:{name:"Half-life (base)",   sym:"t½",  min:0.5, max:24,   step:0.5,  unit:"h",   routes:["oral","iv","inf"]},
-    V:    {name:"Volume of dist. (70 kg)", sym:"V", min:5, max:120, step:1,    unit:"L",   routes:["oral","iv","inf"]},
-    tau:  {name:"Dosing interval",    sym:"τ",   min:2,   max:24,   step:1,    unit:"h",   routes:["oral","iv","inf"], dosing:"repeated"},
-    nDoses:{name:"Number of doses",   sym:"n",   min:2,   max:12,   step:1,    unit:"",    routes:["oral","iv","inf"], dosing:"repeated"},
-    duration:{name:"Time window",     sym:"T",   min:6,   max:96,   step:2,    unit:"h",   routes:["oral","iv","inf"]}
+    thalf:{name:"Half-life (base)",   sym:"t½",  min:0.5, max:24,   step:0.5,  unit:"h",   routes:ALL},
+    V:    {name:"Volume of dist. (70 kg)", sym:"V", min:5, max:120, step:1,    unit:"L",   routes:ALL},
+    tau:  {name:"Dosing interval",    sym:"τ",   min:2,   max:24,   step:1,    unit:"h",   routes:ALL, dosing:"repeated"},
+    nDoses:{name:"Number of doses",   sym:"n",   min:2,   max:20,   step:1,    unit:"",    routes:ALL, dosing:"repeated"},
+    missed:{name:"Missed dose",       sym:"✕",   min:1,   max:()=>state.nDoses-1, step:1, unit:"", routes:ALL, dosing:"repeated",
+            fmt:v=>v<=1?"none":`dose ${v}`},
+    duration:{name:"Time window",     sym:"T",   min:6,   max:168,  step:2,    unit:"h",   routes:ALL}
   };
   const PATIENT = {
     wt:  {name:"Body weight", sym:"kg", min:40, max:120, step:1, unit:"kg"},
@@ -516,61 +677,159 @@
      s:{route:"inf",dosing:"single",D:1000,tinf:1,thalf:6,V:49,mec:10,mtc:40,duration:36}}
   ];
 
-  /* ================= PK ENGINE ================= */
-  const keEff = ()=> (Math.LN2/state.thalf) * (state.clFn/100);
-  const vEff  = ()=> state.V * (state.wt/70);
+  // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
+  const LESSONS = [
+    {id:"route", tag:"F · Tmax", title:"Oral vs IV bolus", sum:"Absorption delay, Tmax, Cmax and bioavailability.", baseLabel:"IV bolus",
+     text:"Same 500 mg dose, two routes. The IV bolus (dashed) puts everything in plasma at t = 0, so it peaks instantly at D/V. The oral dose has to be absorbed first: its peak comes later and sits lower, and its AUC is smaller by the bioavailability factor F.",
+     tryThis:"Push kₐ to 3 h⁻¹ and F to 1.0. The oral curve closes in on the IV one.",
+     view:{duration:24,mec:2,mtc:12},
+     base:{route:"iv"}, cur:{route:"oral",F:0.7,ka:0.8}},
+    {id:"inf", tag:"T·inf", title:"Bolus vs infusion", sum:"Controlling the peak with infusion duration.", baseLabel:"IV bolus",
+     text:"The same 1 g given two ways. Pushed as a bolus it spikes past the toxic line. Spread over a 3 h infusion, the peak stays under it and arrives when the infusion ends. Total exposure (AUC) is identical because the same amount goes in.",
+     tryThis:"Stretch the infusion to 8 h and watch the peak fall further and shift right.",
+     view:{duration:36,mec:8,mtc:18},
+     base:{route:"iv",D:1000,thalf:6,V:49}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:3}},
+    {id:"accum", tag:"Rac", title:"Repeated dosing", sum:"Accumulation, peaks and troughs, steady state.", baseLabel:"single dose",
+     text:"Each dose lands on whatever is left of the one before. With the interval equal to the half-life (8 h), half of every dose is still there when the next arrives, so levels climb until the amount eliminated per interval matches the dose: about 2× a single dose.",
+     tryThis:"Cut the interval to 4 h and accumulation jumps. Stretch it to 16 h and it almost disappears.",
+     view:{duration:96,mec:5,mtc:20},
+     base:{dosing:"single",D:300,thalf:8,ka:1}, cur:{dosing:"repeated",D:300,thalf:8,ka:1,tau:8,nDoses:12}},
+    {id:"load", tag:"LD", title:"Loading dose", sum:"Reaching the target sooner vs staying there.", baseLabel:"no loading dose",
+     text:"A 12 h half-life means roughly 40 h to reach 90% of steady state. Doubling the first dose fills the volume of distribution up front, so levels start near their final range. The maintenance dose, not the load, decides where they settle.",
+     tryThis:"Set the loading dose back to “No load” and count how many doses it takes to enter the window.",
+     view:{duration:120,mec:6,mtc:16},
+     base:{dosing:"repeated",D:300,thalf:12,ka:1,tau:12,nDoses:10}, cur:{dosing:"repeated",D:300,thalf:12,ka:1,tau:12,nDoses:10,loadMult:2}},
+    {id:"cl", tag:"CL", title:"Reduced clearance", sum:"Longer half-life, more exposure, more accumulation.", baseLabel:"organ function 100%",
+     text:"Same regimen, but organ function drops to 50%. Clearance halves, so the effective half-life doubles: each dose lingers, troughs rise, accumulation grows and steady state arrives later. Total exposure nearly doubles, and the peaks now cross the toxic line.",
+     tryThis:"Lengthen the dosing interval and watch exposure fall back toward the baseline curve.",
+     view:{duration:72,mec:3,mtc:15},
+     base:{dosing:"repeated",D:400,thalf:4,tau:8,nDoses:9}, cur:{dosing:"repeated",D:400,thalf:4,tau:8,nDoses:9,clFn:50}},
+    {id:"vd", tag:"V", title:"Volume of distribution", sum:"Dilution, half-life and why AUC can stay put.", baseLabel:"V = 20 L",
+     text:"Clearance is held constant while V triples from 20 to 60 L. The same dose spreads through three times the space, so the starting concentration (D/V) is a third as high. Since CL = kₑ·V, a larger V at the same clearance means slower elimination: the half-life triples and total exposure (AUC) doesn't change.",
+     tryThis:"Drag the half-life back to 3 h with V still at 60 L. Clearance triples and the AUC collapses.",
+     view:{duration:72,mec:2,mtc:25},
+     base:{route:"iv",D:600,V:20,thalf:3}, cur:{route:"iv",D:600,V:60,thalf:9}},
+    {id:"miss", tag:"✕", title:"Missed dose", sum:"The dip, and how long recovery takes.", baseLabel:"every dose taken",
+     text:"Dose 6 is skipped. With nothing coming in, concentration keeps falling through the gap and drops below the effective level. Once regular doses resume, it takes a few intervals to climb back to the usual peak–trough pattern.",
+     tryThis:"Move the missed dose, or shorten the half-life for a sharper dip and a faster recovery.",
+     view:{duration:96,mec:4,mtc:16},
+     base:{dosing:"repeated",D:400,thalf:6,ka:1,tau:8,nDoses:12}, cur:{dosing:"repeated",D:400,thalf:6,ka:1,tau:8,nDoses:12,missed:6}},
+    {id:"er", tag:"TW", title:"Narrow window", sum:"Fitting a regimen between effective and toxic.", baseLabel:"immediate release",
+     text:"The window here is narrow. Once at steady state, an immediate-release profile (fast kₐ) overshoots the toxic line at each peak and dips below the effective line at each trough. Slowing absorption, as an extended-release formulation does, flattens the swing so more of every interval sits inside the window, at the same total exposure.",
+     tryThis:"Go back to kₐ = 2 and instead split the same daily amount into 150 mg every 6 h.",
+     view:{duration:96,mec:5,mtc:10},
+     base:{dosing:"repeated",D:300,F:0.95,ka:2,thalf:8,tau:12,nDoses:8}, cur:{dosing:"repeated",D:300,F:0.95,ka:0.3,thalf:8,tau:12,nDoses:8}},
+    {id:"half", tag:"t½", title:"Short vs long half-life", sum:"Dosing frequency and accumulation trade-offs.", baseLabel:"t½ = 2 h",
+     text:"Same regimen, two drugs. The 2 h drug is nearly gone before each new dose: big swings, almost no accumulation, steady state within hours. The 12 h drug piles up to nearly 3× a single dose and needs about 40 h to settle.",
+     tryThis:"Find the interval that gives the 12 h drug the same peak-to-trough swing as the 2 h one.",
+     view:{duration:96,mec:2,mtc:20},
+     base:{dosing:"repeated",D:250,thalf:2,tau:8,nDoses:12}, cur:{dosing:"repeated",D:250,thalf:12,tau:8,nDoses:12}},
+    {id:"split", tag:"τ", title:"Once vs twice daily", sum:"Same daily dose, different swing.", baseLabel:"600 mg once daily",
+     text:"Same 600 mg per day. Giving it as 300 mg every 12 h keeps average exposure the same, because AUC per day depends on the dosing rate rather than how it's split (the small AUC gap in the table is just drug still on board when the window closes). What changes is the swing: a lower peak and a higher trough.",
+     tryThis:"Try 200 mg every 8 h and watch the swing narrow again.",
+     view:{duration:120,mec:4,mtc:20},
+     base:{dosing:"repeated",D:600,thalf:8,ka:1,tau:24,nDoses:5}, cur:{dosing:"repeated",D:300,thalf:8,ka:1,tau:12,nDoses:10}}
+  ];
 
-  function singleConc(t, doseMult){
+  /* ================= PK ENGINE ================= */
+  // Every function takes a scenario p (a snapshot of PK_KEYS) so the baseline can be simulated exactly like the current curve.
+  const keOf = p=> (Math.LN2/p.thalf) * (p.clFn/100);
+  const vOf  = p=> p.V * (p.wt/70);
+  // the final dose can't be skipped: final-interval peak/trough are defined by it (and skipping it is just n−1 doses)
+  const missedOf = p=> (p.dosing==="repeated" && p.missed>1 && p.missed<p.nDoses) ? p.missed : 0;
+
+  function singleConc(p, t, mult){
     if(t<0) return 0;
-    const k=keEff(), V=vEff(), D=state.D*(doseMult||1);
-    if(state.route==="iv"){
+    const k=keOf(p), V=vOf(p), D=p.D*mult;
+    if(p.route==="iv"){
       return (D/V)*Math.exp(-k*t);
     }
-    if(state.route==="inf"){
-      const Ti=state.tinf, R0=D/Ti;
+    if(p.route==="inf"){
+      const Ti=p.tinf, R0=D/Ti;
       if(t<=Ti) return (R0/(k*V))*(1-Math.exp(-k*t));
       const cEnd=(R0/(k*V))*(1-Math.exp(-k*Ti));
       return cEnd*Math.exp(-k*(t-Ti));
     }
-    const ka=state.ka, F=state.F;
+    const ka=p.ka, F=p.F;
     if(Math.abs(ka-k)<1e-6) return (F*D/V)*ka*t*Math.exp(-ka*t);
     return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*t)-Math.exp(-ka*t));
   }
 
-  function conc(t){
-    if(state.dosing==="single") return singleConc(t,1);
-    let sum=0;
-    for(let i=0;i<state.nDoses;i++){
-      const dt=t-i*state.tau;
-      if(dt>=0) sum+=singleConc(dt, i===0?state.loadMult:1);
+  function doseEvents(p){
+    if(p.dosing==="single") return [{t:0,mult:1,n:1}];
+    const skip=missedOf(p), ev=[];
+    for(let i=0;i<p.nDoses;i++){
+      if(i+1===skip) continue;
+      ev.push({t:i*p.tau, mult:i===0?p.loadMult:1, n:i+1});
     }
+    return ev;
+  }
+
+  function conc(p, t, ev){
+    ev=ev||doseEvents(p);
+    let sum=0;
+    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mult);
     return sum;
   }
 
-  function derived(){
-    const k=keEff(), V=vEff();
-    const d={thalfEff:Math.LN2/k, ke:k, CL:k*V, V:V, mgkg:state.D/state.wt};
-    const Ffac = state.route==="oral" ? state.F : 1;
-    d.auc=(Ffac*state.D)/(V*k);
-    if(state.route==="iv"){ d.tmax=0; d.cmax=state.D/V; }
-    else if(state.route==="inf"){
-      d.tmax=state.tinf;
-      d.cmax=singleConc(state.tinf,1);
+  function derived(p){
+    const k=keOf(p), V=vOf(p);
+    const d={thalfEff:Math.LN2/k, ke:k, CL:k*V, V:V, mgkg:p.D/p.wt};
+    const Ffac = p.route==="oral" ? p.F : 1;
+    d.auc=(Ffac*p.D)/(V*k);
+    if(p.route==="iv"){ d.tmax=0; d.cmax=p.D/V; }
+    else if(p.route==="inf"){
+      d.tmax=p.tinf;
+      d.cmax=singleConc(p,p.tinf,1);
     } else {
-      const ka=state.ka;
+      const ka=p.ka;
       d.tmax=Math.abs(ka-k)<1e-6 ? 1/k : Math.log(ka/k)/(ka-k);
-      d.cmax=singleConc(d.tmax,1);
+      d.cmax=singleConc(p,d.tmax,1);
     }
-    if(state.dosing==="repeated"){
-      d.Rac=1/(1-Math.exp(-k*state.tau));
+    if(p.dosing==="repeated"){
+      const ev=doseEvents(p);
+      d.Rac=1/(1-Math.exp(-k*p.tau));
       d.t90=3.32*d.thalfEff;
-      d.fSS=1-Math.exp(-k*state.nDoses*state.tau); // fraction of steady state reached by the final trough
-      const t0=(state.nDoses-1)*state.tau, t1=state.nDoses*state.tau;
-      let mx=0; const N=400;
-      for(let i=0;i<=N;i++){ const t=t0+(t1-t0)*i/N; const c=conc(t); if(c>mx)mx=c; }
-      d.cmaxSS=mx; d.cminSS=conc(t1);
+      d.fSS=1-Math.exp(-k*p.nDoses*p.tau); // fraction of steady state reached by the final trough
+      const t0=(p.nDoses-1)*p.tau, t1=p.nDoses*p.tau;
+      let mx=0, tmx=t0; const N=400;
+      for(let i=0;i<=N;i++){ const t=t0+(t1-t0)*i/N, c=conc(p,t,ev); if(c>mx){mx=c;tmx=t;} }
+      d.cmaxSS=mx; d.tmaxSS=tmx; d.cminSS=conc(p,t1,ev);
     }
     return d;
+  }
+
+  // Numerical exposure summary over [0, T] against the current therapeutic window.
+  function windowStats(p, T){
+    const ev=doseEvents(p), N=600, dt=T/N;
+    let prev=conc(p,0,ev), cmax=prev, tmax=0, auc=0, tIn=0, tBelow=0, tAbove=0;
+    for(let i=1;i<=N;i++){
+      const t=i*dt, c=conc(p,t,ev), m=(prev+c)/2;
+      auc+=m*dt;
+      if(m>state.mtc) tAbove+=dt; else if(m>=state.mec) tIn+=dt; else tBelow+=dt;
+      if(c>cmax){ cmax=c; tmax=t; }
+      prev=c;
+    }
+    return {cmax,tmax,auc,tIn,tBelow,tAbove,T};
+  }
+
+  // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
+  function ssProfile(p){
+    const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
+    const peakTrough=(q,a,evq)=>{
+      let pk=0;
+      for(let j=0;j<=S;j++){ const c=conc(q,a+tau*j/S,evq); if(c>pk) pk=c; }
+      return [pk, conc(q,a+tau-1e-9,evq)];
+    };
+    const rows=[];
+    for(let i=0;i<p.nDoses;i++){
+      const [peak,trough]=peakTrough(p,i*tau,ev);
+      rows.push({n:i+1, peak, trough, missed:i+1===skip});
+    }
+    const Nss=Math.min(400, Math.ceil(Math.log(1e4)/(k*tau))+2);
+    const pss=Object.assign({},p,{nDoses:Nss,loadMult:1,missed:1});
+    const [ssPeak,ssTrough]=peakTrough(pss,(Nss-1)*tau,doseEvents(pss));
+    return {rows, ssPeak, ssTrough, Rac:1/(1-Math.exp(-k*tau)), t90:3.32*Math.LN2/k, dosesTo90:Math.ceil(Math.log(10)/(k*tau))};
   }
 
   /* ================= AXIS HELPERS ================= */
@@ -581,44 +840,72 @@
     if(round){ nf=f<1.5?1:f<3?2:f<7?5:10; } else { nf=f<=1?1:f<=2?2:f<=5?5:10; }
     return nf*Math.pow(10,exp);
   }
-  function ticks(max,count){
-    const range=niceNum(max,false);
-    const step=niceNum(range/(count-1),true);
-    const out=[]; for(let v=0;v<=max+step*0.5;v+=step) out.push(v);
+  function ticksRange(a,b,count){
+    const step=niceNum(niceNum(b-a,false)/(count-1),true);
+    const out=[];
+    for(let v=Math.ceil(a/step-1e-9)*step; v<=b+step*1e-6; v+=step) out.push(parseFloat(v.toFixed(10)));
     return out;
   }
 
   /* ================= PLOT ================= */
   const PW=760, PH=430, M={l:56,r:20,t:22,b:46};
-  const plotEl=document.getElementById("plot");
-  let samples=[], sx, sy, yTopG, yFloorG;
+  const plotEl=byId("plot");
+  let samples=[], bsamples=null, sx, sy;
   let firstDraw=true;
 
+  function viewRange(){
+    if(state.dosing==="repeated" && state.view==="last"){
+      const t0=(state.nDoses-1)*state.tau;
+      return [t0, t0+state.tau];
+    }
+    return [0, state.duration];
+  }
+  function polyline(pts){
+    let s="M "+pts[0].x+" "+pts[0].y;
+    for(let i=1;i<pts.length;i++) s+=" L "+pts[i].x+" "+pts[i].y;
+    return s;
+  }
+  function marker(x,y,color,label,anchor){
+    const tx=anchor==="end"?x-10:x+10;
+    return `<circle cx="${x}" cy="${y}" r="5" fill="#0A0F1E" stroke="${color}" stroke-width="2"/>`+
+      `<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="${color}" stroke-width="1" opacity="0.35"/>`+
+      `<text x="${tx}" y="${y-8}" text-anchor="${anchor||"start"}" font-family="JetBrains Mono" font-size="10" fill="${color}">${label}</text>`;
+  }
+
   function render(){
-    const Tend=state.duration, N=600;
+    const p=snapshot(), ev=doseEvents(p), d=derived(p);
+    const [T0,T1]=viewRange(), span=T1-T0, N=600;
     let cmaxSeen=0;
     const raw=[];
     for(let i=0;i<=N;i++){
-      const t=Tend*i/N, c=conc(t);
+      const t=T0+span*i/N, c=conc(p,t,ev);
       if(c>cmaxSeen)cmaxSeen=c;
       raw.push({t,c});
     }
-    let ghostMax=0;
-    if(ghost) ghost.pts.forEach(p=>{ if(p.t<=Tend && p.c>ghostMax) ghostMax=p.c; });
+    let braw=null, ghostMax=0;
+    if(baseline){
+      const bev=doseEvents(baseline.p);
+      braw=[];
+      for(let i=0;i<=N;i++){
+        const t=T0+span*i/N, c=conc(baseline.p,t,bev);
+        if(c>ghostMax)ghostMax=c;
+        braw.push({t,c});
+      }
+    }
     const yTop=Math.max(cmaxSeen, ghostMax, state.mtc)*1.14 || 1;
-    yTopG=yTop;
     const iw=PW-M.l-M.r, ih=PH-M.t-M.b;
     const isLog=state.scale==="log";
     const yFloor=yTop/1000;
-    yFloorG=yFloor;
-    sx=(t)=> M.l+(t/Tend)*iw;
+    sx=(t)=> M.l+((t-T0)/span)*iw;
     sy=(c)=>{
       if(!isLog) return M.t+ih-(c/yTop)*ih;
       const cv=Math.max(c,yFloor);
       const f=(Math.log10(cv)-Math.log10(yFloor))/(Math.log10(yTop)-Math.log10(yFloor));
       return M.t+ih-f*ih;
     };
-    samples=raw.map(p=>({t:p.t,c:p.c,x:sx(p.t),y:sy(p.c)}));
+    const inView=t=> t>=T0-1e-9 && t<=T1+1e-9;
+    samples=raw.map(q=>({t:q.t,c:q.c,x:sx(q.t),y:sy(q.c)}));
+    bsamples=braw?braw.map(q=>({t:q.t,c:q.c,x:sx(q.t),y:sy(q.c)})):null;
 
     let g="";
 
@@ -628,19 +915,17 @@
       g+=`<rect x="${M.l}" y="${sy(bandTop)}" width="${iw}" height="${Math.max(0,sy(bandBot)-sy(bandTop))}" fill="rgba(59,229,138,0.06)"/>`;
     }
 
-    // infusion shading (single-dose infusion clarity)
-    if(state.route==="inf"){
-      const doses = state.dosing==="repeated" ? state.nDoses : 1;
-      for(let i=0;i<doses;i++){
-        const xa = state.dosing==="repeated"? sx(i*state.tau) : sx(0);
-        const xb = state.dosing==="repeated"? sx(i*state.tau+state.tinf) : sx(state.tinf);
-        if(xa<PW-M.r) g+=`<rect x="${xa}" y="${M.t}" width="${Math.min(xb,PW-M.r)-xa}" height="${ih}" fill="rgba(61,242,224,0.045)"/>`;
-      }
+    // infusion shading, one block per infusion actually given
+    if(p.route==="inf"){
+      ev.forEach(e=>{
+        const a=Math.max(e.t,T0), b=Math.min(e.t+p.tinf,T1);
+        if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="rgba(61,242,224,0.045)"/>`;
+      });
     }
 
     // grid + labels
     if(!isLog){
-      ticks(yTop,6).forEach(v=>{
+      ticksRange(0,yTop,6).forEach(v=>{
         const y=sy(v);
         g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.09)" stroke-width="1"/>`;
         g+=`<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
@@ -657,7 +942,7 @@
         }
       }
     }
-    ticks(Tend,7).forEach(v=>{
+    ticksRange(T0,T1,7).forEach(v=>{
       const x=sx(v);
       g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="rgba(120,150,255,0.06)" stroke-width="1"/>`;
       g+=`<text x="${x}" y="${PH-M.b+18}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
@@ -675,44 +960,57 @@
       g+=`<text x="${PW-M.r-4}" y="${y-6}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#FF5C7A">MTC</text>`;
     }
 
-    // dose ticks
-    if(state.dosing==="repeated"){
-      for(let i=0;i<state.nDoses;i++){
-        const x=sx(i*state.tau);
-        if(x<=PW-M.r+0.5) g+=`<line x1="${x}" y1="${PH-M.b}" x2="${x}" y2="${PH-M.b+6}" stroke="#7C6BFF" stroke-width="1.6"/>`;
+    // dose events: ticks, D-labels when there's room, LD for a loading dose, a cross for a missed dose
+    if(p.dosing==="repeated"){
+      const gap=iw*p.tau/span, skip=missedOf(p);
+      for(let i=0;i<p.nDoses;i++){
+        const t=i*p.tau;
+        if(!inView(t)) continue;
+        const x=sx(t), n=i+1;
+        if(n===skip){
+          g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="#FF5C7A" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`;
+          g+=`<text x="${x+5}" y="${M.t+13}" font-family="JetBrains Mono" font-size="9.5" fill="#FF8FA3">missed · D${n}</text>`;
+          g+=`<path d="M ${x-4} ${PH-M.b-4} L ${x+4} ${PH-M.b+4} M ${x+4} ${PH-M.b-4} L ${x-4} ${PH-M.b+4}" stroke="#FF5C7A" stroke-width="1.6"/>`;
+          continue;
+        }
+        g+=`<line x1="${x}" y1="${PH-M.b}" x2="${x}" y2="${PH-M.b+6}" stroke="#7C6BFF" stroke-width="1.6"/>`;
+        const lbl=(i===0 && p.loadMult>1) ? "LD" : (gap>=26 ? "D"+n : "");
+        if(lbl) g+=`<text x="${x+3}" y="${PH-M.b-5}" font-family="JetBrains Mono" font-size="8.5" fill="#8F82FF">${lbl}</text>`;
       }
     }
 
-    // ghost curve
-    if(ghost){
-      const gp=ghost.pts.filter(p=>p.t<=Tend);
-      if(gp.length>1){
-        let gpath="M "+sx(gp[0].t)+" "+sy(gp[0].c);
-        for(let i=1;i<gp.length;i++) gpath+=" L "+sx(gp[i].t)+" "+sy(gp[i].c);
-        g+=`<path d="${gpath}" fill="none" stroke="#98A2C8" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75" stroke-linejoin="round"/>`;
+    // baseline curve, with the gap between baseline and current shaded
+    if(bsamples){
+      if(!isLog){
+        let fill=polyline(samples);
+        for(let i=bsamples.length-1;i>=0;i--) fill+=` L ${bsamples[i].x} ${bsamples[i].y}`;
+        g+=`<path d="${fill} Z" fill="rgba(61,242,224,0.075)"/>`;
       }
+      g+=`<path d="${polyline(bsamples)}" fill="none" stroke="#98A2C8" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75" stroke-linejoin="round"/>`;
     }
 
     // area + curve
-    if(!isLog){
+    if(!isLog && !bsamples){
       let area=`M ${samples[0].x} ${sy(0)}`;
-      samples.forEach(p=> area+=` L ${p.x} ${p.y}`);
+      samples.forEach(q=> area+=` L ${q.x} ${q.y}`);
       area+=` L ${samples[samples.length-1].x} ${sy(0)} Z`;
       g+=`<path d="${area}" fill="url(#aucGrad)"/>`;
     }
-    let path="M "+samples[0].x+" "+samples[0].y;
-    for(let i=1;i<samples.length;i++) path+=" L "+samples[i].x+" "+samples[i].y;
+    const path=polyline(samples);
     g+=`<path d="${path}" fill="none" stroke="rgba(124,107,255,0.55)" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" filter="url(#glow)"/>`;
     g+=`<path id="mainCurve" d="${path}" fill="none" stroke="url(#curveGrad)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
 
-    // Cmax marker
-    const d=derived();
-    if(state.dosing==="single" && d.tmax<=Tend && d.tmax>0){
-      const cx=sx(d.tmax), cy=sy(d.cmax);
-      g+=`<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${PH-M.b}" stroke="#3DF2E0" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>`;
-      g+=`<circle cx="${cx}" cy="${cy}" r="5" fill="#0A0F1E" stroke="#3DF2E0" stroke-width="2"/>`;
-      g+=`<circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#3DF2E0" stroke-width="1" opacity="0.35"/>`;
-      g+=`<text x="${cx+10}" y="${cy-8}" font-family="JetBrains Mono" font-size="10" fill="#3DF2E0">Cmax</text>`;
+    // markers: Cmax for a single dose; final-interval peak and trough for a regimen
+    if(p.dosing==="single"){
+      if(d.tmax>0 && inView(d.tmax)){
+        const cx=sx(d.tmax), cy=sy(d.cmax);
+        g+=`<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${PH-M.b}" stroke="#3DF2E0" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>`;
+        g+=marker(cx,cy,"#3DF2E0","Cmax");
+      }
+    } else {
+      if(inView(d.tmaxSS)) g+=marker(sx(d.tmaxSS),sy(d.cmaxSS),"#3DF2E0","peak");
+      const tt=p.nDoses*p.tau;
+      if(inView(tt)) g+=marker(sx(tt),sy(d.cminSS),"#A99CFF","trough","end");
     }
 
     // axis titles
@@ -746,8 +1044,12 @@
       mc.style.strokeDashoffset=0;
     }
 
-    renderReadouts(d, raw, Tend);
+    const ws=windowStats(p,state.duration);
+    renderReadouts(p, d, ws);
+    renderSS(p);
+    renderCompare(p, d, ws);
     updateRegime();
+    updateViewSeg();
   }
 
   function fmtAxis(v){
@@ -759,13 +1061,8 @@
   function fmt(v,dp){ return v.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
 
   /* ================= READOUTS ================= */
-  function renderReadouts(d, raw, Tend){
-    // time in therapeutic range
-    let inWin=0;
-    raw.forEach(p=>{ if(p.c>=state.mec && p.c<=state.mtc) inWin++; });
-    const ttr=100*inWin/raw.length;
-    let aboveT=0; raw.forEach(p=>{ if(p.c>state.mtc) aboveT++; });
-    const tox=100*aboveT/raw.length;
+  function renderReadouts(p, d, ws){
+    const ttr=100*ws.tIn/ws.T, tox=100*ws.tAbove/ws.T;
 
     let cards=[
       {k:"Cmax", hot:1, v:fmt(d.cmax,1), u:"mg/L"},
@@ -777,7 +1074,7 @@
       {k:"Dose / wt", v:fmt(d.mgkg,1), u:"mg/kg"},
       {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
     ];
-    if(state.dosing==="repeated"){
+    if(p.dosing==="repeated"){
       cards=[
         {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,1), u:"mg/L"},
         {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,1), u:"mg/L"},
@@ -789,43 +1086,296 @@
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
-    document.getElementById("readouts").innerHTML=cards.map(c=>`
+    byId("readouts").innerHTML=cards.map(c=>`
       <div class="ro${c.hot?" hot":""}">
         <div class="ro-k">${c.k}</div>
         <div class="ro-v">${c.v}<small>${c.u}</small></div>
       </div>`).join("");
 
-    const note=document.getElementById("ssNote");
+    const pct=v=>(100*v/ws.T).toFixed(2);
+    byId("budget").innerHTML=`
+      <div class="bud-bar" role="img" aria-label="Below MEC ${fmt(ws.tBelow,1)} h, in window ${fmt(ws.tIn,1)} h, above MTC ${fmt(ws.tAbove,1)} h">
+        <span class="b-lo" style="width:${pct(ws.tBelow)}%"></span><span class="b-in" style="width:${pct(ws.tIn)}%"></span><span class="b-hi" style="width:${pct(ws.tAbove)}%"></span>
+      </div>
+      <div class="bud-k">
+        <span><i class="lo"></i>Below MEC<b>${fmt(ws.tBelow,1)} h</b></span>
+        <span><i class="in"></i>In window<b>${fmt(ws.tIn,1)} h</b></span>
+        <span><i class="hi"></i>Above MTC<b>${fmt(ws.tAbove,1)} h</b></span>
+        <span class="of">of ${state.duration} h</span>
+      </div>`;
+
+    const note=byId("ssNote");
     let msg="";
-    if(tox>0.5) msg+=`⚠ The curve spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold — reduce the dose, slow the input, or widen the interval. `;
-    if(state.dosing==="repeated"){
+    if(tox>0.5) msg+=`⚠ This scenario spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold. See how a smaller dose, slower input or longer interval changes that. `;
+    if(p.dosing==="repeated"){
       const pt=(d.cmaxSS/d.cminSS).toFixed(1);
       const ssTag = d.fSS>=0.97 ? "effectively at steady state" : `at <b>${fmt(d.fSS*100,0)}%</b> of steady state — not there yet`;
-      msg+=`After dose ${state.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (peak-to-trough <b>${pt}×</b>). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
-      if(state.loadMult>1) msg+=` Loading dose (${state.loadMult}×) lifts the first cycle toward steady state immediately.`;
+      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (peak-to-trough <b>${pt}×</b>). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
+      if(p.loadMult>1) msg+=` Loading dose (${p.loadMult}×) lifts the first cycle toward steady state immediately.`;
+      if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
     }
     if(msg){ note.classList.add("show"); note.innerHTML=msg; }
     else note.classList.remove("show");
   }
 
+  /* ================= STEADY-STATE PANEL ================= */
+  function renderSS(p){
+    const panel=byId("ssPanel");
+    if(p.dosing!=="repeated"){ panel.style.display="none"; return; }
+    panel.style.display="block";
+    const S=ssProfile(p);
+    const B=(baseline && baseline.p.dosing==="repeated") ? ssProfile(baseline.p) : null;
+    byId("ssKeyBase").style.display=B?"inline":"none";
+
+    const W=760, H=240, m={l:56,r:20,t:14,b:34}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+    const n=Math.max(S.rows.length, B?B.rows.length:0);
+    const peaks=S.rows.map(r=>r.peak).concat(B?B.rows.map(r=>r.peak):[], [S.ssPeak], B?[B.ssPeak]:[]);
+    const top=Math.max(...peaks)*1.15 || 1;
+    const x=i=> m.l + (n===1 ? iw/2 : (i-1)/(n-1)*iw);
+    const y=c=> m.t+ih-(Math.min(c,top)/top)*ih;
+    let g="";
+
+    const bTop=Math.min(state.mtc,top), bBot=Math.min(state.mec,top);
+    if(bTop>bBot) g+=`<rect x="${m.l}" y="${y(bTop)}" width="${iw}" height="${y(bBot)-y(bTop)}" fill="rgba(59,229,138,0.06)"/>`;
+    ticksRange(0,top,4).forEach(v=>{
+      g+=`<line x1="${m.l}" y1="${y(v)}" x2="${W-m.r}" y2="${y(v)}" stroke="rgba(120,150,255,0.08)"/>`;
+      g+=`<text x="${m.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+    });
+    const every=Math.ceil(n/12);
+    for(let i=1;i<=n;i++){
+      if(i!==1 && i!==n && i%every!==0) continue;
+      g+=`<text x="${x(i)}" y="${H-m.b+17}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${i}</text>`;
+    }
+    g+=`<text x="${m.l+iw/2}" y="${H-3}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Dose number</text>`;
+
+    // where an uninterrupted regimen (no load, no missed dose) settles
+    g+=`<line x1="${m.l}" y1="${y(S.ssPeak)}" x2="${W-m.r}" y2="${y(S.ssPeak)}" stroke="#3DF2E0" stroke-dasharray="4 4" opacity="0.45"/>`;
+    g+=`<text x="${W-m.r-4}" y="${y(S.ssPeak)-5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#3DF2E0" opacity="0.8">SS peak</text>`;
+    g+=`<line x1="${m.l}" y1="${y(S.ssTrough)}" x2="${W-m.r}" y2="${y(S.ssTrough)}" stroke="#7C6BFF" stroke-dasharray="4 4" opacity="0.6"/>`;
+    g+=`<text x="${W-m.r-4}" y="${y(S.ssTrough)+13}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#A99CFF">SS trough</text>`;
+
+    const series=(rows,key)=> rows.map(r=>({x:x(r.n),y:y(r[key])}));
+    if(B){
+      ["peak","trough"].forEach(key=>{
+        const pts=series(B.rows,key);
+        if(pts.length>1) g+=`<path d="${polyline(pts)}" fill="none" stroke="#98A2C8" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.6"/>`;
+        pts.forEach(q=> g+=`<circle cx="${q.x}" cy="${q.y}" r="3.2" fill="#05070E" stroke="#98A2C8" stroke-width="1.3" opacity="0.8"/>`);
+      });
+    }
+    [["peak","#3DF2E0"],["trough","#7C6BFF"]].forEach(([key,col])=>{
+      const pts=series(S.rows,key);
+      if(pts.length>1) g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.8" opacity="0.85"/>`;
+      pts.forEach(q=> g+=`<circle cx="${q.x}" cy="${q.y}" r="3.6" fill="${col}" stroke="#05070E" stroke-width="1.5"/>`);
+    });
+    S.rows.filter(r=>r.missed).forEach(r=>{
+      g+=`<line x1="${x(r.n)}" y1="${m.t}" x2="${x(r.n)}" y2="${m.t+ih}" stroke="#FF5C7A" stroke-dasharray="2 4" opacity="0.6"/>`;
+      g+=`<text x="${x(r.n)+5}" y="${m.t+11}" font-family="JetBrains Mono" font-size="9.5" fill="#FF8FA3">missed</text>`;
+    });
+    byId("ssPlot").innerHTML=`<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.18)"/>${g}`;
+
+    const last=S.rows[S.rows.length-1];
+    const clears=S.ssTrough<0.01*S.ssPeak; // essentially nothing carries over from one dose to the next
+    const stats=[
+      clears ? ["Final trough", "≈ 0", "drug clears between doses"]
+             : ["Final trough", `${fmt(100*last.trough/S.ssTrough,0)}%`, "of steady-state trough"],
+      ["Accumulation", `${fmt(S.Rac,2)}×`, "a single dose, at SS"],
+      clears ? ["Swing at SS", "—", "no carry-over between doses"]
+             : ["Swing at SS", `${fmt(S.ssPeak/S.ssTrough,1)}×`, "peak ÷ trough"],
+      ["90% of SS (no load)", `${S.dosesTo90} dose${S.dosesTo90===1?"":"s"}`,
+        `≈ ${fmt(S.t90,1)} h · ${S.dosesTo90<=p.nDoses?"within this regimen":`regimen has only ${p.nDoses}`}`]
+    ];
+    byId("ssStats").innerHTML=stats.map(s=>`<div class="ss-stat"><div class="k">${s[0]}</div><div class="v">${s[1]}</div><div class="s">${s[2]}</div></div>`).join("");
+  }
+
+  /* ================= BASELINE COMPARISON ================= */
+  const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion"};
+  const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
+    V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
+    missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"]};
+
+  function relevant(k,s){
+    if(k==="F"||k==="ka") return s.route==="oral";
+    if(k==="tinf") return s.route==="inf";
+    if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
+    return true;
+  }
+  function pval(k,s){
+    if(k==="route") return ROUTE_NAME[s.route];
+    if(k==="dosing") return s.dosing;
+    if(k==="missed") return missedOf(s)?"dose "+missedOf(s):"none";
+    if(k==="loadMult") return s.loadMult>1?s.loadMult+"×":"none";
+    return trim(s[k])+(PLABEL[k][1]?" "+PLABEL[k][1]:"");
+  }
+  // Scenario inputs that differ and mean something in both scenarios (F is meaningless for an IV curve, etc.)
+  function paramDiffs(a,b){
+    return PK_KEYS.filter(k=>{
+      const va=k==="missed"?missedOf(a):a[k], vb=k==="missed"?missedOf(b):b[k];
+      return va!==vb && relevant(k,a) && relevant(k,b);
+    });
+  }
+  const moved=(a,b)=> Math.abs(b-a)/Math.max(Math.abs(a),1e-12) > 0.005;
+  function pctTxt(a,b){
+    if(Math.abs(a)<1e-9) return Math.abs(b)<1e-9 ? "no change" : "new";
+    const r=(b-a)/a*100;
+    if(Math.abs(r)<0.5) return "no change";
+    return (r>0?"▲ ":"▼ ")+fmt(Math.abs(r),0)+"%";
+  }
+
+  function explain(a,b,da,db,wa,wb,diffs){
+    const out=[];
+    if(!diffs.length){
+      return ["This matches the baseline. Change any setting to see what moves and why."];
+    }
+    if(a.route!==b.route){
+      const txt={
+        oral:"<b>Oral dosing</b> adds an absorption phase: the peak comes later and lower, and only the fraction F reaches circulation, so exposure scales with F.",
+        iv:"An <b>IV bolus</b> puts the whole dose into plasma at t = 0: the earliest, highest peak, with no absorption delay and F = 1.",
+        inf:"An <b>IV infusion</b> delivers the dose at a steady rate, so concentration climbs gradually and peaks when the infusion ends: a lower peak than a bolus of the same size, with the same AUC."};
+      out.push(`Route ${ROUTE_NAME[a.route]} → ${ROUTE_NAME[b.route]}. ${txt[b.route]}`);
+    }
+    if(a.dosing!==b.dosing){
+      out.push(b.dosing==="repeated"
+        ? "<b>Repeated dosing</b>: each dose adds to what's left of the earlier ones, so levels build up until the amount eliminated per interval matches the dose."
+        : "<b>Single dose</b>: no accumulation. The curve rises once and decays back toward zero.");
+    }
+    const sameRate=a.dosing==="repeated" && b.dosing==="repeated" && a.tau!==b.tau && Math.abs(a.D/a.tau-b.D/b.tau)/(a.D/a.tau)<0.01;
+    if(a.D!==b.D && !sameRate){
+      out.push(`Dose ${a.D} → ${b.D} mg (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
+    }
+    if(a.route==="oral" && b.route==="oral"){
+      if(a.F!==b.F) out.push(`Bioavailability ${trim(a.F)} → ${trim(b.F)}. Only that fraction of the oral dose reaches circulation, so exposure changes by <b>${pctTxt(a.F,b.F)}</b> with the same shape.`);
+      if(a.ka!==b.ka) out.push(b.ka>a.ka
+        ? `Faster absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): an earlier, higher peak. AUC doesn't change because the same amount is still absorbed.`
+        : `Slower absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): a later, flatter peak, which is the extended-release idea. AUC doesn't change because the same amount is still absorbed.`);
+    }
+    if(a.route==="inf" && b.route==="inf" && a.tinf!==b.tinf){
+      out.push(b.tinf>a.tinf
+        ? `Longer infusion (${trim(a.tinf)} → ${trim(b.tinf)} h): the same amount goes in more slowly, so the peak is lower and later, with the same AUC.`
+        : `Shorter infusion (${trim(a.tinf)} → ${trim(b.tinf)} h): the same amount goes in faster, so the peak is higher and earlier, with the same AUC.`);
+    }
+
+    // physiology and drug properties, explained through what they do to CL, V and t½
+    const dCL=moved(da.CL,db.CL), dV=moved(da.V,db.V), dT=moved(da.thalfEff,db.thalfEff);
+    if(dCL||dV||dT){
+      const causes=[];
+      if(a.clFn!==b.clFn) causes.push(`organ function ${a.clFn} → ${b.clFn}%`);
+      if(a.wt!==b.wt) causes.push(`weight ${a.wt} → ${b.wt} kg`);
+      const parts=[];
+      if(dCL) parts.push(`Clearance ${fmt(da.CL,2)} → ${fmt(db.CL,2)} L/h (<b>${pctTxt(da.CL,db.CL)}</b>), and since AUC = F·D / CL, total exposure moves the opposite way.`);
+      if(dV) parts.push(`Volume ${fmt(da.V,0)} → ${fmt(db.V,0)} L, so the same dose starts ${db.V>da.V?"more dilute (lower D/V)":"more concentrated (higher D/V)"}.`);
+      if(dT) parts.push(`Effective half-life ${fmt(da.thalfEff,1)} → ${fmt(db.thalfEff,1)} h: drug ${db.thalfEff>da.thalfEff
+        ? "lingers longer, carries over more between doses and takes longer to reach steady state"
+        : "clears faster, carries over less between doses and reaches steady state sooner"}.`);
+      out.push((causes.length?`<b>${cap(causes.join(", "))}.</b> `:"")+parts.join(" "));
+      if(dV && !dCL) out.push("Clearance is unchanged, so total exposure (AUC) is too: a bigger volume lowers the peak but stretches the half-life by the same factor.");
+      if(dV && dCL && !dT) out.push("This model holds the half-life fixed, so clearance moves with volume (CL = kₑ·V).");
+    }
+
+    if(a.dosing==="repeated" && b.dosing==="repeated"){
+      if(a.tau!==b.tau){
+        out.push((sameRate?`Dose ${a.D} → ${b.D} mg and interval ${a.tau} → ${b.tau} h. `:`Interval ${a.tau} → ${b.tau} h. `)+(sameRate
+          ? `The dose per hour (D/τ) is unchanged, so average exposure is the same. Only the swing changes: ${b.tau<a.tau?"smaller, more frequent doses give lower peaks and higher troughs":"larger, less frequent doses give higher peaks and lower troughs"}.`
+          : b.tau>a.tau
+            ? "More time to decay between doses: lower troughs, a bigger peak-to-trough swing, less accumulation and less drug per day."
+            : "Less time to decay between doses: higher troughs, a smaller swing, more accumulation and more drug per day."));
+      }
+      const spanA=a.nDoses*a.tau, spanB=b.nDoses*b.tau;
+      if(a.nDoses!==b.nDoses && spanA!==spanB) out.push(`Number of doses ${a.nDoses} → ${b.nDoses}: the regimen now covers ${spanB} h instead of ${spanA} h, so it ${spanB>spanA?"gets closer to":"stops further from"} steady state.`);
+      if(a.loadMult!==b.loadMult) out.push(b.loadMult>a.loadMult
+        ? `Loading dose ${a.loadMult>1?a.loadMult+"×":"off"} → ${b.loadMult}×: a larger first dose gets levels into range sooner. Where they settle is still set by the maintenance dose and clearance.`
+        : `Loading dose ${a.loadMult}× → ${b.loadMult>1?b.loadMult+"×":"off"}: levels start lower and build up over several doses toward the same steady state.`);
+      const ma=missedOf(a), mb=missedOf(b);
+      if(ma!==mb){
+        if(mb){
+          const tq=mb*b.tau-1e-9;
+          out.push(`Dose ${mb} missed: with nothing coming in, concentration keeps falling through the gap. Just before the next dose it reaches <b>${fmt(conc(b,tq),2)} mg/L</b>, versus ${fmt(conc(a,tq),2)} mg/L in the baseline, and it takes a few intervals of regular dosing to climb back.`);
+        } else out.push(`Missed dose ${ma} restored: the regimen is uninterrupted again.`);
+      }
+    }
+
+    out.push(`<b>Net effect</b> over 0–${state.duration} h: AUC ${pctTxt(wa.auc,wb.auc)}, peak ${pctTxt(wa.cmax,wb.cmax)}, time in window ${fmt(wa.tIn,1)} → ${fmt(wb.tIn,1)} h.`);
+    return out;
+  }
+  const cap=s=> s.charAt(0).toUpperCase()+s.slice(1);
+
+  function renderCompare(p, dc, wc){
+    const panel=byId("cmpPanel"), empty=byId("cmpEmpty");
+    if(!baseline){ panel.style.display="none"; empty.style.display="flex"; return; }
+    panel.style.display="block"; empty.style.display="none";
+    const b=baseline.p, db=derived(b), wb=windowStats(b,state.duration);
+    const diffs=paramDiffs(b,p);
+    byId("cmpSub").textContent=`vs baseline (${baseline.label}) · same 0–${state.duration} h window`;
+
+    let chips=diffs.map(k=>`<span class="chip">${PLABEL[k][0]} ${pval(k,b)} → <b>${pval(k,p)}</b></span>`);
+    if(moved(db.CL,dc.CL)) chips.push(`<span class="chip eff">CL ${fmt(db.CL,2)} → <b>${fmt(dc.CL,2)} L/h</b></span>`);
+    if(moved(db.V,dc.V) && !diffs.includes("V")) chips.push(`<span class="chip eff">V ${fmt(db.V,0)} → <b>${fmt(dc.V,0)} L</b></span>`);
+    if(moved(db.thalfEff,dc.thalfEff)) chips.push(`<span class="chip eff">t½ eff ${fmt(db.thalfEff,1)} → <b>${fmt(dc.thalfEff,1)} h</b></span>`);
+    byId("cmpChips").innerHTML=chips.join("");
+    byId("cmpWhy").innerHTML=explain(b,p,db,dc,wb,wc,diffs).map(s=>`<li>${s}</li>`).join("");
+
+    const rows=[["Peak (Cmax)", wb.cmax, wc.cmax, "mg/L", 2, "pct"]];
+    if(b.dosing==="single" && p.dosing==="single") rows.push(["Time of peak", wb.tmax, wc.tmax, "h", 1, "abs"]);
+    rows.push([`AUC 0–${state.duration} h`, wb.auc, wc.auc, "mg·h/L", 1, "pct"]);
+    if(b.dosing==="repeated" && p.dosing==="repeated") rows.push(["Final trough", db.cminSS, dc.cminSS, "mg/L", 2, "pct"]);
+    rows.push(
+      ["Effective t½", db.thalfEff, dc.thalfEff, "h", 1, "pct"],
+      ["Time in window", wb.tIn, wc.tIn, "h", 1, "abs"],
+      ["Time above MTC", wb.tAbove, wc.tAbove, "h", 1, "abs"],
+      ["Time below MEC", wb.tBelow, wc.tBelow, "h", 1, "abs"]
+    );
+    byId("cmpTbl").innerHTML=`<thead><tr><th>Metric</th><th>Baseline</th><th>Current</th><th>Change</th></tr></thead><tbody>`+
+      rows.map(([name,va,vc,u,dp,kind])=>{
+        let delta, cls;
+        if(kind==="pct"){ delta=pctTxt(va,vc); cls=delta==="no change"?"flat":vc>va?"up":"down"; }
+        else { const dd=vc-va; delta=Math.abs(dd)<0.05?"no change":`${dd>0?"+":"−"}${fmt(Math.abs(dd),1)} h`; cls=delta==="no change"?"flat":dd>0?"up":"down"; }
+        return `<tr><td>${name}<small>${u}</small></td><td class="base">${fmt(va,dp)}</td><td>${fmt(vc,dp)}</td><td class="${cls}">${delta}</td></tr>`;
+      }).join("")+`</tbody>`;
+  }
+
+  function scenarioLabel(p){
+    return `${ROUTE_NAME[p.route]} ${trim(p.D)} mg${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
+  }
+  function setBaseline(label){
+    baseline={p:snapshot(), label:label||scenarioLabel(state)};
+    updateBaselineUI();
+    render();
+  }
+  function clearBaseline(){
+    baseline=null;
+    updateBaselineUI();
+    render();
+  }
+  function updateBaselineUI(){
+    byId("ghostLegend").style.display=baseline?"flex":"none";
+    if(baseline) byId("ghostLabel").textContent=`Baseline · ${baseline.label}`;
+    byId("pinBtn").classList.toggle("pinned",!!baseline);
+    byId("pinBtn").textContent=baseline?"◈ Update baseline":"◈ Set baseline";
+  }
+
   function updateRegime(){
-    const names={oral:"oral", iv:"IV bolus", inf:"IV infusion"};
-    const r=names[state.route];
-    document.getElementById("regimeLabel").textContent =
-      state.dosing==="repeated"
-        ? `Repeated ${r} · every ${state.tau} h × ${state.nDoses}${state.loadMult>1?` · ${state.loadMult}× load`:""}`
-        : `Single ${r}${state.route==="inf"?` over ${state.tinf} h`:""}`;
+    const r=ROUTE_NAME[state.route];
+    let s = state.dosing==="repeated"
+      ? `Repeated ${r} · every ${state.tau} h × ${state.nDoses}${state.loadMult>1?` · ${state.loadMult}× load`:""}${missedOf(state)?` · dose ${state.missed} missed`:""}`
+      : `Single ${r}${state.route==="inf"?` over ${state.tinf} h`:""}`;
+    if(state.dosing==="repeated" && state.view==="last") s+=" · final interval";
+    byId("regimeLabel").textContent=s;
+  }
+  function updateViewSeg(){
+    const rep=state.dosing==="repeated";
+    byId("viewSeg").style.display=rep?"flex":"none";
+    setSegVal("viewSeg","view",state.view);
   }
 
   /* ================= CROSSHAIR ================= */
-  const tip=document.getElementById("tooltip");
+  const tip=byId("tooltip");
   function moveCross(evt){
     const rect=plotEl.getBoundingClientRect();
     const px=(evt.touches?evt.touches[0].clientX:evt.clientX)-rect.left;
     const svgX=px/rect.width*PW;
     if(svgX<M.l||svgX>PW-M.r){ hideCross(); return; }
-    let best=samples[0], bd=1e9;
-    for(const p of samples){ const dd=Math.abs(p.x-svgX); if(dd<bd){bd=dd;best=p;} }
+    let bi=0, bd=1e9;
+    samples.forEach((q,i)=>{ const dd=Math.abs(q.x-svgX); if(dd<bd){bd=dd;bi=i;} });
+    const best=samples[bi];
     const ch=plotEl.querySelector("#crosshair");
     if(!ch) return;
     ch.style.opacity=1;
@@ -839,13 +1389,7 @@
     if(best.c>state.mtc) status=' · <span style="color:#FF8FA3">toxic</span>';
     else if(best.c>=state.mec) status=' · <span style="color:#7BE0A8">therapeutic</span>';
     else status=' · <span style="color:#F2C46B">sub-therapeutic</span>';
-    let ghostLine="";
-    if(ghost){
-      // nearest ghost point in time
-      let gb=null,gd=1e9;
-      for(const p of ghost.pts){ const dd=Math.abs(p.t-best.t); if(dd<gd){gd=dd;gb=p;} }
-      if(gb && gd < state.duration/50) ghostLine=`<br><span style="color:#98A2C8">pinned: ${gb.c.toFixed(2)} mg/L</span>`;
-    }
+    const ghostLine=bsamples?`<br><span style="color:#98A2C8">baseline: ${bsamples[bi].c.toFixed(2)} mg/L</span>`:"";
     tip.innerHTML=`<span class="tt-t">t = ${best.t.toFixed(1)} h</span><br><b>${best.c.toFixed(2)} mg/L</b>${status}${ghostLine}`;
     tip.style.opacity=1;
   }
@@ -860,60 +1404,93 @@
   plotEl.addEventListener("touchend",hideCross);
 
   /* ================= CONTROLS ================= */
+  let sliderRefs={};
   function makeSlider(container,key,cfg){
     const wrap=document.createElement("div");
     wrap.className="ctrl";
+    const max=typeof cfg.max==="function"?cfg.max():cfg.max;
     wrap.innerHTML=`
       <div class="ctrl-top">
         <span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span>
         <span class="ctrl-val"></span>
       </div>
-      <input type="range" min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${state[key]}" aria-label="${cfg.name}">`;
+      <input type="range" min="${cfg.min}" max="${max}" step="${cfg.step}" value="${state[key]}" aria-label="${cfg.name}">`;
     container.appendChild(wrap);
     const sl=wrap.querySelector("input"), val=wrap.querySelector(".ctrl-val");
-    const show=()=>{ const v=state[key]; val.textContent=cfg.unit?`${trim(v)} ${cfg.unit}`:trim(v); };
+    const show=()=>{
+      const v=state[key];
+      val.textContent=cfg.fmt?cfg.fmt(v):cfg.unit?`${trim(v)} ${cfg.unit}`:trim(v);
+      if(cfg.fmt) sl.setAttribute("aria-valuetext",cfg.fmt(v));
+    };
     show();
-    sl.addEventListener("input",()=>{ state[key]=parseFloat(sl.value); state.drug=null; markDrug(); show(); render(); });
+    sliderRefs[key]={sl,show};
+    sl.addEventListener("input",()=>{
+      state[key]=parseFloat(sl.value); state.drug=null; markDrug(); show();
+      if(key==="nDoses") syncMissedMax();
+      render();
+    });
+  }
+  function syncMissedMax(){
+    const r=sliderRefs.missed; if(!r) return;
+    if(state.missed>=state.nDoses) state.missed=1;
+    r.sl.max=state.nDoses-1; r.sl.value=state.missed; r.show();
+  }
+  function syncSlider(key){
+    const r=sliderRefs[key]; if(!r) return;
+    r.sl.value=state[key]; r.show();
   }
   function buildSliders(){
-    const el=document.getElementById("sliders");
+    sliderRefs={};
+    const el=byId("sliders");
     el.innerHTML="";
     Object.entries(SLIDERS).forEach(([key,cfg])=>{
       if(!cfg.routes.includes(state.route)) return;
       if(cfg.dosing && cfg.dosing!==state.dosing) return;
       makeSlider(el,key,cfg);
     });
-    const pel=document.getElementById("patientSliders");
+    const pel=byId("patientSliders");
     pel.innerHTML="";
     Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
-    document.getElementById("loadSeg").style.display = state.dosing==="repeated" ? "flex" : "none";
+    byId("loadSeg").style.display = state.dosing==="repeated" ? "flex" : "none";
   }
   function trim(v){ return (v%1===0)? v.toString() : v.toFixed(2).replace(/0+$/,"").replace(/\.$/,""); }
 
-  const mecEl=document.getElementById("mec"), mtcEl=document.getElementById("mtc");
+  const mecEl=byId("mec"), mtcEl=byId("mtc");
   function syncWindow(){ mecEl.value=state.mec; mtcEl.value=state.mtc; }
   mecEl.addEventListener("input",()=>{ const v=parseFloat(mecEl.value); if(!isNaN(v)){state.mec=v; render();} });
   mtcEl.addEventListener("input",()=>{ const v=parseFloat(mtcEl.value); if(!isNaN(v)){state.mtc=v; render();} });
 
   function seg(id,attr,cb){
-    document.getElementById(id).addEventListener("click",e=>{
+    byId(id).addEventListener("click",e=>{
       const b=e.target.closest("button"); if(!b) return;
       cb(b.dataset[attr]);
       document.querySelectorAll(`#${id} button`).forEach(x=>x.classList.toggle("on",x===b));
     });
   }
   seg("routeSeg","route",v=>{ state.route=v; state.drug=null; markDrug(); buildSliders(); render(); });
-  seg("doseSeg","dosing",v=>{ state.dosing=v; state.drug=null; markDrug(); buildSliders(); render(); });
+  seg("doseSeg","dosing",v=>{
+    state.dosing=v; state.drug=null;
+    if(v==="repeated") state.duration=Math.max(state.duration, Math.min(168, state.tau*state.nDoses)); // show the whole regimen
+    else state.view="full";
+    markDrug(); buildSliders(); render();
+  });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); render(); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
+  seg("viewSeg","view",v=>{ state.view=v; render(); });
 
   function setSegVal(id,attr,val){
     document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on", b.dataset[attr]===String(val)));
   }
+  function syncControls(){
+    setSegVal("routeSeg","route",state.route);
+    setSegVal("doseSeg","dosing",state.dosing);
+    setSegVal("loadSeg","load",state.loadMult);
+    markDrug(); buildSliders(); syncWindow();
+  }
 
   /* ================= DRUG LIBRARY ================= */
   function buildDrugs(){
-    const el=document.getElementById("drugs");
+    const el=byId("drugs");
     el.innerHTML=DRUGS.map(d=>`
       <button class="drug" data-id="${d.id}">
         <div class="dname">${d.name}</div>
@@ -922,13 +1499,11 @@
     el.querySelectorAll(".drug").forEach(btn=>{
       btn.addEventListener("click",()=>{
         const d=DRUGS.find(x=>x.id===btn.dataset.id);
-        state.loadMult=1;
+        state.loadMult=1; state.missed=1; state.view="full";
         Object.assign(state,d.s);
         state.drug=d.id;
-        setSegVal("routeSeg","route",state.route);
-        setSegVal("doseSeg","dosing",state.dosing);
-        setSegVal("loadSeg","load",state.loadMult);
-        markDrug(); buildSliders(); syncWindow(); render();
+        exitLesson();
+        syncControls(); render();
       });
     });
   }
@@ -936,41 +1511,67 @@
     document.querySelectorAll(".drug").forEach(b=>b.classList.toggle("on", b.dataset.id===state.drug));
   }
 
-  /* ================= PIN / EXPORT ================= */
-  document.getElementById("pinBtn").addEventListener("click",()=>{
-    const Tend=state.duration, N=600, pts=[];
-    for(let i=0;i<=N;i++){ const t=Tend*i/N; pts.push({t,c:conc(t)}); }
-    const names={oral:"oral",iv:"IV bolus",inf:"IV infusion"};
-    ghost={pts,label:`Pinned · ${names[state.route]}${state.dosing==="repeated"?" ×"+state.nDoses:""}`};
-    document.getElementById("ghostLegend").style.display="flex";
-    document.getElementById("ghostLabel").textContent=ghost.label;
-    document.getElementById("pinBtn").classList.add("pinned");
-    render();
-  });
-  document.getElementById("clearPinBtn").addEventListener("click",()=>{
-    ghost=null;
-    document.getElementById("ghostLegend").style.display="none";
-    document.getElementById("pinBtn").classList.remove("pinned");
-    render();
+  /* ================= LESSONS ================= */
+  function buildLessons(){
+    const el=byId("lsGrid");
+    el.innerHTML=LESSONS.map(L=>`
+      <button class="ls-card" data-id="${L.id}">
+        <div class="ls-h"><span class="ltag">${L.tag}</span>${L.title}</div>
+        <div class="ls-p">${L.sum}</div>
+      </button>`).join("");
+    el.querySelectorAll(".ls-card").forEach(btn=>{
+      btn.addEventListener("click",()=> loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)));
+    });
+  }
+  function loadLesson(L){
+    Object.assign(state,DEFAULTS,L.base);
+    baseline={p:snapshot(), label:L.baseLabel};
+    Object.assign(state,DEFAULTS,L.cur,L.view);
+    state.view="full"; state.drug=null;
+    lesson=L;
+    const i=LESSONS.indexOf(L);
+    byId("lsNum").textContent=`Lesson ${i+1} of ${LESSONS.length}`;
+    byId("lsNext").textContent=i<LESSONS.length-1?"Next lesson →":"All lessons";
+    byId("lsTag").textContent=L.tag;
+    byId("lsTitle").textContent=L.title;
+    byId("lsText").textContent=L.text;
+    byId("lsTry").textContent=L.tryThis;
+    byId("lessonBar").hidden=false;
+    syncControls(); updateBaselineUI(); render();
+    showTab("sim");
+    byId("lessonBar").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }
+  function exitLesson(){
+    lesson=null;
+    byId("lessonBar").hidden=true;
+  }
+  byId("lsClose").addEventListener("click",exitLesson);
+  byId("lsReset").addEventListener("click",()=>{ if(lesson) loadLesson(lesson); });
+  byId("lsNext").addEventListener("click",()=>{
+    if(!lesson) return;
+    const i=LESSONS.indexOf(lesson);
+    if(i<LESSONS.length-1) loadLesson(LESSONS[i+1]); else showTab("ls");
   });
 
-  document.getElementById("csvBtn").addEventListener("click",()=>{
-    let csv="time_h,concentration_mg_L"+(ghost?",pinned_mg_L":"")+"\n";
+  /* ================= BASELINE / EXPORT ================= */
+  byId("pinBtn").addEventListener("click",()=>setBaseline());
+  byId("cmpSet").addEventListener("click",()=>setBaseline());
+  byId("clearPinBtn").addEventListener("click",clearBaseline);
+
+  byId("csvBtn").addEventListener("click",()=>{
+    const p=snapshot(), ev=doseEvents(p), bev=baseline?doseEvents(baseline.p):null;
+    let csv="time_h,concentration_mg_L"+(baseline?",baseline_mg_L":"")+"\n";
     const Tend=state.duration, N=600;
     for(let i=0;i<=N;i++){
       const t=Tend*i/N;
-      let row=t.toFixed(3)+","+conc(t).toFixed(5);
-      if(ghost){
-        let gb=null,gd=1e9;
-        for(const p of ghost.pts){ const dd=Math.abs(p.t-t); if(dd<gd){gd=dd;gb=p;} }
-        row+=","+(gb?gb.c.toFixed(5):"");
-      }
+      let row=t.toFixed(3)+","+conc(p,t,ev).toFixed(5);
+      if(baseline) row+=","+conc(baseline.p,t,bev).toFixed(5);
       csv+=row+"\n";
     }
     download(new Blob([csv],{type:"text/csv"}),"dosecurve_data.csv");
   });
 
-  document.getElementById("pngBtn").addEventListener("click",()=>{
+  byId("pngBtn").addEventListener("click",()=>{
     const clone=plotEl.cloneNode(true);
     const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
     bg.setAttribute("x",0);bg.setAttribute("y",0);
@@ -1138,32 +1739,32 @@
   });
   $("prViz").addEventListener("click",()=>{
     if(!prob.viz) return;
-    state.loadMult=1; state.drug=null;
+    state.loadMult=1; state.missed=1; state.view="full"; state.drug=null;
     state.wt=70; state.clFn=100; // problems are computed at baseline physiology — reset so the curve matches the answer
     Object.assign(state,prob.viz);
-    setSegVal("routeSeg","route",state.route);
-    setSegVal("doseSeg","dosing",state.dosing);
-    setSegVal("loadSeg","load",state.loadMult);
-    markDrug(); buildSliders(); syncWindow(); render();
+    exitLesson();
+    syncControls(); render();
     showTab("sim");
   });
 
   /* tabs */
   function showTab(which){
-    const sim=which==="sim";
-    $("simView").style.display=sim?"block":"none";
-    $("prView").className="practice"+(sim?"":" show");
-    $("tabSim").classList.toggle("on",sim);
-    $("tabPr").classList.toggle("on",!sim);
-    $("tabSim").setAttribute("aria-selected",sim);
-    $("tabPr").setAttribute("aria-selected",!sim);
+    $("simView").style.display=which==="sim"?"block":"none";
+    $("lsView").className="lsv"+(which==="ls"?" show":"");
+    $("prView").className="practice"+(which==="pr"?" show":"");
+    [["tabSim","sim"],["tabLs","ls"],["tabPr","pr"]].forEach(([id,w])=>{
+      $(id).classList.toggle("on",w===which);
+      $(id).setAttribute("aria-selected",w===which);
+    });
   }
   $("tabSim").addEventListener("click",()=>showTab("sim"));
+  $("tabLs").addEventListener("click",()=>showTab("ls"));
   $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
 
   /* ================= INIT ================= */
   buildSliders();
   buildDrugs();
+  buildLessons();
   syncWindow();
   render();
 })();
