@@ -467,6 +467,9 @@
     return Object.assign({},c,{[side]:scenario(), names:Object.assign({},c.names,{[side]:DEFAULT_NAMES[side]}), lock:""});
   }
 
+  // Names are plain text: control characters and text-direction overrides are removed, then trimmed and capped.
+  const cleanName=(v,max)=> String(v==null?"":v).replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,"").trim().slice(0,max);
+
   /* ================= SHARE LINKS ================= */
   // A scenario is written as the settings that differ from DEFAULTS, e.g. "D:400,clFn:50" ("" = defaults).
   // A custom schedule is added as "ev:0@500L;12@250;24@250m" (L = loading, m = missed).
@@ -554,8 +557,7 @@
     if(!q.v) return null;
     // Links pasted through chat apps sometimes arrive with ':' and ',' percent-encoded.
     const sc=s=>decodeScenario(safe(s||""));
-    // names are plain text: control characters and text-direction overrides are removed
-    const name=s=>s ? safe(s).replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,"").trim().slice(0,40) : "";
+    const name=s=>s ? cleanName(safe(s),40) : "";
     const st={version:parseInt(q.v,10)||VERSION, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
     if(st.mode==="cmp"){
       st.a=sc(q.a); st.b=sc(q.b);
@@ -572,10 +574,80 @@
     return st;
   }
 
+  /* ================= SCENARIO LIBRARY ================= */
+  // Saved scenarios live in the browser's localStorage; the page does the reading and writing. Each item
+  // stores its setup in the share-link format, so saving, loading and importing reuse the link validation,
+  // schema versions (v1/v2) and clamping, and anything a link can carry (custom schedules, A/B names, the
+  // lock, the baseline, the lesson, the view) is saved too.
+  const LIBRARY_FORMAT="dosecurve-library", LIBRARY_VERSION=1;
+  const LIBRARY_LIMITS={items:200, name:60, link:20000, importItems:1000};
+  const emptyLibrary=()=>({format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items:[]});
+  const newItemId=()=> "s"+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+  function defaultItemName(st){
+    return st.mode==="cmp" ? `${st.nameA||DEFAULT_NAMES.a} vs ${st.nameB||DEFAULT_NAMES.b}` : "Simulator scenario";
+  }
+  // A new saved item for the given link state (the same object encodeLink takes).
+  function libraryItem(name, st, now, id){
+    const when=now || new Date().toISOString();
+    return {id:id || newItemId(), name:cleanName(name,LIBRARY_LIMITS.name) || defaultItemName(st),
+      kind:st.mode==="cmp" ? "cmp" : "sim", link:encodeLink(st), savedAt:when, updatedAt:when};
+  }
+  // One stored or imported item, validated: its link must decode, and is stored re-encoded (canonical and
+  // clamped). null when it can't be used.
+  function validItem(x){
+    if(!x || typeof x!=="object" || typeof x.link!=="string" || x.link.length>LIBRARY_LIMITS.link) return null;
+    const st=decodeLink(x.link);
+    if(!st) return null;
+    const time=v=> typeof v==="string" && !isNaN(Date.parse(v)) ? new Date(v).toISOString() : null;
+    const savedAt=time(x.savedAt) || time(x.updatedAt) || new Date(0).toISOString();
+    return {id:typeof x.id==="string" && /^[a-z0-9]{1,24}$/.test(x.id) ? x.id : newItemId(),
+      name:cleanName(x.name,LIBRARY_LIMITS.name) || defaultItemName(st),
+      kind:st.mode, link:encodeLink(st), savedAt, updatedAt:time(x.updatedAt) || savedAt};
+  }
+  // Reads a library document (object or JSON text) from storage or an import file. Version 0, a bare array
+  // of items, is migrated; a newer version is read best-effort and flagged. Returns {library, skipped,
+  // error?, newer?}; `skipped` counts items that were invalid or over the limit.
+  function parseLibrary(input){
+    let data=input;
+    if(typeof input==="string"){
+      try{ data=JSON.parse(input); }catch(e){ return {library:emptyLibrary(), skipped:0, error:"not valid JSON"}; }
+    }
+    if(Array.isArray(data)) data={format:LIBRARY_FORMAT, version:0, items:data};
+    if(!data || typeof data!=="object" || data.format!==LIBRARY_FORMAT) return {library:emptyLibrary(), skipped:0, error:"not a DoseCurve scenario file"};
+    const raw=Array.isArray(data.items) ? data.items : [];
+    const items=[], ids=new Set();
+    let skipped=Math.max(0, raw.length-LIBRARY_LIMITS.importItems);
+    raw.slice(0,LIBRARY_LIMITS.importItems).forEach(x=>{
+      const it=validItem(x);
+      if(!it){ skipped++; return; }
+      while(ids.has(it.id)) it.id=newItemId();
+      ids.add(it.id);
+      items.push(it);
+    });
+    if(items.length>LIBRARY_LIMITS.items){ skipped+=items.length-LIBRARY_LIMITS.items; items.length=LIBRARY_LIMITS.items; }
+    const out={library:{format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items}, skipped};
+    if(typeof data.version==="number" && data.version>LIBRARY_VERSION) out.newer=true;
+    return out;
+  }
+  // Adds imported items after the existing ones, with fresh ids, up to the item limit.
+  function mergeLibrary(lib, incoming){
+    const items=lib.items.slice(), ids=new Set(items.map(i=>i.id));
+    let added=0, dropped=0;
+    incoming.forEach(it=>{
+      if(items.length>=LIBRARY_LIMITS.items){ dropped++; return; }
+      const copy=Object.assign({},it);
+      while(ids.has(copy.id)) copy.id=newItemId();
+      ids.add(copy.id); items.push(copy); added++;
+    });
+    return {library:{format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items}, added, dropped};
+  }
+  const exportLibrary=items=> JSON.stringify({format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items}, null, 2);
+
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
-    encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink};
+    encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
+    LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary};
 });

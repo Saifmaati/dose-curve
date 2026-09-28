@@ -15,6 +15,7 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **Inspect any moment:** drag a cursor across the chart (or focus it and use the arrow keys) to read the concentration, window status, whether it's rising or falling, and the last dose given; jump between doses, peaks and troughs, or play the curve at 1×, 2× or 4×.
 - **Learn** through 10 guided lessons, and practice with unlimited generated problems that come with worked solutions.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV.
+- **Save** setups in a local scenario library: save, update, rename, duplicate, delete, and export or import them as JSON. Saved scenarios stay in your browser (`localStorage`) unless you export or share them.
 
 ## How it's built
 
