@@ -1,4 +1,4 @@
-// Run with: node --test tests/
+// Run with: node --test
 // Checks the engine against closed-form pharmacokinetics, the regimen edge cases, the comparison
 // metrics, the share-link codec, and every quantitative claim the lessons make.
 const test=require("node:test");
@@ -331,13 +331,40 @@ test("malformed, truncated and oversized links degrade safely", ()=>{
   const st=PK.decodeLink("v=1&m=cmp&na="+"x".repeat(200000));
   assert.equal(st.nameA.length, 40);
   assert.equal(PK.decodeLink("v=9&s=D:400").s.D, 400, "newer versions are read best-effort");
+  assert.equal(PK.decodeLink("v=9&s=D:400").newer, true, "and flagged");
+  [1,2,3].forEach(v=> assert.equal(PK.decodeLink(`v=${v}&s=D:400`).newer, false, `v${v} is current`));
 });
 
-test("steady state stays within 0.5% even in the slowest-clearing regimen", ()=>{
-  // longest half-life, lowest organ function, shortest interval: the case the 400-dose cap limits most
+test("steady state is exact even in the slowest-clearing regimen", ()=>{
+  // longest half-life, lowest organ function, shortest interval: once capped at 400 simulated doses (99.7%)
   const p=scenario({route:"iv", dosing:"repeated", thalf:24, clFn:25, tau:2, nDoses:20});
   const k=PK.keOf(p), C0=p.D/PK.vOf(p);
-  rel(PK.ssProfile(p).ssTrough, C0*Math.exp(-k*2)/(1-Math.exp(-k*2)), 0.005);
+  rel(PK.ssProfile(p).ssTrough, C0*Math.exp(-k*2)/(1-Math.exp(-k*2)), 1e-9);
+  rel(PK.ssProfile(p).ssPeak, C0/(1-Math.exp(-k*2)), 1e-9, "a bolus peaks the instant it's given");
+});
+
+test("closed-form steady state matches summing every earlier dose, for every route", ()=>{
+  const brute=(p,s)=>{ let c=0; for(let j=0;j<5000;j++) c+=PK.singleConc(p, s+j*p.tau, p.D); return c; };
+  [
+    ["oral", {route:"oral", thalf:6, tau:8, ka:1.2}],
+    ["oral, kₐ = kₑ", {route:"oral", thalf:4, tau:6, ka:Math.LN2/4}],
+    ["IV bolus", {route:"iv", thalf:10, tau:12}],
+    ["infusion shorter than τ", {route:"inf", thalf:6, tau:8, tinf:2}],
+    ["infusion as long as τ", {route:"inf", thalf:6, tau:8, tinf:8}],
+    ["infusions overlapping", {route:"inf", thalf:6, tau:8, tinf:20}],
+  ].forEach(([name,o])=>{
+    const p=scenario(Object.assign({dosing:"repeated", nDoses:10}, o));
+    [0, 0.5, 2, p.tau/2, p.tau-0.01].forEach(s=> rel(PK.ssConc(p,s), brute(p,s), 1e-9, `${name}, s=${s}`));
+  });
+});
+
+test("steady state finds an infusion's exact peak at its end", ()=>{
+  const p=scenario({route:"inf", dosing:"repeated", thalf:6, tau:8, tinf:20, nDoses:10});
+  rel(PK.ssProfile(p).ssPeak, PK.ssConc(p, 20%8), 1e-12);
+  const oneLong=scenario({route:"inf", dosing:"repeated", thalf:6, tau:8, tinf:8, nDoses:10});
+  const S=PK.ssProfile(oneLong);
+  rel(S.ssPeak, S.ssTrough, 1e-6, "back-to-back infusions hold a constant level");
+  rel(S.ssPeak, (oneLong.D/8)/(PK.keOf(oneLong)*PK.vOf(oneLong)), 1e-6, "the level is rate / CL");
 });
 
 /* ---------- custom dose schedules ---------- */
@@ -870,6 +897,30 @@ test("overlapping infusions add their rates", ()=>{
   const i=PK.inspectAt(both,8,2,12);
   assert.equal(i.infusing.length, 2);
   near(i.infusing.reduce((s,r)=>s+r.rate,0), 100+150, 1e-9, "combined rate");
+});
+
+test("infusionOverlap finds infusions running at once, and only those", ()=>{
+  assert.deepEqual(PK.infusionOverlap(custom([inf(0,1200,12), inf(6,600,4)])), {maxRunning:2, from:6});
+  assert.deepEqual(PK.infusionOverlap(custom([inf(0,500,4), inf(2,500,10), inf(3,500,2)])), {maxRunning:3, from:3});
+  assert.equal(PK.infusionOverlap(custom([inf(0,500,8), inf(8,500,8)])), null, "back to back is not overlap");
+  assert.equal(PK.infusionOverlap(custom([inf(0,500,12), inf(6,500,4,{status:"missed"})])), null, "missed doses don't run");
+  assert.equal(PK.infusionOverlap(custom([inf(0,500,12), ev(6,500,{route:"iv"})])), null, "a bolus isn't an infusion");
+  const reg=o=>scenario(Object.assign({route:"inf", dosing:"repeated", nDoses:6, tau:8}, o));
+  assert.deepEqual(PK.infusionOverlap(reg({tinf:20})), {maxRunning:3, from:16}, "T·inf 20 h every 8 h: three at once");
+  assert.equal(PK.infusionOverlap(reg({tinf:8})), null, "T·inf = τ runs back to back");
+  assert.equal(PK.infusionOverlap(reg({tinf:2})), null);
+  assert.equal(PK.infusionOverlap(reg({tinf:20, nDoses:1})), null, "one dose can't overlap");
+  assert.equal(PK.infusionOverlap(scenario({route:"inf", dosing:"single", tinf:48})), null);
+});
+
+test("steady state exists only for a regular repeated regimen", ()=>{
+  assert.equal(PK.ssProfile(scenario({dosing:"single"})), null);
+  assert.equal(PK.ssProfile(custom([ev(0,500), ev(12,500), ev(24,500)])), null);
+  assert.equal(PK.ssConc(scenario({dosing:"single"}), 1), null);
+  assert.equal(PK.ssConc(custom([ev(0,500)]), 1), null);
+  assert.ok(PK.ssProfile(scenario({dosing:"repeated"})).ssPeak>0);
+  const C=PK.compareRows(scenario({dosing:"repeated"}), custom([ev(0,500), ev(12,500)]), 48, 2, 12);
+  assert.ok(!JSON.stringify(C).match(/steady|accumulation/i), "no steady-state rows when either side is custom");
 });
 
 test("a long infusion settles at rate ÷ CL", ()=>{
