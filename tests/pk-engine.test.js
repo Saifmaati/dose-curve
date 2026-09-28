@@ -595,6 +595,85 @@ test("doseSchedule lists every scheduled dose in time order, missed ones flagged
   assert.deepEqual(PK.doseSchedule(scenario()).map(d=>d.t), [0]);
 });
 
+/* ---------- scenario library ---------- */
+
+const V=PK.VIEW_DEFAULTS;
+const simState=()=>({mode:"sim", s:scenario({dosing:"repeated", clFn:50}), base:scenario({dosing:"repeated"}), baseLabel:"before", lesson:"cl",
+  view:{duration:72, mec:3, mtc:15, scale:"lin", zoom:"full"}});
+const cmpState=()=>({mode:"cmp", a:custom([ev(0,1000,{type:"loading"}), ev(12,500), ev(24,500,{status:"missed"})]),
+  b:scenario({dosing:"repeated", tau:12}), nameA:"Custom plan", nameB:"Every 12 h", lock:"", edit:"b", view:V});
+
+test("a saved simulator item restores scenario, baseline, lesson and view", ()=>{
+  const it=PK.libraryItem("Reduced clearance study", simState(), "2026-09-27T12:00:00.000Z", "abc");
+  assert.deepEqual([it.id, it.kind, it.name, it.savedAt], ["abc","sim","Reduced clearance study","2026-09-27T12:00:00.000Z"]);
+  const st=PK.decodeLink(it.link);
+  assert.deepEqual(st.s, simState().s); assert.deepEqual(st.base, simState().base);
+  assert.equal(st.baseLabel, "before"); assert.equal(st.lesson, "cl"); assert.deepEqual(st.view, simState().view);
+});
+
+test("a saved comparison keeps both scenarios, custom schedules, names and the edited side", ()=>{
+  const it=PK.libraryItem("", cmpState());
+  assert.equal(it.kind, "cmp");
+  assert.equal(it.name, "Custom plan vs Every 12 h", "a sensible default name");
+  const st=PK.decodeLink(it.link);
+  assert.ok(PK.sameSetting("events", st.a, cmpState().a));
+  assert.deepEqual(st.b, cmpState().b);
+  assert.equal(st.nameA, "Custom plan"); assert.equal(st.edit, "b");
+});
+
+test("saved names are plain text: control and direction characters removed, trimmed, capped at 60", ()=>{
+  const it=PK.libraryItem("  <img src=x onerror=alert(1)>\u202e\u0007 "+"x".repeat(100), simState());
+  assert.ok(it.name.startsWith("<img src=x onerror=alert(1)>"), "kept as text for the page to escape");
+  assert.ok(!/[\u202e\u0007]/.test(it.name));
+  assert.equal(it.name.length, 60);
+});
+
+test("parseLibrary rejects files that aren't DoseCurve libraries", ()=>{
+  assert.equal(PK.parseLibrary("{not json").error, "not valid JSON");
+  assert.equal(PK.parseLibrary({format:"something-else", items:[]}).error, "not a DoseCurve scenario file");
+  assert.equal(PK.parseLibrary(null).error, "not a DoseCurve scenario file");
+  assert.deepEqual(PK.parseLibrary(PK.exportLibrary([])).library.items, []);
+});
+
+test("parseLibrary keeps valid items, skips broken ones, and re-encodes links canonically", ()=>{
+  const good=PK.libraryItem("Good", simState(), "2026-09-27T12:00:00.000Z", "good1");
+  const sloppy={id:"sl0ppy", name:"Sloppy", link:"v=1&s=D%3A99999%2CclFn%3A50", savedAt:"2026-09-01T00:00:00Z"};
+  const doc={format:"dosecurve-library", version:1, items:[good, sloppy, {name:"no link"}, {link:"not a link"}, 42, null,
+    {id:"good1", name:"Same id", link:good.link}, {name:"Huge", link:"v=1&s="+"D:1,".repeat(6000)}]};
+  const r=PK.parseLibrary(JSON.stringify(doc));
+  assert.equal(r.skipped, 5);
+  assert.deepEqual(r.library.items.map(i=>i.name), ["Good","Sloppy","Same id"]);
+  assert.equal(PK.decodeLink(r.library.items[1].link).s.D, 2000, "out-of-range values are clamped");
+  assert.equal(r.library.items[1].link, "v=1&s=D:2000,clFn:50", "and the link is stored in canonical form");
+  assert.notEqual(r.library.items[2].id, "good1", "a repeated id gets a fresh one");
+  assert.equal(new Set(r.library.items.map(i=>i.id)).size, 3);
+});
+
+test("older and newer library versions: a bare array migrates, a newer file is read and flagged", ()=>{
+  const it=PK.libraryItem("Old", simState());
+  const v0=PK.parseLibrary(JSON.stringify([it]));
+  assert.equal(v0.library.version, PK.LIBRARY_VERSION); assert.equal(v0.library.items.length, 1);
+  const future=PK.parseLibrary({format:"dosecurve-library", version:99, items:[it]});
+  assert.equal(future.newer, true); assert.equal(future.library.items.length, 1);
+});
+
+test("the library is capped at 200 items, on read and on import", ()=>{
+  const it=PK.libraryItem("x", simState());
+  const many=PK.parseLibrary({format:"dosecurve-library", version:1, items:Array.from({length:230},()=>it)});
+  assert.equal(many.library.items.length, 200); assert.equal(many.skipped, 30);
+  const merged=PK.mergeLibrary(many.library, [it, it]);
+  assert.equal(merged.added, 0); assert.equal(merged.dropped, 2);
+});
+
+test("export then import gives back the same setups, and merging never collides ids", ()=>{
+  const items=[PK.libraryItem("A", simState()), PK.libraryItem("B", cmpState())];
+  const back=PK.parseLibrary(PK.exportLibrary(items)).library.items;
+  assert.deepEqual(back.map(i=>[i.name,i.kind,i.link]), items.map(i=>[i.name,i.kind,i.link]));
+  const m=PK.mergeLibrary({format:"dosecurve-library", version:1, items}, back);
+  assert.equal(m.added, 2);
+  assert.equal(new Set(m.library.items.map(i=>i.id)).size, 4);
+});
+
 /* ---------- every claim the lessons and comparisons make ---------- */
 
 test("lesson: oral vs IV bolus", ()=>{
