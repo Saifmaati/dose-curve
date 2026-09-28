@@ -12,6 +12,7 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **Compare against a baseline:** freeze a curve, change anything, and get a plain-English explanation of what moved and why, plus a metrics table.
 - **Compare two scenarios side by side:** edit Scenario A and B independently, lock everything but one setting ("Vary only"), or start from six one-click comparisons such as once vs twice daily.
 - **Watch steady state build up:** peak and trough for every dose, accumulation, and how long 90% of steady state takes.
+- **Inspect any moment:** drag a cursor across the chart (or focus it and use the arrow keys) to read the concentration, window status, whether it's rising or falling, and the last dose given; jump between doses, peaks and troughs, or play the curve at 1×, 2× or 4×.
 - **Learn** through 10 guided lessons, and practice with unlimited generated problems that come with worked solutions.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV.
 

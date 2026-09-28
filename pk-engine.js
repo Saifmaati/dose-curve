@@ -233,6 +233,62 @@
       Rac:1/(1-Math.exp(-k*tau)), t90:3.32*Math.LN2/k, dosesTo90:Math.ceil(Math.log(10)/(k*tau))};
   }
 
+  /* ================= TIME INSPECTION ================= */
+  // Every scheduled dose, missed ones included: {t, mg, loading, missed, n}, in time order.
+  function doseSchedule(p){
+    let out;
+    if(p.dosing==="custom") out=p.events.map((e,i)=>({t:e.t, mg:e.mg, loading:e.type==="loading", missed:e.status==="missed", n:i+1}));
+    else if(p.dosing==="single") out=[{t:0, mg:p.D, loading:false, missed:false, n:1}];
+    else {
+      const skip=missedOf(p); out=[];
+      for(let i=0;i<p.nDoses;i++) out.push({t:i*p.tau, mg:p.D*(i===0?p.loadMult:1), loading:i===0 && p.loadMult>1, missed:i+1===skip, n:i+1});
+    }
+    return out.sort((a,b)=>a.t-b.t);
+  }
+
+  // What the model says at time t. The trend compares the curve 0.02 h either side: above both is a peak
+  // (an IV bolus at the moment it's given is one), below both a trough, otherwise the slope just after t
+  // says rising or falling. `last` is the most recent dose actually given, with doses at the same time
+  // counted as one administration; missed doses never count as given and are listed in missedSince.
+  function inspectAt(p, t, mec, mtc){
+    const ev=doseEvents(p), c=conc(p,t,ev), d=0.02, tol=1e-9*Math.max(1,c);
+    const left=conc(p,t-d,ev), right=conc(p,t+d,ev), slope=conc(p,t+1e-4,ev)-c;
+    const trend = Math.max(Math.abs(c-left),Math.abs(c-right))<=tol ? "flat"
+      : c>left+tol && c>right+tol ? "peak"
+      : c<left-tol && c<right-tol ? "trough"
+      : Math.abs(slope)<=tol ? "flat" : slope>0 ? "rising" : "falling";
+    const sched=doseSchedule(p), given=sched.filter(x=>!x.missed && x.t<=t+1e-9);
+    let last=null;
+    if(given.length){
+      const lt=given[given.length-1].t, grp=given.filter(x=>Math.abs(x.t-lt)<1e-9);
+      last={t:lt, mg:grp.reduce((s,x)=>s+x.mg,0), count:grp.length, loading:grp.some(x=>x.loading)};
+    }
+    const missedSince=sched.filter(x=>x.missed && x.t<=t+1e-9 && (!last || x.t>last.t+1e-9)).map(x=>x.t);
+    const nx=sched.find(x=>x.t>t+1e-9);
+    return {t, c, trend, status:c>mtc ? "above" : c>=mec ? "in" : "below", last, since:last ? t-last.t : null,
+      missedSince, next:nx ? {t:nx.t, mg:nx.mg, missed:nx.missed} : null};
+  }
+
+  // Local peaks and troughs over [0, T]. The grid includes every dose time (and the instant before it,
+  // and each infusion end) so the jumps of an IV bolus and the tops of infusions are caught exactly.
+  function extrema(p, T){
+    const ev=doseEvents(p), N=2400, pts=new Set();
+    for(let i=0;i<=N;i++) pts.add(T*i/N);
+    ev.forEach(e=>{
+      [e.t-1e-6, e.t, e.t+1e-6].forEach(x=>{ if(x>=0 && x<=T) pts.add(x); });
+      if(p.route==="inf" && e.t+p.tinf<=T) pts.add(e.t+p.tinf);
+    });
+    const ts=[...pts].sort((a,b)=>a-b), cs=ts.map(t=>conc(p,t,ev));
+    const peaks=[], troughs=[], add=(list,t,c)=>{ const prev=list[list.length-1]; if(!prev || t-prev.t>1e-3) list.push({t,c}); };
+    if(cs.length>1 && cs[0]>0 && cs[0]>cs[1]) add(peaks,ts[0],cs[0]);   // an IV bolus at t = 0
+    for(let i=1;i<ts.length-1;i++){
+      const c=cs[i], l=cs[i-1], r=cs[i+1];
+      if(c>l && c>=r) add(peaks,ts[i],c);
+      else if(c<l && c<=r) add(troughs,ts[i],c);
+    }
+    return {peaks, troughs};
+  }
+
   /* ================= COMPARISON ================= */
   // Metrics for scenario a vs scenario b over the same window. kind says how the change is expressed:
   // pct = % change, ratio = % change of a ratio, pp = percentage points, abs = hours, count = doses.
@@ -517,7 +573,7 @@
   }
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
-    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, eventsKey, sameSetting, isRelevant, eventsFromBasic, doseTotals,
+    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

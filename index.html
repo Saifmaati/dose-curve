@@ -368,6 +368,31 @@
   #evStrip{display:block;width:100%;height:auto}
   #evStrip .evm{cursor:pointer}
 
+  /* time inspector */
+  #plot:focus{outline:none}
+  #plot:focus-visible{outline:2px solid var(--cyan);outline-offset:4px;border-radius:6px}
+  .insp{margin:10px 22px 0;border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(5,8,16,.5);padding:10px 12px}
+  .insp-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .ib-group{display:flex;gap:3px}
+  .ib{border:1px solid var(--glass-line-2);background:rgba(5,8,16,.6);color:#C9D0E6;cursor:pointer;font-family:'JetBrains Mono',monospace;
+    font-size:11px;padding:6px 9px;border-radius:7px}
+  .ib:hover:not(:disabled){border-color:rgba(61,242,224,.5);color:#fff}
+  .ib:disabled{opacity:.38;cursor:default}
+  .ib:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .ib[hidden]{display:none}
+  .ib.play{color:var(--cyan);border-color:rgba(61,242,224,.45);min-width:72px}
+  .ib-gap{flex:1}
+  .insp-read{margin-top:10px;font-size:12.5px;color:#B9BEDF;line-height:1.7;min-height:44px}
+  .insp-read b{color:#fff;font-family:'JetBrains Mono',monospace;font-weight:600}
+  .ir-t{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:12px}
+  .ir-line{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center}
+  .ir-meta{font-size:11.5px;color:var(--muted)}
+  .ir-tag{font-family:'JetBrains Mono',monospace;font-weight:600;width:12px}
+  .st{font-size:11px;border-radius:5px;padding:0 7px;border:1px solid}
+  .st.below{color:#F2C46B;border-color:rgba(255,182,61,.45)}
+  .st.in{color:#7BE0A8;border-color:rgba(59,229,138,.45)}
+  .st.above{color:#FF8FA3;border-color:rgba(255,92,122,.5)}
+
   /* modes: the simulator view doubles as the compare view */
   [data-mode="cmp"] .sim-only{display:none!important}
   [data-mode="sim"] .cmp-only{display:none!important}
@@ -463,6 +488,10 @@
     .tabbar{gap:3px}
     .tabbar button{padding:9px 10px;font-size:12.5px}
     .cmpbar{padding-left:14px;padding-right:14px}
+    .insp{margin-left:14px;margin-right:14px}
+    .ib-gap{display:none}
+    .ib{padding:8px 10px}
+    #speedSeg button{padding:8px 12px}
     .shared{margin-left:14px;margin-right:14px}
     .cmp{padding:14px 13px}
     .cmp-tbl{font-size:10.5px}
@@ -494,7 +523,7 @@
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules, side-by-side scenarios and baselines that explain what changed, steady-state analytics, one-click lessons, and links that share any scenario.</p>
+    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules, side-by-side scenarios and baselines that explain what changed, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
   </section>
 
@@ -669,11 +698,36 @@
         <div class="legend" id="legend"></div>
 
         <div class="plot-box">
-          <svg id="plot" viewBox="0 0 760 430"></svg>
+          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
           <div id="tooltip"></div>
         </div>
         <div class="ev-strip" id="evStripWrap" hidden>
           <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Select a dose to edit it in the schedule list."></svg>
+        </div>
+
+        <div class="insp" id="insp">
+          <div class="insp-bar" role="toolbar" aria-label="Time cursor controls">
+            <div class="ib-group">
+              <button class="ib" id="navDosePrev" aria-label="Previous dose">⟨ dose</button>
+              <button class="ib" id="navDoseNext" aria-label="Next dose">dose ⟩</button>
+            </div>
+            <div class="ib-group">
+              <button class="ib" id="navPeakPrev" aria-label="Previous peak">⟨ peak</button>
+              <button class="ib" id="navPeakNext" aria-label="Next peak">peak ⟩</button>
+            </div>
+            <div class="ib-group">
+              <button class="ib" id="navTroughPrev" aria-label="Previous trough">⟨ trough</button>
+              <button class="ib" id="navTroughNext" aria-label="Next trough">trough ⟩</button>
+            </div>
+            <button class="ib" id="navFinal" aria-label="Final dosing interval">Final τ</button>
+            <span class="ib-gap"></span>
+            <button class="ib play" id="playBtn">▶ Play</button>
+            <div class="mini-seg" id="speedSeg" role="group" aria-label="Playback speed">
+              <button data-speed="1" class="on">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button>
+            </div>
+            <button class="ib" id="navReset">Reset</button>
+          </div>
+          <div class="insp-read" id="inspRead" aria-live="polite"></div>
         </div>
 
         <div class="readouts sim-only">
@@ -903,6 +957,8 @@
       return M.t+ih-f*ih;
     };
     const inView=t=> t>=T0-1e-9 && t<=T1+1e-9;
+    viewT=[T0,T1];
+    if(cursorT!==null && state.view==="full" && cursorT>T1) cursorT=T1;   // a shorter window pulls the cursor in
     curves.forEach(cv=> cv.pts=cv.raw.map(q=>({t:q.t,c:q.c,x:sx(q.t),y:sy(q.c)})));
     plotCurves=curves;
 
@@ -1062,6 +1118,12 @@
     </defs>
     <rect x="${M.l}" y="${M.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.20)" stroke-width="1"/>
     ${g}
+    <g id="cursorG" style="display:none">
+      <line id="curLine" y1="${M.t}" y2="${PH-M.b}" stroke="#E8ECF8" stroke-width="1.4" opacity="0.7"/>
+      <rect id="curHandle" y="${M.t-4}" width="10" height="8" rx="2" fill="#E8ECF8"/>
+      <text id="curLbl" y="${M.t+12}" font-family="JetBrains Mono" font-size="10" fill="#E8ECF8"></text>
+      ${curves.map((cv,i)=>`<circle class="curDot" data-i="${i}" r="4.5" fill="${cv.ghost?"#98A2C8":cv.col?cv.col.line:"#3DF2E0"}" stroke="#05070E" stroke-width="2"/>`).join("")}
+    </g>
     <g id="crosshair" style="opacity:0">
       <line id="chLine" y1="${M.t}" y2="${PH-M.b}" stroke="#3DF2E0" stroke-width="1" stroke-dasharray="3 3" opacity="0.45"/>
       ${dots}
@@ -1079,16 +1141,11 @@
 
     renderStrip(T0,T1);
     renderPanels();
+    updateCursor();
   }
 
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
-  function scheduleOf(p){
-    if(p.dosing==="custom") return p.events.map((e,i)=>({t:e.t, n:i+1, loading:e.type==="loading", missed:e.status==="missed"}));
-    if(p.dosing!=="repeated") return [];
-    const skip=missedOf(p), out=[];
-    for(let i=0;i<p.nDoses;i++) out.push({t:i*p.tau, n:i+1, loading:i===0 && p.loadMult>1, missed:i+1===skip});
-    return out;
-  }
+  const scheduleOf=p=> p.dosing==="single" ? [] : PK.doseSchedule(p);
 
   function renderPanels(){
     if(mode==="sim"){
@@ -1569,9 +1626,198 @@
     setSegVal("viewSeg","view",state.view);
   }
 
+  /* ================= TIME INSPECTOR ================= */
+  // A cursor pinned to one moment, with what the model says there. It only reads the scenario; playback
+  // and the cursor never change settings and are not part of share links.
+  let cursorT=null, viewT=[0,24], dragging=false;
+  let playing=false, playRaf=0, playTimer=0, lastTs=0, speed=1;
+  let navCache={key:""};
+
+  // The scenario navigation follows: the live one, or the side being edited in Compare.
+  const navScenario=()=> mode==="cmp" ? pair()[cmp.edit] : snapshot();
+  function navLists(){
+    const p=navScenario(), T=state.duration, key=JSON.stringify(p)+"|"+T;
+    if(navCache.key!==key){
+      const ex=PK.extrema(p,T);
+      navCache={key, dose:[...new Set(PK.doseSchedule(p).map(d=>d.t).filter(t=>t<=T))],
+        peak:ex.peaks.map(e=>e.t), trough:ex.troughs.map(e=>e.t)};
+    }
+    return navCache;
+  }
+  function navTarget(kind, dir){
+    const L=navLists()[kind], cur=cursorT===null ? (dir>0 ? -Infinity : Infinity) : cursorT;
+    return dir>0 ? L.find(t=>t>cur+1e-6) : L.slice().reverse().find(t=>t<cur-1e-6);
+  }
+  function jumpTo(t){
+    if(t===undefined) return;
+    pause();
+    cursorT=t;
+    if(state.view==="last" && (t<viewT[0]-1e-9 || t>viewT[1]+1e-9)){ state.view="full"; render(); }
+    else updateCursor();
+  }
+
+  function updateCursor(){
+    const g=plotEl.querySelector("#cursorG");
+    if(!g) return;
+    const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
+    g.style.display=show ? "" : "none";
+    if(show){
+      const x=sx(cursorT), right=x>PW-M.r-70;
+      g.querySelector("#curLine").setAttribute("x1",x); g.querySelector("#curLine").setAttribute("x2",x);
+      g.querySelector("#curHandle").setAttribute("x",x-5);
+      const lbl=g.querySelector("#curLbl");
+      lbl.setAttribute("x", right ? x-6 : x+6); lbl.setAttribute("text-anchor", right ? "end" : "start");
+      lbl.textContent=`t = ${fmt(cursorT,1)} h`;
+      g.querySelectorAll(".curDot").forEach(d=>{
+        const cv=plotCurves[+d.dataset.i];
+        d.setAttribute("cx",x); d.setAttribute("cy",sy(conc(cv.p,cursorT)));
+      });
+    }
+    plotEl.setAttribute("aria-valuemax", T1);
+    if(cursorT===null){ plotEl.removeAttribute("aria-valuenow"); plotEl.setAttribute("aria-valuetext","No time selected"); }
+    else { plotEl.setAttribute("aria-valuenow", cursorT); plotEl.setAttribute("aria-valuetext", `${fmt(cursorT,1)} hours`); }
+    renderInspector();
+  }
+
+  const STATUS_TXT={below:"below MEC", in:"in window", above:"above MTC"};
+  const TREND_TXT={rising:"↗ rising", falling:"↘ falling", flat:"→ flat", peak:"◆ at peak", trough:"◇ at trough"};
+  function lastDoseTxt(i){
+    if(!i.last) return "no dose given yet";
+    const L=i.last;
+    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} mg${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
+  }
+  const missedTxt=i=> i.missedSince.length ? ` · missed since then: ${i.missedSince.map(t=>fmt(t,1)+" h").join(", ")}` : "";
+  function renderInspector(){
+    updateNavButtons();
+    const el=byId("inspRead"), [T0,T1]=viewT;
+    el.setAttribute("aria-live", playing ? "off" : "polite");
+    if(cursorT===null){
+      el.innerHTML=`<span class="ir-meta">Click or drag on the chart to inspect any moment, or focus the chart and use ← →. Play steps through the whole window.</span>`;
+      return;
+    }
+    if(cursorT<T0-1e-9 || cursorT>T1+1e-9){
+      el.innerHTML=`<span class="ir-meta">The cursor (${fmt(cursorT,1)} h) is outside this view. Reset brings it back.</span>`;
+      return;
+    }
+    const st=s=>`<span class="st ${s}">${STATUS_TXT[s]}</span>`;
+    let h=`<div class="ir-t">t = <b>${fmt(cursorT,1)} h</b></div>`;
+    if(mode==="cmp"){
+      const {a,b}=pair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
+      ["a","b"].forEach(side=>{
+        const i=I[side];
+        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].line}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${missedTxt(i)}</span></div>`;
+      });
+      const d=I.b.c-I.a.c, pct=Math.abs(I.a.c)>1e-9 ? ` (${d>=0?"+":"−"}${fmt(Math.abs(d/I.a.c*100),0)}%)` : "";
+      h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</b>${pct}</div>`;
+    } else {
+      const i=PK.inspectAt(snapshot(),cursorT,state.mec,state.mtc);
+      h+=`<div class="ir-line"><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
+      h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${i.next.missed?" (missed)":""}`:""}</div>`;
+      if(baseline){
+        const bc=conc(baseline.p,cursorT), d=i.c-bc;
+        h+=`<div class="ir-meta">Baseline <b>${fmt(bc,2)} mg/L</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</div>`;
+      }
+    }
+    el.innerHTML=h;
+  }
+
+  const NAV=[["navDosePrev","dose",-1],["navDoseNext","dose",1],["navPeakPrev","peak",-1],["navPeakNext","peak",1],
+    ["navTroughPrev","trough",-1],["navTroughNext","trough",1]];
+  function updateNavButtons(){
+    NAV.forEach(([id,kind,dir])=>{ byId(id).disabled=navTarget(kind,dir)===undefined; });
+    byId("navFinal").hidden=!repeatedShown().length;
+    byId("navReset").disabled=cursorT===null && state.view==="full";
+  }
+  NAV.forEach(([id,kind,dir])=> byId(id).addEventListener("click",()=>jumpTo(navTarget(kind,dir))));
+  byId("navFinal").addEventListener("click",()=>{
+    pause();
+    const p=navScenario();
+    state.view="last";
+    if(p.dosing==="repeated") cursorT=(p.nDoses-1)*p.tau;
+    render();
+  });
+  byId("navReset").addEventListener("click",()=>{ pause(); cursorT=null; state.view="full"; render(); });
+
+  // Playback moves the cursor only. At 1× the whole view plays in about 12 s; with reduced motion it steps
+  // in coarse jumps instead of animating.
+  function setPlayUI(){
+    const b=byId("playBtn");
+    b.textContent=playing ? "⏸ Pause" : "▶ Play";
+    b.setAttribute("aria-pressed", playing);
+  }
+  function step(dt){
+    const T1=viewT[1];
+    cursorT=Math.min(T1,(cursorT===null ? viewT[0] : cursorT)+dt);
+    updateCursor();
+    if(cursorT>=T1-1e-9) pause();
+  }
+  function frame(ts){
+    if(!playing) return;
+    // at most 0.1 s per frame, so a throttled or backgrounded tab resumes smoothly instead of jumping
+    if(lastTs) step((viewT[1]-viewT[0])/12*speed*Math.min(0.1,(ts-lastTs)/1000));
+    lastTs=ts;
+    if(playing) playRaf=requestAnimationFrame(frame);
+  }
+  function play(){
+    if(playing) return;
+    const [T0,T1]=viewT;
+    if(cursorT===null || cursorT>=T1-1e-6 || cursorT<T0) cursorT=T0;
+    playing=true; lastTs=0; setPlayUI();
+    if(reduceMotion()) playTimer=setInterval(()=>step((viewT[1]-viewT[0])/24*speed),500);
+    else playRaf=requestAnimationFrame(frame);
+    updateCursor();
+  }
+  function pause(){
+    if(!playing) return;
+    playing=false;
+    cancelAnimationFrame(playRaf); clearInterval(playTimer);
+    setPlayUI(); renderInspector();
+  }
+  byId("playBtn").addEventListener("click",()=> playing ? pause() : play());
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) pause(); });
+  seg("speedSeg","speed",v=>{ speed=+v; });
+
+  // Pointer: press and drag anywhere on the chart to move the cursor.
+  function timeAt(evt, clampToPlot){
+    const rect=plotEl.getBoundingClientRect(), svgX=(evt.clientX-rect.left)/rect.width*PW;
+    if(!clampToPlot && (svgX<M.l || svgX>PW-M.r)) return null;
+    const [T0,T1]=viewT, t=T0+(svgX-M.l)/(PW-M.l-M.r)*(T1-T0);
+    return Math.min(T1,Math.max(T0,Math.round(t*10)/10));
+  }
+  plotEl.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    const t=timeAt(e,false);
+    if(t===null) return;
+    pause(); dragging=true;
+    cursorT=t; updateCursor(); hideCross();
+    try{ plotEl.setPointerCapture(e.pointerId); }catch(err){ /* capture is a nicety; dragging works without it */ }
+  });
+  plotEl.addEventListener("pointermove",e=>{
+    if(!dragging) return;
+    cursorT=timeAt(e,true); updateCursor();
+  });
+  ["pointerup","pointercancel"].forEach(n=> plotEl.addEventListener(n,()=>{ dragging=false; }));
+  // Keyboard: arrows move 0.5 h (Shift: 5 h), Home/End jump to the ends, Escape clears, Space plays.
+  plotEl.addEventListener("keydown",e=>{
+    const [T0,T1]=viewT;
+    let t=cursorT;
+    if(e.key==="ArrowRight" || e.key==="ArrowLeft"){
+      const stepH=e.shiftKey ? 5 : 0.5;
+      t=t===null ? T0 : t+(e.key==="ArrowRight" ? stepH : -stepH);
+    } else if(e.key==="Home") t=T0;
+    else if(e.key==="End") t=T1;
+    else if(e.key==="Escape"){ e.preventDefault(); pause(); cursorT=null; updateCursor(); return; }
+    else if(e.key===" "){ e.preventDefault(); playing ? pause() : play(); return; }
+    else return;
+    e.preventDefault(); pause();
+    cursorT=Math.min(T1,Math.max(T0,Math.round(t*100)/100));
+    updateCursor();
+  });
+
   /* ================= CROSSHAIR ================= */
   const tip=byId("tooltip");
   function moveCross(evt){
+    if(dragging){ hideCross(); return; }
     const rect=plotEl.getBoundingClientRect();
     const px=(evt.touches?evt.touches[0].clientX:evt.clientX)-rect.left;
     const svgX=px/rect.width*PW;
@@ -2261,6 +2507,7 @@
 
   /* tabs: Simulator and Compare share one view in two modes */
   function showTab(which){
+    pause();
     if(which==="sim"||which==="cmp") setMode(which);
     $("simView").style.display=(which==="sim"||which==="cmp")?"block":"none";
     $("lsView").className="lsv"+(which==="ls"?" show":"");
