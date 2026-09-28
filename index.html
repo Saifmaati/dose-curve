@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Pharmacokinetic Simulator</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and learn through 10 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and learn through 12 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -370,6 +370,13 @@
   #evStrip.dragging,#evStrip.dragging .evm{cursor:grabbing}
   .ev-move{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:24px;padding:0 0 6px 7%;font-size:12px;color:#B9BEDF;line-height:1.5}
   .ev-nudge{grid-column:1 / -1;display:flex;gap:8px}
+  .ev-tag.inf{border-color:rgba(61,242,224,.45);color:#7FF5EA}
+  .ev-tag.rt{border-color:var(--glass-line-2);color:var(--muted)}
+  .ev-rate{align-self:end;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);margin:0 0 8px;line-height:1.4}
+  .ev-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2);margin-top:8px}
+  .ev-model{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6}
+  .ev-model summary{cursor:pointer;color:#B9BEDF}
+  .ev-model p{margin:6px 0 0}
   .ev-nudge .abtn{flex:1;padding:7px 10px}
 
   /* time inspector */
@@ -567,7 +574,7 @@
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules, side-by-side scenarios and baselines that explain what changed, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
+    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules that mix oral doses, IV boluses and infusions, side-by-side scenarios and baselines that explain what changed, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
   </section>
 
@@ -594,6 +601,7 @@
               <button data-route="iv">IV bolus</button>
               <button data-route="inf">IV infusion</button>
             </div>
+            <p class="ev-limit" id="routeMixed" hidden>These doses use different routes. Choosing a route here switches every dose to it.</p>
             <div class="seg" id="doseSeg" role="group" aria-label="Dosing regimen" style="margin-top:8px">
               <button data-dosing="single" class="on">Single dose</button>
               <button data-dosing="repeated">Repeated</button>
@@ -611,6 +619,11 @@
             <p class="lib-note ev-intro">Custom lets you build an irregular schedule: every dose has its own time and amount, and any dose can be marked missed. Select a dose to edit it, or drag it along the timeline under the chart.</p>
             <div class="ev-list" id="evList"></div>
             <p class="ev-sum" id="evSum"></p>
+            <p class="ev-legend" aria-hidden="true"><span>● oral</span><span>◆ IV bolus</span><span>▬ IV infusion, while it runs</span></p>
+            <details class="ev-model">
+              <summary>How doses of different routes are modelled</summary>
+              <p>Every dose goes into the same one-compartment body, with one volume and one clearance whatever the route. Oral doses are absorbed at the rate kₐ and only the fraction F reaches the blood; IV doses count in full. An infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop, with no delay in the line. Everything adds up: overlapping infusions add their rates, and a bolus given during an infusion adds on top.</p>
+            </details>
             <p class="ev-limit" id="evLimit" role="status" hidden>Can’t add another dose: the schedule already reaches the 168-hour limit. Duplicate still adds a dose at the same time.</p>
             <div class="ev-actions">
               <button class="abtn" id="evAdd">+ Add dose</button>
@@ -1040,10 +1053,11 @@
       g+=`<rect x="${M.l}" y="${sy(bandTop)}" width="${iw}" height="${Math.max(0,sy(bandBot)-sy(bandTop))}" fill="rgba(59,229,138,0.06)"/>`;
     }
 
-    // infusion shading, one block per infusion actually given
-    curves.filter(cv=>!cv.ghost && cv.p.route==="inf").forEach(cv=>{
+    // infusion shading, one block per infusion actually given, for as long as it runs
+    curves.filter(cv=>!cv.ghost).forEach(cv=>{
       doseEvents(cv.p).forEach(e=>{
-        const a=Math.max(e.t,T0), b=Math.min(e.t+cv.p.tinf,T1);
+        if(e.route!=="inf") return;
+        const a=Math.max(e.t,T0), b=Math.min(e.t+e.dur,T1);
         if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${cv.col?cv.col.fill:"rgba(61,242,224,0.045)"}"/>`;
       });
     });
@@ -1441,14 +1455,14 @@
   }
 
   /* ================= COMPARISON ================= */
-  const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion"};
+  const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion",mixed:"mixed-route"};
   const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
     missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
-    if(k==="route") return ROUTE_NAME[s.route];
+    if(k==="route") return ROUTE_NAME[PK.routeOf(s)];
     if(k==="dosing") return s.dosing;
     if(k==="missed") return missedOf(s)?"dose "+missedOf(s):"none";
     if(k==="loadMult") return s.loadMult>1?s.loadMult+"×":"none";
@@ -1626,7 +1640,7 @@
   }
 
   function scenarioLabel(p){
-    if(p.dosing==="custom") return `${ROUTE_NAME[p.route]} custom ×${derived(p).nGiven}`;
+    if(p.dosing==="custom") return `${ROUTE_NAME[PK.routeOf(p)]} custom ×${derived(p).nGiven}`;
     return `${ROUTE_NAME[p.route]} ${trim(p.D)} mg${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
   }
   function customSummary(p){
@@ -1634,7 +1648,7 @@
     return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} mg`;
   }
   function scenarioSummary(p){
-    let s=p.dosing==="custom" ? `${cap(ROUTE_NAME[p.route])} · custom schedule · ${customSummary(p)}`
+    let s=p.dosing==="custom" ? `${cap(ROUTE_NAME[PK.routeOf(p)])} · custom schedule · ${customSummary(p)}`
       : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} mg · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
     if(p.loadMult>1) s+=` · ${p.loadMult}× load`;
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
@@ -1683,7 +1697,7 @@
       const {a,b}=pair();
       s=`A: ${scenarioLabel(a)} · B: ${scenarioLabel(b)}`;
     } else {
-      const r=ROUTE_NAME[state.route];
+      const r=ROUTE_NAME[PK.routeOf(state)];
       s = state.dosing==="custom" ? `Custom ${r} schedule · ${customSummary(state)}`
         : state.dosing==="repeated"
         ? `Repeated ${r} · every ${state.tau} h × ${state.nDoses}${state.loadMult>1?` · ${state.loadMult}× load`:""}${missedOf(state)?` · dose ${state.missed} missed`:""}`
@@ -1752,10 +1766,19 @@
 
   const STATUS_TXT={below:"below MEC", in:"in window", above:"above MTC"};
   const TREND_TXT={rising:"↗ rising", falling:"↘ falling", flat:"→ flat", peak:"◆ at peak", trough:"◇ at trough"};
+  const routeWord=(route,dur)=> route==="inf" ? (dur ? ` infusion over ${trim(dur)} h` : " infusion") : route==="iv" ? " IV bolus" : "";
   function lastDoseTxt(i){
     if(!i.last) return "no dose given yet";
     const L=i.last;
-    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} mg${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
+    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} mg${routeWord(L.route,L.dur)}${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
+  }
+  // What's running now: one infusion in detail, or several as their combined rate.
+  function infusingTxt(i){
+    const R=i.infusing;
+    if(!R.length) return "";
+    if(R.length>1) return ` · ${R.length} infusions running, ${fmt(R.reduce((s,r)=>s+r.rate,0),1)} mg/h in total`;
+    const r=R[0];
+    return ` · infusion running at ${fmt(r.rate,1)} mg/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} mg in, ends at ${fmt(r.end,1)} h`;
   }
   const missedTxt=i=> i.missedSince.length ? ` · missed since then: ${i.missedSince.map(t=>fmt(t,1)+" h").join(", ")}` : "";
   function renderInspector(){
@@ -1776,14 +1799,14 @@
       const {a,b}=pair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
       ["a","b"].forEach(side=>{
         const i=I[side];
-        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].line}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${missedTxt(i)}</span></div>`;
+        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].line}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}</span></div>`;
       });
       const d=I.b.c-I.a.c, pct=Math.abs(I.a.c)>1e-9 ? ` (${d>=0?"+":"−"}${fmt(Math.abs(d/I.a.c*100),0)}%)` : "";
       h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</b>${pct}</div>`;
     } else {
       const i=PK.inspectAt(snapshot(),cursorT,state.mec,state.mtc);
       h+=`<div class="ir-line"><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
-      h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${i.next.missed?" (missed)":""}`:""}</div>`;
+      h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${infusingTxt(i)}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${routeWord(i.next.route)}${i.next.missed?" (missed)":""}`:""}</div>`;
       if(baseline){
         const bc=conc(baseline.p,cursorT), d=i.c-bc;
         h+=`<div class="ir-meta">Baseline <b>${fmt(bc,2)} mg/L</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</div>`;
@@ -1985,10 +2008,13 @@
     const el=byId("sliders");
     el.innerHTML="";
     Object.entries(SLIDERS).forEach(([key,cfg])=>{
-      if(!cfg.routes.includes(state.route)) return;
+      // F, kₐ and T·inf show only when they shape the curve: in a custom schedule F and kₐ while it has an
+      // oral dose, and never T·inf (each infusion has its own duration)
+      if(["F","ka","tinf"].includes(key) ? !PK.isRelevant(key, snapshot()) : !cfg.routes.includes(state.route)) return;
       if(cfg.dosing && ![].concat(cfg.dosing).includes(state.dosing)) return;
       makeSlider(el,key,cfg);
     });
+    syncRouteSeg();
     const pel=byId("patientSliders");
     pel.innerHTML="";
     Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
@@ -2008,7 +2034,19 @@
       document.querySelectorAll(`#${id} button`).forEach(x=>x.classList.toggle("on",x===b));
     });
   }
-  seg("routeSeg","route",v=>{ state.route=v; state.drug=null; markDrug(); buildSliders(); changed(["route"]); });
+  seg("routeSeg","route",v=>{
+    state.route=v; state.drug=null; markDrug();
+    // in a custom schedule the route buttons set every dose: an infusion keeps its duration, and a dose that
+    // becomes an infusion takes T·inf
+    if(state.dosing==="custom" && state.events.length){ setEvents(state.events.map(e=>Object.assign({},e,{route:v}))); return; }
+    buildSliders(); changed(["route"]);
+  });
+  // The route buttons show the route every dose uses; a custom schedule that mixes routes lights none.
+  function syncRouteSeg(){
+    const r=PK.routeOf(snapshot());
+    setSegVal("routeSeg","route",r);
+    byId("routeMixed").hidden=r!=="mixed";
+  }
   seg("doseSeg","dosing",v=>{
     if(v==="custom" && state.dosing!=="custom"){
       rebuildFrom[slot()]=snapshot();                                   // what "Rebuild" returns to
@@ -2029,7 +2067,7 @@
     document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on", b.dataset[attr]===String(val)));
   }
   function syncControls(){
-    setSegVal("routeSeg","route",state.route);
+    syncRouteSeg();
     setSegVal("doseSeg","dosing",state.dosing);
     setSegVal("loadSeg","load",state.loadMult);
     setSegVal("scaleSeg","scale",state.scale);
@@ -2042,6 +2080,7 @@
   const strip=byId("evStrip");
   let drag=null;                                  // {id, pointerId, cx0, sx0, t0, t, before, moved} while a strip marker is held
   let justDragged=false;                          // swallows the click that follows a drag
+  let stripGeom={H:56, lanes:1, gap:13, lane:new Map()};  // the strip's height, lanes and each infusion's lane, for hit-testing
   const moveNote={};                              // per slot: the last move ({text, after, undo}), shown while the schedule still matches it
   const rebuildFrom={};                           // per slot: the regular regimen Custom was entered from
   const slot=()=> mode==="cmp" ? cmp.edit : "sim";
@@ -2061,18 +2100,25 @@
   // redraw: rebuild the list (default) or, while a field is being committed, only refresh the chart so a
   // click that caused the commit isn't lost to a rebuilt list
   function setEvents(list, select, redraw=true){
-    state.events=PK.normalizeEvents(list);
+    state.events=PK.normalizeEvents(list, state);
+    // When every dose shares one route, the scenario's route follows it, so the route buttons, summaries and
+    // links describe the schedule; with mixed routes it stays as it was.
+    const r=PK.routeOf(snapshot());
+    if(r!=="mixed") state.route=r;
     if(select!==undefined) evSel=select;
     if(evSel && !state.events.some(e=>e.id===evSel)) evSel=null;
     coverEvents();
-    if(redraw) renderEvents(); else renderEventSummary();
-    changed(["events"]);
+    if(PK.isRelevant("F",snapshot())!==!!sliderRefs.F) buildSliders();   // F and kₐ come and go with oral doses
+    else if(redraw) renderEvents(); else renderEventSummary();
+    syncRouteSeg();
+    changed(["events","route"]);
   }
   const nextId=()=>{ const ids=new Set(state.events.map(e=>e.id)); let n=0; do{ n++; }while(ids.has("e"+n)); return "e"+n; };
   function addEvent(){
     const L=state.events, t=PK.nextEventTime(L), last=L[L.length-1];
     if(t===null || L.length>=PK.EVENT_LIMITS.max) return;
-    const e={id:nextId(), t, mg:last?last.mg:state.D, type:"maintenance", status:"given"};
+    const e={id:nextId(), t, mg:last?last.mg:state.D, type:"maintenance", status:"given", route:last?last.route:state.route};
+    if(last && last.route==="inf") e.dur=last.dur;   // a new infusion copies the last one; otherwise it takes T·inf
     setEvents(L.concat(e), e.id);
   }
   // A copy goes halfway to the next dose (or 8 h after the last), so it never lands on top of another
@@ -2080,7 +2126,7 @@
   function duplicateEvent(id){
     const L=state.events, i=L.findIndex(e=>e.id===id);
     if(i<0) return;
-    const copy={id:nextId(), t:PK.duplicateEventTime(L,i), mg:L[i].mg, type:"maintenance", status:"given"};
+    const copy={id:nextId(), t:PK.duplicateEventTime(L,i), mg:L[i].mg, type:"maintenance", status:"given", route:L[i].route, dur:L[i].dur};
     setEvents(L.concat(copy), copy.id);
   }
   const updateEvent=(id,patch,redraw)=> setEvents(state.events.map(e=> e.id===id ? Object.assign({},e,patch) : e), id, redraw);
@@ -2104,18 +2150,29 @@
     const from=rebuildFrom[slot()];
     byId("evRebuild").textContent=`↺ Rebuild from ${from && from.dosing==="single" ? "single dose" : "repeated"}`;
   }
+  const r2=v=> Math.round(v*100)/100;
+  const lastStart=e=> r2(PK.EVENT_LIMITS.t[1]-(e.route==="inf" ? e.dur : 0));   // an infusion must end by 168 h
+  // Route tags: an infusion always shows its duration; oral and bolus doses are tagged only in a mixed schedule.
+  function evHeadHtml(e){
+    const mixed=PK.routeOf(state)==="mixed";
+    const tags=(e.route==="inf" ? `<span class="ev-tag inf">INF ${trim(e.dur)} h</span>` : mixed ? `<span class="ev-tag rt">${e.route==="iv"?"IV":"PO"}</span>` : "")+
+      (e.type==="loading"?'<span class="ev-tag">LD</span>':"")+(e.status==="missed"?'<span class="ev-tag miss">missed</span>':"");
+    return `<span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} mg</span>${tags}`;
+  }
+  const rateTxt=e=> `${fmt(e.mg/e.dur,1)} mg/h · runs ${trim(e.t)}–${trim(r2(e.t+e.dur))} h`;
   function evRow(e){
-    const open=e.id===evSel, missed=e.status==="missed";
-    const tags=(e.type==="loading"?'<span class="ev-tag">LD</span>':"")+(missed?'<span class="ev-tag miss">missed</span>':"");
+    const open=e.id===evSel, missed=e.status==="missed", inf=e.route==="inf";
     let h=`<div class="ev-row${open?" open":""}" data-id="${e.id}">`+
-      `<button class="ev-head${missed?" missed":""}" data-act="toggle" aria-expanded="${open}"><span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} mg</span>${tags}</button>`;
+      `<button class="ev-head${missed?" missed":""}" data-act="toggle" aria-expanded="${open}">${evHeadHtml(e)}</button>`;
     if(open){
       const on=(f,v)=> e[f]===v ? ' class="on"' : "";
-      const full=state.events.length>=PK.EVENT_LIMITS.max;
+      const full=state.events.length>=PK.EVENT_LIMITS.max, mgMax=(inf ? PK.EVENT_LIMITS.mgInf : PK.EVENT_LIMITS.mg)[1];
       h+=`<div class="ev-edit">
-        <label>Time (h)<input type="number" data-f="t" min="0" max="168" step="0.25" value="${e.t}"></label>
-        <label>Amount (mg)<input type="number" data-f="mg" min="25" max="4000" step="25" value="${e.mg}"></label>
-        <div class="ev-nudge" role="group" aria-label="Move this dose"><button class="abtn" data-act="nudge" data-d="-0.5" aria-label="Move this dose 0.5 hours earlier"${e.t<=PK.EVENT_LIMITS.t[0]?" disabled":""}>◀ 0.5 h earlier</button><button class="abtn" data-act="nudge" data-d="0.5" aria-label="Move this dose 0.5 hours later"${e.t>=PK.EVENT_LIMITS.t[1]?" disabled":""}>0.5 h later ▶</button></div>
+        <label>${inf?"Start":"Time"} (h)<input type="number" data-f="t" min="0" max="${lastStart(e)}" step="0.25" value="${e.t}"></label>
+        <label>${inf?"Total amount":"Amount"} (mg)<input type="number" data-f="mg" min="25" max="${mgMax}" step="25" value="${e.mg}"></label>
+        <div class="seg" role="group" aria-label="Route"><button data-f="route" data-v="oral"${on("route","oral")}>Oral</button><button data-f="route" data-v="iv"${on("route","iv")}>IV bolus</button><button data-f="route" data-v="inf"${on("route","inf")}>Infusion</button></div>
+        ${inf ? `<label>Duration (h)<input type="number" data-f="dur" min="0.25" max="${r2(PK.EVENT_LIMITS.t[1]-e.t)}" step="0.25" value="${e.dur}"></label><p class="ev-rate">= <span class="ev-rate-v">${rateTxt(e)}</span></p>` : ""}
+        <div class="ev-nudge" role="group" aria-label="Move this dose"><button class="abtn" data-act="nudge" data-d="-0.5" aria-label="Move this dose 0.5 hours earlier"${e.t<=PK.EVENT_LIMITS.t[0]?" disabled":""}>◀ 0.5 h earlier</button><button class="abtn" data-act="nudge" data-d="0.5" aria-label="Move this dose 0.5 hours later"${e.t>=lastStart(e)?" disabled":""}>0.5 h later ▶</button></div>
         <div class="seg" role="group" aria-label="Dose type"><button data-f="type" data-v="maintenance"${on("type","maintenance")}>Maintenance</button><button data-f="type" data-v="loading"${on("type","loading")}>Loading</button></div>
         <div class="seg" role="group" aria-label="Given or missed"><button data-f="status" data-v="given"${on("status","given")}>Given</button><button data-f="status" data-v="missed"${on("status","missed")}>Missed</button></div>
         <div class="ev-btns"><button class="abtn" data-act="dup"${full?" disabled":""}>⧉ Duplicate</button><button class="abtn" data-act="del">✕ Delete</button></div>
@@ -2145,14 +2202,24 @@
     }
   });
   // numbers are committed on change (blur or Enter); a value that isn't a number puts the old one back
+  // Lengthening an infusion stops where it would end past 168 h; its start stays where it is.
   byId("evList").addEventListener("change",e=>{
     const inp=e.target.closest("input[data-f]");
     if(!inp) return;
-    const id=inp.closest(".ev-row").dataset.id, v=parseFloat(inp.value);
-    if(!isFinite(v)){ renderEvents(); return; }
-    updateEvent(id,{[inp.dataset.f]:v}, false);
-    const ev=state.events.find(x=>x.id===id), head=inp.closest(".ev-row").querySelector(".ev-head");
-    if(ev){ inp.value=ev[inp.dataset.f]; head.querySelector(".ev-t").textContent=`${trim(ev.t)} h`; head.querySelector(".ev-mg").textContent=`${trim(ev.mg)} mg`; }
+    const row=inp.closest(".ev-row"), id=row.dataset.id, f=inp.dataset.f, cur=state.events.find(x=>x.id===id);
+    let v=parseFloat(inp.value);
+    if(!isFinite(v) || !cur){ renderEvents(); return; }
+    if(f==="dur") v=Math.min(v, r2(PK.EVENT_LIMITS.t[1]-cur.t));
+    updateEvent(id,{[f]:v}, false);
+    const ev=state.events.find(x=>x.id===id);
+    if(!ev) return;
+    inp.value=ev[f];
+    row.querySelector(".ev-head").innerHTML=evHeadHtml(ev);
+    const rate=row.querySelector(".ev-rate-v"), tIn=row.querySelector('input[data-f="t"]'), dIn=row.querySelector('input[data-f="dur"]');
+    if(rate) rate.textContent=rateTxt(ev);
+    if(tIn) tIn.max=lastStart(ev);
+    if(dIn) dIn.max=r2(PK.EVENT_LIMITS.t[1]-ev.t);
+    row.querySelectorAll('button[data-act="nudge"]').forEach(b=>{ b.disabled= +b.dataset.d<0 ? ev.t<=PK.EVENT_LIMITS.t[0] : ev.t>=lastStart(ev); });
   });
   byId("evAdd").addEventListener("click",addEvent);
   byId("evRebuild").addEventListener("click",()=>{
@@ -2165,31 +2232,64 @@
   // doesn't move selects it instead. The strip only claims sideways movement (touch-action: pan-y), so a
   // vertical swipe still scrolls the page on touch screens.
   const sameEvents=(a,b)=> JSON.stringify(a)===JSON.stringify(b);
-  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} mg ${e.type==="loading"?"loading ":""}dose`;
+  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} mg ${e.type==="loading"?"loading ":""}`+
+    (e.route==="inf" ? `infusion (${trim(e.dur)} h)` : e.route==="iv" ? "IV bolus" : "dose");
   const othersAt=(list,e)=> list.filter(x=>x.id!==e.id && Math.abs(x.t-e.t)<1e-9).length;
 
+  // Oral doses are circles, IV boluses diamonds and infusions a square handle at the start of a bar that runs
+  // while the infusion does. Overlapping infusions stack in lanes below the first (the strip grows to fit);
+  // on a narrow screen, where the strip is drawn small, the lanes sit further apart so each can be tapped.
+  const laneY=e=> 30+stripGeom.gap*(stripGeom.lane.get(e.id)||0);
   function renderStrip(T0,T1){
     const wrap=byId("evStripWrap"), show=state.dosing==="custom";
     wrap.hidden=!show;
     if(!show){ delete moveNote[slot()]; return; }
-    const iw=PW-M.l-M.r, x=t=> M.l+((t-T0)/(T1-T0))*iw, y=30, col=mode==="cmp" ? COL[cmp.edit].line : "#3DF2E0";
+    const iw=PW-M.l-M.r, x=t=> M.l+((t-T0)/(T1-T0))*iw, col=mode==="cmp" ? COL[cmp.edit].line : "#3DF2E0";
     const live=drag && drag.moved ? drag : null, inView=t=> t>=T0-1e-9 && t<=T1+1e-9;
-    const marker=(e,label)=>{
-      const cx=x(e.t), r=e.type==="loading"?7:5.5, missed=e.status==="missed";
-      return `<g class="evm" data-id="${e.id}"><circle cx="${cx}" cy="${y}" r="26" fill="transparent"/>`+
-        (e.id===evSel || label?`<circle cx="${cx}" cy="${y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.85"/>`:"")+
-        `<circle cx="${cx}" cy="${y}" r="${r}" fill="${missed?"#05070E":col}" stroke="${missed?"#FF5C7A":"#05070E"}" stroke-width="1.6"/>`+
-        (label ? `<text x="${cx}" y="${y-15}" text-anchor="${cx<M.l+40?"start":cx>PW-M.r-40?"end":"middle"}" font-family="JetBrains Mono" font-size="10.5" font-weight="600" fill="#fff">${label}</text>`
-          : e.type==="loading"?`<text x="${cx}" y="${y-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B7A9FF">LD</text>`:"")+
-        `</g>`;
+    const ends=[], lane=new Map();
+    state.events.filter(e=>e.route==="inf").forEach(e=>{
+      let j=ends.findIndex(end=> end<=e.t+1e-9);
+      if(j<0){ j=Math.min(ends.length,3); if(j===ends.length) ends.push(0); }
+      ends[j]=Math.max(ends[j], e.t+e.dur); lane.set(e.id,j);
+    });
+    const gap=strip.clientWidth && strip.clientWidth<560 ? 24 : 13, H=56+gap*Math.max(0,ends.length-1);
+    stripGeom={H, lanes:Math.max(1,ends.length), gap, lane};
+    const shape=(e,cx,y,r,fill,stroke)=>
+      e.route==="iv" ? `<path d="M ${cx} ${y-r-1.5} L ${cx+r+1.5} ${y} L ${cx} ${y+r+1.5} L ${cx-r-1.5} ${y} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>`
+      : e.route==="inf" ? `<rect x="${cx-r+0.5}" y="${y-r+0.5}" width="${2*r-1}" height="${2*r-1}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>`
+      : `<circle cx="${cx}" cy="${y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>`;
+    const bar=(e,t,y,ghost)=>{
+      const a=x(Math.max(t,T0)), b=x(Math.min(t+e.dur,T1)), missed=e.status==="missed";
+      if(b<=a) return "";
+      return ghost ? `<rect x="${a}" y="${y-3}" width="${b-a}" height="6" rx="3" fill="none" stroke="${col}" stroke-dasharray="2 2" opacity="0.6"/>`
+        : `<rect x="${a}" y="${y-3}" width="${b-a}" height="6" rx="3" fill="${missed?"none":col}" fill-opacity="0.4" stroke="${missed?"#FF5C7A":col}" stroke-width="1" ${missed?'stroke-dasharray="3 2"':""}/>`+
+          (inView(t+e.dur) ? `<line x1="${b}" y1="${y-5}" x2="${b}" y2="${y+5}" stroke="${missed?"#FF5C7A":col}" stroke-width="1.4"/>` : "");
     };
-    let g=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.25)"/>`+
-      `<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">doses</text>`;
-    if(live && inView(live.t0))   // where the dose was picked up from
-      g+=`<circle cx="${x(live.t0)}" cy="${y}" r="5.5" fill="none" stroke="${col}" stroke-dasharray="2 2" opacity="0.6"/>`;
-    state.events.forEach(e=>{ if(inView(e.t) && !(live && e.id===live.id)) g+=marker(e); });
+    const marker=(e,label)=>{
+      const y=laneY(e), r=e.type==="loading"?7:5.5, missed=e.status==="missed", start=inView(e.t), cx=x(e.t);
+      let m=`<g class="evm" data-id="${e.id}">`+(e.route==="inf" ? bar(e,e.t,y) : "");
+      if(start){
+        m+=`<circle cx="${cx}" cy="${y}" r="${stripGeom.lanes>1?9:26}" fill="transparent"/>`+
+          (e.id===evSel || label?`<circle cx="${cx}" cy="${y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.85"/>`:"")+
+          shape(e,cx,y,r,missed?"#05070E":col,missed?"#FF5C7A":"#05070E")+
+          (label ? `<text x="${cx}" y="${y-15}" text-anchor="${cx<M.l+40?"start":cx>PW-M.r-40?"end":"middle"}" font-family="JetBrains Mono" font-size="10.5" font-weight="600" fill="#fff">${label}</text>`
+            : e.type==="loading"?`<text x="${cx}" y="${y-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B7A9FF">LD</text>`:"");
+      }
+      return m+`</g>`;
+    };
+    const shown=e=> inView(e.t) || (e.route==="inf" && e.t<T1 && e.t+e.dur>T0);
+    let g=`<line x1="${M.l}" y1="30" x2="${PW-M.r}" y2="30" stroke="rgba(120,150,255,0.25)"/>`+
+      `<text x="${M.l-9}" y="33.5" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">doses</text>`;
     const held=live && state.events.find(e=>e.id===live.id);
-    if(held) g+=marker(held, `${trim(held.t)} h`+(othersAt(state.events,held)?" · doses add":""));   // on top
+    if(held && inView(live.t0))   // where the dose was picked up from
+      g+=held.route==="inf" ? bar(held,live.t0,laneY(held),true) : `<circle cx="${x(live.t0)}" cy="${laneY(held)}" r="5.5" fill="none" stroke="${col}" stroke-dasharray="2 2" opacity="0.6"/>`;
+    // infusions first, so a bolus or oral dose given as an infusion starts stays visible on top of it
+    [true,false].forEach(infFirst=> state.events.forEach(e=>{
+      if((e.route==="inf")===infFirst && shown(e) && !(held && e.id===held.id)) g+=marker(e);
+    }));
+    if(held) g+=marker(held, (held.route==="inf" ? `${trim(held.t)}–${trim(r2(held.t+held.dur))} h` : `${trim(held.t)} h`)+
+      (othersAt(state.events,held)?" · doses add":""));   // on top
+    strip.setAttribute("viewBox",`0 0 ${PW} ${H}`);
     strip.innerHTML=g;
     strip.classList.toggle("dragging", !!live);
     renderMoveNote();
@@ -2233,25 +2333,33 @@
   });
 
   const stripX=evt=>{ const r=strip.getBoundingClientRect(); return (evt.clientX-r.left)/r.width*PW; };
-  // The dose under the pointer: the nearest marker within its hit radius. Of doses at the same time, the
-  // selected one wins, then the one drawn on top.
+  // The dose under the pointer: a start marker within its hit radius, or the infusion bar the pointer is on.
+  // With stacked lanes the lane nearest the pointer wins, then the nearest marker; of doses at the same
+  // time, the selected one wins, then the one drawn on top.
   function markerAt(evt){
-    const [T0,T1]=viewT, iw=PW-M.l-M.r, sx=stripX(evt);
-    let best=null, bd=Infinity;
-    state.events.forEach(e=>{
-      if(e.t<T0-1e-9 || e.t>T1+1e-9) return;
-      const d=Math.abs(M.l+((e.t-T0)/(T1-T0))*iw-sx);
-      if(d>26) return;
-      if(d<bd-1e-6 || (d<=bd+1e-6 && best.id!==evSel)){ best=e; bd=d; }
+    const [T0,T1]=viewT, iw=PW-M.l-M.r, sx=stripX(evt), rect=strip.getBoundingClientRect();
+    const sy=(evt.clientY-rect.top)/rect.height*stripGeom.H, X=t=> M.l+((t-T0)/(T1-T0))*iw;
+    let best=null, bd=Infinity, by=Infinity;
+    const drawOrder=state.events.filter(e=>e.route==="inf").concat(state.events.filter(e=>e.route!=="inf"));
+    drawOrder.forEach(e=>{
+      let d=e.t>=T0-1e-9 && e.t<=T1+1e-9 ? Math.abs(X(e.t)-sx) : Infinity;
+      if(d>26){
+        if(e.route==="inf" && sx>=X(Math.max(e.t,T0)) && sx<=X(Math.min(e.t+e.dur,T1))) d=26;
+        else return;
+      }
+      const dy=Math.abs(sy-laneY(e)), sameLane=Math.abs(dy-by)<=1e-6;
+      if(dy<by-1e-6 || (sameLane && (d<bd-1e-6 || (d<=bd+1e-6 && best.id!==evSel)))){ best=e; bd=d; by=dy; }
     });
     return best;
   }
   // Where the held dose would land: its start time plus how far the pointer has moved, on the 0.5 h grid,
-  // kept inside the visible window (and 0–168 h).
+  // kept inside the visible window (and 0–168 h; an infusion also has to end by 168 h, which moveEvent
+  // enforces). A dose that starts outside the window can stay where it is.
   function dragTime(evt){
     const [T0,T1]=viewT, st=PK.MOVE_STEP, [lo,hi]=PK.EVENT_LIMITS.t;
     const t=drag.t0+(stripX(evt)-drag.sx0)/(PW-M.l-M.r)*(T1-T0);
-    return Math.min(Math.min(hi, Math.floor(T1/st+1e-9)*st), Math.max(Math.max(lo, Math.ceil(T0/st-1e-9)*st), PK.snapTime(t)));
+    const min=Math.min(drag.t0, Math.max(lo, Math.ceil(T0/st-1e-9)*st)), max=Math.max(drag.t0, Math.min(hi, Math.floor(T1/st+1e-9)*st));
+    return Math.min(max, Math.max(min, PK.snapTime(t)));
   }
   function endDrag(evt, commit){
     if(!drag || (evt && evt.pointerId!==drag.pointerId)) return;
@@ -2260,7 +2368,8 @@
     try{ strip.releasePointerCapture(d.pointerId); }catch(err){ /* already released */ }
     if(!d.moved) return;                  // a plain press: the click that follows selects the dose
     justDragged=true;
-    if(commit && d.t!==d.t0) commitMove(d.before, PK.moveEvent(d.before, d.id, d.t), d.id, "drag");
+    const after=commit ? PK.moveEvent(d.before, d.id, d.t) : null;   // may be held back, e.g. at 168 h
+    if(after && !sameEvents(after, d.before)) commitMove(d.before, after, d.id, "drag");
     else { state.events=d.before; changed(["events"]); }
   }
   strip.addEventListener("pointerdown",e=>{
@@ -2339,6 +2448,7 @@
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
     Object.assign(state,DEFAULTS,L.cur,L.view);
+    state.events=PK.cloneEvents(state.events);   // the lesson's own schedule is never edited
     state.view="full"; state.drug=null;
     lesson=L;
     const i=LESSONS.indexOf(L);
@@ -2708,7 +2818,8 @@
     const label=cv=> mode==="cmp" ? cv.tag : cv.ghost ? "baseline" : "current";
     // custom schedules go above the table as # comment lines, so the table itself stays a plain grid
     let csv=curves.filter(cv=>cv.p.dosing==="custom").map(cv=>`# ${label(cv)} dose schedule: `+
-      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} mg${e.type==="loading"?" loading":""}${e.status==="missed"?" missed":""}`).join("; ") : "no doses")+"\n").join("");
+      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} mg `+(e.route==="inf" ? `IV infusion over ${e.dur} h (${r2(e.mg/e.dur)} mg/h)` : e.route==="iv" ? "IV bolus" : "oral")+
+        `${e.type==="loading"?" loading":""}${e.status==="missed"?" missed":""}`).join("; ") : "no doses")+"\n").join("");
     csv+="time_h,"+head.join(",")+"\n";
     const Tend=state.duration, N=600;
     for(let i=0;i<=N;i++){

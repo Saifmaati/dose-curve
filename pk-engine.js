@@ -10,9 +10,10 @@
 })(typeof self!=="undefined" ? self : this, function(){
   "use strict";
 
-  // Share-link format: 1 = single and repeated regimens; 2 adds custom dose schedules. Links are written
-  // as v=1 whenever no custom schedule is involved, so older links and older pages keep working.
-  const VERSION=2;
+  // Share-link format: 1 = single and repeated regimens; 2 adds custom dose schedules; 3 adds a route per
+  // dose and a duration per infusion. Each link is written at the lowest version that can hold it, so links
+  // that older pages understand stay exactly as they were.
+  const VERSION=3;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
@@ -36,16 +37,29 @@
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
 
   /* ---------- custom dose schedules ---------- */
-  // An event is {id, t (h), mg, type: "maintenance"|"loading", status: "given"|"missed"}. Scenarios never
-  // share an events array: every copy clones it, so editing A's schedule can't change B's.
-  const EVENT_LIMITS={max:40, t:[0,168], mg:[25,4000]};
-  const cloneEvents=list=>(list||[]).map(e=>({id:e.id, t:e.t, mg:e.mg, type:e.type, status:e.status}));
+  // An event is {id, t (h), mg, type: "maintenance"|"loading", status: "given"|"missed", route: "oral"|"iv"|
+  // "inf"}, plus dur (h) for an infusion, which delivers its mg at a constant rate from t to t + dur.
+  // Scenarios never share an events array: every copy clones it, so editing A's schedule can't change B's.
+  const EVENT_ROUTES=["oral","iv","inf"];
+  const EVENT_LIMITS={max:40, t:[0,168], mg:[25,4000], mgInf:[25,10000], dur:[0.25,168]};
+  function cloneEvent(e){
+    const c={id:e.id, t:e.t, mg:e.mg, type:e.type, status:e.status};
+    if(e.route!==undefined) c.route=e.route;
+    if(e.dur!==undefined) c.dur=e.dur;
+    return c;
+  }
+  const cloneEvents=list=>(list||[]).map(cloneEvent);
   const cloneScenario=p=>Object.assign({},p,{events:cloneEvents(p.events)});
   const scenario=over=>cloneScenario(Object.assign({},DEFAULTS,over));
 
-  // Validated, sorted copy: bad entries are dropped, times and amounts clamped, ids made unique, type and
-  // status limited to their two values, and at most 40 events kept (the earliest).
-  function normalizeEvents(list){
+  // Validated, sorted copy: bad entries are dropped, times and amounts clamped, ids made unique, type,
+  // status and route limited to their values, and at most 40 events kept (the earliest). A dose without a
+  // route takes the scenario's (dflt.route) and an infusion without a duration takes its T·inf (dflt.tinf),
+  // so schedules from before per-dose routes draw exactly as they did. Infusions may carry up to 10,000 mg
+  // and must end by 168 h: the start is held back so the whole infusion fits.
+  function normalizeEvents(list, dflt){
+    const R=dflt && EVENT_ROUTES.includes(dflt.route) ? dflt.route : "oral";
+    const T=dflt && isFinite(Number(dflt.tinf)) ? Number(dflt.tinf) : DEFAULTS.tinf;
     const out=[], seen=new Set();
     for(const e of (Array.isArray(list) ? list.slice(0,200) : [])){
       if(!e || typeof e!=="object") continue;
@@ -53,8 +67,15 @@
       if(!isFinite(t) || !isFinite(mg)) continue;
       const id=(typeof e.id==="string" && /^[a-z0-9-]{1,16}$/.test(e.id) && !seen.has(e.id)) ? e.id : "";
       if(id) seen.add(id);
-      out.push({id, t:round(clamp(t,EVENT_LIMITS.t),2), mg:round(clamp(mg,EVENT_LIMITS.mg),1),
-        type:e.type==="loading"?"loading":"maintenance", status:e.status==="missed"?"missed":"given"});
+      const route=EVENT_ROUTES.includes(e.route) ? e.route : R;
+      const ev={id, t:round(clamp(t,EVENT_LIMITS.t),2), mg:round(clamp(mg, route==="inf" ? EVENT_LIMITS.mgInf : EVENT_LIMITS.mg),1),
+        type:e.type==="loading"?"loading":"maintenance", status:e.status==="missed"?"missed":"given", route};
+      if(route==="inf"){
+        const d=e.dur==null || e.dur==="" ? NaN : Number(e.dur);
+        ev.dur=round(clamp(isFinite(d) ? d : T, EVENT_LIMITS.dur),2);
+        ev.t=Math.min(ev.t, round(EVENT_LIMITS.t[1]-ev.dur,2));
+      }
+      out.push(ev);
     }
     let n=0;
     out.forEach(e=>{ if(!e.id){ do{ n++; }while(seen.has("e"+n)); e.id="e"+n; seen.add(e.id); } });
@@ -82,16 +103,27 @@
     const v=Number(t);
     return isFinite(v) ? clamp(Math.round(v/step)*step, EVENT_LIMITS.t) : null;
   }
-  // Moves one dose to time t and returns a new, sorted schedule. Its amount, type and missed status stay as
-  // they were, and so does every other dose; landing on another dose's time is allowed (they add together).
-  // An unknown id or a time that isn't a number returns an unchanged copy.
+  // Moves one dose to time t and returns a new, sorted schedule. Its amount, type, route, duration and missed
+  // status stay as they were, and so does every other dose; landing on another dose's time is allowed (they
+  // add together), and an infusion stops where its end reaches 168 h. An unknown id or a time that isn't a
+  // number returns an unchanged copy.
   function moveEvent(list, id, t){
     const L=normalizeEvents(list), v=Number(t);
     if(!isFinite(v) || !L.some(e=>e.id===id)) return L;
     return normalizeEvents(L.map(e=> e.id===id ? Object.assign({},e,{t:v}) : e));
   }
-  // Canonical text of a schedule, used for equality and in share links (ids don't count).
-  const eventsKey=list=>(list||[]).map(e=>`${e.t}@${e.mg}${e.type==="loading"?"L":""}${e.status==="missed"?"m":""}`).join(";");
+  // Canonical text of a schedule, used for equality (ids don't count): "0@350b;0@1456i24;24@500oLm"
+  // (o = oral, b = IV bolus, i<h> = infusion over h hours, L = loading, m = missed).
+  const routeCode=e=> e.route==="iv" ? "b" : e.route==="inf" ? "i"+e.dur : "o";
+  const flags=e=> (e.type==="loading"?"L":"")+(e.status==="missed"?"m":"");
+  const eventsKey=list=>(list||[]).map(e=>`${e.t}@${e.mg}${routeCode(e)}${flags(e)}`).join(";");
+  // The route every dose of a scenario uses: its own route, or for a custom schedule the one route all of
+  // its doses share, or "mixed".
+  function routeOf(p){
+    if(p.dosing!=="custom" || !p.events.length) return p.route;
+    const r=p.events[0].route;
+    return p.events.every(e=>e.route===r) ? r : "mixed";
+  }
 
   // Cross-setting rules the individual ranges can't express: a missed dose must fall inside the regimen
   // (and can't be the final dose), otherwise it is cleared so the controls never show a missed dose the
@@ -99,13 +131,13 @@
   function normalizeScenario(p){
     const q=Object.assign({},p);
     if(q.missed>=q.nDoses) q.missed=1;
-    q.events=normalizeEvents(q.events);
+    q.events=normalizeEvents(q.events, q);
     return q;
   }
   // Whether a setting means anything for a scenario (F only orally, τ only for a regular regimen, …).
   function isRelevant(k,s){
-    if(k==="F"||k==="ka") return s.route==="oral";
-    if(k==="tinf") return s.route==="inf";
+    if(k==="F"||k==="ka") return s.dosing==="custom" ? s.events.some(e=>e.route==="oral") : s.route==="oral";
+    if(k==="tinf") return s.dosing!=="custom" && s.route==="inf";   // a custom infusion has its own duration
     if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
@@ -121,15 +153,16 @@
   // is the same as giving one dose fewer.
   const missedOf = p=> (p.dosing==="repeated" && p.missed>1 && p.missed<p.nDoses) ? p.missed : 0;
 
-  // Concentration at time t after one dose of `mg`.
-  function singleConc(p, t, mg){
+  // Concentration at time t after one dose of `mg`, given by the dose's own route (and infusion duration)
+  // when `e` carries one, else by the scenario's. Oral doses use the scenario's F and kₐ; IV doses have F = 1.
+  function singleConc(p, t, mg, e){
     if(t<0) return 0;
-    const k=keOf(p), V=vOf(p), D=mg;
-    if(p.route==="iv"){
+    const k=keOf(p), V=vOf(p), D=mg, route=(e && e.route) || p.route;
+    if(route==="iv"){
       return (D/V)*Math.exp(-k*t);
     }
-    if(p.route==="inf"){
-      const Ti=p.tinf, R0=D/Ti;
+    if(route==="inf"){
+      const Ti=(e && e.dur) || p.tinf, R0=D/Ti;
       if(t<=Ti) return (R0/(k*V))*(1-Math.exp(-k*t));
       const cEnd=(R0/(k*V))*(1-Math.exp(-k*Ti));
       return cEnd*Math.exp(-k*(t-Ti));
@@ -139,41 +172,43 @@
     return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*t)-Math.exp(-ka*t));
   }
 
-  // Every dose actually given, as {t, mg, n}. This is the one place regimens turn into doses, so the
-  // simulation, window metrics and exports all follow custom schedules automatically.
+  // Every dose actually given, as {t, mg, n, route} (+ dur for an infusion). This is the one place regimens
+  // turn into doses, so the simulation, window metrics and exports all follow custom schedules automatically.
   function doseEvents(p){
-    if(p.dosing==="custom") return p.events.filter(e=>e.status==="given").map((e,i)=>({t:e.t, mg:e.mg, n:i+1, id:e.id}));
-    if(p.dosing==="single") return [{t:0, mg:p.D, n:1}];
+    const dose=(t,mg,n,route,dur)=> route==="inf" ? {t, mg, n, route, dur} : {t, mg, n, route};
+    if(p.dosing==="custom") return p.events.filter(e=>e.status==="given").map((e,i)=>Object.assign(dose(e.t,e.mg,i+1,e.route,e.dur),{id:e.id}));
+    if(p.dosing==="single") return [dose(0,p.D,1,p.route,p.tinf)];
     const skip=missedOf(p), ev=[];
     for(let i=0;i<p.nDoses;i++){
       if(i+1===skip) continue;
-      ev.push({t:i*p.tau, mg:p.D*(i===0?p.loadMult:1), n:i+1});
+      ev.push(dose(i*p.tau, p.D*(i===0?p.loadMult:1), i+1, p.route, p.tinf));
     }
     return ev;
   }
   // The schedule a regimen describes, as editable events. Missed doses stay in, marked missed; doses
   // after 168 h (the longest window) are left out because nothing shown can depend on them.
   function eventsFromBasic(p){
-    if(p.dosing==="custom") return normalizeEvents(p.events);
-    if(p.dosing==="single") return normalizeEvents([{id:"e1", t:0, mg:p.D, type:"maintenance", status:"given"}]);
+    if(p.dosing==="custom") return normalizeEvents(p.events, p);
+    if(p.dosing==="single") return normalizeEvents([{id:"e1", t:0, mg:p.D, type:"maintenance", status:"given"}], p);
     const skip=missedOf(p), out=[];
     for(let i=0;i<p.nDoses && i*p.tau<=EVENT_LIMITS.t[1];i++){
       out.push({id:"e"+(i+1), t:i*p.tau, mg:p.D*(i===0?p.loadMult:1),
         type:i===0 && p.loadMult>1 ? "loading" : "maintenance", status:i+1===skip ? "missed" : "given"});
     }
-    return normalizeEvents(out);
+    return normalizeEvents(out, p);
   }
-  // Doses given, and total mg, within [0, T].
+  // Doses started within [0, T], and the mg delivered in that time: an infusion still running at T counts
+  // only what has gone in so far.
   function doseTotals(p, T){
     const ev=doseEvents(p).filter(e=>e.t<=T);
-    return {n:ev.length, mg:ev.reduce((s,e)=>s+e.mg,0)};
+    return {n:ev.length, mg:ev.reduce((s,e)=>s+(e.route==="inf" ? e.mg*Math.min(1,(T-e.t)/e.dur) : e.mg),0)};
   }
 
   // Superposition of every dose actually given.
   function conc(p, t, ev){
     ev=ev||doseEvents(p);
     let sum=0;
-    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mg);
+    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mg, e);
     return sum;
   }
 
@@ -196,7 +231,7 @@
       const given=doseEvents(p);
       d.nGiven=given.length; d.nMissed=p.events.length-given.length;
       d.totalMg=given.reduce((s,e)=>s+e.mg,0);
-      d.auc=(Ffac*d.totalMg)/(V*k);
+      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/(V*k);   // each dose by its own route
       d.mgkg=d.totalMg/p.wt;
     }
     if(p.dosing==="repeated"){
@@ -223,6 +258,14 @@
       if(c>cmax){ cmax=c; tmax=t; }
       prev=c;
     }
+    // an IV bolus peaks the instant it's given and an infusion at its end: check those exact times too
+    ev.forEach(e=>{
+      [e.route==="iv" ? e.t : null, e.route==="inf" ? e.t+e.dur : null].forEach(x=>{
+        if(x===null || x<0 || x>T) return;
+        const c=conc(p,x,ev);
+        if(c>cmax+1e-12){ cmax=c; tmax=x; }
+      });
+    });
     return {cmax,tmax,auc,tIn,tBelow,tAbove,T};
   }
 
@@ -248,14 +291,18 @@
   }
 
   /* ================= TIME INSPECTION ================= */
-  // Every scheduled dose, missed ones included: {t, mg, loading, missed, n}, in time order.
+  // Every scheduled dose, missed ones included: {t, mg, loading, missed, n, route, dur}, in time order
+  // (dur is null except for an infusion).
   function doseSchedule(p){
     let out;
-    if(p.dosing==="custom") out=p.events.map((e,i)=>({t:e.t, mg:e.mg, loading:e.type==="loading", missed:e.status==="missed", n:i+1}));
-    else if(p.dosing==="single") out=[{t:0, mg:p.D, loading:false, missed:false, n:1}];
+    const dur=p.route==="inf" ? p.tinf : null;
+    if(p.dosing==="custom") out=p.events.map((e,i)=>({t:e.t, mg:e.mg, loading:e.type==="loading", missed:e.status==="missed", n:i+1,
+      route:e.route, dur:e.route==="inf" ? e.dur : null}));
+    else if(p.dosing==="single") out=[{t:0, mg:p.D, loading:false, missed:false, n:1, route:p.route, dur}];
     else {
       const skip=missedOf(p); out=[];
-      for(let i=0;i<p.nDoses;i++) out.push({t:i*p.tau, mg:p.D*(i===0?p.loadMult:1), loading:i===0 && p.loadMult>1, missed:i+1===skip, n:i+1});
+      for(let i=0;i<p.nDoses;i++) out.push({t:i*p.tau, mg:p.D*(i===0?p.loadMult:1), loading:i===0 && p.loadMult>1, missed:i+1===skip, n:i+1,
+        route:p.route, dur});
     }
     return out.sort((a,b)=>a.t-b.t);
   }
@@ -264,6 +311,7 @@
   // (an IV bolus at the moment it's given is one), below both a trough, otherwise the slope just after t
   // says rising or falling. `last` is the most recent dose actually given, with doses at the same time
   // counted as one administration; missed doses never count as given and are listed in missedSince.
+  // `infusing` lists the infusions running at t: start, end, rate (mg/h) and mg delivered so far.
   function inspectAt(p, t, mec, mtc){
     const ev=doseEvents(p), c=conc(p,t,ev), d=0.02, tol=1e-9*Math.max(1,c);
     const left=conc(p,t-d,ev), right=conc(p,t+d,ev), slope=conc(p,t+1e-4,ev)-c;
@@ -275,12 +323,15 @@
     let last=null;
     if(given.length){
       const lt=given[given.length-1].t, grp=given.filter(x=>Math.abs(x.t-lt)<1e-9);
-      last={t:lt, mg:grp.reduce((s,x)=>s+x.mg,0), count:grp.length, loading:grp.some(x=>x.loading)};
+      last={t:lt, mg:grp.reduce((s,x)=>s+x.mg,0), count:grp.length, loading:grp.some(x=>x.loading),
+        route:grp.every(x=>x.route===grp[0].route) ? grp[0].route : "mixed", dur:grp.length===1 ? grp[0].dur : null};
     }
+    const infusing=ev.filter(e=>e.route==="inf" && e.t<=t+1e-9 && t<e.t+e.dur-1e-9)
+      .map(e=>({start:e.t, end:e.t+e.dur, rate:e.mg/e.dur, delivered:e.mg*Math.max(0,t-e.t)/e.dur, mg:e.mg}));
     const missedSince=sched.filter(x=>x.missed && x.t<=t+1e-9 && (!last || x.t>last.t+1e-9)).map(x=>x.t);
     const nx=sched.find(x=>x.t>t+1e-9);
     return {t, c, trend, status:c>mtc ? "above" : c>=mec ? "in" : "below", last, since:last ? t-last.t : null,
-      missedSince, next:nx ? {t:nx.t, mg:nx.mg, missed:nx.missed} : null};
+      missedSince, infusing, next:nx ? {t:nx.t, mg:nx.mg, missed:nx.missed, route:nx.route, dur:nx.dur} : null};
   }
 
   // Local peaks and troughs over [0, T]. The grid includes every dose time (and the instant before it,
@@ -290,7 +341,7 @@
     for(let i=0;i<=N;i++) pts.add(T*i/N);
     ev.forEach(e=>{
       [e.t-1e-6, e.t, e.t+1e-6].forEach(x=>{ if(x>=0 && x<=T) pts.add(x); });
-      if(p.route==="inf" && e.t+p.tinf<=T) pts.add(e.t+p.tinf);
+      if(e.route==="inf" && e.t+e.dur<=T) pts.add(e.t+e.dur);
     });
     const ts=[...pts].sort((a,b)=>a-b), cs=ts.map(t=>conc(p,t,ev));
     const peaks=[], troughs=[], add=(list,t,c)=>{ const prev=list[list.length-1]; if(!prev || t-prev.t>1e-3) list.push({t,c}); };
@@ -366,6 +417,9 @@
 
   // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
   // The claims in each text are checked against the model in tests/pk-engine.test.js.
+  // A custom schedule in a lesson is stored validated, exactly as a link would decode it.
+  const sched=(p,list)=> Object.assign(p,{dosing:"custom", events:normalizeEvents(list,p)});
+  const every6h=Array.from({length:8},(_,i)=>({t:i*6, mg:360}));
   const LESSONS = [
     {id:"route", tag:"F · Tmax", title:"Oral vs IV bolus", sum:"Absorption delay, Tmax, Cmax and bioavailability.", baseLabel:"IV bolus",
      text:"Same 500 mg dose, two routes. The IV bolus (dashed) puts everything in plasma at t = 0, so it peaks instantly at D/V. The oral dose has to be absorbed first: its peak comes later and sits lower, and its AUC is smaller by the bioavailability factor F.",
@@ -377,6 +431,18 @@
      tryThis:"Stretch the infusion to 8 h and watch the peak fall further and shift right.",
      view:{duration:36,mec:8,mtc:18},
      base:{route:"iv",D:1000,thalf:6,V:49}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:3}},
+    {id:"ldinf", tag:"LD · inf", title:"Loading bolus + infusion", sum:"Reaching the plateau in minutes, not hours.", baseLabel:"infusion alone",
+     text:"A 1,456 mg infusion over 24 h (60.7 mg/h) settles where drug goes in as fast as it's cleared: rate ÷ CL = 10 mg/L. On its own it creeps up, taking 9.3 h to reach the 8 mg/L effective level and 13.3 h (3.3 half-lives) to get within 10% of its plateau. A 350 mg IV bolus at the start (plateau × V = 10 mg/L × 35 L) fills the volume at once, so the level sits at 10 mg/L from the first minute until the infusion stops.",
+     tryThis:"Halve the bolus to 175 mg: the level starts lower, then climbs to the same plateau, because the infusion rate alone decides where it settles.",
+     view:{duration:36,mec:8,mtc:14},
+     base:sched({route:"inf",tinf:24},[{t:0,mg:1456}]),
+     cur:sched({route:"inf",tinf:24},[{t:0,mg:350,route:"iv",type:"loading"},{t:0,mg:1456}])},
+    {id:"cvi", tag:"Css", title:"Continuous vs intermittent", sum:"The same amount as a steady drip or in pulses.", baseLabel:"continuous infusion",
+     text:"The same 2,880 mg over 48 h, two ways. As a continuous infusion (60 mg/h) the level rises smoothly to 9.9 mg/L and holds there. Given as eight 360 mg infusions over 1 h, every 6 h, it swings: by the last doses it peaks near 14.6 mg/L, over the toxic line, and falls to about 6.1 mg/L before each dose. The average over each interval is the same 9.9 mg/L, and so is total exposure (AUC), because the same amount meets the same clearance.",
+     tryThis:"Lengthen each intermittent infusion to 3 h and the swing narrows. At 6 h they run back to back and become the continuous infusion.",
+     view:{duration:48,mec:4,mtc:14},
+     base:sched({route:"inf",tinf:1},[{t:0,mg:2880,dur:48}]),
+     cur:sched({route:"inf",tinf:1},every6h)},
     {id:"accum", tag:"Rac", title:"Repeated dosing", sum:"Accumulation, peaks and troughs, steady state.", baseLabel:"single dose",
      text:"Each dose lands on whatever is left of the one before. With the interval equal to the half-life (8 h), half of every dose is still there when the next arrives, so levels climb until the amount eliminated per interval matches the dose: about 2× a single dose.",
      tryThis:"Cut the interval to 4 h and accumulation jumps. Stretch it to 16 h and it almost disappears.",
@@ -431,6 +497,10 @@
      look:"B peaks later and lower, and its AUC is smaller by the bioavailability factor."},
     {id:"inf", lesson:"inf", title:"Bolus vs infusion", nameA:"IV bolus", nameB:"3 h infusion",
      look:"Same dose and the same AUC, but B's peak stays under the toxic line."},
+    {id:"ldinf", lesson:"ldinf", title:"Infusion ± loading bolus", nameA:"Infusion alone", nameB:"Bolus + infusion",
+     look:"B sits at 10 mg/L from the first minute; A takes about 13 h to get within 10% of it."},
+    {id:"cvi", lesson:"cvi", title:"Continuous vs intermittent infusion", nameA:"Continuous 60 mg/h", nameB:"360 mg over 1 h q6h",
+     look:"Same 2,880 mg and the same average level: A holds 9.9 mg/L while B swings between about 6 and 14.6 mg/L."},
     {id:"miss", lesson:"miss", title:"On time vs missed dose", nameA:"Every dose taken", nameB:"Dose 6 missed",
      look:"B dips below the effective level after the gap, then climbs back over the next few doses."}
   ];
@@ -486,20 +556,30 @@
 
   /* ================= SHARE LINKS ================= */
   // A scenario is written as the settings that differ from DEFAULTS, e.g. "D:400,clFn:50" ("" = defaults).
-  // A custom schedule is added as "ev:0@500L;12@250;24@250m" (L = loading, m = missed).
+  // A custom schedule is added as "ev:0@500L;12@250;24@250m" (L = loading, m = missed). A dose's route is
+  // written only where it differs from the scenario's, and an infusion's duration only where it differs
+  // from T·inf ("0@350b;0@1456i24"), so a schedule that needs neither is written exactly as in v2.
+  const needsRoute=(p,e)=> e.route!==p.route || (e.route==="inf" && e.dur!==p.tinf);
+  const usesV3=p=> p.dosing==="custom" && p.events.some(e=>needsRoute(p,e));
   function encodeScenario(p){
     const parts=PK_KEYS.filter(k=>k!=="events" && p[k]!==DEFAULTS[k]).map(k=>k+":"+p[k]);
-    if(p.dosing==="custom" && p.events.length) parts.push("ev:"+eventsKey(p.events));
+    if(p.dosing==="custom" && p.events.length)
+      parts.push("ev:"+p.events.map(e=>`${e.t}@${e.mg}${needsRoute(p,e) ? routeCode(e) : ""}${flags(e)}`).join(";"));
     return parts.join(",");
   }
-  // Tokens that don't parse are skipped; the rest go through normalizeEvents like any other schedule.
+  // Tokens that don't parse are skipped. The rest are validated by normalizeScenario, which gives a dose
+  // without a route code the scenario's route (and an infusion without a duration its T·inf).
   function decodeEvents(raw){
     const out=[];
     String(raw).split(";").slice(0,200).forEach(tok=>{
-      const m=/^(\d+(?:\.\d+)?)@(\d+(?:\.\d+)?)(L?)(m?)$/.exec(tok);
-      if(m) out.push({t:parseFloat(m[1]), mg:parseFloat(m[2]), type:m[3]?"loading":"maintenance", status:m[4]?"missed":"given"});
+      const m=/^(\d+(?:\.\d+)?)@(\d+(?:\.\d+)?)(?:([ob])|i(\d+(?:\.\d+)?))?(L?)(m?)$/.exec(tok);
+      if(!m) return;
+      const e={t:parseFloat(m[1]), mg:parseFloat(m[2]), type:m[5]?"loading":"maintenance", status:m[6]?"missed":"given"};
+      if(m[3]) e.route=m[3]==="b" ? "iv" : "oral";
+      if(m[4]!==undefined){ e.route="inf"; e.dur=parseFloat(m[4]); }
+      out.push(e);
     });
-    return normalizeEvents(out);
+    return out;
   }
   // Unknown keys and invalid values are ignored; numbers are clamped to their allowed range.
   function decodeScenario(str){
@@ -542,7 +622,7 @@
   // compare links carry m=cmp, a, b, na/nb (names), lk (Vary only key) and ed (side being edited).
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
-    const parts=["v="+(scen.some(p=>p.dosing==="custom") ? VERSION : 1)];
+    const parts=["v="+(scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -591,7 +671,7 @@
   /* ================= SCENARIO LIBRARY ================= */
   // Saved scenarios live in the browser's localStorage; the page does the reading and writing. Each item
   // stores its setup in the share-link format, so saving, loading and importing reuse the link validation,
-  // schema versions (v1/v2) and clamping, and anything a link can carry (custom schedules, A/B names, the
+  // schema versions (v1–v3) and clamping, and anything a link can carry (custom schedules, A/B names, the
   // lock, the baseline, the lesson, the view) is saved too.
   const LIBRARY_FORMAT="dosecurve-library", LIBRARY_VERSION=1;
   const LIBRARY_LIMITS={items:200, name:60, link:20000, importItems:1000};
@@ -658,7 +738,7 @@
   const exportLibrary=items=> JSON.stringify({format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items}, null, 2);
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
-    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
+    cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
