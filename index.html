@@ -365,8 +365,12 @@
   .abtn:disabled{opacity:.45;cursor:not-allowed}
   .ev-strip{padding:0 14px 2px}
   .ev-strip[hidden]{display:none}
-  #evStrip{display:block;width:100%;height:auto}
-  #evStrip .evm{cursor:pointer}
+  #evStrip{display:block;width:100%;height:auto;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+  #evStrip .evm{cursor:grab}
+  #evStrip.dragging,#evStrip.dragging .evm{cursor:grabbing}
+  .ev-move{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:24px;padding:0 0 6px 7%;font-size:12px;color:#B9BEDF;line-height:1.5}
+  .ev-nudge{grid-column:1 / -1;display:flex;gap:8px}
+  .ev-nudge .abtn{flex:1;padding:7px 10px}
 
   /* time inspector */
   #plot:focus{outline:none}
@@ -604,7 +608,7 @@
 
           <div class="sec" id="evSec" style="display:none">
             <p class="sec-label">Dose schedule</p>
-            <p class="lib-note ev-intro">Custom lets you build an irregular schedule: every dose has its own time and amount, and any dose can be marked missed. Select a dose to edit it.</p>
+            <p class="lib-note ev-intro">Custom lets you build an irregular schedule: every dose has its own time and amount, and any dose can be marked missed. Select a dose to edit it, or drag it along the timeline under the chart.</p>
             <div class="ev-list" id="evList"></div>
             <p class="ev-sum" id="evSum"></p>
             <p class="ev-limit" id="evLimit" role="status" hidden>Can’t add another dose: the schedule already reaches the 168-hour limit. Duplicate still adds a dose at the same time.</p>
@@ -743,7 +747,8 @@
           <div id="tooltip"></div>
         </div>
         <div class="ev-strip" id="evStripWrap" hidden>
-          <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Select a dose to edit it in the schedule list."></svg>
+          <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Drag a dose sideways to move it in half-hour steps, or select it to edit it in the schedule list."></svg>
+          <div class="ev-move"><span id="evMoveMsg" role="status" aria-live="polite"></span><button class="ib" id="evUndo" hidden>↶ Undo</button></div>
         </div>
 
         <div class="insp" id="insp">
@@ -2034,6 +2039,10 @@
   /* ================= CUSTOM SCHEDULE ================= */
   // Events are never edited in place: every change builds a new list and goes through normalizeEvents.
   let evSel=null;                                 // id of the dose open in the editor
+  const strip=byId("evStrip");
+  let drag=null;                                  // {id, pointerId, cx0, sx0, t0, t, before, moved} while a strip marker is held
+  let justDragged=false;                          // swallows the click that follows a drag
+  const moveNote={};                              // per slot: the last move ({text, after, undo}), shown while the schedule still matches it
   const rebuildFrom={};                           // per slot: the regular regimen Custom was entered from
   const slot=()=> mode==="cmp" ? cmp.edit : "sim";
   const reduceMotion=()=> window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2106,6 +2115,7 @@
       h+=`<div class="ev-edit">
         <label>Time (h)<input type="number" data-f="t" min="0" max="168" step="0.25" value="${e.t}"></label>
         <label>Amount (mg)<input type="number" data-f="mg" min="25" max="4000" step="25" value="${e.mg}"></label>
+        <div class="ev-nudge" role="group" aria-label="Move this dose"><button class="abtn" data-act="nudge" data-d="-0.5" aria-label="Move this dose 0.5 hours earlier"${e.t<=PK.EVENT_LIMITS.t[0]?" disabled":""}>◀ 0.5 h earlier</button><button class="abtn" data-act="nudge" data-d="0.5" aria-label="Move this dose 0.5 hours later"${e.t>=PK.EVENT_LIMITS.t[1]?" disabled":""}>0.5 h later ▶</button></div>
         <div class="seg" role="group" aria-label="Dose type"><button data-f="type" data-v="maintenance"${on("type","maintenance")}>Maintenance</button><button data-f="type" data-v="loading"${on("type","loading")}>Loading</button></div>
         <div class="seg" role="group" aria-label="Given or missed"><button data-f="status" data-v="given"${on("status","given")}>Given</button><button data-f="status" data-v="missed"${on("status","missed")}>Missed</button></div>
         <div class="ev-btns"><button class="abtn" data-act="dup"${full?" disabled":""}>⧉ Duplicate</button><button class="abtn" data-act="del">✕ Delete</button></div>
@@ -2113,7 +2123,7 @@
     }
     return h+`</div>`;
   }
-  const focusInList=sel=>{ const el=byId("evList").querySelector(sel); if(el) el.focus(); };
+  const focusInList=sel=>{ const el=byId("evList").querySelector(sel); if(el) el.focus(); return !!el; };
   byId("evList").addEventListener("click",e=>{
     const btn=e.target.closest("button"), row=e.target.closest(".ev-row");
     if(!btn || !row || btn.disabled) return;
@@ -2122,6 +2132,11 @@
       evSel = evSel===id ? null : id;
       renderEvents(); render();
       focusInList(`.ev-row[data-id="${id}"] .ev-head`);
+    } else if(btn.dataset.act==="nudge"){
+      nudgeEvent(id, +btn.dataset.d);
+      // keep focus on the same step button, or its partner once the dose reaches 0 or 168 h
+      const sel=`.ev-row[data-id="${id}"] button[data-act="nudge"]`;
+      focusInList(`${sel}[data-d="${btn.dataset.d}"]:not(:disabled)`) || focusInList(`${sel}:not(:disabled)`);
     } else if(btn.dataset.act==="dup") duplicateEvent(id);
     else if(btn.dataset.act==="del") deleteEvent(id);
     else if(btn.dataset.f){
@@ -2146,28 +2161,138 @@
   });
 
   // The strip under the chart: one marker per dose of the schedule being edited, on the chart's time axis.
+  // Press a marker and move sideways to drag it in 0.5 h steps inside the visible window; a press that
+  // doesn't move selects it instead. The strip only claims sideways movement (touch-action: pan-y), so a
+  // vertical swipe still scrolls the page on touch screens.
+  const sameEvents=(a,b)=> JSON.stringify(a)===JSON.stringify(b);
+  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} mg ${e.type==="loading"?"loading ":""}dose`;
+  const othersAt=(list,e)=> list.filter(x=>x.id!==e.id && Math.abs(x.t-e.t)<1e-9).length;
+
   function renderStrip(T0,T1){
     const wrap=byId("evStripWrap"), show=state.dosing==="custom";
     wrap.hidden=!show;
-    if(!show) return;
+    if(!show){ delete moveNote[slot()]; return; }
     const iw=PW-M.l-M.r, x=t=> M.l+((t-T0)/(T1-T0))*iw, y=30, col=mode==="cmp" ? COL[cmp.edit].line : "#3DF2E0";
+    const live=drag && drag.moved ? drag : null, inView=t=> t>=T0-1e-9 && t<=T1+1e-9;
+    const marker=(e,label)=>{
+      const cx=x(e.t), r=e.type==="loading"?7:5.5, missed=e.status==="missed";
+      return `<g class="evm" data-id="${e.id}"><circle cx="${cx}" cy="${y}" r="26" fill="transparent"/>`+
+        (e.id===evSel || label?`<circle cx="${cx}" cy="${y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.85"/>`:"")+
+        `<circle cx="${cx}" cy="${y}" r="${r}" fill="${missed?"#05070E":col}" stroke="${missed?"#FF5C7A":"#05070E"}" stroke-width="1.6"/>`+
+        (label ? `<text x="${cx}" y="${y-15}" text-anchor="${cx<M.l+40?"start":cx>PW-M.r-40?"end":"middle"}" font-family="JetBrains Mono" font-size="10.5" font-weight="600" fill="#fff">${label}</text>`
+          : e.type==="loading"?`<text x="${cx}" y="${y-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B7A9FF">LD</text>`:"")+
+        `</g>`;
+    };
     let g=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.25)"/>`+
       `<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">doses</text>`;
+    if(live && inView(live.t0))   // where the dose was picked up from
+      g+=`<circle cx="${x(live.t0)}" cy="${y}" r="5.5" fill="none" stroke="${col}" stroke-dasharray="2 2" opacity="0.6"/>`;
+    state.events.forEach(e=>{ if(inView(e.t) && !(live && e.id===live.id)) g+=marker(e); });
+    const held=live && state.events.find(e=>e.id===live.id);
+    if(held) g+=marker(held, `${trim(held.t)} h`+(othersAt(state.events,held)?" · doses add":""));   // on top
+    strip.innerHTML=g;
+    strip.classList.toggle("dragging", !!live);
+    renderMoveNote();
+  }
+  // The line under the strip: what the last move did, with Undo while the schedule is still the one it left.
+  function renderMoveNote(){
+    const s=slot(), live=drag && drag.moved;
+    if(!live && moveNote[s] && !sameEvents(state.events, moveNote[s].after)) delete moveNote[s];
+    const n=live ? null : moveNote[s], msg=byId("evMoveMsg"), text=n ? n.text : "";
+    if(msg.textContent!==text) msg.textContent=text;   // rewriting the same text would repeat the announcement
+    byId("evUndo").hidden=!(n && n.undo);
+  }
+  function moveText(before, after, id){
+    const a=before.find(e=>e.id===id), b=after.find(e=>e.id===id), n=othersAt(after,b);
+    return `Moved the ${doseDesc(b)} from ${trim(a.t)} h to ${trim(b.t)} h`+
+      (n ? `. It now shares that time with ${n===1?"another dose":n+" other doses"}, and doses at the same time add together.` : ".");
+  }
+  // Every move (a drop or a ±0.5 h step) is one undo step; repeated steps on the same dose undo together.
+  function commitMove(before, after, id, kind){
+    const s=slot(), prev=moveNote[s];
+    if(kind==="nudge" && prev && prev.kind==="nudge" && prev.id===id && prev.undo && sameEvents(before, prev.after)) before=prev.undo;
+    const back=sameEvents(PK.normalizeEvents(before), after), e=after.find(v=>v.id===id);
+    moveNote[s]= back ? {id, kind, undo:null, after, text:`The ${doseDesc(e)} is back at ${trim(e.t)} h.`}
+      : {id, kind, undo:before, after, text:moveText(before, after, id)};
+    setEvents(after, id);
+  }
+  function nudgeEvent(id, d){
+    const e=state.events.find(v=>v.id===id);
+    if(!e) return;
+    const after=PK.moveEvent(state.events, id, e.t+d);
+    if(after.find(v=>v.id===id).t!==e.t) commitMove(state.events, after, id, "nudge");
+  }
+  byId("evUndo").addEventListener("click",()=>{
+    const s=slot(), n=moveNote[s];
+    if(!n || !n.undo) return;
+    const restored=PK.normalizeEvents(n.undo), e=restored.find(v=>v.id===n.id);
+    moveNote[s]={id:n.id, kind:"undo", undo:null, after:restored, text:`Move undone: the ${doseDesc(e)} is back at ${trim(e.t)} h.`};
+    setEvents(restored, n.id);
+    const head=byId("evList").querySelector(`.ev-row[data-id="${n.id}"] .ev-head`);   // the Undo button just hid itself
+    if(head) head.focus({preventScroll:true});
+  });
+
+  const stripX=evt=>{ const r=strip.getBoundingClientRect(); return (evt.clientX-r.left)/r.width*PW; };
+  // The dose under the pointer: the nearest marker within its hit radius. Of doses at the same time, the
+  // selected one wins, then the one drawn on top.
+  function markerAt(evt){
+    const [T0,T1]=viewT, iw=PW-M.l-M.r, sx=stripX(evt);
+    let best=null, bd=Infinity;
     state.events.forEach(e=>{
       if(e.t<T0-1e-9 || e.t>T1+1e-9) return;
-      const cx=x(e.t), r=e.type==="loading"?7:5.5, missed=e.status==="missed";
-      g+=`<g class="evm" data-id="${e.id}"><circle cx="${cx}" cy="${y}" r="26" fill="transparent"/>`+
-        (e.id===evSel?`<circle cx="${cx}" cy="${y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.85"/>`:"")+
-        `<circle cx="${cx}" cy="${y}" r="${r}" fill="${missed?"#05070E":col}" stroke="${missed?"#FF5C7A":"#05070E"}" stroke-width="1.6"/>`+
-        (e.type==="loading"?`<text x="${cx}" y="${y-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B7A9FF">LD</text>`:"")+
-        `</g>`;
+      const d=Math.abs(M.l+((e.t-T0)/(T1-T0))*iw-sx);
+      if(d>26) return;
+      if(d<bd-1e-6 || (d<=bd+1e-6 && best.id!==evSel)){ best=e; bd=d; }
     });
-    byId("evStrip").innerHTML=g;
+    return best;
   }
-  byId("evStrip").addEventListener("click",e=>{
-    const m=e.target.closest(".evm");
+  // Where the held dose would land: its start time plus how far the pointer has moved, on the 0.5 h grid,
+  // kept inside the visible window (and 0–168 h).
+  function dragTime(evt){
+    const [T0,T1]=viewT, st=PK.MOVE_STEP, [lo,hi]=PK.EVENT_LIMITS.t;
+    const t=drag.t0+(stripX(evt)-drag.sx0)/(PW-M.l-M.r)*(T1-T0);
+    return Math.min(Math.min(hi, Math.floor(T1/st+1e-9)*st), Math.max(Math.max(lo, Math.ceil(T0/st-1e-9)*st), PK.snapTime(t)));
+  }
+  function endDrag(evt, commit){
+    if(!drag || (evt && evt.pointerId!==drag.pointerId)) return;
+    const d=drag;
+    drag=null;
+    try{ strip.releasePointerCapture(d.pointerId); }catch(err){ /* already released */ }
+    if(!d.moved) return;                  // a plain press: the click that follows selects the dose
+    justDragged=true;
+    if(commit && d.t!==d.t0) commitMove(d.before, PK.moveEvent(d.before, d.id, d.t), d.id, "drag");
+    else { state.events=d.before; changed(["events"]); }
+  }
+  strip.addEventListener("pointerdown",e=>{
+    justDragged=false;
+    if(e.button!==0 || drag) return;
+    const m=markerAt(e);
     if(!m) return;
-    evSel=m.dataset.id;
+    drag={id:m.id, pointerId:e.pointerId, cx0:e.clientX, sx0:stripX(e), t0:m.t, t:m.t, before:state.events, moved:false};
+    try{ strip.setPointerCapture(e.pointerId); }catch(err){ /* capture is a nicety; dragging works without it */ }
+  });
+  // Move and release are heard on the window too, in case the pointer couldn't be captured.
+  window.addEventListener("pointermove",e=>{
+    if(!drag || e.pointerId!==drag.pointerId) return;
+    const first=!drag.moved;
+    if(first && Math.abs(e.clientX-drag.cx0)<4) return;
+    drag.moved=true;
+    const t=dragTime(e);
+    if(!first && t===drag.t) return;
+    drag.t=t;
+    state.events=PK.moveEvent(drag.before, drag.id, t);   // preview: the curve follows the dose
+    changed(["events"]);
+  });
+  window.addEventListener("pointerup",e=>endDrag(e,true));
+  window.addEventListener("pointercancel",e=>endDrag(e,false));
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape" && drag && drag.moved){ e.preventDefault(); endDrag(null,false); }
+  });
+  strip.addEventListener("click",e=>{
+    if(justDragged){ justDragged=false; return; }
+    const m=markerAt(e);
+    if(!m) return;
+    evSel=m.id;
     renderEvents(); render();
     const row=byId("evList").querySelector(`.ev-row[data-id="${evSel}"]`);
     if(row) row.scrollIntoView({block:"nearest", behavior:reduceMotion()?"auto":"smooth"});

@@ -76,6 +76,20 @@
     const e=list[i], next=list[i+1];
     return next ? Math.round((e.t+Math.max(0.25,(next.t-e.t)/2))*4)/4 : Math.min(EVENT_LIMITS.t[1], e.t+8);
   }
+  // Dragging a dose snaps it to a half-hour grid inside 0–168 h. null for a time that isn't a number.
+  const MOVE_STEP=0.5;
+  function snapTime(t, step=MOVE_STEP){
+    const v=Number(t);
+    return isFinite(v) ? clamp(Math.round(v/step)*step, EVENT_LIMITS.t) : null;
+  }
+  // Moves one dose to time t and returns a new, sorted schedule. Its amount, type and missed status stay as
+  // they were, and so does every other dose; landing on another dose's time is allowed (they add together).
+  // An unknown id or a time that isn't a number returns an unchanged copy.
+  function moveEvent(list, id, t){
+    const L=normalizeEvents(list), v=Number(t);
+    if(!isFinite(v) || !L.some(e=>e.id===id)) return L;
+    return normalizeEvents(L.map(e=> e.id===id ? Object.assign({},e,{t:v}) : e));
+  }
   // Canonical text of a schedule, used for equality and in share links (ids don't count).
   const eventsKey=list=>(list||[]).map(e=>`${e.t}@${e.mg}${e.type==="loading"?"L":""}${e.status==="missed"?"m":""}`).join(";");
 
@@ -644,7 +658,7 @@
   const exportLibrary=items=> JSON.stringify({format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items}, null, 2);
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
-    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
+    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

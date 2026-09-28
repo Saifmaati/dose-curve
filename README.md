@@ -8,7 +8,7 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 
 ## What you can do
 
-- **Simulate** oral, IV bolus and IV infusion dosing: single, repeated (with loading and missed doses), or a **custom schedule** where every dose has its own time and amount and any dose can be marked missed.
+- **Simulate** oral, IV bolus and IV infusion dosing: single, repeated (with loading and missed doses), or a **custom schedule** where every dose has its own time and amount and any dose can be marked missed. Drag a dose along the timeline (or step it ±0.5 h) to reschedule it, with Undo.
 - **Compare against a baseline:** freeze a curve, change anything, and get a plain-English explanation of what moved and why, plus a metrics table.
 - **Compare two scenarios side by side:** edit Scenario A and B independently, lock everything but one setting ("Vary only"), or start from six one-click comparisons such as once vs twice daily.
 - **Watch steady state build up:** peak and trough for every dose, accumulation, and how long 90% of steady state takes.
