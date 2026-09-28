@@ -166,6 +166,77 @@ test("diff expresses each kind of change", ()=>{
   assert.equal(PK.diff("ratio",null,2).na, true);
 });
 
+/* ---------- compare state ---------- */
+
+const frozen=o=>JSON.parse(JSON.stringify(o));
+const sample=()=>{
+  let c=PK.newComparison({dosing:"repeated", D:600, tau:24, nDoses:5});
+  c=PK.cmpApply(c,"b",{D:300, tau:12, nDoses:10});
+  c.names={a:"Once daily", b:"Twice daily"};
+  return c;
+};
+
+test("reset A restores A to the defaults and leaves B untouched", ()=>{
+  const c=sample(), before=frozen(c);
+  const r=PK.cmpReset(c,"a");
+  assert.deepEqual(r.a, scenario());
+  assert.deepEqual(r.b, before.b);
+  assert.equal(r.names.a, "Scenario A");
+  assert.equal(r.names.b, "Twice daily", "the other side keeps its custom name");
+  assert.deepEqual(c, before, "the input comparison is not modified");
+});
+
+test("reset B restores B to the defaults and leaves A untouched", ()=>{
+  const c=sample(), before=frozen(c);
+  const r=PK.cmpReset(c,"b");
+  assert.deepEqual(r.b, scenario());
+  assert.deepEqual(r.a, before.a);
+  assert.equal(r.names.a, "Once daily");
+  assert.equal(r.names.b, "Scenario B");
+});
+
+test("reset switches Vary only off instead of quietly changing the other side", ()=>{
+  const c=PK.cmpSetLock(sample(),"D");
+  assert.equal(c.lock, "D");
+  const r=PK.cmpReset(c,"a");
+  assert.equal(r.lock, "");
+  assert.deepEqual(r.b, c.b);
+});
+
+test("reset works after swap and copy", ()=>{
+  const swapped=PK.cmpSwap(sample());
+  assert.equal(swapped.names.a, "Twice daily");
+  const r1=PK.cmpReset(swapped,"b");
+  assert.deepEqual(r1.a, swapped.a);
+  assert.deepEqual(r1.b, scenario());
+  const copied=PK.cmpCopy(sample(),"b","a");
+  assert.deepEqual(copied.a, copied.b);
+  assert.notEqual(copied.a, copied.b, "copies are independent objects");
+  const r2=PK.cmpReset(copied,"a");
+  assert.deepEqual(r2.b, copied.b);
+});
+
+test("a reset comparison survives a share link", ()=>{
+  const r=PK.cmpReset(sample(),"a");
+  const link=PK.encodeLink({mode:"cmp", a:r.a, b:r.b, nameA:"", nameB:r.names.b, lock:r.lock, edit:"a", view:PK.VIEW_DEFAULTS});
+  assert.ok(link.includes("a=&"), "a reset scenario is just the defaults");
+  const back=PK.decodeLink(link);
+  assert.deepEqual(back.a, r.a);
+  assert.deepEqual(back.b, r.b);
+  assert.equal(back.nameB, "Twice daily");
+  assert.equal(back.lock, "");
+});
+
+test("Vary only mirrors every other edit and keeps the locked setting apart", ()=>{
+  let c=PK.cmpSetLock(sample(),"tau");
+  assert.deepEqual(Object.assign({},c.b,{tau:c.a.tau}), c.a, "turning the lock on aligns B with A except τ");
+  c=PK.cmpApply(c,"b",{D:450, tau:6});
+  assert.equal(c.b.D, 450); assert.equal(c.a.D, 450, "dose is mirrored");
+  assert.equal(c.b.tau, 6);  assert.equal(c.a.tau, 24, "the locked interval is not");
+  const off=PK.cmpApply(PK.cmpSetLock(c,""),"a",{D:100});
+  assert.equal(off.b.D, 450, "with the lock off, edits stay on their own side");
+});
+
 /* ---------- share links ---------- */
 
 test("default scenario encodes to an empty string and back", ()=>{
