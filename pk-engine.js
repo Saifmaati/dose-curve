@@ -275,8 +275,33 @@
     return {cmax,tmax,auc,tIn,tBelow,tAbove,T};
   }
 
+  // Concentration s hours (0 ≤ s < τ) into a dose interval once a regimen of p.D every p.tau hours has run
+  // forever: the sum over every earlier dose, Σⱼ C₁(s + jτ). Each single-dose curve is a sum of exponentials
+  // (once an infusion has stopped), so all but the first few terms form geometric series with exact sums.
+  function ssConc(p, s){
+    if(p.dosing!=="repeated") return null;   // only a regular periodic regimen has a steady state
+    const k=keOf(p), V=vOf(p), tau=p.tau, D=p.D, geo=l=>1/(1-Math.exp(-l*tau));
+    if(p.route==="iv") return (D/V)*Math.exp(-k*s)*geo(k);
+    if(p.route==="inf"){
+      // doses whose infusion is still running at this moment are added one by one; the rest have stopped
+      const Ti=p.tinf, J0=Math.max(0, Math.ceil((Ti-s)/tau-1e-12));
+      let c=0;
+      for(let j=0;j<J0;j++) c+=singleConc(p, s+j*tau, D);
+      const cEnd=(D/Ti/(k*V))*(1-Math.exp(-k*Ti));
+      return c+cEnd*Math.exp(-k*(s+J0*tau-Ti))*geo(k);
+    }
+    const ka=p.ka, F=p.F;
+    if(Math.abs(ka-k)<1e-6){
+      // C₁(t) = (F·D/V)·kₐ·t·e^(−kₐt): Σⱼ (s + jτ)·xʲ = s/(1 − x) + τx/(1 − x)² with x = e^(−kₐτ)
+      const x=Math.exp(-ka*tau);
+      return (F*D/V)*ka*Math.exp(-ka*s)*(s/(1-x)+tau*x/((1-x)*(1-x)));
+    }
+    return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*s)*geo(k)-Math.exp(-ka*s)*geo(ka));
+  }
+
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
   function ssProfile(p){
+    if(p.dosing!=="repeated") return null;
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
     const peakTrough=(q,a,evq)=>{
       let pk=0;
@@ -288,12 +313,26 @@
       const [peak,trough]=peakTrough(p,i*tau,ev);
       rows.push({n:i+1, peak, trough, missed:i+1===skip});
     }
-    const Nss=Math.min(400, Math.ceil(Math.log(1e4)/(k*tau))+2);
-    const pss=Object.assign({},p,{nDoses:Nss,loadMult:1,missed:1});
-    const [ssPeak,ssTrough]=peakTrough(pss,(Nss-1)*tau,doseEvents(pss));
+    // steady state in closed form: sample the interval, plus the exact peak of a bolus (s = 0) or an infusion (its end)
+    const cand=[0]; if(p.route==="inf") cand.push(p.tinf%tau);
+    let ssPeak=0;
+    for(let j=0;j<=S;j++) cand.push(tau*j/S);
+    cand.forEach(s=>{ const c=ssConc(p,s); if(c>ssPeak) ssPeak=c; });
+    const ssTrough=ssConc(p,tau-1e-9);
     const clears=ssTrough<0.01*ssPeak; // essentially nothing carries over from one dose to the next
     return {rows, ssPeak, ssTrough, clears, swing:clears?null:ssPeak/ssTrough,
       Rac:1/(1-Math.exp(-k*tau)), t90:3.32*Math.LN2/k, dosesTo90:Math.ceil(Math.log(10)/(k*tau))};
+  }
+
+  // Infusions given at the same time as each other: {maxRunning, from} (the most running at once, and when
+  // that many first run together), or null when no two infusions overlap. Back-to-back infusions don't overlap.
+  function infusionOverlap(p){
+    const edges=[];
+    doseEvents(p).forEach(e=>{ if(e.route==="inf"){ edges.push([e.t,1]); edges.push([e.t+e.dur,-1]); } });
+    edges.sort((a,b)=>a[0]-b[0] || a[1]-b[1]);   // at the same moment, an infusion ends before the next starts
+    let running=0, maxRunning=0, from=null;
+    edges.forEach(([t,d])=>{ running+=d; if(running>maxRunning){ maxRunning=running; from=t; } });
+    return maxRunning>1 ? {maxRunning, from} : null;
   }
 
   /* ================= TIME INSPECTION ================= */
@@ -738,6 +777,8 @@
     const sc=s=>decodeScenario(safe(s||""));
     const name=s=>s ? cleanName(safe(s),40) : "";
     const st={version:parseInt(q.v,10)||VERSION, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
+    // a newer version is still read best-effort, but flagged so the page can say settings may be missing
+    st.newer=st.version>VERSION;
     if(st.mode==="cmp"){
       st.a=sc(q.a); st.b=sc(q.b);
       st.nameA=name(q.na); st.nameB=name(q.nb);
@@ -824,7 +865,7 @@
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
-    keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
+    keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
     PD_KEYS, effectOf, concForEffect, effectStats,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

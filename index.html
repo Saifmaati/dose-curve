@@ -127,6 +127,7 @@
   .drug:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .drug .dname{font-size:12px;font-weight:600;color:#C9D0E6}
   .drug .dsub{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted-2);margin-top:2px;letter-spacing:.03em}
+  .win-warn{font-size:11.5px;color:var(--amber);margin-top:9px;line-height:1.5}
   .lib-note{font-size:10.5px;color:var(--muted-2);margin-top:9px;line-height:1.5}
 
   /* action buttons */
@@ -681,6 +682,7 @@
                 <input type="number" id="mtc" step="1" min="0">
               </div>
             </div>
+            <p class="win-warn" id="winWarn" role="status" hidden></p>
           </div>
 
           <div class="sec">
@@ -694,7 +696,7 @@
             <div class="actions">
               <button class="abtn sim-only" id="pinBtn">◈ Set baseline</button>
               <button class="abtn sim-only" id="clearPinBtn">✕ Clear baseline</button>
-              <button class="abtn" id="csvBtn">↓ CSV data</button>
+              <button class="abtn" id="csvBtn" title="Concentrations (and effect, when shown) over the full time window, even when the chart is zoomed">↓ CSV data</button>
               <button class="abtn" id="pngBtn">↓ PNG image</button>
               <button class="abtn" id="linkBtn">⧉ Copy link</button>
               <button class="abtn" id="libBtn" aria-haspopup="dialog">▤ Library</button>
@@ -709,15 +711,15 @@
       <!-- ============ PLOT ============ -->
       <section class="panel">
         <div class="tabbar" role="tablist">
-          <button id="tabSim" class="on" role="tab" aria-selected="true">Simulator</button>
-          <button id="tabCmp" role="tab" aria-selected="false">Compare</button>
-          <button id="tabLs" role="tab" aria-selected="false">Lessons</button>
-          <button id="tabPr" role="tab" aria-selected="false">Practice<span class="count" id="prCount"></span></button>
+          <button id="tabSim" class="on" role="tab" aria-selected="true" aria-controls="simView">Simulator</button>
+          <button id="tabCmp" role="tab" aria-selected="false" aria-controls="simView" tabindex="-1">Compare</button>
+          <button id="tabLs" role="tab" aria-selected="false" aria-controls="lsView" tabindex="-1">Lessons</button>
+          <button id="tabPr" role="tab" aria-selected="false" aria-controls="prView" tabindex="-1">Practice<span class="count" id="prCount"></span></button>
         </div>
 
-        <div id="simView">
+        <div id="simView" role="tabpanel" aria-labelledby="tabSim">
         <div class="shared" id="sharedPill" hidden>
-          <span>Opened from a shared link.</span>
+          <span id="sharedMsg">Opened from a shared link.</span>
           <button class="shared-btn" id="sharedReset">Reset to default</button>
           <button class="lesson-x" id="sharedClose" aria-label="Dismiss">✕</button>
         </div>
@@ -836,7 +838,7 @@
 
         <div class="budget" id="budget"></div>
 
-        <div class="ss-note sim-only" id="ssNote"></div>
+        <div class="ss-note" id="ssNote"></div>
 
         <div class="ssp" id="ssPanel" style="display:none">
           <div class="ssp-head">
@@ -888,14 +890,14 @@
         </div>
         </div><!-- /simView -->
 
-        <div class="lsv" id="lsView">
+        <div class="lsv" id="lsView" role="tabpanel" aria-labelledby="tabLs">
           <div class="pr-top">
-            <div class="plot-title" style="font-size:16px">Lessons<span>10 one-click scenarios · each replaces the baseline with its own</span></div>
+            <div class="plot-title" style="font-size:16px">Lessons<span>One-click scenarios · each replaces the baseline with its own</span></div>
           </div>
           <div class="ls-grid" id="lsGrid"></div>
         </div>
 
-        <div class="practice" id="prView">
+        <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
           <div class="pr-top">
             <div class="plot-title" style="font-size:16px">PK Practice Engine<span>Unlimited generated problems · worked solutions</span></div>
             <div class="pr-stats">
@@ -1065,6 +1067,7 @@
   }
 
   function render(){
+    checkWindow();
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
     let yMax=0;
@@ -1305,6 +1308,7 @@
       const {a,b}=pair();
       renderBudget([{ws:windowStats(a), tag:"A", color:COL.a.line}, {ws:windowStats(b), tag:"B", color:COL.b.line}]);
       renderScenarioCards(a, b);
+      renderNote(null, null, null, [["A",a],["B",b]]);
     }
     renderSS();
     renderCompare();
@@ -1399,9 +1403,23 @@
       </div>`;
   }
 
-  function renderNote(p, d, ws){
-    const note=byId("ssNote"), tox=100*ws.tAbove/ws.T;
-    let msg="";
+  // Infusions running at once add their rates; say so, since it's easy to miss when T·inf exceeds the interval.
+  function overlapNote(p, who){
+    const o=PK.infusionOverlap(p);
+    if(!o) return "";
+    const lead=who ? `${who}: ` : "";
+    if(p.dosing==="repeated") return `${lead}Each infusion runs <b>${r2(p.tinf)} h</b> but a new one starts every <b>${r2(p.tau)} h</b>, so infusions overlap: up to <b>${o.maxRunning}</b> run at once and their rates add. `;
+    return `${lead}Infusions overlap: up to <b>${o.maxRunning}</b> run at once from <b>${r2(o.from)} h</b>, and their rates add. `;
+  }
+  function renderNote(p, d, ws, sides){
+    const note=byId("ssNote");
+    if(sides){   // Compare: only the overlap notices, one per scenario
+      const msg=sides.map(([tag,q])=>overlapNote(q, `Scenario ${tag}`)).join("");
+      note.classList.toggle("show", !!msg); note.innerHTML=msg;
+      return;
+    }
+    const tox=100*ws.tAbove/ws.T;
+    let msg=overlapNote(p);
     if(tox>0.5) msg+=`⚠ This scenario spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold. See how a smaller dose, slower input or longer interval changes that. `;
     if(p.dosing==="repeated"){
       // same 1% rule as the steady-state panel: below it, a peak-to-trough ratio is meaningless
@@ -2127,6 +2145,13 @@
   const mecEl=byId("mec"), mtcEl=byId("mtc");
   const etgtEl=byId("etgt");
   function syncWindow(){ mecEl.value=state.mec; mtcEl.value=state.mtc; etgtEl.value=state.etgt; }
+  // With MEC at or above MTC nothing can be in the window: say so rather than silently showing 0%.
+  function checkWindow(){
+    const w=byId("winWarn"), bad=state.mec>=state.mtc;
+    w.hidden=!bad;
+    w.textContent=bad ? "MEC is at or above MTC, so no concentration can be in the window. Set MEC below MTC." : "";
+    mecEl.setAttribute("aria-invalid",bad); mtcEl.setAttribute("aria-invalid",bad);
+  }
   etgtEl.addEventListener("input",()=>{
     const v=parseFloat(etgtEl.value);
     if(isFinite(v)){ state.etgt=Math.min(99,Math.max(1,v)); render(); }
@@ -3032,7 +3057,10 @@
       Object.assign(state,view);
       syncControls(); updateBaselineUI(); render();
     }
-    byId("sharedPill").hidden=!!fromLibrary;
+    byId("sharedMsg").textContent=st.newer
+      ? "Opened from a link made by a newer version of DoseCurve. Some settings may not have come through."
+      : "Opened from a shared link.";
+    byId("sharedPill").hidden=!!fromLibrary && !st.newer;
   }
   let toastTimer=null;
   function toast(msg){
@@ -3069,6 +3097,7 @@
       csv+=t.toFixed(3)+","+cs.map(c=>c.toFixed(5)).concat(state.pd ? curves.map((cv,j)=>PK.effectOf(cv.p,cs[j]).toFixed(3)) : []).join(",")+"\n";
     }
     download(new Blob([csv],{type:"text/csv"}), mode==="cmp"?"dosecurve_compare.csv":"dosecurve_data.csv");
+    if(state.view==="last" && repeatedShown().length) toast(`CSV covers the full 0–${Tend} h window, not just the zoomed view`);
   });
 
   // A chart as an image on the page's dark background (the SVG has no background of its own).
@@ -3253,6 +3282,7 @@
     state.wt=70; state.clFn=100; // problems are computed at baseline physiology — reset so the curve matches the answer
     Object.assign(state,prob.viz);
     exitLesson();
+    baseline=null; updateBaselineUI();   // an earlier baseline belongs to an unrelated scenario
     syncControls(); render();
     showTab("sim");
   });
@@ -3267,12 +3297,24 @@
     [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabPr","pr"]].forEach(([id,w])=>{
       $(id).classList.toggle("on",w===which);
       $(id).setAttribute("aria-selected",w===which);
+      $(id).tabIndex=w===which ? 0 : -1;   // one tab stop for the tab list; arrow keys move within it
     });
+    if(which==="sim"||which==="cmp") $("simView").setAttribute("aria-labelledby", which==="sim" ? "tabSim" : "tabCmp");
   }
   $("tabSim").addEventListener("click",()=>showTab("sim"));
   $("tabCmp").addEventListener("click",()=>showTab("cmp"));
   $("tabLs").addEventListener("click",()=>showTab("ls"));
   $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
+  // Arrow keys, Home and End move between tabs and select them, as in the WAI-ARIA tabs pattern.
+  document.querySelector(".tabbar").addEventListener("keydown",e=>{
+    const tabs=[...document.querySelectorAll('.tabbar [role="tab"]')], i=tabs.indexOf(document.activeElement);
+    if(i<0) return;
+    const to={ArrowRight:i+1, ArrowLeft:i-1, Home:0, End:tabs.length-1}[e.key];
+    if(to===undefined) return;
+    e.preventDefault();
+    const t=tabs[(to+tabs.length)%tabs.length];
+    t.click(); t.focus();   // after the click, which may move focus (Practice focuses its answer box)
+  });
 
   /* ================= INIT ================= */
   buildSliders();

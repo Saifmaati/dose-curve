@@ -34,8 +34,9 @@ The model is one-compartment and linear:
 - IV bolus: `C(t) = (D/V)·e^(−kₑt)`
 - IV infusion: zero-order input over the infusion time, then first-order decay
 - `kₑ = ln2 / t½`, `CL = kₑ·V`; doses add by superposition (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time and amount)
+- Steady state (a regimen repeated indefinitely) is computed exactly: each earlier dose's contribution forms a geometric series, so there is no cap on how many doses it takes to settle. It is shown only for regular repeated regimens (one dose every τ), never for single doses or custom schedules
+- In a custom schedule each dose has its own route: oral doses use the scenario's F and kₐ, IV doses count in full, and an infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop. There is one volume and one clearance whatever the route, overlapping infusions add their rates (the page says so whenever infusions overlap, including when the infusion time is longer than the dosing interval), and the line adds no delay. Infusions run 0.25–168 h, must end by 168 h and may carry up to 10,000 mg; other doses carry 25–4,000 mg
 - Effect (PK/PD): `E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ)`, as a percentage of the largest possible response (E₀ + Emax ≤ 100%). The effect follows plasma concentration instantly and reversibly: no effect-site delay and no tolerance
-- In a custom schedule each dose has its own route: oral doses use the scenario's F and kₐ, IV doses count in full, and an infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop. There is one volume and one clearance whatever the route, overlapping infusions add their rates, and the line adds no delay. Infusions run 0.25–168 h, must end by 168 h and may carry up to 10,000 mg; other doses carry 25–4,000 mg
 
 Share links carry every setting in the URL itself, including custom schedules. Each link is written at the lowest format version that holds it: v1 for regular regimens, v2 for custom schedules, v3 once doses use different routes or infusions have their own durations, v4 once the PK/PD settings or the effect charts are used. Older links open unchanged. Nothing is sent to or stored on a server.
 
@@ -52,7 +53,7 @@ python3 -m http.server 8000
 Requires Node 18 or later; no packages to install.
 
 ```bash
-node --test tests/
+node --test
 ```
 
 The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, and every quantitative claim the lessons make.
