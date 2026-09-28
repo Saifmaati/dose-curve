@@ -29,6 +29,14 @@
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"]];
 
   const scenario=over=>Object.assign({},DEFAULTS,over);
+  // Cross-setting rule the individual ranges can't express: a missed dose must fall inside the regimen
+  // (and can't be the final dose). Otherwise it is cleared, so the controls never show a missed dose
+  // the model is ignoring.
+  function normalizeScenario(p){
+    const q=Object.assign({},p);
+    if(q.missed>=q.nDoses) q.missed=1;
+    return q;
+  }
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
 
   /* ================= PK ENGINE ================= */
@@ -276,8 +284,9 @@
     if(c.lock){
       const shared={};
       Object.keys(patch).forEach(k=>{ if(PK_KEYS.includes(k) && k!==c.lock) shared[k]=patch[k]; });
-      next[o]=Object.assign({},c[o],shared);
+      next[o]=normalizeScenario(Object.assign({},c[o],shared));
     }
+    next[side]=normalizeScenario(next[side]);
     return next;
   }
   function cmpCopy(c, from, to){
@@ -287,9 +296,13 @@
     return Object.assign({},c,{a:Object.assign({},c.b), b:Object.assign({},c.a), names:{a:c.names.b, b:c.names.a}});
   }
   // Turning a lock on makes B match A in everything except the locked setting.
+  // True when A and B differ in nothing but the locked setting, which is what "Vary only" promises.
+  function lockHolds(c){
+    return !c.lock || PK_KEYS.every(k=> k===c.lock || c.a[k]===c.b[k]);
+  }
   function cmpSetLock(c, k){
     if(!k) return Object.assign({},c,{lock:""});
-    return Object.assign({},c,{lock:k, b:Object.assign({},c.a,{[k]:c.b[k]})});
+    return Object.assign({},c,{lock:k, b:normalizeScenario(Object.assign({},c.a,{[k]:c.b[k]}))});
   }
   // Back to the app defaults, with the default name. The other side is left exactly as it was, so a
   // "Vary only" lock (which ties the two sides together) is switched off rather than broken silently.
@@ -317,7 +330,7 @@
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
       p[k]=clamp(v,RANGES[k]);
     });
-    return p;
+    return normalizeScenario(p);
   }
   function encodeView(v){
     const out=[];
@@ -370,12 +383,14 @@
     if(!q.v) return null;
     // Links pasted through chat apps sometimes arrive with ':' and ',' percent-encoded.
     const sc=s=>decodeScenario(safe(s||""));
-    const name=s=>s ? safe(s).replace(/[\u0000-\u001f]/g,"").trim().slice(0,40) : "";
+    // names are plain text: control characters and text-direction overrides are removed
+    const name=s=>s ? safe(s).replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,"").trim().slice(0,40) : "";
     const st={version:parseInt(q.v,10)||VERSION, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
     if(st.mode==="cmp"){
       st.a=sc(q.a); st.b=sc(q.b);
       st.nameA=name(q.na); st.nameB=name(q.nb);
       st.lock=LOCKS.some(l=>l[0]===q.lk) ? q.lk : "";
+      if(!lockHolds(st)) st.lock="";   // a hand-edited link can't claim a lock its scenarios don't honour
       st.edit=q.ed==="b" ? "b" : "a";
     } else {
       st.s=sc(q.s);
@@ -389,6 +404,6 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, scenario,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
-    DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset,
+    DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink};
 });

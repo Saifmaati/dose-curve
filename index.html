@@ -516,11 +516,11 @@
             <p class="sec-label">Therapeutic Window</p>
             <div class="window-row">
               <div class="num-field">
-                <label><span class="swatch" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span>Min effective (MEC)</label>
+                <label for="mec"><span class="swatch" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span>Min effective (MEC)</label>
                 <input type="number" id="mec" step="0.5" min="0">
               </div>
               <div class="num-field">
-                <label><span class="swatch" style="background:var(--rose);box-shadow:0 0 8px var(--rose)"></span>Toxic threshold (MTC)</label>
+                <label for="mtc"><span class="swatch" style="background:var(--rose);box-shadow:0 0 8px var(--rose)"></span>Toxic threshold (MTC)</label>
                 <input type="number" id="mtc" step="1" min="0">
               </div>
             </div>
@@ -755,7 +755,7 @@
   // `state` holds the scenario the controls are editing plus the view settings (window, thresholds, scale, zoom).
   const state = Object.assign({}, DEFAULTS, {scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null});
   const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); return o; };
-  const loadScenario=p=>{ PK_KEYS.forEach(k=>state[k]=p[k]); };
+  const loadScenario=p=>{ const q=PK.normalizeScenario(p); PK_KEYS.forEach(k=>state[k]=q[k]); };
   const windowStats=p=>PK.windowStats(p,state.duration,state.mec,state.mtc);
 
   let mode="sim";      // "sim": one scenario, optionally against a baseline. "cmp": scenarios A and B.
@@ -1125,9 +1125,10 @@
     let msg="";
     if(tox>0.5) msg+=`⚠ This scenario spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold. See how a smaller dose, slower input or longer interval changes that. `;
     if(p.dosing==="repeated"){
-      const pt=(d.cmaxSS/d.cminSS).toFixed(1);
+      // same 1% rule as the steady-state panel: below it, a peak-to-trough ratio is meaningless
+      const swing = d.cminSS < 0.01*d.cmaxSS ? "the drug clears almost completely between doses" : `peak-to-trough <b>${fmt(d.cmaxSS/d.cminSS,1)}×</b>`;
       const ssTag = d.fSS>=0.97 ? "effectively at steady state" : `at <b>${fmt(d.fSS*100,0)}%</b> of steady state — not there yet`;
-      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (peak-to-trough <b>${pt}×</b>). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
+      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
       if(p.loadMult>1) msg+=` Loading dose (${p.loadMult}×) lifts the first cycle toward steady state immediately.`;
       if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
     }
@@ -1672,7 +1673,8 @@
     byId("lessonBar").hidden=false;
     syncControls(); updateBaselineUI(); render();
     showTab("sim");
-    byId("lessonBar").scrollIntoView({behavior:"smooth",block:"nearest"});
+    const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    byId("lessonBar").scrollIntoView({behavior:reduce?"auto":"smooth", block:"nearest"});
   }
   function exitLesson(){
     lesson=null;
