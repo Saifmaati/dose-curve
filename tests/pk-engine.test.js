@@ -535,7 +535,7 @@ test("inspectAt reads the curve: IV bolus value, trend and time since the dose",
   rel(i.c, (500/35)*Math.exp(-Math.LN2/4*3), 1e-12);
   assert.equal(i.trend, "falling");
   assert.equal(i.status, "in");
-  assert.deepEqual(i.last, {t:0, mg:500, count:1, loading:false});
+  assert.deepEqual(i.last, {t:0, mg:500, count:1, loading:false, route:"iv", dur:null});
   assert.equal(i.since, 3);
   assert.equal(PK.inspectAt(p, 0, 2, 12).trend, "peak", "a bolus peaks the moment it's given");
 });
@@ -555,12 +555,12 @@ test("inspectAt: an oral dose rises before its peak and falls after", ()=>{
 
 test("inspectAt groups same-time doses and never counts a missed dose as given", ()=>{
   const p=custom([ev(0,300,{type:"loading"}), ev(0,200), ev(8,500), ev(16,500,{status:"missed"})]);
-  assert.deepEqual(PK.inspectAt(p,4,2,12).last, {t:0, mg:500, count:2, loading:true});
+  assert.deepEqual(PK.inspectAt(p,4,2,12).last, {t:0, mg:500, count:2, loading:true, route:"oral", dur:null});
   const after=PK.inspectAt(p,20,2,12);
   assert.equal(after.last.t, 8, "the missed 16 h dose isn't the last dose");
   assert.equal(after.since, 12);
   assert.deepEqual(after.missedSince, [16]);
-  assert.deepEqual(PK.inspectAt(p,12,2,12).next, {t:16, mg:500, missed:true}, "the next scheduled dose is shown even if missed");
+  assert.deepEqual(PK.inspectAt(p,12,2,12).next, {t:16, mg:500, missed:true, route:"oral", dur:null}, "the next scheduled dose is shown even if missed");
   const before=PK.inspectAt(custom([ev(6,500)]),2,2,12);
   assert.equal(before.last, null); assert.equal(before.trend, "flat"); assert.equal(before.c, 0);
 });
@@ -838,4 +838,206 @@ test("a moved schedule survives links, the library and Compare isolation", ()=>{
   assert.equal(PK.cmpReset(c,"a").a.dosing, PK.DEFAULTS.dosing, "reset still clears it");
   const cl=PK.decodeLink(PK.encodeLink({mode:"cmp", a:c.a, b:c.b, nameA:"", nameB:"", lock:"", edit:"a", view:V}));
   assert.deepEqual([PK.eventsKey(cl.a.events), PK.eventsKey(cl.b.events)], [key, PK.eventsKey(plan())], "comparison link");
+});
+
+/* ---------- per-dose routes and infusion events ---------- */
+
+const inf=(t,mg,dur,extra)=>Object.assign({t, mg, route:"inf", dur, type:"maintenance", status:"given"}, extra);
+const bolus=(t,mg,extra)=>Object.assign({t, mg, route:"iv", type:"maintenance", status:"given"}, extra);
+const oral=(t,mg,extra)=>Object.assign({t, mg, route:"oral", type:"maintenance", status:"given"}, extra);
+const kOf=p=>PK.keOf(p), vOf=p=>PK.vOf(p);
+
+test("an infusion event follows the zero-order closed form, during and after it runs", ()=>{
+  const p=custom([inf(2,600,3)]), k=kOf(p), V=vOf(p), R=600/3;
+  assert.equal(PK.conc(p,2), 0);
+  [0.5,1.5,3].forEach(s=> rel(PK.conc(p,2+s), R/(k*V)*(1-Math.exp(-k*s)), 1e-12, `${s} h in`));
+  const cEnd=R/(k*V)*(1-Math.exp(-k*3));
+  [4,10,30].forEach(s=> rel(PK.conc(p,5+s), cEnd*Math.exp(-k*s), 1e-12, `${s} h after the end`));
+});
+
+test("a converted infusion regimen keeps each infusion's duration", ()=>{
+  const p=scenario({route:"inf", dosing:"repeated", tinf:0.5, tau:8, nDoses:4});
+  const ev=PK.eventsFromBasic(p);
+  assert.deepEqual(ev.map(e=>[e.route,e.dur]), [["inf",0.5],["inf",0.5],["inf",0.5],["inf",0.5]]);
+  const c=PK.normalizeScenario(Object.assign({}, p, {dosing:"custom", events:ev}));
+  sampleTimes.forEach(t=> near(PK.conc(c,t), PK.conc(p,t), 1e-12, `t=${t}`));
+});
+
+test("overlapping infusions add their rates", ()=>{
+  const both=custom([inf(0,1200,12), inf(6,600,4)]);
+  const a=custom([inf(0,1200,12)]), b=custom([inf(6,600,4)]);
+  [3,6,8,10,12,20].forEach(t=> near(PK.conc(both,t), PK.conc(a,t)+PK.conc(b,t), 1e-12, `t=${t}`));
+  const i=PK.inspectAt(both,8,2,12);
+  assert.equal(i.infusing.length, 2);
+  near(i.infusing.reduce((s,r)=>s+r.rate,0), 100+150, 1e-9, "combined rate");
+});
+
+test("a long infusion settles at rate ÷ CL", ()=>{
+  const p=custom([inf(0,8400,168)]), CL=kOf(p)*vOf(p);
+  rel(PK.conc(p,160), 50/CL, 1e-9, "50 mg/h plateau");
+});
+
+test("a loading bolus of plateau × V makes an infusion flat from the first minute", ()=>{
+  const base=custom([inf(0,1440,24)]), k=kOf(base), V=vOf(base), Css=60/(k*V);
+  const p=custom([bolus(0,Math.round(Css*V*10)/10,{type:"loading"}), inf(0,1440,24)]);
+  for(let t=0;t<=24;t+=0.25) rel(PK.conc(p,t), Css, 2e-4, `t=${t}`);   // amounts are kept to 0.1 mg
+  assert.ok(PK.conc(base,6) < 0.8*Css, "the infusion alone is still climbing");
+});
+
+test("with mixed routes, F and kₐ only change the oral doses", ()=>{
+  const list=[oral(0,500), bolus(8,300), inf(16,600,2)];
+  const p1=custom(list,{F:0.9}), p2=custom(list,{F:0.45}), ivOnly=custom([bolus(8,300), inf(16,600,2)]);
+  const oralOnly=custom([oral(0,500)],{F:0.9});
+  sampleTimes.forEach(t=>{
+    near(PK.conc(p1,t)-PK.conc(p2,t), PK.conc(oralOnly,t)/2, 1e-12, `F halves only the oral part, t=${t}`);
+    near(PK.conc(p1,t)-PK.conc(oralOnly,t), PK.conc(ivOnly,t), 1e-12, `IV part untouched, t=${t}`);
+  });
+  const fast=custom(list,{ka:3});
+  near(PK.conc(fast,12)-PK.conc(ivOnly,12), PK.conc(custom([oral(0,500)],{ka:3}),12), 1e-12, "kₐ too");
+});
+
+test("a custom schedule's AUC counts each dose by its own route", ()=>{
+  const p=custom([oral(0,500), bolus(8,300), inf(16,600,2)],{F:0.8}), CL=kOf(p)*vOf(p);
+  rel(PK.derived(p).auc, (0.8*500+300+600)/CL, 1e-12);
+  rel(PK.windowStats(p,168,2,12).auc, PK.derived(p).auc, 0.005, "the window captures it all by 168 h");
+  assert.equal(PK.derived(p).totalMg, 1400);
+});
+
+test("window totals count only what an infusion has delivered", ()=>{
+  const p=custom([bolus(0,200), inf(0,2400,24)]);
+  assert.deepEqual(PK.doseTotals(p,6), {n:2, mg:200+600});
+  assert.deepEqual(PK.doseTotals(p,48), {n:2, mg:2600});
+});
+
+test("routes and durations are validated", ()=>{
+  const L=PK.normalizeEvents([{t:0,mg:500}, {t:4,mg:500,route:"rectal"}, {t:8,mg:500,route:"inf"}, {t:10,mg:500,route:"inf",dur:0},
+    {t:12,mg:500,route:"inf",dur:"x"}, {t:20,mg:500,route:"inf",dur:900}], {route:"iv", tinf:2});
+  assert.deepEqual(L.map(e=>[e.t,e.route]), [[0,"iv"],[0,"inf"],[4,"iv"],[8,"inf"],[10,"inf"],[12,"inf"]],
+    "missing or unknown routes take the scenario's");
+  assert.deepEqual(L.filter(e=>e.route==="inf").map(e=>[e.t,e.dur]), [[0,168],[8,2],[10,0.25],[12,2]],
+    "durations default to T·inf, clamp to 0.25–168 h, and a 900 h infusion starts at 0 so it ends by 168 h");
+  assert.ok(!("dur" in L.find(e=>e.route==="iv")), "only infusions carry a duration");
+  const late=PK.normalizeEvents([{t:160,mg:500,route:"inf",dur:24}]);
+  assert.deepEqual([late[0].t, late[0].dur], [144, 24], "an infusion ends by 168 h, so its start is held back");
+  const big=PK.normalizeEvents([{t:0,mg:99999,route:"inf",dur:48}, {t:1,mg:99999,route:"iv"}, {t:2,mg:99999}]);
+  assert.deepEqual(big.map(e=>e.mg), [10000,4000,4000], "infusions may carry up to 10,000 mg");
+  const back=PK.normalizeEvents([Object.assign({}, big[0], {route:"oral"})]);
+  assert.deepEqual([back[0].mg, "dur" in back[0]], [4000, false], "switching an infusion to oral drops its duration and caps its amount");
+});
+
+test("a missed infusion adds nothing and isn't running", ()=>{
+  const p=custom([bolus(0,300), inf(4,1200,12,{status:"missed"})]), q=custom([bolus(0,300)]);
+  sampleTimes.forEach(t=> near(PK.conc(p,t), PK.conc(q,t), 1e-12, `t=${t}`));
+  assert.deepEqual(PK.inspectAt(p,8,2,12).infusing, []);
+  assert.deepEqual(PK.doseTotals(p,24), {n:1, mg:300});
+});
+
+test("moving an infusion keeps its duration and stops where it would end past 168 h", ()=>{
+  const L=PK.normalizeEvents([bolus(0,300), inf(12,1200,24)]);
+  const id=L[1].id, moved=PK.moveEvent(L,id,160);
+  assert.deepEqual([moved[1].t, moved[1].dur, moved[1].mg], [144, 24, 1200]);
+  assert.deepEqual(PK.moveEvent(L,id,30)[1], Object.assign({}, L[1], {t:30}));
+});
+
+test("inspectAt describes a running infusion", ()=>{
+  const p=custom([inf(0,1440,24)]);
+  const i=PK.inspectAt(p,6,2,12);
+  assert.deepEqual(i.infusing, [{start:0, end:24, rate:60, delivered:360, mg:1440}]);
+  assert.deepEqual([i.last.route, i.last.dur], ["inf", 24]);
+  assert.equal(i.trend, "rising");
+  assert.deepEqual(PK.inspectAt(p,24,2,12).infusing, [], "stopped at its end");
+  assert.equal(PK.inspectAt(p,24,2,12).trend, "peak");
+});
+
+test("the peak at an infusion's end is found exactly", ()=>{
+  const p=custom([inf(0.37,900,2.71)]), end=0.37+2.71;
+  const e=PK.extrema(p,24);
+  near(e.peaks[0].t, end, 1e-9, "extrema");
+  const w=PK.windowStats(p,24,2,12);
+  near(w.tmax, end, 1e-9, "window Cmax time"); near(w.cmax, PK.conc(p,end), 1e-12, "window Cmax");
+});
+
+test("routeOf names the route every dose uses", ()=>{
+  assert.equal(PK.routeOf(scenario({route:"iv"})), "iv");
+  assert.equal(PK.routeOf(custom([inf(0,500,2), inf(8,500,4)])), "inf");
+  assert.equal(PK.routeOf(custom([oral(0,500), bolus(8,500)])), "mixed");
+  assert.equal(PK.routeOf(custom([],{route:"iv"})), "iv", "an empty schedule falls back to the scenario's route");
+});
+
+test("F, kₐ and T·inf are relevant only where they shape the curve", ()=>{
+  assert.equal(PK.isRelevant("F", custom([bolus(0,500), inf(4,500,2)])), false);
+  assert.equal(PK.isRelevant("ka", custom([bolus(0,500), oral(4,500)])), true);
+  assert.equal(PK.isRelevant("tinf", custom([inf(0,500,2)],{route:"inf"})), false, "each infusion has its own duration");
+  assert.equal(PK.isRelevant("tinf", scenario({route:"inf"})), true);
+});
+
+test("links: schedules v2 could express are written exactly as before", ()=>{
+  const p=custom([ev(0,500), ev(8,500,{status:"missed"})],{route:"inf", tinf:2});
+  const link=PK.encodeLink({mode:"sim", s:p, base:null, view:V});
+  assert.equal(link, "v=2&s=route:inf,dosing:custom,tinf:2,ev:0@500;8@500m");
+  const old=PK.decodeLink("#v=2&s=route:iv,dosing:custom,ev:0@500L;12@250m").s;
+  assert.deepEqual(old.events.map(e=>[e.t,e.route,e.type,e.status]), [[0,"iv","loading","given"],[12,"iv","maintenance","missed"]],
+    "an old link's doses take the scenario's route");
+  const oldInf=PK.decodeLink("#v=2&s=route:inf,tinf:3,dosing:custom,ev:0@500").s;
+  assert.deepEqual([oldInf.events[0].route, oldInf.events[0].dur], ["inf", 3]);
+});
+
+test("links: mixed routes and per-infusion durations round-trip as v3", ()=>{
+  const p=custom([bolus(0,350,{type:"loading"}), inf(0,1456,24), oral(30,500), inf(40,200,0.5,{status:"missed"})],{route:"iv"});
+  const link=PK.encodeLink({mode:"sim", s:p, base:null, view:V});
+  assert.ok(link.startsWith("v=3&"), link);
+  assert.ok(link.includes("ev:0@350L;0@1456i24;30@500o;40@200i0.5m"), link);
+  const back=PK.decodeLink(link).s;
+  assert.deepEqual(back.events, p.events);
+  assert.equal(PK.decodeLink(link).version, 3);
+  const cmpLink=PK.encodeLink({mode:"cmp", a:scenario(), b:p, view:V});
+  assert.equal(PK.eventsKey(PK.decodeLink(cmpLink).b.events), PK.eventsKey(p.events));
+});
+
+test("links: garbled route codes are clamped or dropped", ()=>{
+  const s=PK.decodeLink("#v=3&s=dosing:custom,ev:0@500i0;1@500i999;2@500x;3@500i;4@500bi2;170@500i24;5@99999i2;6@99999b;7@300o").s;
+  assert.deepEqual(s.events.map(e=>`${e.t}@${e.mg}${e.route==="inf"?"i"+e.dur:e.route==="iv"?"b":"o"}`),
+    ["0@500i0.25","0@500i168","5@10000i2","6@4000b","7@300o","144@500i24"]);
+});
+
+test("library items carry mixed-route schedules", ()=>{
+  const p=custom([bolus(0,350), inf(0,1456,24), oral(30,500)],{route:"iv"});
+  const it=PK.parseLibrary(PK.exportLibrary([PK.libraryItem("Mixed", {mode:"sim", s:p, view:V})])).library.items[0];
+  assert.deepEqual(PK.decodeLink(it.link).s.events, p.events);
+});
+
+test("A and B never share a dose's route or duration", ()=>{
+  let c=PK.cmpApply(PK.newComparison(), "a", {dosing:"custom", events:[bolus(0,300), inf(0,1200,12)]});
+  c=PK.cmpCopy(c,"a","b");
+  assert.deepEqual(c.b.events, c.a.events);
+  c.a.events[1].dur=99; c.a.events[1].route="oral";
+  assert.deepEqual([c.b.events[1].route, c.b.events[1].dur], ["inf", 12]);
+  assert.deepEqual(PK.cloneEvents([inf(0,500,3,{id:"x"})])[0], inf(0,500,3,{id:"x"}), "cloning keeps route and duration");
+});
+
+test("lesson: loading bolus + infusion", ()=>{
+  const {base,cur,mec}=lesson("ldinf"), k=kOf(cur), V=vOf(cur), CL=k*V, inf24=base.events[0];
+  const Css=inf24.mg/inf24.dur/CL;
+  near(inf24.mg/inf24.dur, 60.7, 0.05, "60.7 mg/h"); near(Css, 10, 0.01, "plateau 10 mg/L");
+  const reach=(level)=>{ for(let t=0;t<=24;t+=0.01) if(PK.conc(base,t)>=level) return t; return null; };
+  near(reach(mec), 9.3, 0.05, "9.3 h to the 8 mg/L effective level");
+  near(reach(0.9*Css), 13.3, 0.05, "13.3 h to within 10% of the plateau");
+  near(13.3/(Math.LN2/k), 3.3, 0.05, "3.3 half-lives");
+  const b=cur.events.find(e=>e.route==="iv");
+  assert.equal(b.mg, 350); rel(10*V, 350, 1e-9, "plateau × V = 10 mg/L × 35 L");
+  for(let t=0;t<=24;t+=0.1) rel(PK.conc(cur,t), Css, 1e-3, `flat at t=${t}`);
+});
+
+test("lesson: continuous vs intermittent infusion", ()=>{
+  const {base,cur,T,mtc}=lesson("cvi"), CL=kOf(cur)*vOf(cur);
+  assert.equal(base.events.reduce((s,e)=>s+e.mg,0), 2880); assert.equal(cur.events.reduce((s,e)=>s+e.mg,0), 2880);
+  assert.equal(cur.events.length, 8); assert.ok(cur.events.every(e=>e.route==="inf" && e.dur===1 && e.mg===360));
+  near(base.events[0].mg/base.events[0].dur, 60, 1e-9, "60 mg/h");
+  near(PK.conc(base,47), 60/CL, 0.01, "holds 9.9 mg/L"); near(60/CL, 9.9, 0.05);
+  const x=PK.extrema(cur,T), lastPeak=x.peaks[x.peaks.length-1], lastTrough=x.troughs[x.troughs.length-1];
+  near(lastPeak.c, 14.6, 0.05, "peaks near 14.6 mg/L"); assert.ok(lastPeak.c > mtc, "over the toxic line");
+  near(lastTrough.c, 6.1, 0.05, "about 6.1 mg/L before each dose");
+  let auc=0; const N=600; for(let i=0;i<N;i++){ const t=42+6*(i+0.5)/N; auc+=PK.conc(cur,t)*6/N; }
+  near(auc/6, 9.9, 0.05, "the same 9.9 mg/L on average over an interval");
+  rel(PK.derived(cur).auc, PK.derived(base).auc, 1e-12, "the same total exposure");
 });
