@@ -373,8 +373,12 @@
   .sc-name:hover{border-color:var(--glass-line)}
   .sc-name:focus{outline:none;border-color:var(--cyan);background:rgba(5,8,16,.7)}
   .sc-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
-    border:1px solid var(--glass-line);border-radius:5px;padding:1px 6px;visibility:hidden}
-  .sc-card.on .sc-badge{visibility:visible;color:#C9D0E6}
+    border:1px solid var(--glass-line);border-radius:5px;padding:1px 6px;display:none}
+  .sc-card.on .sc-badge{display:inline-block;color:#C9D0E6}
+  .sc-reset{border:1px solid var(--glass-line);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
+    font-size:11px;padding:2px 8px;border-radius:6px;flex-shrink:0}
+  .sc-reset:hover{color:#fff;border-color:var(--glass-line-2)}
+  .sc-reset:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .sc-sum{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.55}
   .sc-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
   .sc-actions .abtn{padding:7px 11px}
@@ -434,6 +438,7 @@
     .cmp-tbl{font-size:10.5px}
     .cmp-tbl th,.cmp-tbl td{padding:6px 5px}
     .cmp-tbl td:first-child{white-space:normal;min-width:78px}
+    .sc-reset{padding:6px 11px;font-size:12px}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -570,11 +575,11 @@
           </div>
           <div class="sc-cards">
             <div class="sc-card a" data-side="a">
-              <div class="sc-top"><i class="sdot a"></i><input class="sc-name" id="nameA" maxlength="40" aria-label="Name of scenario A"><span class="sc-badge">Editing</span></div>
+              <div class="sc-top"><i class="sdot a"></i><input class="sc-name" id="nameA" maxlength="40" aria-label="Name of scenario A"><span class="sc-badge">Editing</span><button class="sc-reset" data-side="a" aria-label="Reset scenario A to the defaults">Reset</button></div>
               <div class="sc-sum" id="sumA"></div>
             </div>
             <div class="sc-card b" data-side="b">
-              <div class="sc-top"><i class="sdot b"></i><input class="sc-name" id="nameB" maxlength="40" aria-label="Name of scenario B"><span class="sc-badge">Editing</span></div>
+              <div class="sc-top"><i class="sdot b"></i><input class="sc-name" id="nameB" maxlength="40" aria-label="Name of scenario B"><span class="sc-badge">Editing</span><button class="sc-reset" data-side="b" aria-label="Reset scenario B to the defaults">Reset</button></div>
               <div class="sc-sum" id="sumB"></div>
             </div>
           </div>
@@ -757,11 +762,10 @@
   let baseline=null;   // {p, label} (simulator)
   let lesson=null;     // active LESSONS entry (simulator)
   let simSaved=null;   // the simulator scenario while Compare is open
-  const DEFAULT_NAMES={a:"Scenario A", b:"Scenario B"};
+  const DEFAULT_NAMES=PK.DEFAULT_NAMES;
   const cmp={a:null, b:null, names:{...DEFAULT_NAMES}, edit:"a", lock:"", template:null};
   const COL={a:{line:"#3DF2E0", fill:"rgba(61,242,224,0.05)", glow:"rgba(61,242,224,0.35)"},
              b:{line:"#F383E3", fill:"rgba(243,131,227,0.05)", glow:"rgba(243,131,227,0.35)"}};
-  const otherSide=()=> cmp.edit==="a" ? "b" : "a";
   // Scenarios A and B, with the side being edited read live from the controls.
   function pair(){
     const live=snapshot();
@@ -1521,15 +1525,14 @@
   plotEl.addEventListener("touchend",hideCross);
 
   /* ================= CONTROLS ================= */
-  // Every edit goes through here. In compare mode it saves the edited side and, when "Vary only" is set,
-  // copies every other changed setting to the other side.
+  // Every edit goes through here. In compare mode the engine applies it to the edited side and, when
+  // "Vary only" is set, mirrors every other changed setting to the other side.
   function changed(keys){
     if(mode==="cmp"){
-      cmp[cmp.edit]=snapshot();
-      if(cmp.lock){
-        const o=otherSide();
-        keys.filter(k=>PK_KEYS.includes(k) && k!==cmp.lock).forEach(k=> cmp[o][k]=state[k]);
-      }
+      const patch={};
+      keys.filter(k=>PK_KEYS.includes(k)).forEach(k=> patch[k]=state[k]);
+      Object.assign(cmp, PK.cmpApply(cmp, cmp.edit, patch));
+      cmp[cmp.edit]=snapshot();   // the edited side always matches the controls exactly
       setTemplate(null);
     }
     render();
@@ -1710,28 +1713,19 @@
     state.drug=null;
     syncControls(); render();
   }
-  function setLock(k){
+  // Save the live side, apply a comparison operation from the engine, and reload the controls.
+  function cmpOp(op, keepTemplate){
     cmp[cmp.edit]=snapshot();
-    cmp.lock=k;
-    if(k) cmp.b=Object.assign({},cmp.a,{[k]:cmp.b[k]});   // B keeps its own value for k and shares everything else with A
+    Object.assign(cmp, op(cmp));
     loadScenario(cmp[cmp.edit]);
+    state.drug=null;
+    if(!keepTemplate) setTemplate(null);
     syncControls(); render();
   }
-  function copySide(from,to){
-    cmp[cmp.edit]=snapshot();
-    cmp[to]=Object.assign({},cmp[from]);
-    loadScenario(cmp[cmp.edit]);
-    setTemplate(null);
-    syncControls(); render();
-  }
-  function swapSides(){
-    cmp[cmp.edit]=snapshot();
-    [cmp.a,cmp.b]=[cmp.b,cmp.a];
-    [cmp.names.a,cmp.names.b]=[cmp.names.b,cmp.names.a];
-    loadScenario(cmp[cmp.edit]);
-    setTemplate(null);
-    syncControls(); render();
-  }
+  const setLock=k=> cmpOp(c=>PK.cmpSetLock(c,k), true);
+  const copySide=(from,to)=> cmpOp(c=>PK.cmpCopy(c,from,to));
+  const swapSides=()=> cmpOp(PK.cmpSwap);
+  const resetSide=side=> cmpOp(c=>PK.cmpReset(c,side));
   function loadTemplate(t){
     showTab("cmp");
     const L=LESSONS.find(x=>x.id===t.lesson);
@@ -1760,7 +1754,8 @@
     byId("lockSel").innerHTML=`<option value="">Off (edit freely)</option>`+PK.LOCKS.map(([k,n])=>`<option value="${k}">${n}</option>`).join("");
     byId("lockSel").addEventListener("change",e=>setLock(e.target.value));
     document.querySelectorAll(".sc-card").forEach(card=>
-      card.addEventListener("click",e=>{ if(!e.target.closest(".sc-name")) setEdit(card.dataset.side); }));
+      card.addEventListener("click",e=>{ if(!e.target.closest(".sc-name, .sc-reset")) setEdit(card.dataset.side); }));
+    document.querySelectorAll(".sc-reset").forEach(btn=> btn.addEventListener("click",()=>resetSide(btn.dataset.side)));
     ["a","b"].forEach(side=>{
       const input=byId(side==="a"?"nameA":"nameB");
       input.addEventListener("focus",()=>setEdit(side));

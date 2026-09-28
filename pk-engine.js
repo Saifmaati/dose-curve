@@ -261,6 +261,42 @@
      look:"B dips below the effective level after the gap, then climbs back over the next few doses."}
   ];
 
+  /* ================= COMPARE STATE ================= */
+  // A comparison is {a, b, names:{a,b}, lock, edit}. These operations never modify their input; each
+  // returns a new comparison, so the page can't accidentally change one scenario while editing the other.
+  const DEFAULT_NAMES={a:"Scenario A", b:"Scenario B"};
+  const otherOf=side=> side==="a" ? "b" : "a";
+  function newComparison(p){
+    return {a:scenario(p), b:scenario(p), names:Object.assign({},DEFAULT_NAMES), lock:"", edit:"a"};
+  }
+  // Apply edited settings to one side. With "Vary only" set, every other changed setting is mirrored to
+  // the other side, so the two scenarios keep differing in that one setting only.
+  function cmpApply(c, side, patch){
+    const o=otherOf(side), next=Object.assign({},c,{[side]:Object.assign({},c[side],patch)});
+    if(c.lock){
+      const shared={};
+      Object.keys(patch).forEach(k=>{ if(PK_KEYS.includes(k) && k!==c.lock) shared[k]=patch[k]; });
+      next[o]=Object.assign({},c[o],shared);
+    }
+    return next;
+  }
+  function cmpCopy(c, from, to){
+    return Object.assign({},c,{[to]:Object.assign({},c[from])});
+  }
+  function cmpSwap(c){
+    return Object.assign({},c,{a:Object.assign({},c.b), b:Object.assign({},c.a), names:{a:c.names.b, b:c.names.a}});
+  }
+  // Turning a lock on makes B match A in everything except the locked setting.
+  function cmpSetLock(c, k){
+    if(!k) return Object.assign({},c,{lock:""});
+    return Object.assign({},c,{lock:k, b:Object.assign({},c.a,{[k]:c.b[k]})});
+  }
+  // Back to the app defaults, with the default name. The other side is left exactly as it was, so a
+  // "Vary only" lock (which ties the two sides together) is switched off rather than broken silently.
+  function cmpReset(c, side){
+    return Object.assign({},c,{[side]:scenario(), names:Object.assign({},c.names,{[side]:DEFAULT_NAMES[side]}), lock:""});
+  }
+
   /* ================= SHARE LINKS ================= */
   // A scenario is written as the settings that differ from DEFAULTS, e.g. "D:400,clFn:50" ("" = defaults).
   function encodeScenario(p){
@@ -353,5 +389,6 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, scenario,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
+    DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink};
 });
