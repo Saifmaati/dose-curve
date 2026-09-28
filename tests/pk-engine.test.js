@@ -266,7 +266,7 @@ test("decoding ignores unknown keys and bad values, and clamps numbers", ()=>{
 });
 
 test("full links round-trip, including names with special characters", ()=>{
-  const view={duration:96, mec:4, mtc:16, scale:"log", zoom:"last"};
+  const view=Object.assign({}, PK.VIEW_DEFAULTS, {duration:96, mec:4, mtc:16, scale:"log", zoom:"last"});
   // B differs from A only in dose, as the app guarantees while "Vary only: dose" is on
   const cmp={mode:"cmp", a:scenario({D:600,tau:24,dosing:"repeated",nDoses:5}), b:scenario({D:300,tau:24,dosing:"repeated",nDoses:5}),
     nameA:"Once daily & more", nameB:"B = #2, 50%", lock:"D", edit:"b", view};
@@ -278,7 +278,7 @@ test("full links round-trip, including names with special characters", ()=>{
   assert.deepEqual(back.view, view);
 
   const sim={mode:"sim", s:scenario({clFn:50}), base:scenario(), baseLabel:"before", lesson:"cl",
-    view:{duration:24, mec:2, mtc:12, scale:"lin", zoom:"full"}};
+    view:Object.assign({}, PK.VIEW_DEFAULTS, {duration:24, mec:2, mtc:12, scale:"lin", zoom:"full"})};
   const s2=PK.decodeLink(PK.encodeLink(sim));
   assert.deepEqual(s2.s, sim.s); assert.deepEqual(s2.base, scenario());
   assert.equal(s2.baseLabel, "before"); assert.equal(s2.lesson, "cl");
@@ -599,7 +599,7 @@ test("doseSchedule lists every scheduled dose in time order, missed ones flagged
 
 const V=PK.VIEW_DEFAULTS;
 const simState=()=>({mode:"sim", s:scenario({dosing:"repeated", clFn:50}), base:scenario({dosing:"repeated"}), baseLabel:"before", lesson:"cl",
-  view:{duration:72, mec:3, mtc:15, scale:"lin", zoom:"full"}});
+  view:Object.assign({}, PK.VIEW_DEFAULTS, {duration:72, mec:3, mtc:15, scale:"lin", zoom:"full"})});
 const cmpState=()=>({mode:"cmp", a:custom([ev(0,1000,{type:"loading"}), ev(12,500), ev(24,500,{status:"missed"})]),
   b:scenario({dosing:"repeated", tau:12}), nameA:"Custom plan", nameB:"Every 12 h", lock:"", edit:"b", view:V});
 
@@ -1040,4 +1040,149 @@ test("lesson: continuous vs intermittent infusion", ()=>{
   let auc=0; const N=600; for(let i=0;i<N;i++){ const t=42+6*(i+0.5)/N; auc+=PK.conc(cur,t)*6/N; }
   near(auc/6, 9.9, 0.05, "the same 9.9 mg/L on average over an interval");
   rel(PK.derived(cur).auc, PK.derived(base).auc, 1e-12, "the same total exposure");
+});
+
+/* ---------- pharmacodynamics (concentration → effect) ---------- */
+
+const pd=o=>PK.normalizeScenario(scenario(Object.assign({route:"iv"}, o)));
+
+test("the sigmoid Emax curve: baseline, half-max at EC50, ceiling and steepness", ()=>{
+  const p=pd({e0:10, emax:80, ec50:4, hill:2});
+  assert.equal(PK.effectOf(p,0), 10);
+  near(PK.effectOf(p,4), 10+40, 1e-12, "E0 + Emax/2 at EC50");
+  near(PK.effectOf(p,8), 10+80*4/5, 1e-12, "2× EC50 with n = 2 gives 4/5 of Emax");
+  near(PK.effectOf(p,1e9), 90, 1e-9, "the ceiling is E0 + Emax");
+  assert.equal(PK.effectOf(p,1e-300), 10, "tiny concentrations stay exact");
+  assert.ok(Number.isFinite(PK.effectOf(p,1e300)));
+  [1,2,4].forEach(n=> near(PK.effectOf(pd({hill:n}),8), 100*2**n/(1+2**n), 1e-9, `n = ${n}`));
+});
+
+test("concForEffect inverts the curve, and knows what's out of reach", ()=>{
+  const p=pd({e0:5, emax:70, ec50:3, hill:1.7});
+  [6,20,40,60,74].forEach(E=> near(PK.effectOf(p,PK.concForEffect(p,E)), E, 1e-9, `E = ${E}`));
+  assert.equal(PK.concForEffect(p,5), 0, "the baseline needs no drug");
+  assert.equal(PK.concForEffect(p,75), null, "E0 + Emax is never reached");
+  assert.equal(PK.concForEffect(p,90), null);
+});
+
+test("time above a target effect matches the IV bolus closed form", ()=>{
+  const p=pd({D:500, ec50:4}), k=PK.keOf(p), C0=500/PK.vOf(p), ct=PK.concForEffect(p,60);
+  const e=PK.effectStats(p,24,60);
+  near(e.tAbove, Math.log(C0/ct)/k, 1e-5, "ln(C0 / C_target) / kₑ");
+  assert.equal(e.onset, 0); near(e.peak, PK.effectOf(p,C0), 1e-9); assert.equal(e.tPeak, 0);
+});
+
+test("doubling an IV bolus adds exactly one half-life above target", ()=>{
+  const half=Math.LN2/PK.keOf(pd({}));
+  [[500,50],[300,30],[800,70]].forEach(([D,tg])=>{
+    const a=PK.effectStats(pd({D, ec50:2}),48,tg), b=PK.effectStats(pd({D:2*D, ec50:2}),48,tg);
+    near(b.tAbove-a.tAbove, half, 1e-6, `${D} mg, ${tg}% target`);
+  });
+});
+
+test("an oral dose reaches the target where its concentration crosses C_target", ()=>{
+  const p=PK.normalizeScenario(scenario({ec50:4})), ct=PK.concForEffect(p,50);
+  let lo=0, hi=PK.derived(p).tmax;
+  for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(PK.conc(p,m)<ct) lo=m; else hi=m; }
+  const e=PK.effectStats(p,24,50);
+  near(e.onset, hi, 1e-4, "onset"); near(e.tPeak, PK.windowStats(p,24,0,Infinity).tmax, 1e-12);
+});
+
+test("targets out of reach, or already met at baseline", ()=>{
+  const partial=PK.effectStats(pd({ec50:2, emax:60}),24,70);
+  assert.deepEqual([partial.tAbove, partial.onset, partial.ct], [0, null, null]);
+  const baseline=PK.effectStats(pd({e0:30}),24,20);
+  near(baseline.tAbove, 24, 1e-9, "the whole window"); assert.equal(baseline.onset, 0);
+});
+
+test("PD settings never change the concentration curve", ()=>{
+  const a=pd({}), b=pd({e0:20, emax:50, ec50:30, hill:3});
+  sampleTimes.forEach(t=> assert.equal(PK.conc(a,t), PK.conc(b,t)));
+  const flat=custom([bolus(0,350,{type:"loading"}), inf(0,1456,24)]);
+  const e=[1,6,12,20].map(t=>PK.effectOf(flat, PK.conc(flat,t)));
+  e.forEach(v=> near(v, e[0], 0.05, "a flat concentration gives a flat effect"));
+});
+
+test("PD settings are clamped, and E0 + Emax stays within 100%", ()=>{
+  assert.equal(pd({e0:40, emax:90}).emax, 60);
+  const s=PK.decodeScenario("ec50:0,hill:99,e0:-5,emax:1");
+  assert.deepEqual([s.ec50, s.hill, s.e0, s.emax], [0.1, 5, 0, 5]);
+  assert.deepEqual(PK.decodeScenario("e0:50,emax:100").emax, 50);
+});
+
+test("links: PD settings round-trip as v4, and older links stay as they were", ()=>{
+  const s=pd({ec50:8, emax:80, hill:2.5, e0:10}), view=Object.assign({}, V, {pd:true, etgt:60});
+  const link=PK.encodeLink({mode:"sim", s, base:null, view});
+  assert.ok(link.startsWith("v=4&"), link);
+  assert.ok(link.includes("w=pd:1,etgt:60"), link);
+  const back=PK.decodeLink(link);
+  assert.deepEqual(back.s, s); assert.deepEqual(back.view, view); assert.equal(back.version, 4);
+  assert.equal(PK.encodeLink({mode:"sim", s:scenario(), base:null, view:V}), "v=1&s=", "defaults still write v1");
+  assert.ok(PK.encodeLink({mode:"sim", s:scenario(), base:null, view:Object.assign({},V,{pd:true})}).startsWith("v=4"), "the effect view alone is v4");
+  const old=PK.decodeLink("#v=1&s=D:400&w=duration:48");
+  assert.deepEqual([old.view.pd, old.view.etgt, old.s.ec50], [false, 50, 4], "old links open with the effect view off");
+  const bad=PK.decodeLink("#v=4&s=ec50:abc&w=pd:yes,etgt:500").view;
+  assert.deepEqual([bad.pd, bad.etgt], [false, 99]);
+});
+
+test("library items and comparisons carry PD settings", ()=>{
+  const a=pd({ec50:2}), b=pd({ec50:8, hill:3});
+  const st={mode:"cmp", a, b, nameA:"", nameB:"", lock:"", edit:"b", view:Object.assign({},V,{pd:true})};
+  const it=PK.parseLibrary(PK.exportLibrary([PK.libraryItem("PD", st)])).library.items[0];
+  const back=PK.decodeLink(it.link);
+  assert.deepEqual([back.a, back.b, back.view.pd], [a, b, true]);
+});
+
+test("compare rows add the effect metrics only when asked", ()=>{
+  const a=pd({ec50:2}), b=pd({ec50:8});
+  assert.ok(!PK.compareRows(a,b,24,2,30).rows.some(r=>r.key==="epeak"));
+  const rows=PK.compareRows(a,b,24,2,30,50).rows, row=k=>rows.find(r=>r.key===k);
+  near(row("epeak").a, 87.72, 0.01); near(row("epeak").b, 64.10, 0.01);
+  near(row("eabove").a, 11.35, 0.01); near(row("eabove").b, 3.35, 0.01);
+  assert.equal(PK.diff("pp", row("epeak").a, row("epeak").b).dir, -1);
+});
+
+test("“Vary only EC50” keeps B's EC50 and shares everything else", ()=>{
+  let c=PK.cmpApply(PK.newComparison({route:"iv"}), "b", {ec50:8, hill:2});
+  c=PK.cmpSetLock(c,"ec50");
+  assert.deepEqual([c.b.ec50, c.b.hill], [8, 1], "B takes A's Hill slope");
+  assert.ok(PK.lockHolds(c));
+  c=PK.cmpApply(c,"b",{emax:70});
+  assert.equal(c.a.emax, 70, "other changes are mirrored to A");
+  assert.ok(PK.LOCKS.some(l=>l[0]==="hill") && PK.LOCKS.some(l=>l[0]==="emax"));
+});
+
+const pdLesson=id=>{ const x=lesson(id); return Object.assign(x, {tg:x.L.view.etgt}); };
+
+test("lesson: potency (EC50)", ()=>{
+  const {base,cur,T,tg}=pdLesson("potency"), a=PK.effectStats(base,T,tg), b=PK.effectStats(cur,T,tg);
+  sampleTimes.forEach(t=> assert.equal(PK.conc(base,t), PK.conc(cur,t)));
+  near(a.peak, 88, 0.5); near(b.peak, 64, 0.5); near(a.tAbove, 11.3, 0.05); near(b.tAbove, 3.3, 0.05);
+  const four=PK.normalizeScenario(Object.assign({}, cur, {D:2000}));
+  sampleTimes.forEach(t=> near(PK.effectOf(four,PK.conc(four,t)), PK.effectOf(base,PK.conc(base,t)), 1e-9, `4× the dose matches, t=${t}`));
+});
+
+test("lesson: efficacy (Emax)", ()=>{
+  const {base,cur,T,tg}=pdLesson("efficacy"), a=PK.effectStats(base,T,tg), b=PK.effectStats(cur,T,tg);
+  near(a.peak, 88, 0.5); near(a.tAbove, 6.5, 0.05);
+  near(b.peak, 53, 0.5); assert.equal(b.tAbove, 0); assert.equal(b.onset, null);
+  const big=PK.effectStats(PK.normalizeScenario(Object.assign({}, cur, {D:2000})),T,tg);
+  near(big.peak, 58, 0.5, "2,000 mg only reaches 58%"); assert.equal(big.tAbove, 0);
+});
+
+test("lesson: Hill slope", ()=>{
+  const {base,cur,T,tg}=pdLesson("hill"), k=PK.keOf(cur);
+  [base,cur].forEach(p=> near(PK.effectStats(p,T,50).tAbove, 7.3, 0.05, "both cross 50% at 7.3 h"));
+  near(PK.effectStats(base,T,tg).peak, 78, 0.5); assert.equal(PK.effectStats(base,T,tg).tAbove, 0);
+  near(PK.effectStats(cur,T,tg).peak, 99, 0.5); near(PK.effectStats(cur,T,tg).tAbove, 5.3, 0.05);
+  near(Math.log(PK.concForEffect(cur,90)/PK.concForEffect(cur,10))/k, 6.3, 0.05, "90% → 10% in 6.3 h");
+  near(Math.log(PK.concForEffect(base,90)/PK.concForEffect(base,10))/k, 25, 0.5, "25 h with n = 1");
+});
+
+test("lesson: dose vs duration of effect", ()=>{
+  const {base,cur,T,tg}=pdLesson("pdose"), a=PK.effectStats(base,T,tg), b=PK.effectStats(cur,T,tg);
+  near(a.peak, 78, 0.5); near(b.peak, 88, 0.5);
+  near(a.tAbove, 7.3, 0.05); near(b.tAbove, 11.3, 0.05);
+  near(b.tAbove-a.tAbove, Math.LN2/PK.keOf(cur), 1e-6, "exactly one half-life");
+  near(PK.effectStats(PK.normalizeScenario(Object.assign({}, cur, {D:2000})),T,tg).peak, 93, 0.5);
 });
