@@ -11,27 +11,32 @@
   "use strict";
 
   // Share-link format: 1 = single and repeated regimens; 2 adds custom dose schedules; 3 adds a route per
-  // dose and a duration per infusion. Each link is written at the lowest version that can hold it, so links
-  // that older pages understand stay exactly as they were.
-  const VERSION=3;
+  // dose and a duration per infusion; 4 adds the concentration–effect (PK/PD) settings. Each link is written
+  // at the lowest version that can hold it, so links that older pages understand stay exactly as they were.
+  const VERSION=4;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
-  const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events"];
+  const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
+    "e0","emax","ec50","hill"];
+  // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model).
+  const PD_KEYS=["e0","emax","ec50","hill"];
   const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
-    events:Object.freeze([])});
+    events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,24],V:[5,120],tau:[2,24],
-    nDoses:[2,20],missed:[1,19],wt:[40,120],clFn:[25,150]};
+    nDoses:[2,20],missed:[1,19],wt:[40,120],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5]};
   const INTEGER_KEYS=["nDoses","missed"];
-  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full"};
-  const VIEW_RANGES={duration:[6,168],mec:[0,10000],mtc:[0,10000]};
+  // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
+  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50};
+  const VIEW_RANGES={duration:[6,168],mec:[0,10000],mtc:[0,10000],etgt:[1,99]};
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
-    ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"]];
+    ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
+    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"]];
 
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
@@ -131,6 +136,7 @@
   function normalizeScenario(p){
     const q=Object.assign({},p);
     if(q.missed>=q.nDoses) q.missed=1;
+    if(q.e0+q.emax>100) q.emax=100-q.e0;   // the effect is a % of the largest possible response
     q.events=normalizeEvents(q.events, q);
     return q;
   }
@@ -354,11 +360,49 @@
     return {peaks, troughs};
   }
 
+  /* ================= PHARMACODYNAMICS ================= */
+  // Sigmoid Emax model linked directly to plasma concentration (no effect-site delay):
+  // E = E0 + Emax·Cⁿ / (EC50ⁿ + Cⁿ), in % of the largest possible response. Written as Emax / (1 + (EC50/C)ⁿ)
+  // so that tiny and huge concentrations stay exact.
+  function effectOf(p, c){
+    return c>0 ? p.e0+p.emax/(1+Math.pow(p.ec50/c, p.hill)) : p.e0;
+  }
+  // The concentration that produces effect E: 0 when the baseline already reaches it, null when it's out of
+  // reach (E0 + Emax or more).
+  function concForEffect(p, E){
+    const f=(E-p.e0)/p.emax;
+    if(f<=0) return 0;
+    if(f>=1) return null;
+    return p.ec50*Math.pow(f/(1-f), 1/p.hill);
+  }
+  // Effect over [0, T] against a target effect. Effect rises with concentration, so the peak effect comes
+  // with the concentration peak, and "at or above target" means "concentration at or above ct". Crossings
+  // are interpolated between samples. onset is when the target is first reached (null if never).
+  function effectStats(p, T, target){
+    const w=windowStats(p,T,0,Infinity), ct=concForEffect(p,target), ev=doseEvents(p), N=2400, dt=T/N;
+    let above=0, onset=null;
+    if(ct!==null){
+      let t0=0, c0=conc(p,0,ev);
+      if(c0>=ct) onset=0;
+      for(let i=1;i<=N;i++){
+        const t1=i*dt, c1=conc(p,t1,ev), a0=c0>=ct, a1=c1>=ct;
+        if(a0 && a1) above+=dt;
+        else if(a0!==a1){
+          const tx=t0+(ct-c0)/(c1-c0)*dt;
+          if(a1){ above+=t1-tx; if(onset===null) onset=tx; } else above+=tx-t0;
+        }
+        t0=t1; c0=c1;
+      }
+    }
+    return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove:above, onset};
+  }
+
   /* ================= COMPARISON ================= */
   // Metrics for scenario a vs scenario b over the same window. kind says how the change is expressed:
   // pct = % change, ratio = % change of a ratio, pp = percentage points, abs = hours, count = doses.
   // A null value means the metric doesn't apply (shown as "—").
-  function compareRows(a, b, T, mec, mtc){
+  // With pd (a target effect, %), the effect rows are added too.
+  function compareRows(a, b, T, mec, mtc, pd){
     const wa=windowStats(a,T,mec,mtc), wb=windowStats(b,T,mec,mtc), da=derived(a), db=derived(b);
     const rows=[{key:"cmax", name:"Peak (Cmax)", unit:"mg/L", a:wa.cmax, b:wb.cmax, kind:"pct", dp:2}];
     if(a.dosing==="single" && b.dosing==="single") rows.push({key:"tmax", name:"Time of peak", unit:"h", a:wa.tmax, b:wb.tmax, kind:"abs", dp:1});
@@ -383,6 +427,13 @@
       {key:"tin", name:"Time in window", unit:"% of window", a:100*wa.tIn/T, b:100*wb.tIn/T, kind:"pp", dp:0},
       {key:"tabove", name:"Time above MTC", unit:"% of window", a:100*wa.tAbove/T, b:100*wb.tAbove/T, kind:"pp", dp:0},
       {key:"tbelow", name:"Time below MEC", unit:"% of window", a:100*wa.tBelow/T, b:100*wb.tBelow/T, kind:"pp", dp:0});
+    if(pd!=null){
+      const ea=effectStats(a,T,pd), eb=effectStats(b,T,pd);
+      rows.push(
+        {key:"epeak", name:"Peak effect", unit:"% of max", a:ea.peak, b:eb.peak, kind:"pp", dp:0},
+        {key:"eabove", name:`Time at or above ${pd}% effect`, unit:"h", a:ea.tAbove, b:eb.tAbove, kind:"abs", dp:1},
+        {key:"eonset", name:`Reaches ${pd}% effect at`, unit:"h", a:ea.onset, b:eb.onset, kind:"abs", dp:1});
+    }
     return {rows, wa, wb, da, db};
   }
 
@@ -482,7 +533,28 @@
      text:"Same 600 mg per day. Giving it as 300 mg every 12 h keeps average exposure the same, because AUC per day depends on the dosing rate rather than how it's split (the small AUC gap in the table is just drug still on board when the window closes). What changes is the swing: a lower peak and a higher trough.",
      tryThis:"Try 200 mg every 8 h and watch the swing narrow again.",
      view:{duration:120,mec:4,mtc:20},
-     base:{dosing:"repeated",D:600,thalf:8,ka:1,tau:24,nDoses:5}, cur:{dosing:"repeated",D:300,thalf:8,ka:1,tau:12,nDoses:10}}
+     base:{dosing:"repeated",D:600,thalf:8,ka:1,tau:24,nDoses:5}, cur:{dosing:"repeated",D:300,thalf:8,ka:1,tau:12,nDoses:10}},
+    // PK/PD: the same 500 mg IV bolus (V 35 L, t½ 4 h), read through different concentration–effect curves
+    {id:"potency", tag:"EC50", title:"Potency (EC50)", sum:"Same levels, less effect: needing more drug, not a weaker drug.", baseLabel:"EC50 2 mg/L",
+     text:"The concentration curves are identical; only the drug's EC50, the concentration that gives half the maximum effect, changes from 2 to 8 mg/L. The same levels now produce less effect: the peak falls from 88% to 64% and the time at or above the 50% target from 11.3 h to 3.3 h. That's lower potency, not lower efficacy: the maximum is still 100%.",
+     tryThis:"Raise the dose to 2,000 mg. Four times the dose makes four times the concentration, and the effect curve lands exactly on the baseline's.",
+     view:{duration:24,mec:2,mtc:30,pd:true,etgt:50},
+     base:{route:"iv",ec50:2}, cur:{route:"iv",ec50:8}},
+    {id:"efficacy", tag:"Emax", title:"Efficacy (Emax)", sum:"A ceiling no dose can break through.", baseLabel:"full agonist (Emax 100%)",
+     text:"Same concentrations and the same EC50 (2 mg/L), but the drug is a partial agonist whose maximum effect is 60%. The full agonist peaks at 88% and stays at or above the 70% target for 6.5 h. The partial agonist peaks at 53% and never reaches the target, because 70% is above its ceiling.",
+     tryThis:"Push the dose to 2,000 mg: the partial agonist creeps up to 58% and still never reaches 70%. Only a more efficacious drug can.",
+     view:{duration:24,mec:2,mtc:30,pd:true,etgt:70},
+     base:{route:"iv",ec50:2}, cur:{route:"iv",ec50:2,emax:60}},
+    {id:"hill", tag:"n", title:"Hill slope", sum:"A graded response vs an on/off switch.", baseLabel:"n = 1",
+     text:"Both curves pass 50% at the same moment, 7.3 h, when the concentration falls through EC50 (4 mg/L). The Hill slope decides how sharply the effect turns on and off around it. With n = 1 the response is graded: it peaks at 78% and never reaches the 80% target. With n = 4 it's switch-like: 99% at the peak, at or above 80% for 5.3 h, then falling from 90% to 10% in 6.3 h, a drop that would take 25 h with n = 1.",
+     tryThis:"Set the target back to 50%: both curves stay above it for exactly the same 7.3 h.",
+     view:{duration:24,mec:2,mtc:30,pd:true,etgt:80},
+     base:{route:"iv",ec50:4,hill:1}, cur:{route:"iv",ec50:4,hill:4}},
+    {id:"pdose", tag:"D → t", title:"Dose vs duration of effect", sum:"Doubling the dose buys one half-life.", baseLabel:"500 mg",
+     text:"Doubling a 500 mg IV bolus doubles every concentration, but the peak effect only rises from 78% to 88%: the drug is already near the top of its sigmoid. What the extra dose buys is time. The level needs one more half-life to fall back to EC50 (4 mg/L, which gives the 50% target), so the effect stays at or above target for 11.3 h instead of 7.3 h: exactly 4 h, one half-life, longer.",
+     tryThis:"Double it again to 2,000 mg: another 4 h above target, and the peak effect only reaches 93%.",
+     view:{duration:24,mec:2,mtc:30,pd:true,etgt:50},
+     base:{route:"iv",D:500}, cur:{route:"iv",D:1000}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -502,7 +574,15 @@
     {id:"cvi", lesson:"cvi", title:"Continuous vs intermittent infusion", nameA:"Continuous 60 mg/h", nameB:"360 mg over 1 h q6h",
      look:"Same 2,880 mg and the same average level: A holds 9.9 mg/L while B swings between about 6 and 14.6 mg/L."},
     {id:"miss", lesson:"miss", title:"On time vs missed dose", nameA:"Every dose taken", nameB:"Dose 6 missed",
-     look:"B dips below the effective level after the gap, then climbs back over the next few doses."}
+     look:"B dips below the effective level after the gap, then climbs back over the next few doses."},
+    {id:"potency", lesson:"potency", title:"Potent vs less potent", nameA:"EC50 2 mg/L", nameB:"EC50 8 mg/L",
+     look:"Identical concentrations. B's effect peaks at 64% instead of 88% and stays above 50% for 3.3 h instead of 11.3 h."},
+    {id:"efficacy", lesson:"efficacy", title:"Full vs partial agonist", nameA:"Emax 100%", nameB:"Emax 60%",
+     look:"B tops out at 53% and never reaches the 70% target; A stays above it for 6.5 h."},
+    {id:"hill", lesson:"hill", title:"Graded vs steep response", nameA:"Hill n = 1", nameB:"Hill n = 4",
+     look:"Both cross 50% at 7.3 h, but B switches from nearly full effect to almost none within a few hours."},
+    {id:"pdose", lesson:"pdose", title:"Dose vs double dose (effect)", nameA:"500 mg", nameB:"1,000 mg",
+     look:"B's peak effect is only 10 points higher, but it stays above target exactly one half-life (4 h) longer."}
   ];
 
   /* ================= COMPARE STATE ================= */
@@ -604,6 +684,8 @@
     ["duration","mec","mtc"].forEach(k=>{ if(v[k]!==VIEW_DEFAULTS[k]) out.push(k+":"+v[k]); });
     if(v.scale==="log") out.push("scale:log");
     if(v.zoom==="last") out.push("zoom:last");
+    if(v.pd) out.push("pd:1");
+    if(v.etgt!==undefined && v.etgt!==VIEW_DEFAULTS.etgt) out.push("etgt:"+v.etgt);
     return out.join(",");
   }
   function decodeView(str){
@@ -613,6 +695,7 @@
       if(VIEW_RANGES[k]){ const n=parseFloat(raw); if(isFinite(n)) v[k]=clamp(n,VIEW_RANGES[k]); }
       else if(k==="scale" && (raw==="lin"||raw==="log")) v.scale=raw;
       else if(k==="zoom" && (raw==="full"||raw==="last")) v.zoom=raw;
+      else if(k==="pd") v.pd=raw==="1";
     });
     return v;
   }
@@ -622,7 +705,9 @@
   // compare links carry m=cmp, a, b, na/nb (names), lk (Vary only key) and ed (side being edited).
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
-    const parts=["v="+(scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const view=st.view||VIEW_DEFAULTS;
+    const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
+    const parts=["v="+(usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -637,7 +722,7 @@
       }
       if(st.lesson) parts.push("l="+st.lesson);
     }
-    const w=encodeView(st.view||VIEW_DEFAULTS);
+    const w=encodeView(view);
     if(w) parts.push("w="+w);
     return parts.join("&");
   }
@@ -740,6 +825,7 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
+    PD_KEYS, effectOf, concForEffect, effectStats,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,

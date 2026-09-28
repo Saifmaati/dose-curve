@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Pharmacokinetic Simulator</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and learn through 12 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 16 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -145,6 +145,20 @@
   .plot-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em}
   .plot-title span{color:var(--muted);font-weight:400;font-size:12px;font-family:'JetBrains Mono',monospace;display:block;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
   .plot-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pd-btn{border:1px solid var(--glass-line);background:rgba(5,8,16,.7);color:var(--muted);border-radius:9px;padding:6px 10px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em}
+  .pd-btn:hover{color:#fff}
+  .pd-btn[aria-pressed="true"]{background:rgba(59,229,138,.16);color:#fff;box-shadow:0 0 0 1px rgba(59,229,138,.45)}
+  .pd-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .pd-box{padding:8px 14px 0}
+  .pd-box[hidden],.pd-row[hidden],.sec[hidden]{display:none}
+  .pd-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:0 8px 4px}
+  .pd-title{font-size:12.5px;font-weight:600;color:#C9D0E6}
+  .pd-sub{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2)}
+  #effPlot,#ecPlot{display:block;width:100%;height:auto;touch-action:pan-y}
+  .pd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:14px 22px 0;align-items:start}
+  .ro-grid.pd-stats{grid-template-columns:repeat(2,1fr);align-content:start}
+  .pd-target{margin-top:4px}
   .mini-seg{display:flex;background:rgba(5,8,16,.7);border:1px solid var(--glass-line);border-radius:9px;padding:2px;gap:2px}
   .mini-seg button{border:0;background:transparent;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
     padding:5px 11px;border-radius:7px;letter-spacing:.05em}
@@ -523,6 +537,7 @@
     .grid{grid-template-columns:1fr;gap:18px}
     .controls{position:static;max-height:none}
     .ro-grid{grid-template-columns:repeat(2,1fr)}
+    .pd-row{grid-template-columns:1fr;margin-left:14px;margin-right:14px}
     .learn-grid{grid-template-columns:1fr}
     .ss-stats{grid-template-columns:repeat(2,1fr);row-gap:12px}
   }
@@ -574,7 +589,7 @@
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules that mix oral doses, IV boluses and infusions, side-by-side scenarios and baselines that explain what changed, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
+    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules that mix oral doses, IV boluses and infusions, side-by-side scenarios and baselines that explain what changed, concentration–effect (PK/PD) charts, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
   </section>
 
@@ -639,6 +654,19 @@
           <div class="sec">
             <p class="sec-label">Patient</p>
             <div id="patientSliders"></div>
+          </div>
+
+          <div class="sec" id="pdSec" hidden>
+            <p class="sec-label">Pharmacodynamics</p>
+            <div id="pdSliders"></div>
+            <div class="num-field pd-target">
+              <label for="etgt"><span class="swatch" style="background:#3BE58A;box-shadow:0 0 8px #3BE58A"></span>Target effect (%)</label>
+              <input type="number" id="etgt" step="5" min="1" max="99">
+            </div>
+            <details class="ev-model">
+              <summary>How concentration becomes effect</summary>
+              <p>Effect follows the sigmoid Emax model, E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ), as a percentage of the largest possible response. EC50 is the concentration that gives half of Emax (potency), Emax the ceiling (efficacy) and n how steeply the effect turns on around EC50. The effect follows plasma concentration instantly and fully reversibly: no delay to the site of action, no tolerance. The curve is an empirical description, not a mechanism.</p>
+            </details>
           </div>
 
           <div class="sec">
@@ -750,6 +778,7 @@
               <button data-scale="lin" class="on">LINEAR</button>
               <button data-scale="log">LOG</button>
             </div>
+            <button class="pd-btn" id="pdBtn" aria-pressed="false">◐ EFFECT</button>
           </div>
         </div>
 
@@ -762,6 +791,10 @@
         <div class="ev-strip" id="evStripWrap" hidden>
           <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Drag a dose sideways to move it in half-hour steps, or select it to edit it in the schedule list."></svg>
           <div class="ev-move"><span id="evMoveMsg" role="status" aria-live="polite"></span><button class="ib" id="evUndo" hidden>↶ Undo</button></div>
+        </div>
+        <div class="pd-box" id="pdBox" hidden>
+          <div class="pd-head"><span class="pd-title">Effect–time</span><span class="pd-sub" id="pdSub"></span></div>
+          <svg id="effPlot" viewBox="0 0 760 220" role="img" aria-label="Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor."></svg>
         </div>
 
         <div class="insp" id="insp">
@@ -787,6 +820,14 @@
             <button class="ib" id="navReset">Reset</button>
           </div>
           <div class="insp-read" id="inspRead" aria-live="polite"></div>
+        </div>
+
+        <div class="pd-row" id="pdRow" hidden>
+          <div class="pd-ec">
+            <div class="pd-head"><span class="pd-title">Concentration–effect</span><span class="pd-sub">sigmoid Emax · log scale · the dot follows the time cursor</span></div>
+            <svg id="ecPlot" viewBox="0 0 380 250" role="img" aria-label="Concentration–effect curve: effect against concentration on a log scale, with a dot at the time cursor."></svg>
+          </div>
+          <div class="ro-grid pd-stats" id="pdStats"></div>
         </div>
 
         <div class="readouts sim-only">
@@ -936,7 +977,8 @@
 
   /* ================= STATE ================= */
   // `state` holds the scenario the controls are editing plus the view settings (window, thresholds, scale, zoom).
-  const state = Object.assign({}, DEFAULTS, {events:[], scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null});
+  const state = Object.assign({}, DEFAULTS, {events:[], scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null,
+    pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt});
   const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); return o; };
   const loadScenario=p=>{ const q=PK.normalizeScenario(p); PK_KEYS.forEach(k=>state[k]=q[k]); };
   const windowStats=p=>PK.windowStats(p,state.duration,state.mec,state.mtc);
@@ -972,6 +1014,13 @@
   const PATIENT = {
     wt:  {name:"Body weight", sym:"kg", step:1, unit:"kg"},
     clFn:{name:"Organ function (CL)", sym:"%", step:5, unit:"%"}
+  };
+  // EC50 spans three decades, so its slider moves on a log scale.
+  const PD_SLIDERS = {
+    ec50:{name:"Potency (EC50)",  sym:"EC₅₀", log:true, unit:"mg/L", fmt:v=>`${trim(v)} mg/L`},
+    emax:{name:"Maximum effect",  sym:"Emax", step:1,   unit:"%", max:()=>100-state.e0},
+    hill:{name:"Hill slope",      sym:"n",    step:0.1, unit:""},
+    e0:  {name:"Baseline effect", sym:"E₀",   step:1,   unit:"%"}
   };
 
   /* ================= PLOT ================= */
@@ -1061,6 +1110,19 @@
         if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${cv.col?cv.col.fill:"rgba(61,242,224,0.045)"}"/>`;
       });
     });
+
+    // with the effect charts on: the concentration that gives the target effect, for each scenario shown
+    if(state.pd){
+      const seen=new Set();
+      curves.filter(cv=>!cv.ghost).forEach(cv=>{
+        const ct=PK.concForEffect(cv.p,state.etgt);
+        if(ct===null || !(ct>0) || ct>=yTop || seen.has(ct)) return;
+        seen.add(ct);
+        const y=sy(ct), col=cv.col?cv.col.line:"#3BE58A";
+        g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${col}" stroke-width="1" stroke-dasharray="1 4" opacity="0.8"/>`+
+          `<text x="${M.l+6}" y="${y-5}" font-family="JetBrains Mono" font-size="9.5" fill="${col}">${cv.tag?cv.tag+" · ":""}${state.etgt}% effect at ${fmt(ct,2)} mg/L</text>`;
+      });
+    }
 
     // grid + labels
     if(!isLog){
@@ -1224,6 +1286,7 @@
     }
 
     renderStrip(T0,T1);
+    renderPd(curves,T0,T1);
     renderPanels();
     updateCursor();
     updateLibBadge();
@@ -1458,7 +1521,8 @@
   const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion",mixed:"mixed-route"};
   const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
-    missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""]};
+    missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""],
+    ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
@@ -1568,8 +1632,24 @@
       }
     }
 
+    // the drug's response to concentration (pharmacodynamics)
+    if(a.ec50!==b.ec50) out.push(`EC50 ${trim(a.ec50)} → ${trim(b.ec50)} mg/L: ${b.ec50>a.ec50
+      ? `every effect now needs <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do less. That's lower potency; the maximum possible effect is unchanged.`
+      : `every effect now needs only <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do more. That's higher potency; the maximum possible effect is unchanged.`}`);
+    if(a.emax!==b.emax) out.push(`Emax ${trim(a.emax)} → ${trim(b.emax)}%: the ceiling on the response ${b.emax<a.emax
+      ? `drops (lower efficacy). No concentration can take the effect past ${trim(b.e0+b.emax)}%, so a higher dose can't make up for it.`
+      : `rises (higher efficacy), so high concentrations can do more.`}`);
+    if(a.hill!==b.hill) out.push(`Hill slope ${trim(a.hill)} → ${trim(b.hill)}: the effect turns on and off ${b.hill>a.hill?"more sharply, closer to a switch,":"more gradually"} as the concentration passes EC50.`);
+    if(a.e0!==b.e0) out.push(`Baseline effect ${trim(a.e0)} → ${trim(b.e0)}%: the response with no drug on board.`);
+    if(diffs.length && diffs.every(k=>PK.PD_KEYS.includes(k))) out.push("The concentration curves are identical: only how the body responds to them changed.");
+
     const T=state.duration;
-    out.push(`<b>Net effect</b> over 0–${T} h: AUC ${pctTxt(wa.auc,wb.auc)}, peak ${pctTxt(wa.cmax,wb.cmax)}, time in window ${fmt(100*wa.tIn/T,0)}% → ${fmt(100*wb.tIn/T,0)}% of the window.`);
+    let net=`<b>Net effect</b> over 0–${T} h: AUC ${pctTxt(wa.auc,wb.auc)}, peak ${pctTxt(wa.cmax,wb.cmax)}, time in window ${fmt(100*wa.tIn/T,0)}% → ${fmt(100*wb.tIn/T,0)}% of the window.`;
+    if(state.pd){
+      const ea=PK.effectStats(a,T,state.etgt), eb=PK.effectStats(b,T,state.etgt);
+      net+=` Peak effect ${fmt(ea.peak,0)}% → ${fmt(eb.peak,0)}%, at or above the ${state.etgt}% target for ${fmt(ea.tAbove,1)} → ${fmt(eb.tAbove,1)} h.`;
+    }
+    out.push(net);
     return out;
   }
 
@@ -1607,7 +1687,7 @@
     }
     panel.style.display="block"; empty.style.display="none";
 
-    const C=PK.compareRows(a,b,state.duration,state.mec,state.mtc);
+    const C=PK.compareRows(a,b,state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
     const diffs=paramDiffs(a,b);
     const chips=diffs.map(k=>`<span class="chip">${PLABEL[k][0]} ${pval(k,a)} → <b>${pval(k,b)}</b></span>`);
     if(moved(C.da.CL,C.db.CL)) chips.push(`<span class="chip eff">CL ${fmt(C.da.CL,2)} → <b>${fmt(C.db.CL,2)} L/h</b></span>`);
@@ -1654,6 +1734,7 @@
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
     if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
+    if(state.pd) s+=` · EC50 ${trim(p.ec50)} mg/L${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}`;
     return s;
   }
   function renderScenarioCards(a,b){
@@ -1758,6 +1839,7 @@
         d.setAttribute("cx",x); d.setAttribute("cy",sy(conc(cv.p,cursorT)));
       });
     }
+    updatePdCursor();
     plotEl.setAttribute("aria-valuemax", T1);
     if(cursorT===null){ plotEl.removeAttribute("aria-valuenow"); plotEl.setAttribute("aria-valuetext","No time selected"); }
     else { plotEl.setAttribute("aria-valuenow", cursorT); plotEl.setAttribute("aria-valuetext", `${fmt(cursorT,1)} hours`); }
@@ -1781,6 +1863,12 @@
     return ` · infusion running at ${fmt(r.rate,1)} mg/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} mg in, ends at ${fmt(r.end,1)} h`;
   }
   const missedTxt=i=> i.missedSince.length ? ` · missed since then: ${i.missedSince.map(t=>fmt(t,1)+" h").join(", ")}` : "";
+  // With the effect charts on: the effect at the cursor, against the target, and where C sits relative to EC50.
+  function effectTxt(p, c){
+    if(!state.pd) return "";
+    const e=PK.effectOf(p,c);
+    return ` · effect <b>${fmt(e,0)}%</b> (${e>=state.etgt?"at or above":"below"} the ${state.etgt}% target${c>0?`, C = ${fmt(c/p.ec50,2)}× EC50`:""})`;
+  }
   function renderInspector(){
     updateNavButtons();
     const el=byId("inspRead"), [T0,T1]=viewT;
@@ -1799,13 +1887,14 @@
       const {a,b}=pair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
       ["a","b"].forEach(side=>{
         const i=I[side];
-        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].line}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}</span></div>`;
+        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].line}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}${effectTxt(side==="a"?a:b,i.c)}</span></div>`;
       });
       const d=I.b.c-I.a.c, pct=Math.abs(I.a.c)>1e-9 ? ` (${d>=0?"+":"−"}${fmt(Math.abs(d/I.a.c*100),0)}%)` : "";
       h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</b>${pct}</div>`;
     } else {
       const i=PK.inspectAt(snapshot(),cursorT,state.mec,state.mtc);
       h+=`<div class="ir-line"><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
+      if(state.pd) h+=`<div class="ir-meta">${cap(effectTxt(snapshot(),i.c).replace(/^ · /,""))}</div>`;
       h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${infusingTxt(i)}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${routeWord(i.next.route)}${i.next.missed?" (missed)":""}`:""}</div>`;
       if(baseline){
         const bc=conc(baseline.p,cursorT), d=i.c-bc;
@@ -1872,8 +1961,8 @@
   seg("speedSeg","speed",v=>{ speed=+v; });
 
   // Pointer: press and drag anywhere on the chart to move the cursor.
-  function timeAt(evt, clampToPlot){
-    const rect=plotEl.getBoundingClientRect(), svgX=(evt.clientX-rect.left)/rect.width*PW;
+  function timeAt(evt, clampToPlot, el=plotEl){   // the effect chart shares the time axis, so it can drive the cursor too
+    const rect=el.getBoundingClientRect(), svgX=(evt.clientX-rect.left)/rect.width*PW;
     if(!clampToPlot && (svgX<M.l || svgX>PW-M.r)) return null;
     const [T0,T1]=viewT, t=T0+(svgX-M.l)/(PW-M.l-M.r)*(T1-T0);
     return Math.min(T1,Math.max(T0,Math.round(t*10)/10));
@@ -1977,12 +2066,15 @@
     wrap.className="ctrl";
     const range=cfg.range||PK.RANGES[key];
     const max=typeof cfg.max==="function"?cfg.max():range[1];
+    // a log slider moves in log10 units (1% steps) and keeps two significant figures
+    const toS=v=> cfg.log ? Math.round(Math.log10(v)*1000)/1000 : v;
+    const fromS=x=> !cfg.log ? x : Math.min(range[1],Math.max(range[0],(v=>v>=10?Math.round(v):v>=1?Math.round(v*10)/10:Math.round(v*100)/100)(Math.pow(10,x))));
     wrap.innerHTML=`
       <div class="ctrl-top">
         <span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span>
         <span class="ctrl-val"></span>
       </div>
-      <input type="range" min="${range[0]}" max="${max}" step="${cfg.step}" value="${state[key]}" aria-label="${cfg.name}">`;
+      <input type="range" min="${toS(range[0])}" max="${toS(max)}" step="${cfg.log?0.01:cfg.step}" value="${toS(state[key])}" aria-label="${cfg.name}">`;
     container.appendChild(wrap);
     const sl=wrap.querySelector("input"), val=wrap.querySelector(".ctrl-val");
     const show=()=>{
@@ -1993,10 +2085,17 @@
     show();
     sliderRefs[key]={sl,show};
     sl.addEventListener("input",()=>{
-      state[key]=parseFloat(sl.value); state.drug=null; markDrug(); show();
+      state[key]=fromS(parseFloat(sl.value)); state.drug=null; markDrug(); show();
       if(key==="nDoses"){ syncMissedMax(); changed(["nDoses","missed"]); }
+      else if(key==="e0"){ syncEmaxMax(); changed(["e0","emax"]); }
       else changed([key]);
     });
+  }
+  // Baseline + maximum effect can't pass 100%, so raising E₀ lowers the Emax slider's ceiling.
+  function syncEmaxMax(){
+    if(state.emax>100-state.e0) state.emax=100-state.e0;
+    const r=sliderRefs.emax; if(!r) return;
+    r.sl.max=100-state.e0; r.sl.value=state.emax; r.show();
   }
   function syncMissedMax(){
     const r=sliderRefs.missed; if(!r) return;
@@ -2018,12 +2117,20 @@
     const pel=byId("patientSliders");
     pel.innerHTML="";
     Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
+    const dl=byId("pdSliders");
+    dl.innerHTML="";
+    Object.entries(PD_SLIDERS).forEach(([key,cfg])=> makeSlider(dl,key,cfg));
     byId("loadSeg").style.display = state.dosing==="repeated" ? "flex" : "none";
     renderEvents();
   }
 
   const mecEl=byId("mec"), mtcEl=byId("mtc");
-  function syncWindow(){ mecEl.value=state.mec; mtcEl.value=state.mtc; }
+  const etgtEl=byId("etgt");
+  function syncWindow(){ mecEl.value=state.mec; mtcEl.value=state.mtc; etgtEl.value=state.etgt; }
+  etgtEl.addEventListener("input",()=>{
+    const v=parseFloat(etgtEl.value);
+    if(isFinite(v)){ state.etgt=Math.min(99,Math.max(1,v)); render(); }
+  });
   mecEl.addEventListener("input",()=>{ const v=parseFloat(mecEl.value); if(!isNaN(v)){state.mec=v; render();} });
   mtcEl.addEventListener("input",()=>{ const v=parseFloat(mtcEl.value); if(!isNaN(v)){state.mtc=v; render();} });
 
@@ -2071,7 +2178,7 @@
     setSegVal("doseSeg","dosing",state.dosing);
     setSegVal("loadSeg","load",state.loadMult);
     setSegVal("scaleSeg","scale",state.scale);
-    markDrug(); buildSliders(); syncWindow();
+    markDrug(); buildSliders(); syncWindow(); syncPd();
   }
 
   /* ================= CUSTOM SCHEDULE ================= */
@@ -2407,6 +2514,139 @@
     if(row) row.scrollIntoView({block:"nearest", behavior:reduceMotion()?"auto":"smooth"});
   });
 
+  /* ================= EFFECT (PK/PD) ================= */
+  // The Effect switch adds two charts: effect over time, on the concentration chart's time axis, and the
+  // concentration–effect curve with a dot at the time cursor. Effect is read off the concentration samples
+  // the main chart already computed, through each scenario's own Emax curve.
+  const effEl=byId("effPlot"), ecEl=byId("ecPlot"), EFF="#3BE58A";
+  const EH=220, EM={l:M.l, r:M.r, t:14, b:36}, EW=380, ECH=250, ECM={l:46, r:14, t:14, b:40};
+  let effY=null, ecMap=null, effDragging=false;
+  const pdKey=p=> PK.PD_KEYS.map(k=>p[k]).join(",");
+  const effColor=cv=> cv.ghost ? "#98A2C8" : cv.col ? cv.col.line : EFF;
+  function syncPd(){
+    byId("pdBtn").setAttribute("aria-pressed", state.pd ? "true" : "false");
+    byId("pdSec").hidden=!state.pd;
+  }
+  byId("pdBtn").addEventListener("click",()=>{ state.pd=!state.pd; syncPd(); render(); });
+
+  function renderPd(curves, T0, T1){
+    byId("pdBox").hidden=!state.pd; byId("pdRow").hidden=!state.pd;
+    if(!state.pd) return;
+    const iw=PW-EM.l-EM.r, ih=EH-EM.t-EM.b, x=t=> EM.l+((t-T0)/(T1-T0))*iw, y=e=> EM.t+ih-(e/100)*ih;
+    effY=y;
+    let g=`<rect x="${EM.l}" y="${EM.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.20)"/>`+
+      `<rect x="${EM.l}" y="${y(100)}" width="${iw}" height="${y(state.etgt)-y(100)}" fill="rgba(59,229,138,0.06)"/>`;
+    [0,25,50,75,100].forEach(v=>{
+      g+=`<line x1="${EM.l}" y1="${y(v)}" x2="${PW-EM.r}" y2="${y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
+        `<text x="${EM.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${v}</text>`;
+    });
+    ticksRange(T0,T1,7).forEach(v=>{
+      g+=`<line x1="${x(v)}" y1="${EM.t}" x2="${x(v)}" y2="${EH-EM.b}" stroke="rgba(120,150,255,0.06)"/>`+
+        `<text x="${x(v)}" y="${EH-EM.b+16}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+    });
+    g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${EFF}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
+      `<text x="${PW-EM.r-4}" y="${y(state.etgt)-5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="${EFF}">target ${state.etgt}%</text>`;
+    const order=mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse();
+    order.forEach(cv=>{
+      const d="M "+cv.raw.map(q=>`${x(q.t)} ${y(PK.effectOf(cv.p,q.c))}`).join(" L ");
+      g+=cv.ghost ? `<path d="${d}" fill="none" stroke="#98A2C8" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>`
+        : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    });
+    g+=`<text x="${EM.l+iw/2}" y="${EH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Time (h)</text>`+
+      `<text transform="translate(15 ${EM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Effect (% of max)</text>`+
+      `<g id="effCursor" style="display:none"><line id="effCurLine" y1="${EM.t}" y2="${EH-EM.b}" stroke="#E8ECF8" stroke-width="1.4" opacity="0.7"/>`+
+      curves.map((cv,i)=>`<circle class="effDot" data-i="${i}" r="4.5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2"/>`).join("")+`</g>`;
+    effEl.innerHTML=g;
+    const primary=curves.find(cv=>mode==="cmp" ? cv.id===cmp.edit : cv.primary);
+    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} mg/L · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}`;
+    renderSigmoid(curves, primary);
+    renderPdStats(curves);
+  }
+
+  // Effect against log concentration: 2 decades either side of EC50, the target line, EC50 and the
+  // concentration that reaches the target marked for the scenario being edited.
+  function renderSigmoid(curves, primary){
+    const iw=EW-ECM.l-ECM.r, ih=ECH-ECM.t-ECM.b, ecs=curves.map(cv=>cv.p.ec50);
+    const lo=Math.floor(Math.log10(Math.min(...ecs))-2), hi=Math.ceil(Math.log10(Math.max(...ecs))+2);
+    const X=c=> ECM.l+((Math.log10(Math.min(Math.max(c,10**lo),10**hi))-lo)/(hi-lo))*iw, Y=e=> ECM.t+ih-(e/100)*ih;
+    ecMap={X,Y};
+    let g=`<rect x="${ECM.l}" y="${ECM.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.20)"/>`;
+    for(let k=lo;k<=hi;k++){
+      const v=10**k, xx=X(v);
+      g+=`<line x1="${xx}" y1="${ECM.t}" x2="${xx}" y2="${ECM.t+ih}" stroke="rgba(120,150,255,0.08)"/>`+
+        `<text x="${xx}" y="${ECM.t+ih+15}" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">${v>=1?v:v.toPrecision(1)}</text>`;
+    }
+    [0,50,100].forEach(v=>{
+      g+=`<line x1="${ECM.l}" y1="${Y(v)}" x2="${EW-ECM.r}" y2="${Y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
+        `<text x="${ECM.l-7}" y="${Y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">${v}</text>`;
+    });
+    g+=`<line x1="${ECM.l}" y1="${Y(state.etgt)}" x2="${EW-ECM.r}" y2="${Y(state.etgt)}" stroke="${EFF}" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
+    const p=primary.p, col=effColor(primary), top=p.e0+p.emax, ct=PK.concForEffect(p,state.etgt);
+    g+=`<line x1="${ECM.l}" y1="${Y(top)}" x2="${EW-ECM.r}" y2="${Y(top)}" stroke="${col}" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`+
+      `<text x="${EW-ECM.r-4}" y="${Y(top)+(top>90?12:-5)}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="${col}">Emax ${trim(top)}%</text>`+
+      `<line x1="${X(p.ec50)}" y1="${Y(PK.effectOf(p,p.ec50))}" x2="${X(p.ec50)}" y2="${ECM.t+ih}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>`+
+      `<text x="${X(p.ec50)+5}" y="${ECM.t+ih-6}" font-family="JetBrains Mono" font-size="9" fill="${col}">EC50 ${trim(p.ec50)}</text>`;
+    if(ct!==null && ct>0) g+=`<line x1="${X(ct)}" y1="${Y(state.etgt)}" x2="${X(ct)}" y2="${ECM.t+ih}" stroke="${EFF}" stroke-width="1" stroke-dasharray="1 3" opacity="0.8"/>`;
+    // one curve per distinct concentration–effect relationship (A and B share one when only the PK differs)
+    const seen=new Set();
+    (mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse()).forEach(cv=>{
+      const key=pdKey(cv.p);
+      if(seen.has(key) && cv.ghost) return;
+      seen.add(key);
+      let d="";
+      for(let i=0;i<=160;i++){ const u=lo+(hi-lo)*i/160; d+=(i?" L ":"M ")+`${X(10**u)} ${Y(PK.effectOf(cv.p,10**u))}`; }
+      g+=cv.ghost ? `<path d="${d}" fill="none" stroke="#98A2C8" stroke-width="1.6" stroke-dasharray="6 5" opacity="0.75"/>`
+        : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.2"/>`;
+    });
+    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (mg/L, log scale)</text>`+
+      `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Effect (%)</text>`+
+      curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2" style="display:none"/>`).join("");
+    ecEl.innerHTML=g;
+  }
+
+  // Peak effect, when it comes, when the target is first reached and for how long, over the whole window.
+  function renderPdStats(curves){
+    const T=state.duration, tg=state.etgt, live=curves.filter(cv=>!cv.ghost);
+    const st=live.map(cv=>PK.effectStats(cv.p,T,tg));
+    const val=(f,dp)=> st.map(e=>{ const v=f(e); return v==null ? "never" : fmt(v,dp); }).join(" / ");
+    const who=mode==="cmp" ? "A / B · " : "";
+    byId("pdStats").innerHTML=[
+      {k:`${who}Peak effect`, hot:1, v:val(e=>e.peak,0), u:"%"},
+      {k:`${who}Time of peak`, v:val(e=>e.tPeak,1), u:"h"},
+      {k:`${who}Reaches ${tg}%`, v:val(e=>e.onset,1), u:st.every(e=>e.onset==null)?"":"h"},
+      {k:`${who}At or above ${tg}%`, hot:1, v:val(e=>e.tAbove,1), u:"h"}
+    ].map(c=>`<div class="ro${c.hot?" hot":""}"><div class="ro-k">${c.k}</div><div class="ro-v">${c.v}<small>${c.u}</small></div></div>`).join("");
+  }
+
+  function updatePdCursor(){
+    if(!state.pd || !effY || !ecMap) return;
+    const g=effEl.querySelector("#effCursor");
+    if(!g) return;
+    const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
+    g.style.display=show ? "" : "none";
+    ecEl.querySelectorAll(".ecDot").forEach(d=>{ d.style.display=show ? "" : "none"; });
+    if(!show) return;
+    const x=sx(cursorT);   // same width and side margins as the concentration chart
+    g.querySelector("#effCurLine").setAttribute("x1",x); g.querySelector("#effCurLine").setAttribute("x2",x);
+    g.querySelectorAll(".effDot").forEach(d=>{
+      const cv=plotCurves[+d.dataset.i], e=PK.effectOf(cv.p, conc(cv.p,cursorT));
+      d.setAttribute("cx",x); d.setAttribute("cy",effY(e));
+    });
+    ecEl.querySelectorAll(".ecDot").forEach(d=>{
+      const cv=plotCurves[+d.dataset.i], c=conc(cv.p,cursorT);
+      d.setAttribute("cx",ecMap.X(c)); d.setAttribute("cy",ecMap.Y(PK.effectOf(cv.p,c)));
+    });
+  }
+  effEl.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    const t=timeAt(e,false,effEl);
+    if(t===null) return;
+    pause(); effDragging=true; cursorT=t; updateCursor();
+    try{ effEl.setPointerCapture(e.pointerId); }catch(err){ /* dragging works without capture */ }
+  });
+  effEl.addEventListener("pointermove",e=>{ if(effDragging){ cursorT=timeAt(e,true,effEl); updateCursor(); } });
+  ["pointerup","pointercancel"].forEach(n=> effEl.addEventListener(n,()=>{ effDragging=false; }));
+
   /* ================= DRUG LIBRARY ================= */
   function buildDrugs(){
     const el=byId("drugs");
@@ -2447,7 +2687,7 @@
     setMode("sim");
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
-    Object.assign(state,DEFAULTS,L.cur,L.view);
+    Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.cur,L.view);   // a lesson says whether the effect charts show
     state.events=PK.cloneEvents(state.events);   // the lesson's own schedule is never edited
     state.view="full"; state.drug=null;
     lesson=L;
@@ -2524,7 +2764,7 @@
     cmp.a=PK.scenario(L.base); cmp.b=PK.scenario(L.cur);
     cmp.names={a:t.nameA, b:t.nameB};
     cmp.lock=""; cmp.edit="b";
-    Object.assign(state,L.view);
+    Object.assign(state,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.view);
     state.view="full"; state.drug=null;
     loadScenario(cmp.b);
     setTemplate(t);
@@ -2752,7 +2992,7 @@
 
   /* ================= SHARE LINKS ================= */
   function linkState(){
-    const view={duration:state.duration, mec:state.mec, mtc:state.mtc, scale:state.scale, zoom:state.view};
+    const view={duration:state.duration, mec:state.mec, mtc:state.mtc, scale:state.scale, zoom:state.view, pd:state.pd, etgt:state.etgt};
     if(mode==="cmp"){
       cmp[cmp.edit]=snapshot();
       return {mode:"cmp", a:cmp.a, b:cmp.b, lock:cmp.lock, edit:cmp.edit, view,
@@ -2774,7 +3014,7 @@
   // scenario loaded from the library (which doesn't show the "opened from a shared link" notice).
   function applyLink(st, fromLibrary){
     pause(); cursorT=null; evSel=null;
-    const view={duration:st.view.duration, mec:st.view.mec, mtc:st.view.mtc, scale:st.view.scale, view:st.view.zoom};
+    const view={duration:st.view.duration, mec:st.view.mec, mtc:st.view.mtc, scale:st.view.scale, view:st.view.zoom, pd:st.view.pd, etgt:st.view.etgt};
     if(st.mode==="cmp"){
       showTab("cmp");                       // enters Compare if needed, keeping the simulator scenario aside
       cmp.a=st.a; cmp.b=st.b;
@@ -2814,7 +3054,8 @@
 
   byId("csvBtn").addEventListener("click",()=>{
     const curves=chartCurves().map(cv=>({...cv, ev:doseEvents(cv.p)}));
-    const head=mode==="cmp" ? ["A_mg_L","B_mg_L"] : curves.map(cv=>cv.ghost?"baseline_mg_L":"concentration_mg_L");
+    let head=mode==="cmp" ? ["A_mg_L","B_mg_L"] : curves.map(cv=>cv.ghost?"baseline_mg_L":"concentration_mg_L");
+    if(state.pd) head=head.concat(mode==="cmp" ? ["A_effect_pct","B_effect_pct"] : curves.map(cv=>cv.ghost?"baseline_effect_pct":"effect_pct"));
     const label=cv=> mode==="cmp" ? cv.tag : cv.ghost ? "baseline" : "current";
     // custom schedules go above the table as # comment lines, so the table itself stays a plain grid
     let csv=curves.filter(cv=>cv.p.dosing==="custom").map(cv=>`# ${label(cv)} dose schedule: `+
@@ -2824,30 +3065,40 @@
     const Tend=state.duration, N=600;
     for(let i=0;i<=N;i++){
       const t=Tend*i/N;
-      csv+=t.toFixed(3)+","+curves.map(cv=>conc(cv.p,t,cv.ev).toFixed(5)).join(",")+"\n";
+      const cs=curves.map(cv=>conc(cv.p,t,cv.ev));
+      csv+=t.toFixed(3)+","+cs.map(c=>c.toFixed(5)).concat(state.pd ? curves.map((cv,j)=>PK.effectOf(cv.p,cs[j]).toFixed(3)) : []).join(",")+"\n";
     }
     download(new Blob([csv],{type:"text/csv"}), mode==="cmp"?"dosecurve_compare.csv":"dosecurve_data.csv");
   });
 
-  byId("pngBtn").addEventListener("click",()=>{
-    const clone=plotEl.cloneNode(true);
+  // A chart as an image on the page's dark background (the SVG has no background of its own).
+  function svgImage(el, w, h){
+    const clone=el.cloneNode(true);
     const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
     bg.setAttribute("x",0);bg.setAttribute("y",0);
-    bg.setAttribute("width",PW);bg.setAttribute("height",PH);
+    bg.setAttribute("width",w);bg.setAttribute("height",h);
     bg.setAttribute("fill","#05070E");
     clone.insertBefore(bg,clone.firstChild);
+    clone.setAttribute("width",w); clone.setAttribute("height",h);
     const xml=new XMLSerializer().serializeToString(clone);
-    const svg64=btoa(unescape(encodeURIComponent(xml)));
-    const img=new Image();
-    img.onload=()=>{
-      const cv=document.createElement("canvas");
-      cv.width=PW*2; cv.height=PH*2;
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.src="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(xml)));
+    });
+  }
+  // With the effect charts on, the effect–time chart goes under the concentration chart.
+  byId("pngBtn").addEventListener("click",()=>{
+    const parts=[[plotEl,PH]].concat(state.pd ? [[effEl,EH]] : []);
+    Promise.all(parts.map(([el,h])=>svgImage(el,PW,h))).then(imgs=>{
+      const cv=document.createElement("canvas"), H=parts.reduce((s,[,h])=>s+h,0);
+      cv.width=PW*2; cv.height=H*2;
       const ctx=cv.getContext("2d");
       ctx.scale(2,2);
-      ctx.drawImage(img,0,0);
+      let y=0;
+      imgs.forEach((img,i)=>{ ctx.drawImage(img,0,y); y+=parts[i][1]; });
       cv.toBlob(b=>download(b,"dosecurve_plot.png"));
-    };
-    img.src="data:image/svg+xml;base64,"+svg64;
+    });
   });
 
   function download(blob,name){
