@@ -267,7 +267,8 @@ test("decoding ignores unknown keys and bad values, and clamps numbers", ()=>{
 
 test("full links round-trip, including names with special characters", ()=>{
   const view={duration:96, mec:4, mtc:16, scale:"log", zoom:"last"};
-  const cmp={mode:"cmp", a:scenario({D:600,tau:24,dosing:"repeated",nDoses:5}), b:scenario({D:300,tau:12,dosing:"repeated",nDoses:10}),
+  // B differs from A only in dose, as the app guarantees while "Vary only: dose" is on
+  const cmp={mode:"cmp", a:scenario({D:600,tau:24,dosing:"repeated",nDoses:5}), b:scenario({D:300,tau:24,dosing:"repeated",nDoses:5}),
     nameA:"Once daily & more", nameB:"B = #2, 50%", lock:"D", edit:"b", view};
   const back=PK.decodeLink(PK.encodeLink(cmp));
   assert.equal(back.mode,"cmp");
@@ -292,6 +293,51 @@ test("links reject what they can't trust", ()=>{
   assert.equal(st.nameA, "<b>hi", "names are plain text; the page escapes them");
   assert.equal(PK.decodeLink("v=1&l=nope").lesson, "");
   assert.equal(PK.decodeLink("v=1&s=D%3A400%2CclFn%3A50").s.clFn, 50, "percent-encoded links still work");
+});
+
+/* ---------- audit: input hardening and invariants ---------- */
+
+test("a missed dose outside the regimen is cleared, not kept invisibly", ()=>{
+  assert.equal(PK.decodeScenario("dosing:repeated,nDoses:6,missed:15").missed, 1);
+  assert.equal(PK.decodeScenario("dosing:repeated,nDoses:6,missed:6").missed, 1, "the final dose can't be the missed one");
+  assert.equal(PK.decodeScenario("dosing:repeated,nDoses:6,missed:5").missed, 5);
+});
+
+test("Vary only on the missed dose: shrinking the regimen can't strand the other side's missed dose", ()=>{
+  let c=PK.cmpSetLock(PK.newComparison({dosing:"repeated", nDoses:12}),"missed");
+  c=PK.cmpApply(c,"b",{missed:9});
+  c=PK.cmpApply(c,"a",{nDoses:6});
+  assert.equal(c.b.nDoses, 6);
+  assert.equal(c.b.missed, 1);
+  const again=PK.cmpSetLock(PK.cmpSetLock(PK.newComparison({dosing:"repeated", nDoses:4}),""),"missed");
+  assert.ok(again.b.missed < again.b.nDoses);
+});
+
+test("a hand-edited link can't claim a lock its scenarios break", ()=>{
+  assert.equal(PK.decodeLink("v=1&m=cmp&a=D:400&b=D:800,thalf:12&lk=D").lock, "", "differs in more than dose");
+  assert.equal(PK.decodeLink("v=1&m=cmp&a=D:400&b=D:800&lk=D").lock, "D", "a lock the scenarios honour is kept");
+  const c=PK.cmpApply(PK.cmpSetLock(PK.newComparison(),"tau"),"b",{D:300, tau:12});
+  assert.ok(PK.lockHolds(c), "edits made through cmpApply keep the invariant");
+});
+
+test("names drop control characters and text-direction overrides", ()=>{
+  assert.equal(PK.decodeLink("v=1&m=cmp&na=%E2%80%AEevil%E2%81%A6x").nameA, "evilx");
+  assert.equal(PK.decodeLink("v=1&m=cmp&na=a%00b%7Fc").nameA, "abc");
+});
+
+test("malformed, truncated and oversized links degrade safely", ()=>{
+  assert.doesNotThrow(()=>PK.decodeLink("v=1&s=D%3A4%E0%A4%A&na=%E0%A4%A"));
+  assert.equal(PK.decodeLink("v=1&m=cmp&a=D:40").a.D, 40, "a truncated value is still clamped into range");
+  const st=PK.decodeLink("v=1&m=cmp&na="+"x".repeat(200000));
+  assert.equal(st.nameA.length, 40);
+  assert.equal(PK.decodeLink("v=9&s=D:400").s.D, 400, "newer versions are read best-effort");
+});
+
+test("steady state stays within 0.5% even in the slowest-clearing regimen", ()=>{
+  // longest half-life, lowest organ function, shortest interval: the case the 400-dose cap limits most
+  const p=scenario({route:"iv", dosing:"repeated", thalf:24, clFn:25, tau:2, nDoses:20});
+  const k=PK.keOf(p), C0=p.D/PK.vOf(p);
+  rel(PK.ssProfile(p).ssTrough, C0*Math.exp(-k*2)/(1-Math.exp(-k*2)), 0.005);
 });
 
 /* ---------- every claim the lessons and comparisons make ---------- */
