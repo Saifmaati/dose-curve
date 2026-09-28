@@ -1,7 +1,7 @@
 /* DoseCurve PK engine
    One-compartment linear pharmacokinetics (first-order oral absorption, IV bolus, IV infusion),
-   regimens with loading and missed doses, exposure metrics, the teaching presets, and the
-   share-link codec. Pure functions with no DOM access: the page loads this file as window.PK and
+   regular regimens with loading and missed doses, custom dose schedules, exposure metrics, the
+   teaching presets, and the share-link codec. Pure functions with no DOM access: the page loads this file as window.PK and
    the tests load it with require(). */
 (function(root, factory){
   const api=factory();
@@ -10,14 +10,18 @@
 })(typeof self!=="undefined" ? self : this, function(){
   "use strict";
 
-  const VERSION=1;
+  // Share-link format: 1 = single and repeated regimens; 2 adds custom dose schedules. Links are written
+  // as v=1 whenever no custom schedule is involved, so older links and older pages keep working.
+  const VERSION=2;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
-  const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn"];
-  const DEFAULTS={route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100};
-  const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated"],loadMult:[1,1.5,2]};
+  // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
+  const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events"];
+  const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
+    events:Object.freeze([])});
+  const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,24],V:[5,120],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,120],clFn:[25,150]};
@@ -28,16 +32,58 @@
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"]];
 
-  const scenario=over=>Object.assign({},DEFAULTS,over);
-  // Cross-setting rule the individual ranges can't express: a missed dose must fall inside the regimen
-  // (and can't be the final dose). Otherwise it is cleared, so the controls never show a missed dose
-  // the model is ignoring.
+  const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
+  const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
+
+  /* ---------- custom dose schedules ---------- */
+  // An event is {id, t (h), mg, type: "maintenance"|"loading", status: "given"|"missed"}. Scenarios never
+  // share an events array: every copy clones it, so editing A's schedule can't change B's.
+  const EVENT_LIMITS={max:40, t:[0,168], mg:[25,4000]};
+  const cloneEvents=list=>(list||[]).map(e=>({id:e.id, t:e.t, mg:e.mg, type:e.type, status:e.status}));
+  const cloneScenario=p=>Object.assign({},p,{events:cloneEvents(p.events)});
+  const scenario=over=>cloneScenario(Object.assign({},DEFAULTS,over));
+
+  // Validated, sorted copy: bad entries are dropped, times and amounts clamped, ids made unique, type and
+  // status limited to their two values, and at most 40 events kept (the earliest).
+  function normalizeEvents(list){
+    const out=[], seen=new Set();
+    for(const e of (Array.isArray(list) ? list.slice(0,200) : [])){
+      if(!e || typeof e!=="object") continue;
+      const t=Number(e.t), mg=Number(e.mg);
+      if(!isFinite(t) || !isFinite(mg)) continue;
+      const id=(typeof e.id==="string" && /^[a-z0-9-]{1,16}$/.test(e.id) && !seen.has(e.id)) ? e.id : "";
+      if(id) seen.add(id);
+      out.push({id, t:round(clamp(t,EVENT_LIMITS.t),2), mg:round(clamp(mg,EVENT_LIMITS.mg),1),
+        type:e.type==="loading"?"loading":"maintenance", status:e.status==="missed"?"missed":"given"});
+    }
+    let n=0;
+    out.forEach(e=>{ if(!e.id){ do{ n++; }while(seen.has("e"+n)); e.id="e"+n; seen.add(e.id); } });
+    out.sort((a,b)=> a.t-b.t || (a.id<b.id ? -1 : a.id>b.id ? 1 : 0));
+    return out.slice(0,EVENT_LIMITS.max);
+  }
+  // Canonical text of a schedule, used for equality and in share links (ids don't count).
+  const eventsKey=list=>(list||[]).map(e=>`${e.t}@${e.mg}${e.type==="loading"?"L":""}${e.status==="missed"?"m":""}`).join(";");
+
+  // Cross-setting rules the individual ranges can't express: a missed dose must fall inside the regimen
+  // (and can't be the final dose), otherwise it is cleared so the controls never show a missed dose the
+  // model is ignoring; and the schedule is always a validated, sorted, private copy.
   function normalizeScenario(p){
     const q=Object.assign({},p);
     if(q.missed>=q.nDoses) q.missed=1;
+    q.events=normalizeEvents(q.events);
     return q;
   }
-  const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
+  // Whether a setting means anything for a scenario (F only orally, τ only for a regular regimen, …).
+  function isRelevant(k,s){
+    if(k==="F"||k==="ka") return s.route==="oral";
+    if(k==="tinf") return s.route==="inf";
+    if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
+    if(k==="D") return s.dosing!=="custom";
+    if(k==="events") return s.dosing==="custom";
+    return true;
+  }
+  // Equality that understands schedules (plain === would compare array identity).
+  const sameSetting=(k,a,b)=> k==="events" ? eventsKey(a.events)===eventsKey(b.events) : a[k]===b[k];
 
   /* ================= PK ENGINE ================= */
   const keOf = p=> (Math.LN2/p.thalf) * (p.clFn/100);
@@ -46,9 +92,10 @@
   // is the same as giving one dose fewer.
   const missedOf = p=> (p.dosing==="repeated" && p.missed>1 && p.missed<p.nDoses) ? p.missed : 0;
 
-  function singleConc(p, t, mult){
+  // Concentration at time t after one dose of `mg`.
+  function singleConc(p, t, mg){
     if(t<0) return 0;
-    const k=keOf(p), V=vOf(p), D=p.D*mult;
+    const k=keOf(p), V=vOf(p), D=mg;
     if(p.route==="iv"){
       return (D/V)*Math.exp(-k*t);
     }
@@ -63,21 +110,41 @@
     return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*t)-Math.exp(-ka*t));
   }
 
+  // Every dose actually given, as {t, mg, n}. This is the one place regimens turn into doses, so the
+  // simulation, window metrics and exports all follow custom schedules automatically.
   function doseEvents(p){
-    if(p.dosing==="single") return [{t:0,mult:1,n:1}];
+    if(p.dosing==="custom") return p.events.filter(e=>e.status==="given").map((e,i)=>({t:e.t, mg:e.mg, n:i+1, id:e.id}));
+    if(p.dosing==="single") return [{t:0, mg:p.D, n:1}];
     const skip=missedOf(p), ev=[];
     for(let i=0;i<p.nDoses;i++){
       if(i+1===skip) continue;
-      ev.push({t:i*p.tau, mult:i===0?p.loadMult:1, n:i+1});
+      ev.push({t:i*p.tau, mg:p.D*(i===0?p.loadMult:1), n:i+1});
     }
     return ev;
+  }
+  // The schedule a regimen describes, as editable events. Missed doses stay in, marked missed; doses
+  // after 168 h (the longest window) are left out because nothing shown can depend on them.
+  function eventsFromBasic(p){
+    if(p.dosing==="custom") return normalizeEvents(p.events);
+    if(p.dosing==="single") return normalizeEvents([{id:"e1", t:0, mg:p.D, type:"maintenance", status:"given"}]);
+    const skip=missedOf(p), out=[];
+    for(let i=0;i<p.nDoses && i*p.tau<=EVENT_LIMITS.t[1];i++){
+      out.push({id:"e"+(i+1), t:i*p.tau, mg:p.D*(i===0?p.loadMult:1),
+        type:i===0 && p.loadMult>1 ? "loading" : "maintenance", status:i+1===skip ? "missed" : "given"});
+    }
+    return normalizeEvents(out);
+  }
+  // Doses given, and total mg, within [0, T].
+  function doseTotals(p, T){
+    const ev=doseEvents(p).filter(e=>e.t<=T);
+    return {n:ev.length, mg:ev.reduce((s,e)=>s+e.mg,0)};
   }
 
   // Superposition of every dose actually given.
   function conc(p, t, ev){
     ev=ev||doseEvents(p);
     let sum=0;
-    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mult);
+    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mg);
     return sum;
   }
 
@@ -89,11 +156,19 @@
     if(p.route==="iv"){ d.tmax=0; d.cmax=p.D/V; }
     else if(p.route==="inf"){
       d.tmax=p.tinf;
-      d.cmax=singleConc(p,p.tinf,1);
+      d.cmax=singleConc(p,p.tinf,p.D);
     } else {
       const ka=p.ka;
       d.tmax=Math.abs(ka-k)<1e-6 ? 1/k : Math.log(ka/k)/(ka-k);
-      d.cmax=singleConc(p,d.tmax,1);
+      d.cmax=singleConc(p,d.tmax,p.D);
+    }
+    if(p.dosing==="custom"){
+      // a custom schedule has no single dose or regular interval: totals over every dose given
+      const given=doseEvents(p);
+      d.nGiven=given.length; d.nMissed=p.events.length-given.length;
+      d.totalMg=given.reduce((s,e)=>s+e.mg,0);
+      d.auc=(Ffac*d.totalMg)/(V*k);
+      d.mgkg=d.totalMg/p.wt;
     }
     if(p.dosing==="repeated"){
       const ev=doseEvents(p);
@@ -152,6 +227,12 @@
     const rows=[{key:"cmax", name:"Peak (Cmax)", unit:"mg/L", a:wa.cmax, b:wb.cmax, kind:"pct", dp:2}];
     if(a.dosing==="single" && b.dosing==="single") rows.push({key:"tmax", name:"Time of peak", unit:"h", a:wa.tmax, b:wb.tmax, kind:"abs", dp:1});
     rows.push({key:"auc", name:`AUC 0–${T} h`, unit:"mg·h/L", a:wa.auc, b:wb.auc, kind:"pct", dp:1});
+    if(a.dosing==="custom" || b.dosing==="custom"){
+      const ta=doseTotals(a,T), tb=doseTotals(b,T);
+      rows.push(
+        {key:"ngiven", name:`Doses given 0–${T} h`, unit:"doses", a:ta.n, b:tb.n, kind:"count", dp:0},
+        {key:"mg", name:`Total dose 0–${T} h`, unit:"mg", a:ta.mg, b:tb.mg, kind:"pct", dp:0});
+    }
     if(a.dosing==="repeated" && b.dosing==="repeated"){
       const sa=ssProfile(a), sb=ssProfile(b);
       rows.push(
@@ -274,34 +355,39 @@
   // returns a new comparison, so the page can't accidentally change one scenario while editing the other.
   const DEFAULT_NAMES={a:"Scenario A", b:"Scenario B"};
   const otherOf=side=> side==="a" ? "b" : "a";
+  const isCustom=c=> c.a.dosing==="custom" || c.b.dosing==="custom";
   function newComparison(p){
     return {a:scenario(p), b:scenario(p), names:Object.assign({},DEFAULT_NAMES), lock:"", edit:"a"};
   }
   // Apply edited settings to one side. With "Vary only" set, every other changed setting is mirrored to
-  // the other side, so the two scenarios keep differing in that one setting only.
+  // the other side, so the two scenarios keep differing in that one setting only. The lock needs two
+  // regular regimens: a custom schedule on either side switches it off instead of being mirrored.
   function cmpApply(c, side, patch){
-    const o=otherOf(side), next=Object.assign({},c,{[side]:Object.assign({},c[side],patch)});
-    if(c.lock){
+    const o=otherOf(side), next=Object.assign({},c);
+    next[side]=normalizeScenario(Object.assign({},c[side],patch));
+    if(c.lock && (next[side].dosing==="custom" || c[o].dosing==="custom")) next.lock="";
+    else if(c.lock){
       const shared={};
       Object.keys(patch).forEach(k=>{ if(PK_KEYS.includes(k) && k!==c.lock) shared[k]=patch[k]; });
       next[o]=normalizeScenario(Object.assign({},c[o],shared));
     }
-    next[side]=normalizeScenario(next[side]);
     return next;
   }
   function cmpCopy(c, from, to){
-    return Object.assign({},c,{[to]:Object.assign({},c[from])});
+    return Object.assign({},c,{[to]:cloneScenario(c[from])});
   }
   function cmpSwap(c){
-    return Object.assign({},c,{a:Object.assign({},c.b), b:Object.assign({},c.a), names:{a:c.names.b, b:c.names.a}});
+    return Object.assign({},c,{a:cloneScenario(c.b), b:cloneScenario(c.a), names:{a:c.names.b, b:c.names.a}});
   }
-  // Turning a lock on makes B match A in everything except the locked setting.
   // True when A and B differ in nothing but the locked setting, which is what "Vary only" promises.
   function lockHolds(c){
-    return !c.lock || PK_KEYS.every(k=> k===c.lock || c.a[k]===c.b[k]);
+    if(!c.lock) return true;
+    if(isCustom(c)) return false;
+    return PK_KEYS.every(k=> k===c.lock || sameSetting(k,c.a,c.b));
   }
+  // Turning a lock on makes B match A in everything except the locked setting (regular regimens only).
   function cmpSetLock(c, k){
-    if(!k) return Object.assign({},c,{lock:""});
+    if(!k || isCustom(c)) return Object.assign({},c,{lock:""});
     return Object.assign({},c,{lock:k, b:normalizeScenario(Object.assign({},c.a,{[k]:c.b[k]}))});
   }
   // Back to the app defaults, with the default name. The other side is left exactly as it was, so a
@@ -312,8 +398,20 @@
 
   /* ================= SHARE LINKS ================= */
   // A scenario is written as the settings that differ from DEFAULTS, e.g. "D:400,clFn:50" ("" = defaults).
+  // A custom schedule is added as "ev:0@500L;12@250;24@250m" (L = loading, m = missed).
   function encodeScenario(p){
-    return PK_KEYS.filter(k=>p[k]!==DEFAULTS[k]).map(k=>k+":"+p[k]).join(",");
+    const parts=PK_KEYS.filter(k=>k!=="events" && p[k]!==DEFAULTS[k]).map(k=>k+":"+p[k]);
+    if(p.dosing==="custom" && p.events.length) parts.push("ev:"+eventsKey(p.events));
+    return parts.join(",");
+  }
+  // Tokens that don't parse are skipped; the rest go through normalizeEvents like any other schedule.
+  function decodeEvents(raw){
+    const out=[];
+    String(raw).split(";").slice(0,200).forEach(tok=>{
+      const m=/^(\d+(?:\.\d+)?)@(\d+(?:\.\d+)?)(L?)(m?)$/.exec(tok);
+      if(m) out.push({t:parseFloat(m[1]), mg:parseFloat(m[2]), type:m[3]?"loading":"maintenance", status:m[4]?"missed":"given"});
+    });
+    return normalizeEvents(out);
   }
   // Unknown keys and invalid values are ignored; numbers are clamped to their allowed range.
   function decodeScenario(str){
@@ -322,7 +420,8 @@
       const i=pair.indexOf(":");
       if(i<1) return;
       const k=pair.slice(0,i), raw=pair.slice(i+1);
-      if(!PK_KEYS.includes(k)) return;
+      if(k==="ev"){ p.events=decodeEvents(raw); return; }
+      if(!PK_KEYS.includes(k) || k==="events") return;
       if(k==="route" || k==="dosing"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
       if(!isFinite(v)) return;
@@ -354,7 +453,8 @@
   // Simulator links carry s (scenario), base (baseline), bl (baseline label) and l (lesson id);
   // compare links carry m=cmp, a, b, na/nb (names), lk (Vary only key) and ed (side being edited).
   function encodeLink(st){
-    const parts=["v="+VERSION];
+    const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
+    const parts=["v="+(scen.some(p=>p.dosing==="custom") ? VERSION : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -401,7 +501,8 @@
     return st;
   }
 
-  return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, scenario,
+  return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
+    cloneScenario, cloneEvents, normalizeEvents, eventsKey, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

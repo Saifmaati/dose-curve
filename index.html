@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Pharmacokinetic Simulator</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses, watch accumulation toward steady state, share any scenario as a link, and learn through 10 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and learn through 10 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -338,6 +338,34 @@
   .cmp-tbl td.flat{color:var(--muted-2)}
   .cmp-tbl small{color:var(--muted-2);font-size:10px;margin-left:5px;font-family:'JetBrains Mono',monospace}
 
+  /* custom dose schedule */
+  .ev-list{display:grid;gap:6px}
+  .ev-row{border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(5,8,16,.5);overflow:hidden}
+  .ev-row.open{border-color:rgba(61,242,224,.45)}
+  .ev-head{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#C9D0E6;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 11px;text-align:left}
+  .ev-head:hover{background:rgba(124,107,255,.06)}
+  .ev-head:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+  .ev-head.missed .ev-t,.ev-head.missed .ev-mg{text-decoration:line-through;color:var(--muted-2)}
+  .ev-t{min-width:54px;color:var(--cyan)}
+  .ev-tag{font-size:9.5px;border:1px solid rgba(124,107,255,.45);color:#B7A9FF;border-radius:5px;padding:0 6px}
+  .ev-tag.miss{border-color:rgba(255,92,122,.5);color:#FF8FA3}
+  .ev-edit{padding:4px 11px 11px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .ev-edit label{font-size:11px;color:var(--muted);display:grid;gap:4px}
+  .ev-edit input{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);border:1px solid var(--glass-line-2);border-radius:8px;
+    padding:7px 9px;background:rgba(5,8,16,.7);width:100%}
+  .ev-edit input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(61,242,224,.12)}
+  .ev-edit .seg{grid-column:1 / -1}
+  .ev-btns{grid-column:1 / -1;display:flex;gap:8px}
+  .ev-btns .abtn{flex:1;padding:7px 10px}
+  .ev-sum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:9px}
+  .ev-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .abtn:disabled{opacity:.45;cursor:not-allowed}
+  .ev-strip{padding:0 14px 2px}
+  .ev-strip[hidden]{display:none}
+  #evStrip{display:block;width:100%;height:auto}
+  #evStrip .evm{cursor:pointer}
+
   /* modes: the simulator view doubles as the compare view */
   [data-mode="cmp"] .sim-only{display:none!important}
   [data-mode="sim"] .cmp-only{display:none!important}
@@ -464,7 +492,7 @@
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, side-by-side scenarios and baselines that explain what changed, steady-state analytics, one-click lessons, and links that share any scenario.</p>
+    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules, side-by-side scenarios and baselines that explain what changed, steady-state analytics, one-click lessons, and links that share any scenario.</p>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
   </section>
 
@@ -494,11 +522,23 @@
             <div class="seg" id="doseSeg" role="group" aria-label="Dosing regimen" style="margin-top:8px">
               <button data-dosing="single" class="on">Single dose</button>
               <button data-dosing="repeated">Repeated</button>
+              <button data-dosing="custom">Custom</button>
             </div>
             <div class="seg" id="loadSeg" role="group" aria-label="Loading dose" style="margin-top:8px;display:none">
               <button data-load="1" class="on">No load</button>
               <button data-load="1.5">1.5× load</button>
               <button data-load="2">2× load</button>
+            </div>
+          </div>
+
+          <div class="sec" id="evSec" style="display:none">
+            <p class="sec-label">Dose schedule</p>
+            <p class="lib-note ev-intro">Custom lets you build an irregular schedule: every dose has its own time and amount, and any dose can be marked missed. Select a dose to edit it.</p>
+            <div class="ev-list" id="evList"></div>
+            <p class="ev-sum" id="evSum"></p>
+            <div class="ev-actions">
+              <button class="abtn" id="evAdd">+ Add dose</button>
+              <button class="abtn" id="evRebuild">↺ Rebuild from repeated</button>
             </div>
           </div>
 
@@ -629,6 +669,9 @@
           <svg id="plot" viewBox="0 0 760 430"></svg>
           <div id="tooltip"></div>
         </div>
+        <div class="ev-strip" id="evStripWrap" hidden>
+          <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Select a dose to edit it in the schedule list."></svg>
+        </div>
 
         <div class="readouts sim-only">
           <div class="ro-grid" id="readouts"></div>
@@ -730,7 +773,7 @@
       </div>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
-        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out).
+        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time and amount).
       </div>
       <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, and every quantitative claim the lessons make.</p>
     </div>
@@ -753,8 +796,8 @@
 
   /* ================= STATE ================= */
   // `state` holds the scenario the controls are editing plus the view settings (window, thresholds, scale, zoom).
-  const state = Object.assign({}, DEFAULTS, {scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null});
-  const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); return o; };
+  const state = Object.assign({}, DEFAULTS, {events:[], scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null});
+  const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); return o; };
   const loadScenario=p=>{ const q=PK.normalizeScenario(p); PK_KEYS.forEach(k=>state[k]=q[k]); };
   const windowStats=p=>PK.windowStats(p,state.duration,state.mec,state.mtc);
 
@@ -774,7 +817,7 @@
 
   const ALL=["oral","iv","inf"];
   const SLIDERS = {
-    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL},
+    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"]},
     F:    {name:"Bioavailability",    sym:"F",   step:0.05, unit:"",    routes:["oral"]},
     ka:   {name:"Absorption rate",    sym:"kₐ",  step:0.05, unit:"h⁻¹", routes:["oral"]},
     tinf: {name:"Infusion duration",  sym:"T·inf", step:0.25, unit:"h", routes:["inf"]},
@@ -913,28 +956,30 @@
       g+=`<text x="${PW-M.r-4}" y="${y-6}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#FF5C7A">MTC</text>`;
     }
 
-    // dose events. Simulator: ticks under the axis with D-labels, LD for a loading dose, a cross for a missed dose.
-    // Compare: A's ticks sit just above the axis and B's just below, each in its own colour.
-    curves.filter(cv=>!cv.ghost && cv.p.dosing==="repeated").forEach((cv,row)=>{
-      const p=cv.p, skip=missedOf(p), gap=iw*p.tau/span, color=cv.col?cv.col.line:"#7C6BFF";
+    // dose events (repeated regimens and custom schedules). Simulator: ticks under the axis with D-labels, LD
+    // for a loading dose, a cross for a missed dose. Compare: A's ticks sit just above the axis and B's just
+    // below, each in its own colour.
+    curves.filter(cv=>!cv.ghost && scheduleOf(cv.p).length).forEach((cv,row)=>{
+      const p=cv.p, list=scheduleOf(p), color=cv.col?cv.col.line:"#7C6BFF";
       const [y0,y1]=mode==="cmp" ? (cv.id==="a" ? [PH-M.b-6, PH-M.b] : [PH-M.b, PH-M.b+6]) : [PH-M.b, PH-M.b+6];
-      for(let i=0;i<p.nDoses;i++){
-        const t=i*p.tau;
-        if(!inView(t)) continue;
-        const x=sx(t), n=i+1;
-        if(n===skip){
+      list.forEach((dose,j)=>{
+        const t=dose.t;
+        if(!inView(t)) return;
+        const x=sx(t), n=dose.n, next=list[j+1];
+        const gap=iw*(next ? next.t-t : p.dosing==="repeated" ? p.tau : span)/span;   // room for a D-label
+        if(dose.missed){
           const lc=mode==="cmp"?color:"#FF5C7A", tc=mode==="cmp"?color:"#FF8FA3";
           g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="${lc}" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`;
           g+=`<text x="${x+5}" y="${M.t+13+row*13}" font-family="JetBrains Mono" font-size="9.5" fill="${tc}">${cv.tag?cv.tag+" · ":""}missed · D${n}</text>`;
           g+=`<path d="M ${x-4} ${(y0+y1)/2-4} L ${x+4} ${(y0+y1)/2+4} M ${x+4} ${(y0+y1)/2-4} L ${x-4} ${(y0+y1)/2+4}" stroke="${lc}" stroke-width="1.6"/>`;
-          continue;
+          return;
         }
         g+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y1}" stroke="${color}" stroke-width="1.6"/>`;
         if(mode==="sim"){
-          const lbl=(i===0 && p.loadMult>1) ? "LD" : (gap>=26 ? "D"+n : "");
+          const lbl=dose.loading ? "LD" : (gap>=26 ? "D"+n : "");
           if(lbl) g+=`<text x="${x+3}" y="${PH-M.b-5}" font-family="JetBrains Mono" font-size="8.5" fill="#8F82FF">${lbl}</text>`;
         }
-      }
+      });
     });
 
     // the gap between two curves (baseline vs current, or A vs B), shaded
@@ -985,6 +1030,10 @@
           g+=`<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${PH-M.b}" stroke="#3DF2E0" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>`;
           g+=marker(cx,cy,"#3DF2E0","Cmax");
         }
+      } else if(p.dosing==="custom"){
+        // no regular interval to take a final peak and trough from: mark the highest point in view
+        const top=curves[0].pts.reduce((m,q)=> q.c>m.c ? q : m, curves[0].pts[0]);
+        if(top.c>0) g+=marker(top.x,top.y,"#3DF2E0","peak");
       } else {
         if(inView(d.tmaxSS)) g+=marker(sx(d.tmaxSS),sy(d.cmaxSS),"#3DF2E0","peak");
         const tt=p.nDoses*p.tau;
@@ -1025,7 +1074,17 @@
       mc.style.strokeDashoffset=0;
     }
 
+    renderStrip(T0,T1);
     renderPanels();
+  }
+
+  // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
+  function scheduleOf(p){
+    if(p.dosing==="custom") return p.events.map((e,i)=>({t:e.t, n:i+1, loading:e.type==="loading", missed:e.status==="missed"}));
+    if(p.dosing!=="repeated") return [];
+    const skip=missedOf(p), out=[];
+    for(let i=0;i<p.nDoses;i++) out.push({t:i*p.tau, n:i+1, loading:i===0 && p.loadMult>1, missed:i+1===skip});
+    return out;
   }
 
   function renderPanels(){
@@ -1095,6 +1154,18 @@
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
+    if(p.dosing==="custom"){
+      cards=[
+        {k:"Peak (window)", hot:1, v:fmt(ws.cmax,1), u:"mg/L"},
+        {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
+        {k:"Doses given", v:d.nMissed ? `${d.nGiven}/${d.nGiven+d.nMissed}` : String(d.nGiven), u:""},
+        {k:"Total given", v:fmt(d.totalMg,0), u:"mg"},
+        {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
+        {k:"CL", v:fmt(d.CL,2), u:"L/h"},
+        {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,1), u:"mg·h/L"},
+        {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
+      ];
+    }
     byId("readouts").innerHTML=cards.map(c=>`
       <div class="ro${c.hot?" hot":""}">
         <div class="ro-k">${c.k}</div>
@@ -1131,6 +1202,9 @@
       msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
       if(p.loadMult>1) msg+=` Loading dose (${p.loadMult}×) lifts the first cycle toward steady state immediately.`;
       if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
+    }
+    if(p.dosing==="custom"){
+      msg+=`Custom schedule: <b>${d.nGiven}</b> dose${d.nGiven===1?"":"s"} given${d.nMissed?`, <b>${d.nMissed}</b> missed`:""}, <b>${fmt(d.totalMg,0)} mg</b> in total. Steady-state figures aren't shown because the doses don't follow a fixed interval.`;
     }
     if(msg){ note.classList.add("show"); note.innerHTML=msg; }
     else note.classList.remove("show");
@@ -1239,15 +1313,10 @@
   const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion"};
   const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
-    missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"]};
+    missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""]};
 
-  function relevant(k,s){
-    if(k==="F"||k==="ka") return s.route==="oral";
-    if(k==="tinf") return s.route==="inf";
-    if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
-    return true;
-  }
   function pval(k,s){
+    if(k==="events") return customSummary(s);
     if(k==="route") return ROUTE_NAME[s.route];
     if(k==="dosing") return s.dosing;
     if(k==="missed") return missedOf(s)?"dose "+missedOf(s):"none";
@@ -1257,8 +1326,8 @@
   // Scenario inputs that differ and mean something in both scenarios (F is meaningless for an IV curve, etc.)
   function paramDiffs(a,b){
     return PK_KEYS.filter(k=>{
-      const va=k==="missed"?missedOf(a):a[k], vb=k==="missed"?missedOf(b):b[k];
-      return va!==vb && relevant(k,a) && relevant(k,b);
+      if(!PK.isRelevant(k,a) || !PK.isRelevant(k,b)) return false;
+      return k==="missed" ? missedOf(a)!==missedOf(b) : !PK.sameSetting(k,a,b);
     });
   }
   const moved=(a,b)=> Math.abs(b-a)/Math.max(Math.abs(a),1e-12) > 0.005;
@@ -1285,12 +1354,22 @@
       out.push(`Route ${ROUTE_NAME[a.route]} → ${ROUTE_NAME[b.route]}. ${txt[b.route]}`);
     }
     if(a.dosing!==b.dosing){
-      out.push(b.dosing==="repeated"
+      const tb=PK.doseTotals(b,state.duration);
+      out.push(b.dosing==="custom"
+        ? `<b>Custom schedule</b>: doses follow their own times and amounts instead of a fixed interval (${tb.n} given, ${fmt(tb.mg,0)} mg within the window).`
+        : b.dosing==="repeated"
         ? "<b>Repeated dosing</b>: each dose adds to what's left of the earlier ones, so levels build up until the amount eliminated per interval matches the dose."
         : "<b>Single dose</b>: no accumulation. The curve rises once and decays back toward zero.");
     }
     const sameRate=a.dosing==="repeated" && b.dosing==="repeated" && a.tau!==b.tau && Math.abs(a.D/a.tau-b.D/b.tau)/(a.D/a.tau)<0.01;
-    if(a.D!==b.D && !sameRate){
+    if(a.dosing==="custom" && b.dosing==="custom" && !PK.sameSetting("events",a,b)){
+      const ta=PK.doseTotals(a,state.duration), tb=PK.doseTotals(b,state.duration);
+      const [ra,rb]=mode==="cmp" ? ["A","B"] : ["the baseline","the current schedule"];
+      out.push(ta.n===tb.n && Math.abs(ta.mg-tb.mg)<1e-9
+        ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} mg) within the window, so exposure differs only through when they are given.`
+        : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} mg) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} mg). Exposure follows the total amount given and how the doses are spread over time.`);
+    }
+    if(a.D!==b.D && !sameRate && PK.isRelevant("D",a) && PK.isRelevant("D",b)){
       out.push(`Dose ${a.D} → ${b.D} mg (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
     }
     if(a.route==="oral" && b.route==="oral"){
@@ -1416,10 +1495,16 @@
   }
 
   function scenarioLabel(p){
+    if(p.dosing==="custom") return `${ROUTE_NAME[p.route]} custom ×${derived(p).nGiven}`;
     return `${ROUTE_NAME[p.route]} ${trim(p.D)} mg${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
   }
+  function customSummary(p){
+    const d=derived(p);
+    return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} mg`;
+  }
   function scenarioSummary(p){
-    let s=`${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} mg · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
+    let s=p.dosing==="custom" ? `${cap(ROUTE_NAME[p.route])} · custom schedule · ${customSummary(p)}`
+      : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} mg · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
     if(p.loadMult>1) s+=` · ${p.loadMult}× load`;
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
@@ -1436,8 +1521,11 @@
       byId(side==="a"?"editNameA":"editNameB").textContent=`${side.toUpperCase()} · ${cmp.names[side]}`;
     });
     setSegVal("editSeg","edit",cmp.edit);
-    const lock=PK.LOCKS.find(l=>l[0]===cmp.lock);
-    byId("lockNote").textContent = lock
+    const lock=PK.LOCKS.find(l=>l[0]===cmp.lock), anyCustom=a.dosing==="custom" || b.dosing==="custom";
+    byId("lockSel").disabled=anyCustom;
+    byId("lockNote").textContent = anyCustom
+      ? "Vary only needs two regular regimens (single or repeated), so it’s off while a custom schedule is involved."
+      : lock
       ? `Vary only ${lock[1].toLowerCase()}: any other setting you change applies to both A and B.`
       : "Changes apply only to the scenario you’re editing.";
     byId("lockSel").value=cmp.lock;
@@ -1465,7 +1553,8 @@
       s=`A: ${scenarioLabel(a)} · B: ${scenarioLabel(b)}`;
     } else {
       const r=ROUTE_NAME[state.route];
-      s = state.dosing==="repeated"
+      s = state.dosing==="custom" ? `Custom ${r} schedule · ${customSummary(state)}`
+        : state.dosing==="repeated"
         ? `Repeated ${r} · every ${state.tau} h × ${state.nDoses}${state.loadMult>1?` · ${state.loadMult}× load`:""}${missedOf(state)?` · dose ${state.missed} missed`:""}`
         : `Single ${r}${state.route==="inf"?` over ${state.tinf} h`:""}`;
     }
@@ -1577,13 +1666,14 @@
     el.innerHTML="";
     Object.entries(SLIDERS).forEach(([key,cfg])=>{
       if(!cfg.routes.includes(state.route)) return;
-      if(cfg.dosing && cfg.dosing!==state.dosing) return;
+      if(cfg.dosing && ![].concat(cfg.dosing).includes(state.dosing)) return;
       makeSlider(el,key,cfg);
     });
     const pel=byId("patientSliders");
     pel.innerHTML="";
     Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
     byId("loadSeg").style.display = state.dosing==="repeated" ? "flex" : "none";
+    renderEvents();
   }
 
   const mecEl=byId("mec"), mtcEl=byId("mtc");
@@ -1600,9 +1690,15 @@
   }
   seg("routeSeg","route",v=>{ state.route=v; state.drug=null; markDrug(); buildSliders(); changed(["route"]); });
   seg("doseSeg","dosing",v=>{
+    if(v==="custom" && state.dosing!=="custom"){
+      rebuildFrom[slot()]=snapshot();                                   // what "Rebuild" returns to
+      if(!state.events.length) state.events=PK.eventsFromBasic(snapshot());   // start from the current regimen
+      evSel=null;
+    }
     state.dosing=v; state.drug=null;
     if(v==="repeated") state.duration=Math.max(state.duration, Math.min(168, state.tau*state.nDoses)); // show the whole regimen
-    markDrug(); buildSliders(); changed(["dosing"]);
+    if(v==="custom") coverEvents();
+    markDrug(); buildSliders(); changed(["dosing","events"]);
   });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
@@ -1619,6 +1715,147 @@
     setSegVal("scaleSeg","scale",state.scale);
     markDrug(); buildSliders(); syncWindow();
   }
+
+  /* ================= CUSTOM SCHEDULE ================= */
+  // Events are never edited in place: every change builds a new list and goes through normalizeEvents.
+  let evSel=null;                                 // id of the dose open in the editor
+  const rebuildFrom={};                           // per slot: the regular regimen Custom was entered from
+  const slot=()=> mode==="cmp" ? cmp.edit : "sim";
+  const reduceMotion=()=> window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // If a dose falls beyond the time window, widen it to show that dose and 12 h of its curve. Doses already
+  // in view leave the window alone, so converting a regimen doesn't change what's on screen.
+  function coverEvents(){
+    if(!state.events.length) return;
+    const last=state.events[state.events.length-1].t;
+    if(last<=state.duration) return;
+    const need=Math.min(168, Math.ceil((last+12)/2)*2);
+    if(need>state.duration){
+      state.duration=need;
+      const r=sliderRefs.duration; if(r){ r.sl.value=need; r.show(); }
+    }
+  }
+  // redraw: rebuild the list (default) or, while a field is being committed, only refresh the chart so a
+  // click that caused the commit isn't lost to a rebuilt list
+  function setEvents(list, select, redraw=true){
+    state.events=PK.normalizeEvents(list);
+    if(select!==undefined) evSel=select;
+    if(evSel && !state.events.some(e=>e.id===evSel)) evSel=null;
+    coverEvents();
+    if(redraw) renderEvents(); else renderEventSummary();
+    changed(["events"]);
+  }
+  const nextId=()=>{ const ids=new Set(state.events.map(e=>e.id)); let n=0; do{ n++; }while(ids.has("e"+n)); return "e"+n; };
+  function addEvent(){
+    const L=state.events, last=L[L.length-1], prev=L[L.length-2];
+    const step=last && prev && last.t>prev.t ? last.t-prev.t : 8;
+    const e={id:nextId(), t:last?Math.min(168,last.t+step):0, mg:last?last.mg:state.D, type:"maintenance", status:"given"};
+    setEvents(L.concat(e), e.id);
+  }
+  // A copy goes halfway to the next dose (or 8 h after the last), so it never lands on top of another.
+  function duplicateEvent(id){
+    const L=state.events, i=L.findIndex(e=>e.id===id);
+    if(i<0) return;
+    const e=L[i], next=L[i+1];
+    const t=next ? Math.round((e.t+Math.max(0.25,(next.t-e.t)/2))*4)/4 : Math.min(168,e.t+8);
+    const copy={id:nextId(), t, mg:e.mg, type:"maintenance", status:"given"};
+    setEvents(L.concat(copy), copy.id);
+  }
+  const updateEvent=(id,patch,redraw)=> setEvents(state.events.map(e=> e.id===id ? Object.assign({},e,patch) : e), id, redraw);
+  const deleteEvent=id=> setEvents(state.events.filter(e=>e.id!==id), null);
+
+  function renderEventSummary(){
+    const L=state.events, given=L.filter(e=>e.status==="given"), missed=L.length-given.length, full=L.length>=PK.EVENT_LIMITS.max;
+    byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} mg in total`+
+      (full?` · limit of ${PK.EVENT_LIMITS.max} doses reached`:"");
+    byId("evAdd").disabled=full;
+  }
+  function renderEvents(){
+    const sec=byId("evSec");
+    if(state.dosing!=="custom"){ sec.style.display="none"; return; }
+    sec.style.display="";
+    byId("evList").innerHTML=state.events.length ? state.events.map(evRow).join("")
+      : `<p class="lib-note">No doses yet. Add one to start the schedule.</p>`;
+    renderEventSummary();
+    const from=rebuildFrom[slot()];
+    byId("evRebuild").textContent=`↺ Rebuild from ${from && from.dosing==="single" ? "single dose" : "repeated"}`;
+  }
+  function evRow(e){
+    const open=e.id===evSel, missed=e.status==="missed";
+    const tags=(e.type==="loading"?'<span class="ev-tag">LD</span>':"")+(missed?'<span class="ev-tag miss">missed</span>':"");
+    let h=`<div class="ev-row${open?" open":""}" data-id="${e.id}">`+
+      `<button class="ev-head${missed?" missed":""}" data-act="toggle" aria-expanded="${open}"><span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} mg</span>${tags}</button>`;
+    if(open){
+      const on=(f,v)=> e[f]===v ? ' class="on"' : "";
+      const full=state.events.length>=PK.EVENT_LIMITS.max;
+      h+=`<div class="ev-edit">
+        <label>Time (h)<input type="number" data-f="t" min="0" max="168" step="0.25" value="${e.t}"></label>
+        <label>Amount (mg)<input type="number" data-f="mg" min="25" max="4000" step="25" value="${e.mg}"></label>
+        <div class="seg" role="group" aria-label="Dose type"><button data-f="type" data-v="maintenance"${on("type","maintenance")}>Maintenance</button><button data-f="type" data-v="loading"${on("type","loading")}>Loading</button></div>
+        <div class="seg" role="group" aria-label="Given or missed"><button data-f="status" data-v="given"${on("status","given")}>Given</button><button data-f="status" data-v="missed"${on("status","missed")}>Missed</button></div>
+        <div class="ev-btns"><button class="abtn" data-act="dup"${full?" disabled":""}>⧉ Duplicate</button><button class="abtn" data-act="del">✕ Delete</button></div>
+      </div>`;
+    }
+    return h+`</div>`;
+  }
+  const focusInList=sel=>{ const el=byId("evList").querySelector(sel); if(el) el.focus(); };
+  byId("evList").addEventListener("click",e=>{
+    const btn=e.target.closest("button"), row=e.target.closest(".ev-row");
+    if(!btn || !row || btn.disabled) return;
+    const id=row.dataset.id;
+    if(btn.dataset.act==="toggle"){
+      evSel = evSel===id ? null : id;
+      renderEvents(); render();
+      focusInList(`.ev-row[data-id="${id}"] .ev-head`);
+    } else if(btn.dataset.act==="dup") duplicateEvent(id);
+    else if(btn.dataset.act==="del") deleteEvent(id);
+    else if(btn.dataset.f){
+      updateEvent(id,{[btn.dataset.f]:btn.dataset.v});
+      focusInList(`.ev-row[data-id="${id}"] button[data-f="${btn.dataset.f}"][data-v="${btn.dataset.v}"]`);
+    }
+  });
+  // numbers are committed on change (blur or Enter); a value that isn't a number puts the old one back
+  byId("evList").addEventListener("change",e=>{
+    const inp=e.target.closest("input[data-f]");
+    if(!inp) return;
+    const id=inp.closest(".ev-row").dataset.id, v=parseFloat(inp.value);
+    if(!isFinite(v)){ renderEvents(); return; }
+    updateEvent(id,{[inp.dataset.f]:v}, false);
+    const ev=state.events.find(x=>x.id===id), head=inp.closest(".ev-row").querySelector(".ev-head");
+    if(ev){ inp.value=ev[inp.dataset.f]; head.querySelector(".ev-t").textContent=`${trim(ev.t)} h`; head.querySelector(".ev-mg").textContent=`${trim(ev.mg)} mg`; }
+  });
+  byId("evAdd").addEventListener("click",addEvent);
+  byId("evRebuild").addEventListener("click",()=>{
+    const from=rebuildFrom[slot()] || Object.assign(snapshot(),{dosing:"repeated"});
+    setEvents(PK.eventsFromBasic(from), null);
+  });
+
+  // The strip under the chart: one marker per dose of the schedule being edited, on the chart's time axis.
+  function renderStrip(T0,T1){
+    const wrap=byId("evStripWrap"), show=state.dosing==="custom";
+    wrap.hidden=!show;
+    if(!show) return;
+    const iw=PW-M.l-M.r, x=t=> M.l+((t-T0)/(T1-T0))*iw, y=30, col=mode==="cmp" ? COL[cmp.edit].line : "#3DF2E0";
+    let g=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.25)"/>`+
+      `<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">doses</text>`;
+    state.events.forEach(e=>{
+      if(e.t<T0-1e-9 || e.t>T1+1e-9) return;
+      const cx=x(e.t), r=e.type==="loading"?7:5.5, missed=e.status==="missed";
+      g+=`<g class="evm" data-id="${e.id}"><circle cx="${cx}" cy="${y}" r="26" fill="transparent"/>`+
+        (e.id===evSel?`<circle cx="${cx}" cy="${y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.85"/>`:"")+
+        `<circle cx="${cx}" cy="${y}" r="${r}" fill="${missed?"#05070E":col}" stroke="${missed?"#FF5C7A":"#05070E"}" stroke-width="1.6"/>`+
+        (e.type==="loading"?`<text x="${cx}" y="${y-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="#B7A9FF">LD</text>`:"")+
+        `</g>`;
+    });
+    byId("evStrip").innerHTML=g;
+  }
+  byId("evStrip").addEventListener("click",e=>{
+    const m=e.target.closest(".evm");
+    if(!m) return;
+    evSel=m.dataset.id;
+    renderEvents(); render();
+    const row=byId("evList").querySelector(`.ev-row[data-id="${evSel}"]`);
+    if(row) row.scrollIntoView({block:"nearest", behavior:reduceMotion()?"auto":"smooth"});
+  });
 
   /* ================= DRUG LIBRARY ================= */
   function buildDrugs(){
@@ -1702,13 +1939,14 @@
       mode="sim";
       loadScenario(simSaved||DEFAULTS);
     }
-    state.drug=null;
+    state.drug=null; evSel=null;
     document.body.dataset.mode=mode;
     byId("lessonBar").hidden=!(lesson && mode==="sim");
     syncControls(); render();
   }
   function setEdit(side){
     if(side===cmp.edit) return;
+    evSel=null;
     cmp[cmp.edit]=snapshot();
     cmp.edit=side;
     loadScenario(cmp[side]);
@@ -1717,6 +1955,7 @@
   }
   // Save the live side, apply a comparison operation from the engine, and reload the controls.
   function cmpOp(op, keepTemplate){
+    evSel=null;
     cmp[cmp.edit]=snapshot();
     Object.assign(cmp, op(cmp));
     loadScenario(cmp[cmp.edit]);
@@ -1826,7 +2065,11 @@
   byId("csvBtn").addEventListener("click",()=>{
     const curves=chartCurves().map(cv=>({...cv, ev:doseEvents(cv.p)}));
     const head=mode==="cmp" ? ["A_mg_L","B_mg_L"] : curves.map(cv=>cv.ghost?"baseline_mg_L":"concentration_mg_L");
-    let csv="time_h,"+head.join(",")+"\n";
+    const label=cv=> mode==="cmp" ? cv.tag : cv.ghost ? "baseline" : "current";
+    // custom schedules go above the table as # comment lines, so the table itself stays a plain grid
+    let csv=curves.filter(cv=>cv.p.dosing==="custom").map(cv=>`# ${label(cv)} dose schedule: `+
+      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} mg${e.type==="loading"?" loading":""}${e.status==="missed"?" missed":""}`).join("; ") : "no doses")+"\n").join("");
+    csv+="time_h,"+head.join(",")+"\n";
     const Tend=state.duration, N=600;
     for(let i=0;i<=N;i++){
       const t=Tend*i/N;
