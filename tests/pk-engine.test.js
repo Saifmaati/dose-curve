@@ -72,7 +72,7 @@ test("repeated dosing is the sum of the individual doses", ()=>{
   const p=scenario({dosing:"repeated", tau:8, nDoses:6});
   [3,11,27.5,44].forEach(t=>{
     let sum=0;
-    for(let i=0;i<6;i++) sum+=PK.singleConc(p, t-i*8, 1);
+    for(let i=0;i<6;i++) sum+=PK.singleConc(p, t-i*8, p.D);
     rel(PK.conc(p,t), sum, 1e-12, `t=${t}`);
   });
 });
@@ -88,7 +88,7 @@ test("a loading dose scales only the first dose", ()=>{
   const base=scenario({dosing:"repeated", tau:8, nDoses:6});
   const loaded=scenario({dosing:"repeated", tau:8, nDoses:6, loadMult:2});
   rel(PK.conc(loaded,5), 2*PK.conc(base,5), 1e-12, "first interval doubles");
-  near(PK.conc(loaded,30)-PK.conc(base,30), PK.singleConc(base,30,1), 1e-9, "later: one extra first dose");
+  near(PK.conc(loaded,30)-PK.conc(base,30), PK.singleConc(base,30,base.D), 1e-9, "later: one extra first dose");
 });
 
 test("a missed middle dose removes exactly that dose", ()=>{
@@ -96,7 +96,7 @@ test("a missed middle dose removes exactly that dose", ()=>{
   const miss=scenario({dosing:"repeated", tau:8, nDoses:10, missed:4});
   assert.equal(PK.doseEvents(miss).length, 9);
   [20,26,40,70].forEach(t=>
-    near(PK.conc(full,t)-PK.conc(miss,t), PK.singleConc(full,t-24,1), 1e-9, `t=${t}`));
+    near(PK.conc(full,t)-PK.conc(miss,t), PK.singleConc(full,t-24,full.D), 1e-9, `t=${t}`));
 });
 
 test("the final dose can't be skipped (it would just be one dose fewer)", ()=>{
@@ -338,6 +338,160 @@ test("steady state stays within 0.5% even in the slowest-clearing regimen", ()=>
   const p=scenario({route:"iv", dosing:"repeated", thalf:24, clFn:25, tau:2, nDoses:20});
   const k=PK.keOf(p), C0=p.D/PK.vOf(p);
   rel(PK.ssProfile(p).ssTrough, C0*Math.exp(-k*2)/(1-Math.exp(-k*2)), 0.005);
+});
+
+/* ---------- custom dose schedules ---------- */
+
+const ev=(t,mg,extra)=>Object.assign({t, mg, type:"maintenance", status:"given"}, extra);
+const custom=(events,over)=>PK.normalizeScenario(scenario(Object.assign({dosing:"custom", events}, over)));
+const sampleTimes=[0,0.5,3,7.9,8,12.4,20,33,47.5,60,72];
+
+test("converting a regimen to a custom schedule doesn't change the curve", ()=>{
+  const regimens=[
+    scenario(),
+    scenario({route:"iv", dosing:"repeated", tau:8, nDoses:6}),
+    scenario({dosing:"repeated", tau:12, nDoses:8, loadMult:2, missed:4}),
+    scenario({route:"inf", dosing:"repeated", tinf:0.5, tau:8, nDoses:6, loadMult:1.5}),
+    ...PK.LESSONS.map(L=>scenario(L.cur))
+  ];
+  regimens.forEach((p,i)=>{
+    const c=Object.assign({}, p, {dosing:"custom", events:PK.eventsFromBasic(p)});
+    sampleTimes.forEach(t=> near(PK.conc(c,t), PK.conc(p,t), 1e-9, `regimen ${i}, t=${t}`));
+  });
+});
+
+test("conversion keeps loading and missed doses as labelled events", ()=>{
+  const e=PK.eventsFromBasic(scenario({dosing:"repeated", tau:12, nDoses:5, loadMult:2, missed:3}));
+  assert.deepEqual(e.map(x=>[x.t, x.mg, x.type, x.status]), [
+    [0,1000,"loading","given"], [12,500,"maintenance","given"], [24,500,"maintenance","missed"],
+    [36,500,"maintenance","given"], [48,500,"maintenance","given"]]);
+  const long=PK.eventsFromBasic(scenario({dosing:"repeated", tau:24, nDoses:20}));
+  assert.equal(long.length, 8, "doses after 168 h are left out");
+});
+
+test("an irregular schedule is the sum of its doses", ()=>{
+  const p=custom([ev(0,500), ev(5,250), ev(14.5,750), ev(30,400)]);
+  sampleTimes.forEach(t=>{
+    const sum=[[0,500],[5,250],[14.5,750],[30,400]].reduce((s,[t0,mg])=>s+PK.singleConc(p,t-t0,mg),0);
+    near(PK.conc(p,t), sum, 1e-12, `t=${t}`);
+  });
+});
+
+test("a delayed dose shifts that dose's contribution and nothing else", ()=>{
+  const onTime=custom([ev(0,500), ev(8,500), ev(16,500)]);
+  const late=custom([ev(0,500), ev(11,500), ev(16,500)]);
+  near(PK.conc(late,9), PK.conc(onTime,9)-PK.singleConc(onTime,1,500), 1e-12, "before the late dose");
+  near(PK.conc(late,20), PK.conc(onTime,20)-PK.singleConc(onTime,12,500)+PK.singleConc(onTime,9,500), 1e-12);
+});
+
+test("doses at the same time add together", ()=>{
+  const two=custom([ev(0,300), ev(0,200)]), one=custom([ev(0,500)]);
+  [1,4,10].forEach(t=> near(PK.conc(two,t), PK.conc(one,t), 1e-12));
+});
+
+test("missed events contribute nothing; loading is a label, the amount is what counts", ()=>{
+  const p=custom([ev(0,1000,{type:"loading"}), ev(12,500,{status:"missed"}), ev(24,500)]);
+  const q=custom([ev(0,1000), ev(24,500)]);
+  sampleTimes.forEach(t=> near(PK.conc(p,t), PK.conc(q,t), 1e-12));
+  const d=PK.derived(p);
+  assert.equal(d.nGiven, 2); assert.equal(d.nMissed, 1); assert.equal(d.totalMg, 1500);
+  rel(d.auc, 0.9*1500/d.CL, 1e-12, "AUC∞ = F·(total given)/CL");
+});
+
+test("an empty custom schedule is a flat zero curve, not an error", ()=>{
+  const p=custom([]);
+  assert.equal(PK.conc(p,10), 0);
+  const w=PK.windowStats(p,24,2,12);
+  assert.equal(w.auc, 0); near(w.tBelow, 24, 1e-9);
+});
+
+test("invalid events are dropped or clamped, and the schedule is sorted and capped", ()=>{
+  const e=PK.normalizeEvents([
+    {t:10, mg:500}, {t:"abc", mg:500}, {t:5, mg:NaN}, null, 7, {t:-3, mg:99999, type:"weird", status:"??"},
+    {t:500, mg:1, id:"e1"}, {t:2, mg:300, id:"e1"}]);
+  assert.deepEqual(e.map(x=>[x.t,x.mg,x.type,x.status]),
+    [[0,4000,"maintenance","given"], [2,300,"maintenance","given"], [10,500,"maintenance","given"], [168,25,"maintenance","given"]]);
+  assert.equal(new Set(e.map(x=>x.id)).size, e.length, "ids are unique");
+  const many=PK.normalizeEvents(Array.from({length:60},(_,i)=>({t:i, mg:100})));
+  assert.equal(many.length, 40);
+  assert.equal(many[39].t, 39, "the earliest 40 are kept");
+});
+
+test("A and B never share a schedule: copy, swap, reset and new comparisons clone it", ()=>{
+  let c=PK.cmpApply(PK.newComparison(), "a", {dosing:"custom", events:[ev(0,500), ev(8,500)]});
+  c=PK.cmpCopy(c,"a","b");
+  assert.notEqual(c.a.events, c.b.events);
+  c.a.events[0].mg=9999;                 // even an in-place edit of A can't reach B
+  assert.equal(c.b.events[0].mg, 500);
+  const sw=PK.cmpSwap(c);
+  assert.notEqual(sw.a.events, c.b.events); assert.notEqual(sw.b.events, c.a.events);
+  const r=PK.cmpReset(c,"a");
+  assert.deepEqual(r.a.events, []); assert.equal(r.b.events.length, 2);
+  const fresh=PK.newComparison({dosing:"custom", events:[ev(0,100)]});
+  assert.notEqual(fresh.a.events, fresh.b.events);
+  assert.notEqual(PK.scenario().events, PK.DEFAULTS.events, "defaults are never handed out");
+});
+
+test("editing one side's schedule leaves the other side alone", ()=>{
+  let c=PK.cmpCopy(PK.cmpApply(PK.newComparison(),"a",{dosing:"custom", events:[ev(0,500)]}),"a","b");
+  const before=PK.eventsKey(c.b.events);
+  c=PK.cmpApply(c,"a",{events:[ev(0,500), ev(6,250)]});
+  assert.equal(PK.eventsKey(c.b.events), before);
+  assert.equal(c.a.events.length, 2);
+});
+
+test("Vary only is off whenever a custom schedule is involved", ()=>{
+  const custA=PK.cmpApply(PK.newComparison(),"a",{dosing:"custom", events:[ev(0,500)]});
+  assert.equal(PK.cmpSetLock(custA,"D").lock, "", "can't be turned on");
+  const locked=PK.cmpSetLock(PK.newComparison({dosing:"repeated"}),"tau");
+  const switched=PK.cmpApply(locked,"b",{dosing:"custom", events:[ev(0,500)]});
+  assert.equal(switched.lock, "", "switching a side to custom turns it off");
+  assert.equal(switched.a.dosing, "repeated", "and the other side isn't dragged along");
+  assert.equal(PK.lockHolds({a:switched.a, b:switched.b, lock:"tau"}), false);
+});
+
+test("schedule equality ignores ids but not times, amounts, type or status", ()=>{
+  const a=custom([ev(0,500), ev(8,500)]), b=custom([ev(8,500,{id:"x9"}), ev(0,500,{id:"zz"})]);
+  assert.ok(PK.sameSetting("events",a,b));
+  assert.ok(!PK.sameSetting("events",a,custom([ev(0,500), ev(8,500,{status:"missed"})])));
+  assert.ok(!PK.sameSetting("events",a,custom([ev(0,500,{type:"loading"}), ev(8,500)])));
+  assert.ok(!PK.isRelevant("D",a) && PK.isRelevant("events",a) && !PK.isRelevant("events",scenario()));
+});
+
+test("custom schedules travel in v2 links; regular regimens still write v1", ()=>{
+  const s=custom([ev(0,1000,{type:"loading"}), ev(12.5,250), ev(24,250,{status:"missed"})], {route:"iv"});
+  const link=PK.encodeLink({mode:"sim", s, base:null, view:PK.VIEW_DEFAULTS});
+  assert.ok(link.startsWith("v=2&"));
+  assert.ok(link.includes("ev:0@1000L;12.5@250;24@250m"));
+  const back=PK.decodeLink(link).s;
+  assert.equal(back.dosing, "custom"); assert.equal(back.route, "iv");
+  assert.ok(PK.sameSetting("events", back, s));
+  assert.ok(PK.encodeLink({mode:"sim", s:scenario({dosing:"repeated"}), view:PK.VIEW_DEFAULTS}).startsWith("v=1&"));
+  const cmp=PK.encodeLink({mode:"cmp", a:scenario(), b:s, view:PK.VIEW_DEFAULTS});
+  assert.ok(cmp.startsWith("v=2&"));
+  assert.ok(PK.sameSetting("events", PK.decodeLink(cmp).b, s));
+});
+
+test("malformed schedule data in a link is skipped, never trusted", ()=>{
+  const p=PK.decodeScenario("dosing:custom,ev:0@500;bad;@;12@;-4@100;7@1e9;8@300Lm;9@200x");
+  assert.deepEqual(p.events.map(e=>[e.t,e.mg,e.type,e.status]),
+    [[0,500,"maintenance","given"], [8,300,"loading","missed"]], "only well-formed tokens survive");
+  const flood=PK.decodeScenario("dosing:custom,ev:"+"1@1;".repeat(300)+"200@9999");
+  assert.equal(flood.events.length, 40, "capped");
+  assert.ok(flood.events.every(e=>e.t>=0 && e.t<=168 && e.mg>=25 && e.mg<=4000), "clamped");
+  assert.equal(PK.decodeScenario("dosing:custom").events.length, 0, "custom with no ev is an empty schedule");
+});
+
+test("comparisons with a custom schedule show dose totals and drop regular-regimen rows", ()=>{
+  const a=scenario({dosing:"repeated", tau:12, nDoses:4});
+  const b=custom([ev(0,500), ev(10,500), ev(26,500)]);
+  const keys=PK.compareRows(a,b,48,2,12).rows.map(r=>r.key);
+  assert.ok(keys.includes("ngiven") && keys.includes("mg"));
+  assert.ok(!keys.includes("trough") && !keys.includes("rac") && !keys.includes("t90"));
+  const rows=PK.compareRows(a,b,48,2,12).rows;
+  assert.equal(rows.find(r=>r.key==="ngiven").a, 4);
+  assert.equal(rows.find(r=>r.key==="mg").b, 1500);
+  assert.ok(!PK.compareRows(a,a,48,2,12).rows.some(r=>r.key==="ngiven"), "regular comparisons are unchanged");
 });
 
 /* ---------- every claim the lessons and comparisons make ---------- */
