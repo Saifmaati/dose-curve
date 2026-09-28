@@ -527,6 +527,74 @@ test("a blocked Add on A leaves B's schedule alone", ()=>{
   assert.equal(PK.eventsKey(c.b.events), before);
 });
 
+/* ---------- time inspection ---------- */
+
+test("inspectAt reads the curve: IV bolus value, trend and time since the dose", ()=>{
+  const p=scenario({route:"iv", D:500, V:35, thalf:4});
+  const i=PK.inspectAt(p, 3, 2, 12);
+  rel(i.c, (500/35)*Math.exp(-Math.LN2/4*3), 1e-12);
+  assert.equal(i.trend, "falling");
+  assert.equal(i.status, "in");
+  assert.deepEqual(i.last, {t:0, mg:500, count:1, loading:false});
+  assert.equal(i.since, 3);
+  assert.equal(PK.inspectAt(p, 0, 2, 12).trend, "peak", "a bolus peaks the moment it's given");
+});
+
+test("inspectAt: an oral dose rises before its peak and falls after", ()=>{
+  const p=scenario(), tmax=PK.derived(p).tmax;
+  assert.equal(PK.inspectAt(p, tmax-0.5, 2, 12).trend, "rising");
+  assert.equal(PK.inspectAt(p, tmax+0.5, 2, 12).trend, "falling");
+  assert.equal(PK.inspectAt(p, tmax, 2, 12).trend, "peak");
+  assert.equal(PK.inspectAt(p, PK.extrema(p,24).peaks[0].t, 2, 12).trend, "peak", "the peak navigation lands on reads as a peak");
+  assert.equal(PK.inspectAt(p, 0, 2, 12).trend, "rising", "an oral dose starts rising at once");
+  const rep=scenario({route:"iv", dosing:"repeated", tau:8, nDoses:3});
+  assert.equal(PK.inspectAt(rep, PK.extrema(rep,24).troughs[0].t, 2, 12).trend, "trough");
+  assert.equal(PK.inspectAt(p, 0.1, 2, 12).status, "below", "just after dosing, before it reaches MEC");
+  assert.equal(PK.inspectAt(scenario({D:2000}), tmax, 2, 12).status, "above");
+});
+
+test("inspectAt groups same-time doses and never counts a missed dose as given", ()=>{
+  const p=custom([ev(0,300,{type:"loading"}), ev(0,200), ev(8,500), ev(16,500,{status:"missed"})]);
+  assert.deepEqual(PK.inspectAt(p,4,2,12).last, {t:0, mg:500, count:2, loading:true});
+  const after=PK.inspectAt(p,20,2,12);
+  assert.equal(after.last.t, 8, "the missed 16 h dose isn't the last dose");
+  assert.equal(after.since, 12);
+  assert.deepEqual(after.missedSince, [16]);
+  assert.deepEqual(PK.inspectAt(p,12,2,12).next, {t:16, mg:500, missed:true}, "the next scheduled dose is shown even if missed");
+  const before=PK.inspectAt(custom([ev(6,500)]),2,2,12);
+  assert.equal(before.last, null); assert.equal(before.trend, "flat"); assert.equal(before.c, 0);
+});
+
+test("extrema: one oral peak at Tmax, none for the window's truncated ends", ()=>{
+  const p=scenario(), ex=PK.extrema(p,24);
+  assert.equal(ex.peaks.length, 1);
+  near(ex.peaks[0].t, PK.derived(p).tmax, 24/2400, "within one grid step");
+  assert.equal(ex.troughs.length, 0);
+});
+
+test("extrema: repeated IV boluses peak at each dose and trough just before the next", ()=>{
+  const p=scenario({route:"iv", dosing:"repeated", tau:8, nDoses:3});
+  const ex=PK.extrema(p,24);
+  assert.deepEqual(ex.peaks.map(e=>+e.t.toFixed(4)), [0,8,16]);
+  assert.deepEqual(ex.troughs.map(e=>+e.t.toFixed(3)), [8,16]);
+  rel(ex.troughs[0].c, PK.conc(p,8-1e-9), 1e-5);
+});
+
+test("extrema: infusions peak when they end; irregular schedules find every peak", ()=>{
+  const inf=PK.extrema(scenario({route:"inf", tinf:3, thalf:6, V:49, D:1000}),36);
+  assert.equal(inf.peaks.length, 1); near(inf.peaks[0].t, 3, 1e-9);
+  const irr=PK.extrema(custom([ev(0,500), ev(9,500), ev(15,800), ev(30,300)]),48);
+  assert.equal(irr.peaks.length, 4);
+  assert.equal(irr.troughs.length, 3);
+  assert.ok(irr.troughs.every((tr,i)=> tr.t>irr.peaks[i].t && tr.t<irr.peaks[i+1].t), "troughs sit between peaks");
+});
+
+test("doseSchedule lists every scheduled dose in time order, missed ones flagged", ()=>{
+  assert.deepEqual(PK.doseSchedule(scenario({dosing:"repeated", tau:12, nDoses:3, loadMult:2, missed:2})).map(d=>[d.t,d.mg,d.loading,d.missed]),
+    [[0,1000,true,false],[12,500,false,true],[24,500,false,false]]);
+  assert.deepEqual(PK.doseSchedule(scenario()).map(d=>d.t), [0]);
+});
+
 /* ---------- every claim the lessons and comparisons make ---------- */
 
 test("lesson: oral vs IV bolus", ()=>{
