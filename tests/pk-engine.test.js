@@ -749,3 +749,93 @@ test("lesson: once vs twice daily", ()=>{
 test("every comparison template points at a real lesson", ()=>{
   PK.TEMPLATES.forEach(t=> assert.ok(PK.LESSONS.some(L=>L.id===t.lesson), t.id));
 });
+
+/* ---------- moving doses (drag and ±0.5 h) ---------- */
+
+const plan=()=>PK.normalizeEvents([ev(0,1000,{type:"loading"}), ev(12,500), ev(24,500,{status:"missed"}), ev(36,500)]);
+const at=(list,id)=>list.find(e=>e.id===id);
+
+test("snapTime keeps drags on the half-hour grid inside 0–168 h", ()=>{
+  assert.equal(PK.MOVE_STEP, 0.5);
+  assert.deepEqual([12.26, 12.74, 12.75, 0.2, -5, 167.9, 400].map(t=>PK.snapTime(t)), [12.5, 12.5, 13, 0, 0, 168, 168]);
+  assert.equal(PK.snapTime(NaN), null); assert.equal(PK.snapTime("later"), null); assert.equal(PK.snapTime(Infinity), null);
+});
+
+test("moving a dose earlier or later re-sorts the schedule and changes nothing else", ()=>{
+  const L=plan(), snapshot=JSON.stringify(L);
+  const later=PK.moveEvent(L,"e2",30);
+  assert.deepEqual(later.map(e=>e.id), ["e1","e3","e2","e4"], "the moved dose takes its new place in time order");
+  assert.deepEqual(at(later,"e2"), Object.assign({}, at(L,"e2"), {t:30}), "only its time changed");
+  ["e1","e3","e4"].forEach(id=> assert.deepEqual(at(later,id), at(L,id), id));
+  const earlier=PK.moveEvent(L,"e4",6);
+  assert.deepEqual(earlier.map(e=>`${e.id}@${e.t}`), ["e1@0","e4@6","e2@12","e3@24"]);
+  assert.equal(JSON.stringify(L), snapshot, "the input schedule is never modified");
+  assert.notEqual(later, L);
+});
+
+test("moves stop at 0 h and 168 h", ()=>{
+  const L=plan();
+  assert.equal(at(PK.moveEvent(L,"e2",0),"e2").t, 0);
+  assert.equal(at(PK.moveEvent(L,"e2",-6),"e2").t, 0);
+  assert.equal(at(PK.moveEvent(L,"e2",168),"e2").t, 168);
+  assert.equal(at(PK.moveEvent(L,"e2",500),"e2").t, 168);
+  assert.equal(PK.moveEvent(L,"e2",168).at(-1).id, "e2", "the last dose after moving to the end");
+});
+
+test("a dose moved onto another dose's time stacks with it, and the doses add together", ()=>{
+  const L=plan(), moved=PK.moveEvent(L,"e4",12);
+  assert.equal(moved.length, 4, "neither dose is dropped");
+  assert.deepEqual(moved.filter(e=>e.t===12).map(e=>e.id), ["e2","e4"]);
+  const stacked=custom(moved), single=custom([ev(0,1000,{type:"loading"}), ev(12,1000), ev(24,500,{status:"missed"})]);
+  sampleTimes.forEach(t=> rel(PK.conc(stacked,t)+1e-12, PK.conc(single,t)+1e-12, 1e-12, `t=${t}`));
+});
+
+test("moving keeps a missed dose missed and a loading dose a loading dose", ()=>{
+  const L=plan();
+  const m=at(PK.moveEvent(L,"e3",27.5),"e3");
+  assert.deepEqual([m.t, m.status, m.mg], [27.5, "missed", 500]);
+  const ld=at(PK.moveEvent(L,"e1",2),"e1");
+  assert.deepEqual([ld.t, ld.type, ld.mg], [2, "loading", 1000]);
+  const p=custom(PK.moveEvent(L,"e3",27.5));
+  assert.equal(PK.conc(p,30), PK.conc(custom(L),30), "a missed dose still adds nothing wherever it goes");
+});
+
+test("an unknown dose or an unusable time leaves the schedule as it was", ()=>{
+  const L=plan();
+  [["nope",20], ["e2",NaN], ["e2","soon"], ["e2",undefined]].forEach(([id,t])=>{
+    const r=PK.moveEvent(L,id,t);
+    assert.deepEqual(r, L, `${id} ${t}`); assert.notEqual(r, L, "still a fresh copy");
+  });
+  assert.deepEqual(PK.moveEvent(null,"e1",4), []);
+});
+
+test("undoing a move restores the exact schedule", ()=>{
+  const L=plan(), moved=PK.moveEvent(L,"e2",30);
+  assert.deepEqual(PK.normalizeEvents(L), L, "the list kept for undo is already canonical");
+  assert.notEqual(PK.eventsKey(moved), PK.eventsKey(L));
+  const back=PK.moveEvent(moved,"e2",12);
+  assert.deepEqual(back, L, "moving it back is the same schedule, ids included");
+});
+
+test("a moved schedule survives links, the library and Compare isolation", ()=>{
+  const moved=PK.moveEvent(plan(),"e2",30.5);
+  const s=custom(moved), key=PK.eventsKey(moved);
+  const sim=PK.decodeLink(PK.encodeLink({mode:"sim", s, base:null, baseLabel:"", lesson:null, view:V}));
+  assert.equal(PK.eventsKey(sim.s.events), key, "share link");
+  const it=PK.parseLibrary(PK.exportLibrary([PK.libraryItem("Moved", {mode:"sim", s, view:V})])).library.items[0];
+  assert.equal(PK.eventsKey(PK.decodeLink(it.link).s.events), key, "library export and import");
+
+  let c=PK.cmpApply(PK.newComparison(), "a", {dosing:"custom", events:plan()});
+  c=PK.cmpCopy(c,"a","b");
+  c=PK.cmpApply(c, "a", {events:PK.moveEvent(c.a.events,"e2",30.5)});
+  assert.equal(PK.eventsKey(c.a.events), key);
+  assert.equal(PK.eventsKey(c.b.events), PK.eventsKey(plan()), "moving A's dose leaves B's schedule alone");
+  const sw=PK.cmpSwap(c);
+  assert.equal(PK.eventsKey(sw.b.events), key, "swap carries the moved schedule");
+  const cp=PK.cmpCopy(c,"a","b");
+  assert.equal(PK.eventsKey(cp.b.events), key, "copy carries it too");
+  assert.notEqual(cp.a.events, cp.b.events);
+  assert.equal(PK.cmpReset(c,"a").a.dosing, PK.DEFAULTS.dosing, "reset still clears it");
+  const cl=PK.decodeLink(PK.encodeLink({mode:"cmp", a:c.a, b:c.b, nameA:"", nameB:"", lock:"", edit:"a", view:V}));
+  assert.deepEqual([PK.eventsKey(cl.a.events), PK.eventsKey(cl.b.events)], [key, PK.eventsKey(plan())], "comparison link");
+});
