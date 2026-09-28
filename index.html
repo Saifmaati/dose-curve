@@ -359,6 +359,8 @@
   .ev-btns{grid-column:1 / -1;display:flex;gap:8px}
   .ev-btns .abtn{flex:1;padding:7px 10px}
   .ev-sum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:9px}
+  .ev-limit{font-size:11.5px;color:#F2C46B;margin-top:6px;line-height:1.5}
+  .ev-limit[hidden]{display:none}
   .ev-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
   .abtn:disabled{opacity:.45;cursor:not-allowed}
   .ev-strip{padding:0 14px 2px}
@@ -536,6 +538,7 @@
             <p class="lib-note ev-intro">Custom lets you build an irregular schedule: every dose has its own time and amount, and any dose can be marked missed. Select a dose to edit it.</p>
             <div class="ev-list" id="evList"></div>
             <p class="ev-sum" id="evSum"></p>
+            <p class="ev-limit" id="evLimit" role="status" hidden>Can’t add another dose: the schedule already reaches the 168-hour limit. Duplicate still adds a dose at the same time.</p>
             <div class="ev-actions">
               <button class="abtn" id="evAdd">+ Add dose</button>
               <button class="abtn" id="evRebuild">↺ Rebuild from repeated</button>
@@ -1746,18 +1749,17 @@
   }
   const nextId=()=>{ const ids=new Set(state.events.map(e=>e.id)); let n=0; do{ n++; }while(ids.has("e"+n)); return "e"+n; };
   function addEvent(){
-    const L=state.events, last=L[L.length-1], prev=L[L.length-2];
-    const step=last && prev && last.t>prev.t ? last.t-prev.t : 8;
-    const e={id:nextId(), t:last?Math.min(168,last.t+step):0, mg:last?last.mg:state.D, type:"maintenance", status:"given"};
+    const L=state.events, t=PK.nextEventTime(L), last=L[L.length-1];
+    if(t===null || L.length>=PK.EVENT_LIMITS.max) return;
+    const e={id:nextId(), t, mg:last?last.mg:state.D, type:"maintenance", status:"given"};
     setEvents(L.concat(e), e.id);
   }
-  // A copy goes halfway to the next dose (or 8 h after the last), so it never lands on top of another.
+  // A copy goes halfway to the next dose (or 8 h after the last), so it never lands on top of another
+  // unless the schedule is already at the 168 h limit.
   function duplicateEvent(id){
     const L=state.events, i=L.findIndex(e=>e.id===id);
     if(i<0) return;
-    const e=L[i], next=L[i+1];
-    const t=next ? Math.round((e.t+Math.max(0.25,(next.t-e.t)/2))*4)/4 : Math.min(168,e.t+8);
-    const copy={id:nextId(), t, mg:e.mg, type:"maintenance", status:"given"};
+    const copy={id:nextId(), t:PK.duplicateEventTime(L,i), mg:L[i].mg, type:"maintenance", status:"given"};
     setEvents(L.concat(copy), copy.id);
   }
   const updateEvent=(id,patch,redraw)=> setEvents(state.events.map(e=> e.id===id ? Object.assign({},e,patch) : e), id, redraw);
@@ -1767,7 +1769,9 @@
     const L=state.events, given=L.filter(e=>e.status==="given"), missed=L.length-given.length, full=L.length>=PK.EVENT_LIMITS.max;
     byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} mg in total`+
       (full?` · limit of ${PK.EVENT_LIMITS.max} doses reached`:"");
-    byId("evAdd").disabled=full;
+    const atEnd=!full && PK.nextEventTime(L)===null;
+    byId("evAdd").disabled=full || atEnd;
+    byId("evLimit").hidden=!atEnd;
   }
   function renderEvents(){
     const sec=byId("evSec");

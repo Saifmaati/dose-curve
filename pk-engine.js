@@ -61,6 +61,21 @@
     out.sort((a,b)=> a.t-b.t || (a.id<b.id ? -1 : a.id>b.id ? 1 : 0));
     return out.slice(0,EVENT_LIMITS.max);
   }
+  // Where "Add dose" puts the next dose: one interval after the last (the gap between the last two doses,
+  // or 12 h when there's no gap to go on), capped at 168 h. null once the schedule reaches 168 h, so the
+  // button can say why it's disabled instead of quietly stacking doses at the limit.
+  function nextEventTime(list){
+    if(!list || !list.length) return 0;
+    const last=list[list.length-1].t, prev=list.length>1 ? list[list.length-2].t : null;
+    if(last>=EVENT_LIMITS.t[1]) return null;
+    return Math.min(EVENT_LIMITS.t[1], last+(prev!==null && last>prev ? last-prev : 12));
+  }
+  // Where "Duplicate" puts a copy of dose i: halfway to the next dose, or 8 h after the last one. At the
+  // 168 h limit the copy stays at 168 h, so it doses at the same time (simultaneous doses add together).
+  function duplicateEventTime(list, i){
+    const e=list[i], next=list[i+1];
+    return next ? Math.round((e.t+Math.max(0.25,(next.t-e.t)/2))*4)/4 : Math.min(EVENT_LIMITS.t[1], e.t+8);
+  }
   // Canonical text of a schedule, used for equality and in share links (ids don't count).
   const eventsKey=list=>(list||[]).map(e=>`${e.t}@${e.mg}${e.type==="loading"?"L":""}${e.status==="missed"?"m":""}`).join(";");
 
@@ -502,7 +517,7 @@
   }
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
-    cloneScenario, cloneEvents, normalizeEvents, eventsKey, sameSetting, isRelevant, eventsFromBasic, doseTotals,
+    cloneScenario, cloneEvents, normalizeEvents, nextEventTime, duplicateEventTime, eventsKey, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssProfile, compareRows, diff,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
