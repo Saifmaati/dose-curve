@@ -494,6 +494,39 @@ test("comparisons with a custom schedule show dose totals and drop regular-regim
   assert.ok(!PK.compareRows(a,a,48,2,12).rows.some(r=>r.key==="ngiven"), "regular comparisons are unchanged");
 });
 
+/* ---------- the 168-hour limit ---------- */
+
+test("Add places the next dose one interval on, never past 168 h", ()=>{
+  assert.equal(PK.nextEventTime([]), 0);
+  assert.equal(PK.nextEventTime(PK.normalizeEvents([ev(0,500), ev(8,500)])), 16, "follows the last interval");
+  assert.equal(PK.nextEventTime(PK.normalizeEvents([ev(150,500)])), 162, "12 h when there's no interval to infer");
+  assert.equal(PK.nextEventTime(PK.normalizeEvents([ev(144,500), ev(156,500)])), 168, "at 156 h: lands exactly on the limit");
+  assert.equal(PK.nextEventTime(PK.normalizeEvents([ev(100,500), ev(156,500)])), 168, "capped at 168 h");
+});
+
+test("Add is blocked once the schedule reaches 168 h; Duplicate still doses at the same time", ()=>{
+  const L=PK.normalizeEvents([ev(160,500), ev(168,500)]);
+  assert.equal(PK.nextEventTime(L), null);
+  assert.equal(PK.duplicateEventTime(L,1), 168, "duplicating the 168 h dose stacks it");
+  assert.equal(PK.duplicateEventTime(L,0), 164, "other doses still go halfway to the next");
+});
+
+test("a schedule at the limit survives a link and stays at the limit", ()=>{
+  const s=custom([ev(0,500), ev(84,500), ev(168,500)]);
+  const back=PK.decodeLink(PK.encodeLink({mode:"sim", s, view:PK.VIEW_DEFAULTS})).s;
+  assert.ok(PK.sameSetting("events",back,s));
+  assert.equal(PK.nextEventTime(back.events), null);
+});
+
+test("a blocked Add on A leaves B's schedule alone", ()=>{
+  let c=PK.cmpApply(PK.newComparison(),"a",{dosing:"custom", events:[ev(0,500), ev(168,500)]});
+  c=PK.cmpApply(c,"b",{dosing:"custom", events:[ev(0,500), ev(12,500)]});
+  const before=PK.eventsKey(c.b.events);
+  assert.equal(PK.nextEventTime(c.a.events), null, "A can't add");
+  assert.equal(PK.nextEventTime(c.b.events), 24, "B still can");
+  assert.equal(PK.eventsKey(c.b.events), before);
+});
+
 /* ---------- every claim the lessons and comparisons make ---------- */
 
 test("lesson: oral vs IV bolus", ()=>{
