@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page not found · DoseCurve</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#05070E">
+<meta name="color-scheme" content="dark">
+<!-- GitHub Pages serves this page for any missing path under /dose-curve/, so every link here is absolute. -->
+<link rel="icon" href="/dose-curve/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/dose-curve/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/dose-curve/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#05070E;--text:#E8ECF8;--muted:#8B94B0;--muted-2:#7A84A3;--cyan:#3DF2E0;--violet:#7C6BFF;--line:rgba(120,150,255,0.18)}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--text);
+    font-family:Inter,system-ui,sans-serif;
+    background-image:radial-gradient(600px 400px at 15% 10%,rgba(61,242,224,.10),transparent 70%),
+      radial-gradient(700px 500px at 90% 95%,rgba(124,107,255,.14),transparent 70%)}
+  main{max-width:520px;width:100%;text-align:center}
+  .mark{width:72px;height:72px;margin:0 auto 20px}
+  .code{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.14em;color:var(--muted-2)}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(28px,6vw,40px);letter-spacing:-.02em;margin:10px 0 12px}
+  h1 span{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  p{color:var(--muted);font-size:15.5px;line-height:1.6;margin:0 0 26px}
+  svg.curve{display:block;width:100%;height:auto;margin:0 0 26px}
+  a.btn{display:inline-block;padding:12px 20px;border-radius:12px;font-weight:600;font-size:15px;text-decoration:none;color:#05070E;
+    background:linear-gradient(90deg,var(--cyan),var(--violet))}
+  a.btn:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+  .note{margin-top:22px;font-size:12.5px;color:var(--muted-2)}
+</style>
+</head>
+<body>
+<main>
+  <img class="mark" src="/dose-curve/favicon.svg" alt="">
+  <div class="code">404 · PAGE NOT FOUND</div>
+  <h1>This page has <span>cleared the system.</span></h1>
+  <p>There's nothing at this address. The simulator, lessons and practice problems all live on the main page.</p>
+  <svg class="curve" viewBox="0 0 520 90" role="img" aria-label="A concentration curve falling back to zero">
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#3DF2E0"/><stop offset="1" stop-color="#7C6BFF"/></linearGradient></defs>
+    <line x1="0" y1="84" x2="520" y2="84" stroke="rgba(120,150,255,0.25)"/>
+    <path d="M4 84 C18 84 22 8 44 8 C90 8 120 60 200 74 C280 84 380 84 516 84" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+  </svg>
+  <a class="btn" href="/dose-curve/">Open the simulator</a>
+  <div class="note">DoseCurve · educational model, not for clinical dosing</div>
+</main>
+</body>
+</html>

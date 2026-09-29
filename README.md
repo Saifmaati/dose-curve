@@ -27,6 +27,10 @@ A static site with no build step and no dependencies:
 | `index.html` | The app: UI, charts, lessons, practice problems |
 | `pk-engine.js` | The model: PK equations, regimens, metrics, presets and the share-link format. Has no DOM access, so it runs in the browser and in Node |
 | `tests/pk-engine.test.js` | Automated tests for the engine |
+| `404.html` | The page GitHub Pages shows for a missing address |
+| `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest` | Browser, home-screen and install icons |
+| `og-image.png` | The preview image shown when a link is shared |
+| `sitemap.xml` | The page's address for search engines |
 
 The model is one-compartment and linear:
 

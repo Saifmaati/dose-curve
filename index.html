@@ -3,8 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DoseCurve — Pharmacokinetic Simulator</title>
+<title>DoseCurve — Interactive PK/PD Simulator</title>
 <meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 16 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<link rel="canonical" href="https://saifmaatimessi-droid.github.io/dose-curve/">
+<meta name="theme-color" content="#05070E">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<!-- link previews (Open Graph and X/Twitter need absolute URLs) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DoseCurve">
+<meta property="og:title" content="DoseCurve — Interactive PK/PD Simulator">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 16 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:url" content="https://saifmaatimessi-droid.github.io/dose-curve/">
+<meta property="og:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="DoseCurve, an interactive PK/PD simulator: a repeated-dosing concentration curve rising into a therapeutic window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DoseCurve — Interactive PK/PD Simulator">
+<meta name="twitter:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Free and educational.">
+<meta name="twitter:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaatimessi-droid.github.io/dose-curve/",
+ "description":"Interactive one-compartment pharmacokinetics and pharmacodynamics simulator for learning: regimens, custom dose schedules, side-by-side comparisons, lessons and practice problems.",
+ "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
+ "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,7 +44,7 @@
     --grid:rgba(90,120,220,0.10);
     --text:#E8ECF8;
     --muted:#8B94B0;
-    --muted-2:#5A6380;
+    --muted-2:#7A84A3;   /* 5.2:1 on the panels (WCAG AA) */
     --cyan:#3DF2E0;
     --violet:#7C6BFF;
     --violet-glow:rgba(124,107,255,0.5);
@@ -57,10 +84,15 @@
     display:grid;place-items:center}
   .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.01em}
   .brand-name em{font-style:normal;background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .top-status{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);
+
+  .skip{position:absolute;left:16px;top:-60px;z-index:50;padding:10px 14px;border-radius:10px;background:var(--text);color:var(--bg);font-weight:600;text-decoration:none}
+  .skip:focus{top:12px}
+  #app:focus{outline:none}
+  .top-link{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);text-decoration:none;
     border:1px solid var(--glass-line);border-radius:999px;padding:7px 14px;background:rgba(13,18,32,.5);backdrop-filter:blur(8px)}
-  .pulse{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 2.2s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .top-link:hover{color:#fff;border-color:var(--glass-line-2)}
+  .top-link:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .noscript{margin:18px 0 0;padding:14px 16px;border:1px solid rgba(255,182,61,.4);border-radius:12px;color:#FFD89A;background:rgba(255,182,61,.08)}
 
   /* hero */
   .hero{padding:38px 0 26px}
@@ -72,6 +104,22 @@
   .hero-chip{display:inline-flex;align-items:center;gap:9px;margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--glass-line);border-radius:999px;padding:8px 14px;background:rgba(13,18,32,.55)}
   .hero-chip b{color:#C4CCE4;font-weight:500}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .cta{border:1px solid var(--glass-line-2);background:rgba(13,18,32,.6);color:var(--text);border-radius:12px;padding:11px 18px;
+    font-family:Inter,sans-serif;font-size:14.5px;font-weight:600;cursor:pointer}
+  .cta:hover{border-color:rgba(61,242,224,.5)}
+  .cta.primary{border:0;color:#05070E;background:linear-gradient(90deg,var(--cyan),var(--violet))}
+  .cta:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+  .qs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px 14px;align-items:start;margin:16px 22px 0;padding:12px 14px;
+    border:1px solid rgba(61,242,224,.22);border-radius:var(--r-sm);background:linear-gradient(180deg,rgba(61,242,224,.07),rgba(61,242,224,.02))}
+  .qs[hidden]{display:none}
+  .qs-step{display:flex;gap:9px;font-size:12.5px;line-height:1.5;color:#B9BEDF}
+  .qs-step b{flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:#05070E;background:var(--cyan)}
+  .qs-x{border:1px solid var(--glass-line-2);background:transparent;color:var(--muted);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;white-space:nowrap}
+  .qs-x:hover{color:#fff}
+  .qs-x:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  @media (max-width:760px){ .qs{grid-template-columns:1fr;margin-left:14px;margin-right:14px} }
 
   /* layout */
   .app{padding:14px 0 24px}
@@ -533,6 +581,10 @@
     background:rgba(13,18,32,.55);backdrop-filter:blur(8px);color:var(--muted)}
   .foot .disc b{color:#C4CCE4}
   .foot .eq{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.8}
+  .foot-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:16px;font-size:12.5px}
+  .foot-links a{color:#B9BEDF;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(185,190,223,.4)}
+  .foot-links a:hover{color:#fff}
+  .foot-links a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
 
   @media (max-width:960px){
     .grid{grid-template-columns:1fr;gap:18px}
@@ -570,6 +622,7 @@
 </style>
 </head>
 <body data-mode="sim">
+<a class="skip" href="#app">Skip to the simulator</a>
 <div class="bg-field"></div>
 <div class="bg-grid"></div>
 
@@ -584,17 +637,24 @@
       </div>
       <div class="brand-name">Dose<em>Curve</em></div>
     </div>
-    <div class="top-status"><span class="pulse"></span>SIMULATION ENGINE · LIVE</div>
+    <a class="top-link" href="https://github.com/saifmaatimessi-droid/dose-curve" target="_blank" rel="noopener">OPEN SOURCE · GITHUB ↗</a>
   </header>
 
+  <main id="main">
   <section class="hero">
     <div class="eyebrow">Pharmacokinetic Simulator</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">An interactive one-compartment PK lab for exploring how drug, patient and regimen choices shape exposure over time. Three routes, loading and missed doses, custom dose schedules that mix oral doses, IV boluses and infusions, side-by-side scenarios and baselines that explain what changed, concentration–effect (PK/PD) charts, steady-state analytics, a time cursor with playback, one-click lessons, and links that share any scenario.</p>
+    <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons and practice problems.</p>
+    <div class="hero-cta">
+      <button class="cta primary" data-go="ls">Start a lesson</button>
+      <button class="cta" data-go="cmp">Compare two regimens</button>
+      <button class="cta" data-go="sim">Explore the simulator</button>
+    </div>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
+    <noscript><p class="noscript">DoseCurve is an interactive simulator and needs JavaScript. Turn it on in your browser to use it.</p></noscript>
   </section>
 
-  <main class="app">
+  <div class="app" id="app" tabindex="-1">
     <div class="grid">
 
       <!-- ============ CONTROLS ============ -->
@@ -769,6 +829,13 @@
           </div>
         </div>
 
+        <div class="qs" id="quickStart" role="region" aria-label="Quick start" hidden>
+          <div class="qs-step"><b>1</b><span>Change any setting on the left. The curve updates instantly.</span></div>
+          <div class="qs-step"><b>2</b><span>Set a baseline, then change something. The panel below explains what moved and why.</span></div>
+          <div class="qs-step"><b>3</b><span>Drag across the chart, or press Play, to read the concentration at any moment.</span></div>
+          <button class="qs-x" id="qsClose">Got it ✕</button>
+        </div>
+
         <div class="plot-head">
           <div class="plot-title">Plasma concentration–time<span id="regimeLabel">Single oral dose</span></div>
           <div class="plot-tools">
@@ -925,17 +992,24 @@
       </section>
     </div>
 
-    <div class="foot">
+    <footer class="foot">
       <div class="disc">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7" stroke="#5A6380" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#5A6380" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
-        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time and amount).
+        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
+        Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, and every quantitative claim the lessons make.</p>
-    </div>
+      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, and every quantitative claim the lessons make.</p>
+      <nav class="foot-links" aria-label="Project links">
+        <a href="https://github.com/saifmaatimessi-droid/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
+        <a href="https://github.com/saifmaatimessi-droid/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
+        <span>Updated 28 September 2026</span>
+      </nav>
+    </footer>
+  </div>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -1132,14 +1206,14 @@
       ticksRange(0,yTop,6).forEach(v=>{
         const y=sy(v);
         g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.09)" stroke-width="1"/>`;
-        g+=`<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+        g+=`<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${fmtAxis(v)}</text>`;
       });
     } else {
       const dMin=Math.ceil(Math.log10(yFloor)), dMax=Math.floor(Math.log10(yTop));
       for(let e=dMin;e<=dMax;e++){
         const v=Math.pow(10,e), y=sy(v);
         g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="rgba(120,150,255,0.11)" stroke-width="1"/>`;
-        g+=`<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${v>=1?v:v.toPrecision(1)}</text>`;
+        g+=`<text x="${M.l-9}" y="${y+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${v>=1?v:v.toPrecision(1)}</text>`;
         for(let m=2;m<10;m++){
           const vm=m*v; if(vm>=yTop) break;
           g+=`<line x1="${M.l}" y1="${sy(vm)}" x2="${PW-M.r}" y2="${sy(vm)}" stroke="rgba(120,150,255,0.045)" stroke-width="1"/>`;
@@ -1149,7 +1223,7 @@
     ticksRange(T0,T1,7).forEach(v=>{
       const x=sx(v);
       g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="rgba(120,150,255,0.06)" stroke-width="1"/>`;
-      g+=`<text x="${x}" y="${PH-M.b+18}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+      g+=`<text x="${x}" y="${PH-M.b+18}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${fmtAxis(v)}</text>`;
     });
 
     // MEC/MTC
@@ -1463,12 +1537,12 @@
     if(bTop>bBot) g+=`<rect x="${m.l}" y="${y(bTop)}" width="${iw}" height="${y(bBot)-y(bTop)}" fill="rgba(59,229,138,0.06)"/>`;
     ticksRange(0,top,4).forEach(v=>{
       g+=`<line x1="${m.l}" y1="${y(v)}" x2="${W-m.r}" y2="${y(v)}" stroke="rgba(120,150,255,0.08)"/>`;
-      g+=`<text x="${m.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+      g+=`<text x="${m.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${fmtAxis(v)}</text>`;
     });
     const every=Math.ceil(n/12);
     for(let i=1;i<=n;i++){
       if(i!==1 && i!==n && i%every!==0) continue;
-      g+=`<text x="${x(i)}" y="${H-m.b+17}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${i}</text>`;
+      g+=`<text x="${x(i)}" y="${H-m.b+17}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${i}</text>`;
     }
     g+=`<text x="${m.l+iw/2}" y="${H-3}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Dose number</text>`;
 
@@ -2411,7 +2485,7 @@
     };
     const shown=e=> inView(e.t) || (e.route==="inf" && e.t<T1 && e.t+e.dur>T0);
     let g=`<line x1="${M.l}" y1="30" x2="${PW-M.r}" y2="30" stroke="rgba(120,150,255,0.25)"/>`+
-      `<text x="${M.l-9}" y="33.5" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">doses</text>`;
+      `<text x="${M.l-9}" y="33.5" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#7A84A3">doses</text>`;
     const held=live && state.events.find(e=>e.id===live.id);
     if(held && inView(live.t0))   // where the dose was picked up from
       g+=held.route==="inf" ? bar(held,live.t0,laneY(held),true) : `<circle cx="${x(live.t0)}" cy="${laneY(held)}" r="5.5" fill="none" stroke="${col}" stroke-dasharray="2 2" opacity="0.6"/>`;
@@ -2563,11 +2637,11 @@
       `<rect x="${EM.l}" y="${y(100)}" width="${iw}" height="${y(state.etgt)-y(100)}" fill="rgba(59,229,138,0.06)"/>`;
     [0,25,50,75,100].forEach(v=>{
       g+=`<line x1="${EM.l}" y1="${y(v)}" x2="${PW-EM.r}" y2="${y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
-        `<text x="${EM.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${v}</text>`;
+        `<text x="${EM.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${v}</text>`;
     });
     ticksRange(T0,T1,7).forEach(v=>{
       g+=`<line x1="${x(v)}" y1="${EM.t}" x2="${x(v)}" y2="${EH-EM.b}" stroke="rgba(120,150,255,0.06)"/>`+
-        `<text x="${x(v)}" y="${EH-EM.b+16}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#5A6380">${fmtAxis(v)}</text>`;
+        `<text x="${x(v)}" y="${EH-EM.b+16}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${fmtAxis(v)}</text>`;
     });
     g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${EFF}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
       `<text x="${PW-EM.r-4}" y="${y(state.etgt)-5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="${EFF}">target ${state.etgt}%</text>`;
@@ -2599,11 +2673,11 @@
     for(let k=lo;k<=hi;k++){
       const v=10**k, xx=X(v);
       g+=`<line x1="${xx}" y1="${ECM.t}" x2="${xx}" y2="${ECM.t+ih}" stroke="rgba(120,150,255,0.08)"/>`+
-        `<text x="${xx}" y="${ECM.t+ih+15}" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">${v>=1?v:v.toPrecision(1)}</text>`;
+        `<text x="${xx}" y="${ECM.t+ih+15}" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#7A84A3">${v>=1?v:v.toPrecision(1)}</text>`;
     }
     [0,50,100].forEach(v=>{
       g+=`<line x1="${ECM.l}" y1="${Y(v)}" x2="${EW-ECM.r}" y2="${Y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
-        `<text x="${ECM.l-7}" y="${Y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#5A6380">${v}</text>`;
+        `<text x="${ECM.l-7}" y="${Y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#7A84A3">${v}</text>`;
     });
     g+=`<line x1="${ECM.l}" y1="${Y(state.etgt)}" x2="${EW-ECM.r}" y2="${Y(state.etgt)}" stroke="${EFF}" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
     const p=primary.p, col=effColor(primary), top=p.e0+p.emax, ct=PK.concForEffect(p,state.etgt);
@@ -3288,6 +3362,33 @@
   });
 
   /* tabs: Simulator and Compare share one view in two modes */
+  // Hero buttons: straight into lessons, a comparison, or the controls.
+  // Keyboard focus follows: the first lesson, the first comparison, or the controls.
+  document.querySelectorAll(".cta[data-go]").forEach(b=> b.addEventListener("click",()=>{
+    const go=b.dataset.go;
+    showTab(go);
+    const target=go==="ls" ? $("lsView") : go==="cmp" ? $("tplList") : $("app");
+    target.scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"start"});
+    const first=go==="ls" ? document.querySelector(".ls-card") : go==="cmp" ? document.querySelector(".tpl") : $("app");
+    if(first) first.focus({preventScroll:true});
+  }));
+  // The skip link moves focus without touching the URL: a new hash would reload the page (see hashchange).
+  document.querySelector(".skip").addEventListener("click",e=>{
+    e.preventDefault();
+    $("app").focus({preventScroll:true});
+    $("app").scrollIntoView({behavior:"auto", block:"start"});
+  });
+  // The quick-start strip shows until it's dismissed; the choice is kept on this device only.
+  const QS_KEY="dosecurve.quickstart.dismissed";
+  let qsDismissed=false;
+  try{ qsDismissed=localStorage.getItem(QS_KEY)==="1"; }catch(e){ /* storage blocked: show it */ }
+  $("quickStart").hidden=qsDismissed;
+  $("qsClose").addEventListener("click",()=>{
+    $("quickStart").hidden=true;
+    try{ localStorage.setItem(QS_KEY,"1"); }catch(e){ /* not remembered, only hidden for now */ }
+    $("plot").focus({preventScroll:true});
+  });
+
   function showTab(which){
     pause();
     if(which==="sim"||which==="cmp") setMode(which);
