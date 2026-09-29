@@ -617,6 +617,16 @@
      tryThis:"Drag the half-life back to 3 h with V still at 60 L. Clearance triples and the AUC collapses.",
      view:{duration:72,mec:2,mtc:25},
      base:{route:"iv",D:600,V:20,thalf:3}, cur:{route:"iv",D:600,V:60,thalf:9}},
+    {id:"linear", tag:"D", title:"Double the dose", sum:"Linearity: twice the levels, the same half-life.", baseLabel:"250 mg",
+     text:"The same drug at 250 mg and at 500 mg. Every concentration on the curve doubles: Cmax goes from 4.6 to 9.3 mg/L and AUC from 37.1 to 74.2 mg·h/L. The peak still comes at 1.9 h and the half-life stays 4 h, because in a first-order (linear) model the body clears the same fraction of the drug each hour, however much there is. Time above a level doesn't double, though: the curve stays between the 2 and 12 mg/L lines for 11.5 h instead of 7.3 h, about one half-life longer.",
+     tryThis:"Try 1,000 mg: the peak doubles again and crosses the MTC line, but the curve keeps exactly the same shape.",
+     view:{duration:24,mec:2,mtc:12},
+     base:{D:250}, cur:{D:500}},
+    {id:"flipflop", tag:"kₐ < kₑ", title:"Flip-flop kinetics", sum:"When slow absorption sets the tail, not elimination.", baseLabel:"fast absorption",
+     text:"The same 500 mg oral dose of a drug with a 2 h elimination half-life, absorbed fast (kₐ = 1.5 h⁻¹) or slowly (kₐ = 0.1 h⁻¹, an absorption half-life of 6.9 h). Fast absorption gives an early peak (8.3 mg/L at 1.3 h) and a tail that halves every 2 h. Slow absorption flips this: the drug leaves about as fast as it arrives, so the curve peaks late and low (2.2 mg/L at 5.0 h) and its tail falls at absorption's pace. Measured between 12 and 24 h, its half-life is 7.2 h, not 2. Total exposure is the same, an AUC of 37.1 mg·h/L, because F·D / CL doesn't depend on kₐ.",
+     tryThis:"On this log scale both tails are straight lines, and the slow one is far shallower. Raise kₐ and watch the tail swing back to the 2 h slope.",
+     view:{duration:36,mec:0.5,mtc:20,scale:"log"},
+     base:{D:500,thalf:2,ka:1.5}, cur:{D:500,thalf:2,ka:0.1}},
     {id:"miss", tag:"✕", title:"Missed dose", sum:"The dip, and how long recovery takes.", baseLabel:"every dose taken",
      text:"Dose 6 is skipped. With nothing coming in, concentration keeps falling through the gap and drops below the effective level. Once regular doses resume, it takes a few intervals to climb back to the usual peak–trough pattern.",
      tryThis:"Move the missed dose, or shorten the half-life for a sharper dip and a faster recovery.",
@@ -706,6 +716,9 @@
     {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"}];
   const r0=v=> String(Math.round(v)), r1=v=> String(Math.round(v*10)/10), r2=v=> String(Math.round(v*100)/100);
   const HLS=["Higher","Lower","About the same"];
+  // The half-life the tail of a curve shows between 12 and 24 h (what a log-linear fit of late samples gives).
+  const tailHalf=p=> 12*Math.LN2/Math.log(conc(p,12)/conc(p,24));
+  const onlyChanged=(p, keys)=> ["route","dosing","D","F","ka","thalf","V","wt","clFn"].every(k=> keys.includes(k) || p[k]===DEFAULTS[k]);
   const givenOf=p=> p.dosing==="custom" ? p.events.filter(e=>e.status==="given") : [];
   const LESSON_GUIDE={
     route:{group:"pk", objective:"Explain why an oral dose peaks later and lower than the same IV bolus, and why its AUC is smaller.",
@@ -743,6 +756,22 @@
       challenge:{text:"Raise the steady-state trough to at least 10 mg/L. The loading dose alone won't do it.",
         goal:m=> m.now.trough!==null && m.now.trough>=10, solution:{D:400}},
       matters:"For drugs with long half-lives, a loading dose shortens the wait for target levels, while the maintenance dose determines where they settle."},
+    linear:{group:"pk", objective:"Show that in a linear model the dose scales every concentration and the AUC, but not the half-life or the timing.",
+      predict:{q:"Doubling the dose from 250 to 500 mg makes the half-life…", choices:["Longer","Shorter","About the same"], answer:2,
+        why:"First-order elimination removes a fixed fraction per hour whatever the amount, so the half-life doesn't depend on the dose. Every concentration doubles instead.",
+        decide:m=> higherLowerSame(derived(m.cur.p).thalfEff, derived(m.base.p).thalfEff),
+        show:m=>`t½ ${r1(derived(m.base.p).thalfEff)} → ${r1(derived(m.cur.p).thalfEff)} h · Cmax ${r1(m.base.cmax)} → ${r1(m.cur.cmax)} mg/L`},
+      challenge:{text:"Change only the dose so the peak is 1.5× the 250 mg dose's peak (within 2%).",
+        goal:m=> onlyChanged(m.now.p,["D"]) && Math.abs(m.now.cmax/m.base.cmax-1.5)<=0.03, solution:{D:375}},
+      matters:"Linearity is what lets a dose be scaled: in this model twice the dose means twice the exposure. Some drugs, phenytoin being the classic example, saturate their elimination and break the rule; DoseCurve models linear kinetics only."},
+    flipflop:{group:"pk", objective:"Recognize flip-flop kinetics: when absorption is slower than elimination, the tail of an oral curve reflects absorption.",
+      predict:{q:"With the slow absorption, the half-life you'd read off the curve's tail (12–24 h) is…", choices:["Longer than 2 h","Shorter than 2 h","About 2 h"], answer:0,
+        why:"Once kₐ is smaller than kₑ, the drug is eliminated about as fast as it's absorbed, so the fall is paced by the slower process: absorption.",
+        decide:m=> higherLowerSame(tailHalf(m.cur.p), tailHalf(m.base.p)),
+        show:m=>`Tail half-life ${r1(tailHalf(m.base.p))} → ${r1(tailHalf(m.cur.p))} h; the elimination t½ stays 2 h`},
+      challenge:{text:"Change only kₐ until the tail's half-life is back within 10% of the drug's own 2 h.",
+        goal:m=> m.now.p.thalf===2 && m.now.p.D===500 && onlyChanged(m.now.p,["ka","thalf","D"]) && Math.abs(tailHalf(m.now.p)/2-1)<=0.1, solution:{ka:1.5}},
+      matters:"Extended-release products rely on it: slow absorption stretches the curve. It also means a half-life estimated from the tail of oral data can belong to absorption rather than elimination; IV data show elimination alone."},
     half:{group:"rep", objective:"Relate half-life to dosing frequency, swing and accumulation.",
       predict:{q:"Given every 8 h, how much does the 12 h drug accumulate compared with the 2 h drug?", choices:["Much more","Less","About the same"], answer:0,
         why:"With an interval shorter than its half-life, most of each 12 h dose is still there when the next arrives.",

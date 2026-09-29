@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 18 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 20 guided lessons plus practice problems. Built for pharmacy students and educators.">
 <link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
 <meta name="color-scheme" content="dark">
@@ -16,7 +16,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 18 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 20 guided lessons. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -1271,7 +1271,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=cb28196070"></script>
+<script src="pk-engine.js?v=bff7ddc39e"></script>
 <script>
 "use strict";
 (function(){
@@ -3120,7 +3120,7 @@
     exitFit(); exitWindow();
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
-    Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.cur,L.view);   // a lesson says whether the effect charts show
+    Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt, scale:PK.VIEW_DEFAULTS.scale},L.cur,L.view);   // a lesson sets the effect charts and the scale
     state.events=PK.cloneEvents(state.events);   // the lesson's own schedule is never edited
     state.view="full"; state.drug=null;
     lesson=L;
