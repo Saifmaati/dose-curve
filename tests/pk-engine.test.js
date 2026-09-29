@@ -1693,3 +1693,33 @@ test("glossary relations agree with the model", ()=>{
   const s=PK.ssPeakTrough(p); rel(s.peak/s.trough, Math.exp(Math.LN2/6*8), 1e-9);
   rel(d.Rac, 1/(1-Math.exp(-Math.LN2/6*8)), 1e-12);
 });
+
+test("lesson: double the dose", ()=>{
+  const {L, base, cur, T, mec, mtc}=lesson("linear");
+  const [a,b]=[base,cur].map(p=>({d:PK.derived(p), w:stats(p,T,mec,mtc)}));
+  assert.deepEqual([a.d.cmax, b.d.cmax].map(v=>v.toFixed(1)), ["4.6","9.3"]);
+  assert.deepEqual([a.d.auc, b.d.auc].map(v=>v.toFixed(1)), ["37.1","74.2"]);
+  assert.deepEqual([a.d.tmax, b.d.tmax].map(v=>v.toFixed(1)), ["1.9","1.9"]);
+  assert.deepEqual([a.d.thalfEff, b.d.thalfEff], [4, 4]);
+  assert.deepEqual([a.w.tIn, b.w.tIn].map(v=>v.toFixed(1)), ["7.3","11.5"]);
+  near(b.w.tIn-a.w.tIn, 4, 0.3, "about one half-life longer");
+  const k=scenario({D:1000});
+  assert.ok(PK.derived(k).cmax>mtc, "1,000 mg crosses the MTC line");
+  [0.5,2,6,12,20].forEach(t=> rel(PK.conc(k,t)/PK.conc(cur,t), 2, 1e-12, `same shape at ${t} h`));
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:375, V:36})), false, "only the dose may change");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:350})), false, "350 mg is 1.4×");
+});
+
+test("lesson: flip-flop kinetics", ()=>{
+  const {L, base, cur}=lesson("flipflop");
+  const tail=p=> 12*Math.LN2/Math.log(PK.conc(p,12)/PK.conc(p,24));
+  const [f,s]=[base,cur].map(p=>PK.derived(p));
+  assert.deepEqual([f.cmax.toFixed(1), f.tmax.toFixed(1), s.cmax.toFixed(1), s.tmax.toFixed(1)], ["8.3","1.3","2.2","5.0"]);
+  assert.deepEqual([tail(base).toFixed(1), tail(cur).toFixed(1)], ["2.0","7.2"]);
+  assert.equal((Math.LN2/0.1).toFixed(1), "6.9", "absorption half-life");
+  assert.deepEqual([f.auc.toFixed(1), s.auc.toFixed(1)], ["37.1","37.1"]);
+  assert.ok(cur.ka<Math.LN2/cur.thalf && base.ka>Math.LN2/base.thalf, "slow: kₐ < kₑ; fast: kₐ > kₑ");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{thalf:7})), false, "changing the half-life doesn't count");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{ka:0.4})), false, "kₐ 0.4 still leaves the tail over 10% long");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{ka:0.5})), true);
+});
