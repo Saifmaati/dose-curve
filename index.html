@@ -373,7 +373,7 @@
   .lp-skip:hover{color:#fff}
   .lp-skip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
   .lp-skip[hidden]{display:none}
-  #lsText:focus{outline:none}
+  #lsText:focus,#lsTitle:focus{outline:none}
   .lesson-why{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;max-width:78ch}
   .lesson-chal{font-size:12.5px;color:#B9BEDF;line-height:1.7;flex:1;min-width:220px;margin:0}
   .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
@@ -572,7 +572,7 @@
   .sc-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;color:#E8ECF8;font-family:'Inter',sans-serif;
     font-size:13px;font-weight:600;padding:3px 6px;margin-left:-6px}
   .sc-name:hover{border-color:var(--glass-line)}
-  .sc-name:focus{outline:none;border-color:var(--cyan);background:rgba(5,8,16,.7)}
+  .sc-name:focus{outline:none;border-color:var(--cyan);background:rgba(5,8,16,.7);box-shadow:0 0 0 3px rgba(61,242,224,.12)}
   .sc-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
     border:1px solid var(--glass-line);border-radius:5px;padding:1px 6px;display:none}
   .sc-card.on .sc-badge{display:inline-block;color:#C9D0E6}
@@ -852,7 +852,7 @@
             <span class="ltag" id="lsTag"></span><span class="lesson-k" id="lsNum">Lesson</span>
             <button class="lesson-x" id="lsClose" aria-label="Exit lesson">✕</button>
           </div>
-          <div class="lesson-t" id="lsTitle"></div>
+          <div class="lesson-t" id="lsTitle" tabindex="-1"></div>
           <p class="lesson-goal"><b>Goal</b><span id="lsGoal"></span></p>
           <div class="lesson-predict" role="group" aria-labelledby="lsQ">
             <p class="lp-k">Predict first</p>
@@ -1235,16 +1235,24 @@
       });
     });
 
-    // with the effect charts on: the concentration that gives the target effect, for each scenario shown
+    // with the effect charts on: the concentration that gives the target effect, for each scenario shown. The
+    // labels go on after the curves, with a dark halo, so a curve crossing the start of the line can't hide them.
+    let lateLabels="";
     if(state.pd){
-      const seen=new Set();
+      const lines=[];   // one per distinct concentration: scenarios with the same PD settings share a line
       curves.filter(cv=>!cv.ghost).forEach(cv=>{
         const ct=PK.concForEffect(cv.p,state.etgt);
-        if(ct===null || !(ct>0) || ct>=yTop || seen.has(ct)) return;
-        seen.add(ct);
-        const y=sy(ct), col=cv.col?cv.col.line:"#3BE58A";
-        g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${col}" stroke-width="1" stroke-dasharray="1 4" opacity="0.8"/>`+
-          `<text x="${M.l+6}" y="${y-5}" font-family="JetBrains Mono" font-size="9.5" fill="${col}">${cv.tag?cv.tag+" · ":""}${state.etgt}% effect at ${fmt(ct,2)} mg/L</text>`;
+        if(ct===null || !(ct>0) || ct>=yTop) return;
+        const same=lines.find(l=>l.ct===ct);
+        if(same){ same.tags.push(cv.tag); same.col="#C8D2FF"; }
+        else lines.push({ct, y:sy(ct), tags:[cv.tag], col:cv.col?cv.col.line:"#3BE58A"});
+      });
+      // two lines close together: the lower one's label goes under its line
+      const close=lines.length===2 && Math.abs(lines[0].y-lines[1].y)<14, lowest=Math.max(...lines.map(l=>l.y));
+      lines.forEach(l=>{
+        const tag=l.tags.filter(Boolean).join(" & "), ly=close && l.y===lowest ? l.y+12 : l.y-5;
+        g+=`<line x1="${M.l}" y1="${l.y}" x2="${PW-M.r}" y2="${l.y}" stroke="${l.col}" stroke-width="1" stroke-dasharray="1 4" opacity="0.8"/>`;
+        lateLabels+=`<text x="${M.l+6}" y="${ly}" font-family="JetBrains Mono" font-size="9.5" fill="${l.col}" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${tag?tag+" · ":""}${state.etgt}% effect at ${fmt(l.ct,2)} mg/L</text>`;
       });
     }
 
@@ -1339,6 +1347,8 @@
         g+=`<path d="${path}" fill="none" stroke="${cv.col.line}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
       }
     });
+
+    g+=lateLabels;
 
     // direct labels at the right end of each compared curve, nudged apart if they would collide
     if(mode==="cmp"){
@@ -2102,7 +2112,9 @@
 
   // Pointer: press and drag anywhere on the chart to move the cursor.
   function timeAt(evt, clampToPlot, el=plotEl){   // the effect chart shares the time axis, so it can drive the cursor too
-    const rect=el.getBoundingClientRect(), svgX=(evt.clientX-rect.left)/rect.width*PW;
+    const rect=el.getBoundingClientRect();
+    if(!(rect.width>0) || !Number.isFinite(evt.clientX)) return null;   // a hidden chart has no width to map onto
+    const svgX=(evt.clientX-rect.left)/rect.width*PW;
     if(!clampToPlot && (svgX<M.l || svgX>PW-M.r)) return null;
     const [T0,T1]=viewT, t=T0+(svgX-M.l)/(PW-M.l-M.r)*(T1-T0);
     return Math.min(T1,Math.max(T0,Math.round(t*10)/10));
@@ -2448,9 +2460,15 @@
       // keep focus on the same step button, or its partner once the dose reaches 0 or 168 h
       const sel=`.ev-row[data-id="${id}"] button[data-act="nudge"]`;
       focusInList(`${sel}[data-d="${btn.dataset.d}"]:not(:disabled)`) || focusInList(`${sel}:not(:disabled)`);
-    } else if(btn.dataset.act==="dup") duplicateEvent(id);
-    else if(btn.dataset.act==="del") deleteEvent(id);
-    else if(btn.dataset.f){
+    } else if(btn.dataset.act==="dup"){
+      duplicateEvent(id);
+      focusInList(`.ev-row[data-id="${evSel}"] .ev-head`);   // the copy opens, so focus follows it
+    } else if(btn.dataset.act==="del"){
+      const L=state.events, i=L.findIndex(x=>x.id===id), near=L[i+1]||L[i-1];
+      deleteEvent(id);
+      // focus moves to the neighbouring dose, or to Add once the list is empty
+      if(!(near && focusInList(`.ev-row[data-id="${near.id}"] .ev-head`))) byId("evAdd").focus();
+    } else if(btn.dataset.f){
       updateEvent(id,{[btn.dataset.f]:btn.dataset.v});
       focusInList(`.ev-row[data-id="${id}"] button[data-f="${btn.dataset.f}"][data-v="${btn.dataset.v}"]`);
     }
@@ -2475,7 +2493,10 @@
     if(dIn) dIn.max=r2(PK.EVENT_LIMITS.t[1]-ev.t);
     row.querySelectorAll('button[data-act="nudge"]').forEach(b=>{ b.disabled= +b.dataset.d<0 ? ev.t<=PK.EVENT_LIMITS.t[0] : ev.t>=lastStart(ev); });
   });
-  byId("evAdd").addEventListener("click",addEvent);
+  byId("evAdd").addEventListener("click",()=>{
+    addEvent();
+    if(byId("evAdd").disabled) focusInList(".ev-row.open .ev-head");   // Add switches off at the limit, which would drop focus
+  });
   byId("evRebuild").addEventListener("click",()=>{
     const from=rebuildFrom[slot()] || Object.assign(snapshot(),{dosing:"repeated"});
     setEvents(PK.eventsFromBasic(from), null);
@@ -2829,7 +2850,7 @@
         <div class="ls-p">${L.sum}</div>
       </button>`).join("")+`</div>`).join("");
     el.querySelectorAll(".ls-card").forEach(btn=>{
-      btn.addEventListener("click",()=> loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)));
+      btn.addEventListener("click",()=>{ loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)); focusLesson(); });
     });
   }
   function loadLesson(L){
@@ -2859,6 +2880,8 @@
     const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     byId("lessonBar").scrollIntoView({behavior:reduce?"auto":"smooth", block:"nearest"});
   }
+  // The card or button that opened a lesson is hidden or rewritten, so keyboard focus moves to the lesson itself.
+  const focusLesson=()=> byId("lsTitle").focus({preventScroll:true});
   // Predict first: one pick locks the choices, the feedback gives the model's numbers, and the explanation opens
   // (or opens early with "Skip").
   function renderPredict(L){
@@ -2901,12 +2924,12 @@
     byId("lessonBar").hidden=true;
     byId("quickStart").hidden=qsDismissed;
   }
-  byId("lsClose").addEventListener("click",exitLesson);
+  byId("lsClose").addEventListener("click",()=>{ exitLesson(); byId("app").focus({preventScroll:true}); });
   byId("lsReset").addEventListener("click",()=>{ if(lesson) loadLesson(lesson); });
   byId("lsNext").addEventListener("click",()=>{
     if(!lesson) return;
     const i=LESSONS.indexOf(lesson);
-    if(i<LESSONS.length-1) loadLesson(LESSONS[i+1]); else showTab("ls");
+    if(i<LESSONS.length-1){ loadLesson(LESSONS[i+1]); focusLesson(); } else { showTab("ls"); byId("tabLs").focus(); }
   });
 
   /* ================= COMPARE MODE ================= */
@@ -2974,7 +2997,7 @@
     byId("tplList").querySelectorAll(".tpl").forEach(btn=>
       btn.addEventListener("click",()=> loadTemplate(TEMPLATES.find(t=>t.id===btn.dataset.id))));
     byId("tplLesson").addEventListener("click",()=>{
-      if(cmp.template) loadLesson(LESSONS.find(L=>L.id===cmp.template.lesson));
+      if(cmp.template){ loadLesson(LESSONS.find(L=>L.id===cmp.template.lesson)); focusLesson(); }
     });
     byId("lockSel").innerHTML=`<option value="">Off (edit freely)</option>`+PK.LOCKS.map(([k,n])=>`<option value="${k}">${n}</option>`).join("");
     byId("lockSel").addEventListener("change",e=>setLock(e.target.value));
@@ -3094,6 +3117,8 @@
     setTimeout(()=>{ if(btn.isConnected){ btn.classList.remove("armed"); btn.textContent=orig; } },4000);
     return false;
   }
+  // The list is rebuilt after every change, so focus goes back to the matching button (or the name field).
+  const focusLib=(id,act)=>{ const b=id && byId("libList").querySelector(`.lib-item[data-id="${id}"] button[data-act="${act}"]`); (b||byId("libName")).focus(); };
   function startRename(li){
     const id=li.dataset.id, it=lib.items.find(i=>i.id===id);
     if(!it) return;
@@ -3107,7 +3132,7 @@
     input.focus(); input.select();
     input.addEventListener("keydown",e=>{
       if(e.key==="Enter"){ e.preventDefault(); finishRename(id,input.value); }
-      if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); renderLibrary(); }
+      if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); renderLibrary(); focusLib(id,"rename"); }
     });
   }
   function finishRename(id, value){
@@ -3116,7 +3141,7 @@
     const err=libWrite(Object.assign({},lib,{items:lib.items.map(x=> x.id===id ? Object.assign({},x,{name, updatedAt:new Date().toISOString()}) : x)}));
     if(err) return libMsg(err,"err");
     if(curItem() && curItem().id===id) byId("libName").value=name;
-    renderLibrary(); libMsg(`Renamed to “${name}”.`,"ok");
+    renderLibrary(); focusLib(id,"rename"); libMsg(`Renamed to “${name}”.`,"ok");
   }
   byId("libList").addEventListener("click",e=>{
     const btn=e.target.closest("button"), li=e.target.closest(".lib-item");
@@ -3127,13 +3152,13 @@
     if(act==="load") loadItem(id);
     else if(act==="rename") startRename(li);
     else if(act==="rename-ok") finishRename(id, li.querySelector(".lib-rename input").value);
-    else if(act==="rename-cancel") renderLibrary();
+    else if(act==="rename-cancel"){ renderLibrary(); focusLib(id,"rename"); }
     else if(act==="dup"){
       if(lib.items.length>=PK.LIBRARY_LIMITS.items) return libMsg(`The library is full (${PK.LIBRARY_LIMITS.items} scenarios).`,"err");
       const copy=Object.assign(PK.libraryItem(`${it.name} (copy)`.slice(0,PK.LIBRARY_LIMITS.name), PK.decodeLink(it.link)), {link:it.link});
       const err=libWrite(Object.assign({},lib,{items:lib.items.concat(copy)}));
       if(err) return libMsg(err,"err");
-      renderLibrary(); libMsg(`Duplicated as “${copy.name}”.`,"ok");
+      renderLibrary(); focusLib(id,"dup"); libMsg(`Duplicated as “${copy.name}”.`,"ok");
     }
     else if(act==="export"){ downloadJSON(PK.exportLibrary([it]), `dosecurve-${slug(it.name)}.json`); libMsg(`Exported “${it.name}”.`,"ok"); }
     else if(act==="del"){
@@ -3141,7 +3166,9 @@
       const err=libWrite(Object.assign({},lib,{items:lib.items.filter(x=>x.id!==id)}));
       if(err) return libMsg(err,"err");
       forgetId(id);
+      const near=li.nextElementSibling||li.previousElementSibling;
       renderLibrary(); updateLibBadge(); libMsg(`Deleted “${it.name}”.`,"ok");
+      focusLib(near && near.dataset.id, "load");
     }
   });
   byId("libSave").addEventListener("click",()=>libSave(false));
@@ -3171,6 +3198,7 @@
     const err=libWrite(PK.emptyLibrary());
     if(err) return libMsg(err,"err");
     currentIds.sim=currentIds.cmp=null; renderLibrary(); updateLibBadge(); libMsg("All saved scenarios were deleted.","ok");
+    byId("libName").focus();   // Clear all switches off once the list is empty
   });
   byId("libBtn").addEventListener("click",()=>{
     pause();
@@ -3269,33 +3297,77 @@
   });
 
   // A chart as an image on the page's dark background (the SVG has no background of its own).
-  function svgImage(el, w, h){
+  function svgImage(el, w, h, css){
     const clone=el.cloneNode(true);
     const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
     bg.setAttribute("x",0);bg.setAttribute("y",0);
     bg.setAttribute("width",w);bg.setAttribute("height",h);
     bg.setAttribute("fill","#05070E");
     clone.insertBefore(bg,clone.firstChild);
+    if(css){
+      const st=document.createElementNS("http://www.w3.org/2000/svg","style");
+      st.textContent=css;
+      clone.insertBefore(st,clone.firstChild);
+    }
     clone.setAttribute("width",w); clone.setAttribute("height",h);
     const xml=new XMLSerializer().serializeToString(clone);
-    return new Promise(resolve=>{
+    return new Promise((resolve,reject)=>{
       const img=new Image();
       img.onload=()=>resolve(img);
+      img.onerror=reject;
       img.src="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(xml)));
     });
   }
+  // An SVG drawn as an image can't load web fonts, so the export embeds the font faces its text uses, fetched
+  // once from Google Fonts: only the weights and character subsets that appear in the charts.
+  const FONT_CSS=document.querySelector('link[href^="https://fonts.googleapis.com/css2"]').href;
+  let fontFaces=null;
+  const fontData=new Map();
+  const loadFaces=()=> fontFaces || (fontFaces=fetch(FONT_CSS).then(r=> r.ok ? r.text() : Promise.reject(new Error("fonts")))
+    .then(css=> [...css.matchAll(/@font-face\s*{([^}]*)}/g)].map(([,b])=>{
+      const get=k=> ((b.match(new RegExp(k+"\\s*:\\s*([^;]+)"))||[])[1]||"").trim();
+      const range=get("unicode-range").split(",").map(r=>{
+        const [lo,hi]=r.trim().replace(/^U\+/i,"").split("-");
+        return [parseInt(lo.replace(/\?/g,"0"),16), parseInt((hi||lo).replace(/\?/g,"F"),16)];
+      }).filter(([lo,hi])=> lo<=hi);
+      return {family:get("font-family").replace(/['"]/g,""), weight:get("font-weight"), style:get("font-style")||"normal",
+              url:(b.match(/url\(([^)]+)\)/)||[])[1], range:get("unicode-range"), covers:c=> !range.length || range.some(([lo,hi])=> c>=lo && c<=hi)};
+    }))
+    .catch(e=>{ fontFaces=null; throw e; }));   // a failed fetch is tried again on the next export
+  const dataUrl=url=> fontData.get(url) || fontData.set(url, fetch(url).then(r=> r.ok ? r.blob() : Promise.reject(new Error("font")))
+    .then(b=> new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(b); }))
+    .catch(e=>{ fontData.delete(url); throw e; })).get(url);
+  async function embeddedFonts(els){
+    const need=new Map();   // "family|weight" -> code points drawn in it
+    els.forEach(el=> el.querySelectorAll("text").forEach(t=>{
+      const cs=getComputedStyle(t), key=cs.fontFamily.split(",")[0].replace(/['"]/g,"").trim()+"|"+cs.fontWeight;
+      const set=need.get(key) || need.set(key,new Set()).get(key);
+      for(const ch of t.textContent) set.add(ch.codePointAt(0));
+    }));
+    const faces=(await loadFaces()).filter(f=> f.url && f.style==="normal" && need.has(f.family+"|"+f.weight) &&
+      [...need.get(f.family+"|"+f.weight)].some(f.covers));
+    const srcs=await Promise.all(faces.map(f=> dataUrl(f.url)));
+    return faces.map((f,i)=> `@font-face{font-family:'${f.family}';font-style:normal;font-weight:${f.weight};`+
+      `src:url(${srcs[i]}) format('woff2')${f.range?`;unicode-range:${f.range}`:""}}`).join("");
+  }
+  const within=(ms,p)=> Promise.race([p, new Promise((_,rej)=> setTimeout(()=>rej(new Error("timeout")),ms))]);
   // With the effect charts on, the effect–time chart goes under the concentration chart.
-  byId("pngBtn").addEventListener("click",()=>{
+  async function plotPng(parts, css){
+    const imgs=await Promise.all(parts.map(([el,h])=>svgImage(el,PW,h,css)));
+    const cv=document.createElement("canvas"), H=parts.reduce((s,[,h])=>s+h,0);
+    cv.width=PW*2; cv.height=H*2;
+    const ctx=cv.getContext("2d");
+    ctx.scale(2,2);
+    let y=0;
+    imgs.forEach((img,i)=>{ ctx.drawImage(img,0,y); y+=parts[i][1]; });
+    return new Promise((res,rej)=> cv.toBlob(b=> b ? res(b) : rej(new Error("png"))));
+  }
+  byId("pngBtn").addEventListener("click",async()=>{
     const parts=[[plotEl,PH]].concat(state.pd ? [[effEl,EH]] : []);
-    Promise.all(parts.map(([el,h])=>svgImage(el,PW,h))).then(imgs=>{
-      const cv=document.createElement("canvas"), H=parts.reduce((s,[,h])=>s+h,0);
-      cv.width=PW*2; cv.height=H*2;
-      const ctx=cv.getContext("2d");
-      ctx.scale(2,2);
-      let y=0;
-      imgs.forEach((img,i)=>{ ctx.drawImage(img,0,y); y+=parts[i][1]; });
-      cv.toBlob(b=>download(b,"dosecurve_plot.png"));
-    });
+    let blob;
+    try{ blob=await plotPng(parts, await within(5000, embeddedFonts(parts.map(([el])=>el)))); }
+    catch(e){ blob=await plotPng(parts, ""); }   // offline, slow or refused: the image still exports, in fallback fonts
+    download(blob,"dosecurve_plot.png");
   });
 
   function download(blob,name){
