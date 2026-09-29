@@ -1631,3 +1631,44 @@ test("worksheets: reproducible, the size asked for, one topic or all, kinds spre
   assert.deepEqual(PK.decodeTaskLink("#ws=inf.5.7"), {type:"worksheet", topic:"inf", count:5, seed:7});
   ["#ws=nope.10.1","#ws=all.7.1","#ws=all.10.4294967296","#ws=all.10","#ws=ALL.10.1"].forEach(h=> assert.equal(PK.decodeTaskLink(h), null, h));
 });
+
+/* ---------- hit the window ---------- */
+test("steady-state peak and trough match a regimen run for many half-lives", ()=>{
+  const rnd=PK.seededRandom(7);
+  for(let i=0;i<60;i++){
+    const route=i%2 ? "oral" : "iv", tau=[6,8,12,24][i%4];
+    const p=scenario({route, dosing:"repeated", D:300+Math.round(rnd()*900), thalf:4+Math.round(rnd()*24)/2, V:20+Math.round(rnd()*60), F:0.8, ka:0.6+Math.round(rnd()*28)/20, tau, nDoses:2});
+    const n=Math.ceil(40*p.thalf/tau)+1, long=scenario(Object.assign({},p,{nDoses:n})), t0=(n-1)*tau, ev=PK.doseEvents(long);
+    let peak=0; for(let j=0;j<=4000;j++){ const c=PK.conc(long, t0+tau*j/4000, ev); if(c>peak) peak=c; }
+    const s=PK.ssPeakTrough(p);
+    rel(s.trough, PK.conc(long, n*tau, ev), 1e-6, `trough #${i}`);
+    rel(s.peak, peak, 1e-5, `peak #${i}`);
+  }
+});
+
+test("window tasks: reproducible, met by their own regimen, missed by the start and by 3× or ⅓ the dose", ()=>{
+  const a=PK.makeWindowTask({kind:"oral", seed:11}), b=PK.makeWindowTask({kind:"oral", seed:11});
+  assert.deepEqual(a, b);
+  PK.WINDOW_KINDS.forEach(k=> FIT_SEEDS.forEach(seed=>{
+    const t=PK.makeWindowTask({kind:k.id, seed}), where=`${k.id} seed ${seed}`, S=t.solution;
+    assert.ok(t.window.lo>0 && t.window.hi>t.window.lo, where);
+    assert.ok(S.D>=25 && S.D<=2000 && S.D%25===0 && Number.isInteger(S.tau) && S.tau>=2 && S.tau<=24, `${where}: solution on the sliders' steps`);
+    ["thalf","V"].concat(k.id==="oral" ? ["F","ka"] : []).forEach(key=>
+      assert.ok(t.drug[key]>=PK.RANGES[key][0] && t.drug[key]<=PK.RANGES[key][1], `${where}: ${key}`));
+    const st=o=> PK.windowStatus(t, PK.windowScenario(t,o));
+    assert.ok(st().good, `${where}: its own regimen`);
+    assert.ok(!st(t.start).good, `${where}: the start`);
+    assert.ok(!st({D:S.D*3}).good && !st({D:S.D*3}).highOk, `${where}: 3× the dose peaks too high`);
+    assert.ok(!st({D:S.D/3}).good && !st({D:S.D/3}).lowOk, `${where}: ⅓ the dose falls too low`);
+  }));
+});
+
+test("window tasks: changing the drug, the physiology or the kind of regimen is a setup mismatch", ()=>{
+  const t=PK.makeWindowTask({kind:"oral", seed:3});
+  [{thalf:t.drug.thalf+1},{V:t.drug.V+5},{F:t.drug.F===1 ? 0.9 : 1},{ka:t.drug.ka+0.1},{route:"iv"},{wt:90},{clFn:60},{dosing:"single"}].forEach(o=>{
+    const s=PK.windowStatus(t, PK.windowScenario(t,o));
+    assert.equal(s.mismatch, "setup", JSON.stringify(o)); assert.ok(!s.good);
+  });
+  assert.deepEqual(PK.decodeTaskLink("#"+PK.encodeTaskLink({type:"window", kind:"iv", seed:42})), {type:"window", kind:"iv", seed:42});
+  assert.equal(PK.decodeTaskLink("#win=inf.4"), null);
+});
