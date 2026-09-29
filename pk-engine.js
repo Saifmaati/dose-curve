@@ -1385,6 +1385,95 @@
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
 
+  /* ================= SHOW THE MATH ================= */
+  // Each readout worked out with the scenario's own numbers: `steps` are formulas ({m}) and plain notes ({t}).
+  // `value` is computed from the formula shown, independently of the simulation, and the tests hold it to
+  // what the simulation gives. Readouts that can only be found by sampling the curve say so instead.
+  const READOUT_KEYS={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
+    repeated:["peak","trough","rac","thalf","cl","t90","mgkg","ttr"],
+    custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
+  function metricMath(p, key, view){
+    const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, D=p.D, oral=p.route==="oral", F=oral ? p.F : 1;
+    const n1=v=>nf(v,1), n2=v=>nf(v,2), n3=v=>nf(v,3), nk=v=>nf(v,4), m=s=>({m:s}), t=s=>({t:s});
+    const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
+    const tmOral=()=> Math.abs(p.ka-k)<1e-6 ? 1/k : Math.log(p.ka/k)/(p.ka-k);
+    switch(key){
+      case "thalf": return {title:"Effective half-life", value:th, steps: p.clFn===100
+        ? [t(`At 100% organ function the half-life is the drug's own, so the elimination rate constant is`), m(`kₑ = 0.693 / t½ = 0.693 / ${n2(th)} = ${nk(k)} h⁻¹`)]
+        : [t(`Organ function scales clearance: at ${p.clFn}%, the drug is eliminated at ${p.clFn}% of its usual rate.`),
+           m(`kₑ = (0.693 / ${nf(p.thalf,2)}) × ${nf(p.clFn/100,2)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = 0.693 / ${nk(k)} = ${n1(th)} h`)]};
+      case "cl": return {title:"Clearance", value:CL, steps:[m(`CL = kₑ·V = ${nk(k)} × ${n1(V)} = ${n2(CL)} L/h`),
+        t(`Clearance is the volume of plasma cleared of drug each hour. It sets total exposure; the half-life depends on V too.`)]};
+      case "v": return {title:"Volume of distribution", value:V, steps:[m(`V = V(70 kg) × weight / 70 = ${nf(p.V,1)} × ${p.wt} / 70 = ${n1(V)} L`),
+        t(`The volume scales with body weight. It sets how high an IV bolus starts (D / V) and, with the half-life, the clearance (CL = kₑ·V).`)]};
+      case "auc": return {title:"Total exposure (AUC∞)", value:F*D/CL, steps:[
+        m(oral ? `AUC∞ = F·D / CL = ${F} × ${D} / ${n2(CL)} = ${n1(F*D/CL)} mg·h/L` : `AUC∞ = D / CL = ${D} / ${n2(CL)} = ${n1(D/CL)} mg·h/L`),
+        t(oral ? `How fast the drug is absorbed changes the curve's shape, not its area.` : `It's the whole area under the curve, out to infinity.`)]};
+      case "mgkg": return {title:"Dose per kilogram", value:D/p.wt, steps:[m(`D / weight = ${D} / ${p.wt} = ${n1(D/p.wt)} mg/kg`)]};
+      case "tmax":
+        if(p.route==="iv") return {title:"Time of the peak (tmax)", value:0, steps:[t(`An IV bolus is highest the moment it's given, at t = 0.`)]};
+        if(p.route==="inf") return {title:"Time of the peak (tmax)", value:p.tinf, steps:[t(`An infusion is highest when it stops: tmax = T = ${nf(p.tinf,2)} h.`)]};
+        return {title:"Time of the peak (tmax)", value:tmOral(), steps: Math.abs(p.ka-k)<1e-6
+          ? [m(`With kₐ = kₑ: tmax = 1 / kₑ = 1 / ${nk(k)} = ${n2(tmOral())} h`)]
+          : [t(`The peak is where absorption in balances elimination out:`), m(`tmax = ln(kₐ / kₑ) / (kₐ − kₑ) = ln(${p.ka} / ${nk(k)}) / (${p.ka} − ${nk(k)}) = ${n2(tmOral())} h`),
+             t(`Only the two rate constants set it; the dose doesn't.`)]};
+      case "cmax": {
+        const title="Peak concentration (Cmax)";
+        if(p.route==="iv") return {title, value:D/V, steps:[t(`An IV bolus is highest the moment it's given:`), m(`Cmax = D / V = ${D} / ${n1(V)} = ${n2(D/V)} mg/L`)]};
+        if(p.route==="inf"){
+          const T=p.tinf, R=D/T, c=R/CL*(1-Math.exp(-k*T));
+          return {title, value:c, steps:[t(`An infusion is highest when it stops, at T = ${nf(T,2)} h. It runs at R₀ = D / T = ${D} / ${nf(T,2)} = ${n2(R)} mg/h.`),
+            m(`Cmax = (R₀ / CL)·(1 − e^(−kₑT)) = (${n2(R)} / ${n2(CL)}) × (1 − e^(−${nk(k)} × ${nf(T,2)})) = ${n2(c)} mg/L`)]};
+        }
+        const tm=tmOral(), ka=p.ka;
+        const c=Math.abs(ka-k)<1e-6 ? F*D*k*tm*Math.exp(-k*tm)/V : F*D*ka/(V*(ka-k))*(Math.exp(-k*tm)-Math.exp(-ka*tm));
+        return {title, value:c, steps:[t(`The peak comes at tmax = ${n2(tm)} h (see Tmax). The oral curve is`),
+          m(`C(t) = F·D·kₐ / (V·(kₐ − kₑ)) · (e^(−kₑt) − e^(−kₐt))`),
+          m(`Cmax = ${F} × ${D} × ${ka} / (${n1(V)} × (${ka} − ${nk(k)})) × (e^(−${nk(k)} × ${n2(tm)}) − e^(−${ka} × ${n2(tm)})) = ${n2(c)} mg/L`)]};
+      }
+      case "rac": { const x=Math.exp(-k*p.tau), r=1/(1-x);
+        return {title:"Accumulation ratio", value:r, steps:[m(`R = 1 / (1 − e^(−kₑτ)) = 1 / (1 − e^(−${nk(k)} × ${p.tau})) = 1 / (1 − ${n3(x)}) = ${n2(r)}`),
+          t(`Peaks and troughs settle this many times higher than after the first dose.`)]}; }
+      case "t90": return {title:"Time to 90% of steady state", value:3.32*th, steps:[
+        m(`90% of steady state takes log₂10 ≈ 3.32 half-lives: 3.32 × ${n1(th)} = ${n1(3.32*th)} h`), t(`Neither the dose nor the interval changes it.`)]};
+      case "peak": case "trough": {
+        const n=p.nDoses, x=Math.exp(-k*p.tau), simple=p.route==="iv" && p.loadMult===1 && !missedOf(p);
+        const trough=key==="trough", title=trough ? "Trough after the last dose" : "Peak after the last dose";
+        const ss=trough ? ssConc(p, p.tau-1e-9) : null;
+        const steps=[t(`Each of the ${n} doses (every τ = ${p.tau} h) still adds what's left of it: the curve is their sum (superposition).`)];
+        let value;
+        if(simple){
+          value=(D/V)*(trough ? x : 1)*(1-Math.pow(x,n))/(1-x);
+          steps.push(m(`e^(−kₑτ) = e^(−${nk(k)} × ${p.tau}) = ${n3(x)}`),
+            m(trough ? `Trough = (D/V)·e^(−kₑτ)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × ${n3(x)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} mg/L`
+                     : `Peak = (D/V)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} mg/L`));
+        } else {
+          const ev=doseEvents(p), t0=(n-1)*p.tau;
+          if(trough) value=conc(p, n*p.tau, ev);
+          else { value=0; for(let i=0;i<=400;i++){ const c=conc(p, t0+p.tau*i/400, ev); if(c>value) value=c; } }
+          steps.push(t(`${p.route==="iv" ? "With a loading or missed dose" : oral ? "For oral doses" : "For infusions"} the sum has no short closed form, so it's added up dose by dose${trough ? "" : " and the last interval searched for its highest point"}: ${n2(value)} mg/L.`));
+        }
+        if(trough) steps.push(t(`Given forever, the trough would settle at ${n2(ss)} mg/L; this regimen has reached ${nf(Math.min(100,100*value/ss),0)}% of it.`));
+        return {title, value, steps};
+      }
+      case "ttr": return {title:"Time in window", value:100*ws.tIn/ws.T, steps:[
+        m(`${n1(ws.tIn)} h of ${nf(ws.T,2)} h between MEC (${nf(view.mec,2)}) and MTC (${nf(view.mtc,2)} mg/L) = ${nf(100*ws.tIn/ws.T,0)}%`),
+        t(`It's measured by sampling the curve 600 times across the window: once doses overlap, the crossing times have no simple formula.`)]};
+      case "peakWin": case "tpeakWin": return {title:key==="peakWin" ? "Peak in the window" : "Time of the peak", value:key==="peakWin" ? ws.cmax : ws.tmax, steps:[
+        m(`Highest point in 0–${nf(ws.T,2)} h: ${n2(ws.cmax)} mg/L at ${n1(ws.tmax)} h`),
+        t(`Doses at their own times, amounts and routes have no single formula: the curves of all the doses are added up and the total searched for its highest point.`)]};
+      case "given": { const g=p.events.filter(e=>e.status==="given").length;
+        return {title:"Doses given", value:g, steps:[t(`${g} of the ${p.events.length} doses in the schedule are marked given. A missed dose adds nothing to the curve.`)]}; }
+      case "total": { const g=p.events.filter(e=>e.status==="given"), tot=g.reduce((s,e)=>s+e.mg,0), shown=g.slice(0,8).map(e=>nf(e.mg,1));
+        return {title:"Total given", value:tot, steps:[m(`${shown.join(" + ")}${g.length>8 ? ` + … (${g.length} doses)` : ""} = ${nf(tot,1)} mg`)]}; }
+      case "aucWin": { const g=p.events.filter(e=>e.status==="given"), inf=g.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/CL;
+        return {title:`Exposure in the window (AUC 0–${nf(ws.T,2)} h)`, value:ws.auc, steps:[
+          m(`Area under the curve from 0 to ${nf(ws.T,2)} h = ${n1(ws.auc)} mg·h/L`),
+          t(`It's added up in 600 slices (trapezoids). Out to infinity it would be Σ(F·dose) / CL = ${n1(inf)} mg·h/L, with F for oral doses and 1 for IV doses.`)]}; }
+    }
+    return null;
+  }
+
   /* ================= FIT THE DATA ================= */
   // A dose was given and the concentration measured several times, with a little measurement noise. The
   // student moves the half-life and volume until the model runs through the points. The data come from settings
@@ -1475,5 +1564,6 @@
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect,
-    FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink};
+    FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
+    READOUT_KEYS, metricMath};
 });

@@ -240,6 +240,20 @@
   .ro-v{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--text);margin-top:5px;letter-spacing:-.01em}
   .ro.hot .ro-v{color:var(--cyan);text-shadow:0 0 16px rgba(61,242,224,.45)}
   .ro-v small{font-size:10.5px;color:var(--muted-2);font-weight:400;margin-left:3px}
+  button.ro{font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;transition:border-color .16s ease,box-shadow .16s ease}
+  button.ro:hover{border-color:rgba(124,107,255,.5)}
+  button.ro:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  button.ro .ro-k,button.ro .ro-v{display:block}
+  .ro.open{border-color:rgba(61,242,224,.6);box-shadow:0 0 0 1px rgba(61,242,224,.2)}
+  .ro-hint{margin:8px 0 0;font-size:11.5px;color:var(--muted-2)}
+  .ro-hint[hidden],.ro-math[hidden]{display:none}
+  .ro-math{margin-top:9px;padding:12px 14px;border:1px solid rgba(61,242,224,.35);border-radius:var(--r-sm);background:rgba(61,242,224,.04)}
+  .rm-h{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;margin-bottom:4px}
+  .rm-x{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:6px}
+  .rm-x:hover{color:#fff}
+  .rm-x:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .rm-m{display:block;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E8ECF8;line-height:1.65;margin:5px 0;overflow-wrap:anywhere;white-space:normal}
+  .rm-t{margin:5px 0;font-size:12.5px;line-height:1.6;color:#B9BEDF;max-width:78ch}
 
   .ss-note{margin:14px 22px 2px;padding:13px 15px;border-radius:var(--r-sm);
     background:linear-gradient(180deg,rgba(124,107,255,.10),rgba(124,107,255,.04));border:1px solid rgba(124,107,255,.28);
@@ -991,6 +1005,8 @@
 
         <div class="readouts sim-only">
           <div class="ro-grid" id="readouts"></div>
+          <p class="ro-hint" id="roHint">Select a readout to see how it's worked out, with these numbers.</p>
+          <div class="ro-math" id="roMath" role="region" aria-label="How the readout is worked out" hidden></div>
         </div>
 
         <div class="budget" id="budget"></div>
@@ -1141,7 +1157,7 @@
 </div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=72e35478c6"></script>
+<script src="pk-engine.js?v=2b888a7a01"></script>
 <script>
 "use strict";
 (function(){
@@ -1575,12 +1591,40 @@
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
+    // each card opens its working (PK.metricMath); the keys follow the cards' order
+    const keys=PK.READOUT_KEYS[p.dosing];
+    cards.forEach((c,i)=> c.key=keys[i]);
+    if(roOpen && !keys.includes(roOpen)) roOpen=null;
+    const had=document.activeElement && document.activeElement.closest ? document.activeElement.closest("#readouts .ro") : null;
     byId("readouts").innerHTML=cards.map(c=>`
-      <div class="ro${c.hot?" hot":""}">
-        <div class="ro-k">${c.k}</div>
-        <div class="ro-v">${c.v}<small>${c.u}</small></div>
-      </div>`).join("");
+      <button class="ro${c.hot?" hot":""}${c.key===roOpen?" open":""}" data-key="${c.key}" aria-expanded="${c.key===roOpen}" aria-controls="roMath">
+        <span class="ro-k">${c.k}</span>
+        <span class="ro-v">${c.v}<small>${c.u}</small></span>
+      </button>`).join("");
+    if(had) byId("readouts").querySelector(`[data-key="${had.dataset.key}"]`)?.focus();   // a rebuilt card keeps focus
+    renderMath(p, ws);
   }
+  let roOpen=null;   // the readout whose working is open
+  function renderMath(p, ws){
+    const el=byId("roMath");
+    el.hidden=!roOpen; byId("roHint").hidden=!!roOpen;
+    if(!roOpen) return;
+    const r=PK.metricMath(p, roOpen, {duration:state.duration, mec:state.mec, mtc:state.mtc, ws});
+    el.innerHTML=`<div class="rm-h">${esc(r.title)}<button class="rm-x" aria-label="Close the working">✕</button></div>`+
+      r.steps.map(x=> x.m ? `<code class="rm-m">${esc(x.m)}</code>` : `<p class="rm-t">${esc(x.t)}</p>`).join("");
+  }
+  const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
+  byId("readouts").addEventListener("click",e=>{
+    const b=e.target.closest(".ro");
+    if(!b) return;
+    roOpen=roOpen===b.dataset.key ? null : b.dataset.key;
+    refreshReadouts();
+  });
+  byId("roMath").addEventListener("click",e=>{
+    if(!e.target.closest(".rm-x")) return;
+    const k=roOpen; roOpen=null; refreshReadouts();
+    byId("readouts").querySelector(`[data-key="${k}"]`)?.focus();   // back to the card that opened it
+  });
 
   function renderBudget(list){
     const T=state.duration, pct=v=>(100*v/T).toFixed(2);
