@@ -1418,6 +1418,17 @@
       view:Object.assign({}, VIEW_DEFAULTS, {duration:evenUp(times[times.length-1]+thalf)})};
   }
   const sig3=v=> +v.toPrecision(3);
+  // Links to one practice problem (#p=kind.seed) or one fit-the-data set (#fit=iv.seed): the seed rebuilds
+  // exactly the same numbers, so a class can work the same problem. Scenario links (#v=…) are separate.
+  const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : `p=${t.id}.${t.seed>>>0}`;
+  function decodeTaskLink(hash){
+    const m=/^#?(p|fit)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(String(hash||"").trim());
+    if(!m) return null;
+    const seed=Number(m[3]);
+    if(!Number.isInteger(seed) || seed>4294967295) return null;
+    if(m[1]==="p") return PRACTICE.some(g=>g.id===m[2]) ? {type:"problem", id:m[2], seed} : null;
+    return FIT_KINDS.some(k=>k.id===m[2]) ? {type:"fit", kind:m[2], seed} : null;
+  }
   // How far the model is from the measurements: the root-mean-square of the log ratios, in %.
   function fitError(p, obs){
     const ev=doseEvents(p);
@@ -1464,5 +1475,5 @@
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect,
-    FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate};
+    FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink};
 });

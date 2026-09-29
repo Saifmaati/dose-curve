@@ -311,6 +311,8 @@
   .pr-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .pr-topics{margin:0 0 12px;flex-wrap:wrap}
   .fit-card{margin-top:14px}
+  .pr-shared{margin:10px 0 0;font-size:12px;color:var(--cyan)}
+  .pr-shared[hidden]{display:none}
   .fit-card .seg{flex:0 1 260px}
   .fit-meter{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:11px;font-size:12.5px;color:var(--muted)}
   .fit-meter b{font-family:'JetBrains Mono',monospace;font-size:15px;color:#FF8FA3;font-weight:600}
@@ -900,6 +902,7 @@
             <button class="lesson-x" id="fitClose" aria-label="Stop fitting">✕</button>
           </div>
           <div class="lesson-t" id="fitTitle" tabindex="-1"></div>
+          <p class="pr-shared" id="fitShared" hidden>Opened from a shared link: everyone who opens it gets these same measurements.</p>
           <p class="lesson-goal"><b>Goal</b><span id="fitGoal"></span></p>
           <p class="lesson-try"><b>Tip</b><span id="fitTip"></span></p>
           <div class="fit-meter"><span>Fit error</span><b id="fitErr"></b><span id="fitTarget"></span></div>
@@ -911,6 +914,7 @@
               <button class="abtn" id="fitHowBtn">How to estimate from the data</button>
               <button class="abtn" id="fitReset">↺ Start over</button>
               <button class="abtn" id="fitNew">New data set</button>
+              <button class="abtn" id="fitLink">Copy link to this data set</button>
             </div>
           </div>
         </div>
@@ -1062,6 +1066,7 @@
           <div class="pr-card">
             <div class="pr-type" id="prType"></div>
             <div class="pr-q" id="prQ"></div>
+            <p class="pr-shared" id="prShared" hidden>Opened from a shared link: everyone who opens it gets this same problem.</p>
             <div class="pr-answer">
               <input type="number" id="prInput" step="any" placeholder="Your answer" aria-label="Your answer">
               <span class="unit" id="prUnit"></span>
@@ -1072,6 +1077,7 @@
             <div class="pr-foot">
               <button class="pr-btn ghosted" id="prReveal">Show worked solution</button>
               <button class="pr-btn ghosted" id="prViz">Visualize on curve →</button>
+              <button class="pr-btn ghosted" id="prLink">Copy link to this problem</button>
               <button class="pr-btn" id="prNext" style="margin-left:auto">Next problem</button>
             </div>
           </div>
@@ -2997,8 +3003,10 @@
   // error updates live; the status line is announced only when the fit becomes good (or stops being good).
   const FIT_SLIDER_NAMES={thalf:"Half-life", V:"Volume"};
   let fitShown=null;
-  function startFit(f){
+  function startFit(f, shared){
+    if(fit!==f && !shared) clearTaskHash();   // a shared set and Start over keep the link; a new set leaves it
     fit=f;
+    byId("fitShared").hidden=!shared;
     setMode("sim");
     exitLesson();
     loadScenario(PK.fitScenario(fit, fit.start));
@@ -3024,6 +3032,7 @@
   function exitFit(){
     if(!fit) return;
     fit=null;
+    clearTaskHash();
     byId("fitBar").hidden=true;
     byId("quickStart").hidden=qsDismissed || !!lesson;
   }
@@ -3061,7 +3070,8 @@
   });
   byId("fitStart").addEventListener("click",()=>{ startFit(PK.makeFit({kind:fitKind})); byId("fitTitle").focus({preventScroll:true}); byId("fitBar").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"nearest"}); });
   byId("fitNew").addEventListener("click",()=>{ if(fit){ startFit(PK.makeFit({kind:fit.kind})); byId("fitTitle").focus({preventScroll:true}); } });
-  byId("fitReset").addEventListener("click",()=>{ if(fit) startFit(fit); });
+  byId("fitReset").addEventListener("click",()=>{ if(fit) startFit(fit, !byId("fitShared").hidden); });
+  byId("fitLink").addEventListener("click",()=>{ if(fit) copyHash(PK.encodeTaskLink({type:"fit", kind:fit.kind, seed:fit.seed})); });
   byId("fitHowBtn").addEventListener("click",()=>{
     byId("fitHow").textContent=fitHowText();
     byId("fitHow").hidden=false; byId("fitHowBtn").hidden=true;
@@ -3360,15 +3370,20 @@
     return {mode:"sim", s:snapshot(), base:baseline?baseline.p:null, baseLabel:baseline?baseline.label:"",
       lesson:lesson?lesson.id:"", view};
   }
-  function copyLink(){
-    const hash=PK.encodeLink(linkState());
+  // Puts a link in the address bar (so a reload reopens it) and on the clipboard.
+  function copyHash(hash){
     const url=location.href.split("#")[0]+"#"+hash;
     history.replaceState(null,"","#"+hash);
-    byId("sharedPill").hidden=true;
     const fallback=()=>window.prompt("Copy this link:", url);
     if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(url).then(()=>toast("Link copied"), fallback);
     else fallback();
   }
+  function copyLink(){
+    byId("sharedPill").hidden=true;
+    copyHash(PK.encodeLink(linkState()));
+  }
+  // A problem or data-set link stays in the address bar only while that problem or data set is open.
+  const clearTaskHash=()=>{ if(PK.decodeTaskLink(location.hash)) history.replaceState(null,"",location.pathname+location.search); };
   // Puts a decoded link state on screen, replacing whatever was there: a share link at start-up, or a
   // scenario loaded from the library (which doesn't show the "opened from a shared link" notice).
   function applyLink(st, fromLibrary){
@@ -3534,8 +3549,13 @@
   });
 
   function newProblem(focus=true){
-    prob=PK.makeProblem({topic:prTopic||undefined, not:prob ? prob.id : undefined});   // never the same kind twice running
+    clearTaskHash();
+    showProblem(PK.makeProblem({topic:prTopic||undefined, not:prob ? prob.id : undefined}), focus);   // never the same kind twice running
+  }
+  function showProblem(pr, focus, shared){
+    prob=pr;
     prAnswered=false;
+    $("prShared").hidden=!shared;
     $("prType").textContent=prob.type;
     $("prQ").innerHTML=prob.q;
     $("prUnit").textContent=prob.unit;
@@ -3644,6 +3664,7 @@
   $("tabCmp").addEventListener("click",()=>showTab("cmp"));
   $("tabLs").addEventListener("click",()=>showTab("ls"));
   $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
+  $("prLink").addEventListener("click",()=>{ if(prob) copyHash(PK.encodeTaskLink({type:"problem", id:prob.id, seed:prob.seed})); });
   // Arrow keys, Home and End move between tabs and select them, as in the WAI-ARIA tabs pattern.
   document.querySelector(".tabbar").addEventListener("keydown",e=>{
     const tabs=[...document.querySelectorAll('.tabbar [role="tab"]')], i=tabs.indexOf(document.activeElement);
@@ -3661,8 +3682,11 @@
   buildLessons();
   buildCompare();
   syncWindow();
-  const shared=PK.decodeLink(location.hash);
-  if(shared) applyLink(shared); else render();
+  const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);
+  if(shared) applyLink(shared);
+  else if(task && task.type==="problem"){ render(); showTab("pr"); showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true); }
+  else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
+  else render();
 })();
 </script>
 </body>
