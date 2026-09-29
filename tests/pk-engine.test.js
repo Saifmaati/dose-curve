@@ -1672,3 +1672,24 @@ test("window tasks: changing the drug, the physiology or the kind of regimen is 
   assert.deepEqual(PK.decodeTaskLink("#"+PK.encodeTaskLink({type:"window", kind:"iv", seed:42})), {type:"window", kind:"iv", seed:42});
   assert.equal(PK.decodeTaskLink("#win=inf.4"), null);
 });
+
+/* ---------- glossary ---------- */
+test("glossary: unique terms, each defined, pointing at a real lesson, in descriptive wording", ()=>{
+  const words=/\b(safe|unsafe|best|recommended?|patient)\b/i, ids=new Set(PK.LESSONS.map(L=>L.id));
+  assert.ok(PK.GLOSSARY.length>=25);
+  assert.equal(new Set(PK.GLOSSARY.map(g=>g.term.toLowerCase())).size, PK.GLOSSARY.length, "terms are unique");
+  PK.GLOSSARY.forEach(g=>{
+    assert.ok(g.term && g.def.length>30, g.term);
+    assert.ok(ids.has(g.lesson), `${g.term}: lesson "${g.lesson}"`);
+    [g.term, g.def].forEach(t=> assert.ok(!words.test(t), `${g.term}: "${t}"`));
+  });
+});
+
+test("glossary relations agree with the model", ()=>{
+  // t½ = 0.693·V / CL, kₑ = CL / V, AUC = F·D / CL, IV swing = e^(kₑτ), accumulation 1 / (1 − e^(−kₑτ))
+  const p=scenario({route:"iv", dosing:"repeated", D:400, thalf:6, V:40, tau:8, nDoses:2}), d=PK.derived(p);
+  rel(Math.LN2*d.V/d.CL, 6, 1e-12); rel(d.CL/d.V, Math.LN2/6, 1e-12);
+  rel(PK.derived(scenario({route:"oral", D:400, F:0.7, thalf:6, V:40})).auc, 0.7*400/d.CL, 1e-12);
+  const s=PK.ssPeakTrough(p); rel(s.peak/s.trough, Math.exp(Math.LN2/6*8), 1e-9);
+  rel(d.Rac, 1/(1-Math.exp(-Math.LN2/6*8)), 1e-12);
+});
