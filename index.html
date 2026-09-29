@@ -308,9 +308,12 @@
   .pr-btn:hover{box-shadow:0 0 20px rgba(124,107,255,.35)}
   .pr-btn.ghosted{background:rgba(5,8,16,.55);border-color:var(--glass-line-2);color:#C9D0E6;font-weight:500}
   .pr-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .pr-verdict{margin-top:13px;font-size:13px;font-weight:600;display:none}
-  .pr-verdict.ok{display:block;color:var(--green);text-shadow:0 0 14px rgba(59,229,138,.4)}
-  .pr-verdict.no{display:block;color:var(--rose)}
+  .pr-topics{margin:0 0 12px;flex-wrap:wrap}
+  .pr-topics button{flex:1 1 auto;white-space:nowrap}
+  .pr-verdict{margin-top:13px;font-size:13px;font-weight:600}
+  .pr-verdict:empty{margin:0}
+  .pr-verdict.ok{color:var(--green);text-shadow:0 0 14px rgba(59,229,138,.4)}
+  .pr-verdict.no{color:var(--rose)}
   .pr-sol{
     display:none;margin-top:13px;padding:13px 15px;border-radius:9px;
     background:rgba(124,107,255,.07);border:1px solid rgba(124,107,255,.25);
@@ -1012,12 +1015,13 @@
 
         <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
           <div class="pr-top">
-            <div class="plot-title" style="font-size:16px">PK Practice Engine<span>Unlimited generated problems · worked solutions</span></div>
+            <div class="plot-title" style="font-size:16px">Practice problems<span id="prSub">Generated problems · worked solutions · every answer checked against the model</span></div>
             <div class="pr-stats">
               <div class="pr-stat">Streak <b id="prStreak">0</b></div>
               <div class="pr-stat">Solved <b id="prSolved">0</b>/<span id="prTried">0</span></div>
             </div>
           </div>
+          <div class="seg pr-topics" id="prTopics" role="group" aria-label="Topic"></div>
           <div class="pr-card">
             <div class="pr-type" id="prType"></div>
             <div class="pr-q" id="prQ"></div>
@@ -1026,7 +1030,7 @@
               <span class="unit" id="prUnit"></span>
               <button class="pr-btn" id="prCheck">Check</button>
             </div>
-            <div class="pr-verdict" id="prVerdict"></div>
+            <div class="pr-verdict" id="prVerdict" role="status"></div>
             <div class="pr-sol" id="prSol"></div>
             <div class="pr-foot">
               <button class="pr-btn ghosted" id="prReveal">Show worked solution</button>
@@ -1049,7 +1053,7 @@
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
         Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, and every quantitative claim the lessons make.</p>
+      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, every quantitative claim the lessons make, and every practice answer.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
@@ -3378,117 +3382,39 @@
     setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},200);
   }
 
-  /* ================= PRACTICE ENGINE ================= */
-  const R=(a,b,st)=>{ const n=Math.round((a+(b-a)*Math.random())/st)*st; return parseFloat(n.toFixed(4)); };
-  const f2=v=>parseFloat(v.toFixed(2)), f3=v=>parseFloat(v.toFixed(3));
-
-  const GEN = [
-    function keFromHalf(){
-      const th=R(1,12,0.5);
-      return {type:"Elimination constant", unit:"h⁻¹",
-        q:`A drug has an elimination half-life of <b>${th} h</b>. Calculate the first-order elimination rate constant kₑ.`,
-        ans:Math.LN2/th, dp:3,
-        sol:[`<span class="step">kₑ and t½ are linked by <b>kₑ = ln2 / t½</b>.</span>`,
-             `<span class="step">kₑ = 0.693 / ${th} = <b>${f3(Math.LN2/th)} h⁻¹</b></span>`],
-        viz:{route:"iv",dosing:"single",D:500,V:35,thalf:th,duration:Math.min(96,Math.ceil(th*5))}};
-    },
-    function c0FromDose(){
-      const D=R(100,1000,50), V=R(10,60,5);
-      return {type:"IV bolus · initial concentration", unit:"mg/L",
-        q:`A <b>${D} mg</b> IV bolus is given to a patient with a volume of distribution of <b>${V} L</b>. What is the initial plasma concentration C₀?`,
-        ans:D/V, dp:2,
-        sol:[`<span class="step">An IV bolus distributes instantly through V: <b>C₀ = Dose / V</b>.</span>`,
-             `<span class="step">C₀ = ${D} / ${V} = <b>${f2(D/V)} mg/L</b></span>`],
-        viz:{route:"iv",dosing:"single",D:D,V:V,thalf:4,duration:24}};
-    },
-    function cAtTime(){
-      const D=R(200,800,50), V=R(15,50,5), th=R(2,10,1);
-      const k=Math.LN2/th, t=R(2,12,1);
-      const C=(D/V)*Math.exp(-k*t);
-      return {type:"IV bolus · decay", unit:"mg/L",
-        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), what is the plasma concentration at <b>t = ${t} h</b>?`,
-        ans:C, dp:2,
-        sol:[`<span class="step">C₀ = D/V = ${D}/${V} = <b>${f2(D/V)} mg/L</b></span>`,
-             `<span class="step">kₑ = 0.693/${th} = <b>${f3(k)} h⁻¹</b></span>`,
-             `<span class="step">C(t) = C₀·e^(−kₑt) = ${f2(D/V)}·e^(−${f3(k)}·${t}) = <b>${f2(C)} mg/L</b></span>`],
-        viz:{route:"iv",dosing:"single",D:D,V:V,thalf:th,duration:Math.min(96,Math.ceil(th*5))}};
-    },
-    function halfFromTwoPoints(){
-      const C1=R(8,40,2), t1=R(1,3,1);
-      const nH=R(1,3,1); const th=R(2,8,1);
-      const t2=t1+nH*th; const C2=C1/Math.pow(2,nH);
-      return {type:"Two-point half-life", unit:"h",
-        q:`Plasma levels are <b>${f2(C1)} mg/L</b> at <b>t = ${t1} h</b> and <b>${f2(C2)} mg/L</b> at <b>t = ${t2} h</b>. Estimate the elimination half-life.`,
-        ans:th, dp:2,
-        sol:[`<span class="step">t½ = (t₂−t₁)·ln2 / ln(C₁/C₂)</span>`,
-             `<span class="step">= (${t2}−${t1})·0.693 / ln(${f2(C1)}/${f2(C2)}) = <b>${th} h</b></span>`,
-             `<span class="step">Sanity check: concentration halved ${nH}× over ${t2-t1} h → ${th} h per halving. On the LOG scale this is a straight line.</span>`],
-        viz:{route:"iv",dosing:"single",D:Math.round(C1*30*Math.exp(Math.LN2/th*t1)),V:30,thalf:th,duration:Math.min(96,Math.ceil(th*6))}};
-    },
-    function loadingDose(){
-      const Ct=R(5,30,1), V=R(15,60,5);
-      return {type:"Loading dose", unit:"mg",
-        q:`You need to reach a target plasma concentration of <b>${Ct} mg/L</b> immediately in a patient with V = <b>${V} L</b>. What IV loading dose is required?`,
-        ans:Ct*V, dp:0,
-        sol:[`<span class="step">The loading dose fills the volume of distribution to the target level: <b>LD = C_target · V</b>.</span>`,
-             `<span class="step">LD = ${Ct} × ${V} = <b>${Ct*V} mg</b></span>`,
-             `<span class="step">Note it doesn't depend on clearance — clearance decides the maintenance rate, not the load.</span>`],
-        viz:{route:"iv",dosing:"single",D:Ct*V,V:V,thalf:6,duration:36,mec:Math.max(1,Math.round(Ct*0.6)),mtc:Math.round(Ct*1.8)}};
-    },
-    function infusionCss(){
-      const th=R(2,10,1), V=R(15,50,5), Css=R(4,20,1);
-      const k=Math.LN2/th, CL=k*V, R0=Css*CL;
-      const dur=2*Math.ceil(Math.max(6,Math.min(96, th*6, 2000/R0))/2);
-      const Dv=Math.min(2000,Math.round(R0*dur));
-      return {type:"Infusion · steady state", unit:"mg/h",
-        q:`A drug has t½ = <b>${th} h</b> and V = <b>${V} L</b>. What constant IV infusion rate produces a steady-state concentration of <b>${Css} mg/L</b>?`,
-        ans:R0, dp:1,
-        sol:[`<span class="step">At steady state, rate in = rate out: <b>R₀ = Css · CL</b>.</span>`,
-             `<span class="step">CL = kₑ·V = (0.693/${th})·${V} = <b>${f2(CL)} L/h</b></span>`,
-             `<span class="step">R₀ = ${Css} × ${f2(CL)} = <b>${(R0).toFixed(1)} mg/h</b></span>`],
-        viz:{route:"inf",dosing:"single",D:Dv,tinf:dur,V:V,thalf:th,duration:dur,mec:Math.max(1,Math.floor(Css*0.7)),mtc:Css+8}};
-    },
-    function timeToSS(){
-      const th=R(2,12,1);
-      return {type:"Time to steady state", unit:"h",
-        q:`A drug with a half-life of <b>${th} h</b> is started on a regular repeated regimen. Approximately how long until plasma levels reach <b>90%</b> of steady state?`,
-        ans:3.32*th, dp:1,
-        sol:[`<span class="step">Fraction of SS after n half-lives = 1 − (½)ⁿ; 90% needs <b>n = 3.32</b> half-lives.</span>`,
-             `<span class="step">t₉₀ = 3.32 × ${th} = <b>${(3.32*th).toFixed(1)} h</b> — independent of dose and interval.</span>`],
-        viz:{route:"oral",dosing:"repeated",D:300,F:0.9,ka:1,thalf:th,V:30,tau:Math.max(2,Math.min(24,th)),nDoses:10,duration:Math.min(96,Math.ceil(th*6))}};
-    },
-    function aucProblem(){
-      const D=R(200,800,50), F=R(0.5,1,0.05), th=R(2,10,1), V=R(15,50,5);
-      const k=Math.LN2/th, CL=k*V, auc=F*D/CL;
-      return {type:"Exposure (AUC)", unit:"mg·h/L",
-        q:`An oral dose of <b>${D} mg</b> with bioavailability <b>F = ${f2(F)}</b> is given (t½ = <b>${th} h</b>, V = <b>${V} L</b>). Calculate total exposure AUC∞.`,
-        ans:auc, dp:1,
-        sol:[`<span class="step"><b>AUC = F·D / CL</b> — independent of how fast absorption happens.</span>`,
-             `<span class="step">CL = kₑ·V = (0.693/${th})·${V} = <b>${f2(CL)} L/h</b></span>`,
-             `<span class="step">AUC = ${f2(F)}·${D} / ${f2(CL)} = <b>${auc.toFixed(1)} mg·h/L</b></span>`],
-        viz:{route:"oral",dosing:"single",D:D,F:F,ka:1.2,thalf:th,V:V,duration:Math.min(96,Math.ceil(th*6))}};
-    }
-  ];
-
-  let prob=null, prStreak=0, prSolved=0, prTried=0, prAnswered=false;
+  /* ================= PRACTICE ================= */
+  // Problems come from the engine (PK.makeProblem): 21 kinds in four topics, each answer checked by the tests
+  // against a simulation of the problem's own scenario.
+  let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
+  $("prSub").textContent=`${PK.PRACTICE.length} kinds of generated problems · worked solutions · every answer checked against the model`;
+  $("prTopics").innerHTML=[{id:"", title:"All topics"}].concat(PK.PRACTICE_TOPICS).map(t=>
+    `<button data-topic="${t.id}" aria-pressed="${t.id===prTopic}"${t.id===prTopic?' class="on"':""}>${t.title}</button>`).join("");
+  $("prTopics").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-topic]");
+    if(!b || b.dataset.topic===prTopic) return;
+    prTopic=b.dataset.topic;
+    $("prTopics").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
+    newProblem(false);   // focus stays on the topic buttons
+  });
 
-  function newProblem(){
-    prob=GEN[Math.floor(Math.random()*GEN.length)]();
+  function newProblem(focus=true){
+    prob=PK.makeProblem({topic:prTopic||undefined, not:prob ? prob.id : undefined});   // never the same kind twice running
     prAnswered=false;
     $("prType").textContent=prob.type;
     $("prQ").innerHTML=prob.q;
     $("prUnit").textContent=prob.unit;
     $("prInput").value="";
     $("prVerdict").className="pr-verdict";
+    $("prVerdict").textContent="";
     $("prSol").className="pr-sol";
     $("prSol").innerHTML=prob.sol.join("");
-    $("prInput").focus();
+    if(focus) $("prInput").focus();
   }
   function checkAnswer(){
     const v=parseFloat($("prInput").value);
     if(isNaN(v)) return;
-    const ok=Math.abs(v-prob.ans)<=Math.max(Math.abs(prob.ans)*0.02, Math.pow(10,-prob.dp)/2);
+    const ok=PK.practiceCorrect(prob, v);
     const vd=$("prVerdict");
     if(!prAnswered){ prTried++; }
     if(ok){
@@ -3515,16 +3441,25 @@
       $("prTried").textContent=prTried; $("prStreak").textContent=prStreak; }
     $("prSol").className="pr-sol show";
   });
+  // The problem's scenario, with every setting it doesn't name back at its default so the chart matches the
+  // answer, and the time cursor on the moment the question asks about. Focus goes to the chart, where the arrow
+  // keys move the cursor.
   $("prViz").addEventListener("click",()=>{
-    if(!prob.viz) return;
+    if(!prob) return;
     setMode("sim");
-    state.loadMult=1; state.missed=1; state.view="full"; state.drug=null;
-    state.wt=70; state.clFn=100; // problems are computed at baseline physiology — reset so the curve matches the answer
-    Object.assign(state,prob.viz);
     exitLesson();
+    loadScenario(PK.practiceScenario(prob));
+    const v=prob.view;
+    Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:v.scale, view:v.zoom==="last" ? "last" : "full",
+      pd:v.pd, etgt:v.etgt, drug:null});
     baseline=null; updateBaselineUI();   // an earlier baseline belongs to an unrelated scenario
+    evSel=null;
     syncControls(); render();
     showTab("sim");
+    if(prob.at!==undefined) jumpTo(prob.at);
+    else { cursorT=null; updateCursor(); }   // no single moment to look at: clear the last problem's cursor
+    $("plot").focus({preventScroll:true});
+    $("plot").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"center"});
   });
 
   /* tabs: Simulator and Compare share one view in two modes */

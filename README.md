@@ -14,7 +14,8 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **Watch steady state build up:** peak and trough for every dose, accumulation, and how long 90% of steady state takes.
 - **Inspect any moment:** drag a cursor across the chart (or focus it and use the arrow keys) to read the concentration, window status, whether it's rising or falling, and the last dose given; jump between doses, peaks and troughs, or play the curve at 1×, 2× or 4×.
 - **See the effect (PK/PD):** switch on the effect charts to turn concentration into response with the sigmoid Emax model. Set EC50, Emax, the Hill slope and a baseline, pick a target effect, and read the effect over time, the concentration–effect curve with a dot that follows the time cursor, and how long the effect stays at or above target.
-- **Learn** through 18 guided lessons in five groups (PK fundamentals, repeated dosing, custom regimens, infusion and route, PK/PD). Each one sets a goal, asks you to predict the result before explaining it, and ends with a challenge the app checks live; every answer and every number a lesson states is checked by the test suite. Practise with unlimited generated problems that come with worked solutions.
+- **Learn** through 18 guided lessons in five groups (PK fundamentals, repeated dosing, custom regimens, infusion and route, PK/PD). Each one sets a goal, asks you to predict the result before explaining it, and ends with a challenge the app checks live; every answer and every number a lesson states is checked by the test suite.
+- **Practise** with generated calculation problems: 21 kinds in four topics (single dose, repeated dosing, infusions, concentration–effect), from half-life and AUC to steady-state troughs, loading doses and the Emax model. Each comes with a worked solution, and "Visualize on curve" opens its scenario with the time cursor on the moment the question asks about. The tests work every answer out again from a simulation of the problem's own scenario.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV.
 - **Save** setups in a local scenario library: save, update, rename, duplicate, delete, and export or import them as JSON. Saved scenarios stay in your browser (`localStorage`) unless you export or share them.
 
@@ -24,8 +25,8 @@ A static site with no build step and no dependencies:
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | The app: UI, charts, lessons, practice problems |
-| `pk-engine.js` | The model: PK equations, regimens, metrics, presets and the share-link format. Has no DOM access, so it runs in the browser and in Node |
+| `index.html` | The app: UI, charts, lessons and the practice view |
+| `pk-engine.js` | The model: PK equations, regimens, metrics, presets, lessons, practice problems and the share-link format. Has no DOM access, so it runs in the browser and in Node |
 | `tests/pk-engine.test.js` | Automated tests for the engine |
 | `404.html` | The page GitHub Pages shows for a missing address |
 | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest` | Browser, home-screen and install icons |
@@ -62,4 +63,4 @@ Requires Node 18 or later; no packages to install.
 node --test
 ```
 
-The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, and every quantitative claim the lessons make.
+The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, every quantitative claim the lessons make, and every practice problem's answer against a simulation of its own scenario.
