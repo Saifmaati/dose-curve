@@ -460,6 +460,23 @@
 
   /* lessons tab */
   .lsv{display:none;padding:18px 22px 24px}
+  .gloss{margin-top:26px}
+  .gloss-find{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+  .gloss-find input{flex:1 1 220px;max-width:340px;background:rgba(5,8,16,.7);border:1px solid var(--glass-line-2);border-radius:9px;color:var(--text);
+    font:inherit;font-size:13px;padding:8px 11px}
+  .gloss-find input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(61,242,224,.12)}
+  .gloss-list{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:0}
+  .g-item{padding:10px 12px;border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(5,8,16,.45)}
+  .g-item[hidden]{display:none}
+  .g-item dt{font-weight:600;font-size:13.5px;color:var(--text)}
+  .g-sym{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--cyan);margin-left:4px}
+  .g-item dd{margin:4px 0 0;font-size:12.5px;line-height:1.6;color:#B9BEDF}
+  .g-ls{border:0;background:none;padding:0;margin-left:2px;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .g-ls:hover{color:#fff}
+  .g-ls:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
+  .gloss-none{font-size:12.5px;color:var(--muted)}
+  .gloss-none[hidden]{display:none}
+  @media (max-width:640px){ .gloss-list{grid-template-columns:1fr} }
   .lsv.show{display:block}
   .ls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .ls-card{text-align:left;cursor:pointer;color:var(--text);background:rgba(5,8,16,.5);border:1px solid var(--glass-line);
@@ -1131,6 +1148,12 @@
             <div class="plot-title" style="font-size:16px">Lessons<span>One-click scenarios · each replaces the baseline with its own</span></div>
           </div>
           <div id="lsGrid"></div>
+          <section class="gloss" aria-labelledby="glossTitle">
+            <h2 class="ls-group" id="glossTitle">Glossary</h2>
+            <label class="gloss-find"><span>Find a term</span><input type="search" id="glossFind" placeholder="clearance, EC50, τ…" autocomplete="off"></label>
+            <dl class="gloss-list" id="glossList"></dl>
+            <p class="gloss-none" id="glossNone" hidden>No term matches that.</p>
+          </section>
         </div>
 
         <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
@@ -1248,7 +1271,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=0d44e35bef"></script>
+<script src="pk-engine.js?v=cb28196070"></script>
 <script>
 "use strict";
 (function(){
@@ -3073,6 +3096,25 @@
       btn.addEventListener("click",()=>{ loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)); focusLesson(); });
     });
   }
+  // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
+  function buildGlossary(){
+    byId("glossList").innerHTML=PK.GLOSSARY.map(g=>{
+      const L=LESSONS.find(x=>x.id===g.lesson), tag=[g.sym,g.unit].filter(Boolean).join(" · ");
+      return `<div class="g-item" data-text="${esc([g.term,g.sym,g.def].join(" ").toLowerCase())}"><dt>${esc(g.term)}${tag?`<span class="g-sym">${esc(tag)}</span>`:""}</dt>`+
+        `<dd>${esc(g.def)} <button class="g-ls" data-id="${g.lesson}">Lesson: ${esc(L.title)} →</button></dd></div>`;
+    }).join("");
+  }
+  byId("glossFind").addEventListener("input",()=>{
+    const q=byId("glossFind").value.trim().toLowerCase();
+    let n=0;
+    byId("glossList").querySelectorAll(".g-item").forEach(el=>{ const on=!q || el.dataset.text.includes(q); el.hidden=!on; if(on) n++; });
+    byId("glossNone").hidden=n>0;
+  });
+  byId("glossList").addEventListener("click",e=>{
+    const b=e.target.closest(".g-ls");
+    if(!b) return;
+    loadLesson(LESSONS.find(L=>L.id===b.dataset.id)); focusLesson();
+  });
   function loadLesson(L){
     setMode("sim");
     exitFit(); exitWindow();
@@ -4010,6 +4052,7 @@
   buildSliders();
   buildDrugs();
   buildLessons();
+  buildGlossary();
   buildCompare();
   syncWindow();
   const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);

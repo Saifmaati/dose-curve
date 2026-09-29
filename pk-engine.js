@@ -1404,6 +1404,72 @@
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
 
+  /* ================= GLOSSARY ================= */
+  // The terms the app uses, each with its symbol and unit, the relation DoseCurve computes it by, and the lesson
+  // that shows it (lesson ids are checked by the tests).
+  const GLOSSARY=[
+    {term:"Concentration", sym:"C", unit:"mg/L", lesson:"route",
+     def:"How much drug is in each litre of plasma. DoseCurve uses mg/L, which is the same as µg/mL."},
+    {term:"Peak concentration", sym:"Cmax", unit:"mg/L", lesson:"route",
+     def:"The highest concentration after a dose. An IV bolus peaks at once, an oral dose later and lower, and an infusion when it stops."},
+    {term:"Time of the peak", sym:"tmax", unit:"h", lesson:"route",
+     def:"When the peak comes. For an oral dose tmax = ln(kₐ / kₑ) / (kₐ − kₑ), so it depends on the two rate constants, not on the dose."},
+    {term:"Trough", sym:"Cmin", unit:"mg/L", lesson:"accum",
+     def:"The lowest concentration in a dosing interval, just before the next dose."},
+    {term:"Area under the curve", sym:"AUC", unit:"mg·h/L", lesson:"route",
+     def:"Total exposure: the area under the concentration–time curve. For one dose AUC∞ = F·D / CL, however fast the drug is absorbed."},
+    {term:"Bioavailability", sym:"F", unit:"fraction", lesson:"route",
+     def:"The fraction of an oral dose that reaches the circulation, from 0 to 1. An IV dose has F = 1."},
+    {term:"Absorption rate constant", sym:"kₐ", unit:"h⁻¹", lesson:"route",
+     def:"How fast an oral dose moves into the blood. A larger kₐ gives an earlier, higher peak; the AUC stays the same."},
+    {term:"Elimination rate constant", sym:"kₑ", unit:"h⁻¹", lesson:"half",
+     def:"The fraction of the drug in the body removed per hour in first-order elimination: kₑ = ln2 / t½ = CL / V."},
+    {term:"Half-life", sym:"t½", unit:"h", lesson:"half",
+     def:"The time for the concentration to halve once absorption is over: t½ = 0.693 / kₑ = 0.693·V / CL, so it depends on both volume and clearance."},
+    {term:"Volume of distribution", sym:"V", unit:"L", lesson:"vd",
+     def:"The apparent volume the drug spreads into: for an IV bolus, the dose divided by the starting concentration (V = D / C₀). In DoseCurve it scales with body weight."},
+    {term:"Clearance", sym:"CL", unit:"L/h", lesson:"cl",
+     def:"The volume of plasma cleared of drug each hour: CL = kₑ·V. It sets total exposure (AUC = F·D / CL). In DoseCurve, organ function scales it."},
+    {term:"IV bolus", sym:"", unit:"", lesson:"inf",
+     def:"A dose injected into a vein all at once: the concentration starts at D / V and falls from there."},
+    {term:"IV infusion", sym:"R₀", unit:"mg/h", lesson:"infdur",
+     def:"A dose run into a vein at a constant rate R₀ = D / T. The level climbs toward R₀ / CL and falls once the infusion stops."},
+    {term:"Loading dose", sym:"LD", unit:"mg", lesson:"load",
+     def:"A larger first dose, or a bolus given with an infusion, that reaches the target level at once instead of after 4–5 half-lives: LD = C_target·V."},
+    {term:"Maintenance dose", sym:"D", unit:"mg", lesson:"accum",
+     def:"The dose repeated every interval. At steady state it replaces what is cleared, so the average level is F·D / (CL·τ)."},
+    {term:"Dosing interval", sym:"τ", unit:"h", lesson:"split",
+     def:"The time between the doses of a regular regimen."},
+    {term:"Steady state", sym:"SS", unit:"", lesson:"accum",
+     def:"When what each interval adds matches what is cleared, so peaks and troughs stop rising. About 90% of the way after 3.3 half-lives and about 97% after 5, whatever the dose."},
+    {term:"Accumulation ratio", sym:"R", unit:"×", lesson:"accum",
+     def:"How many times higher levels settle than after the first dose: R = 1 / (1 − e^(−kₑτ)). The shorter the interval next to the half-life, the larger it is."},
+    {term:"Swing", sym:"peak / trough", unit:"×", lesson:"split",
+     def:"How far the level falls between doses. For a repeated IV bolus at steady state, peak / trough = e^(kₑτ): the interval sets it, the dose doesn't."},
+    {term:"Superposition", sym:"", unit:"", lesson:"spacing",
+     def:"In a linear model each dose adds its own curve, so the concentration is the sum of what is left of every dose given."},
+    {term:"Minimum effective concentration", sym:"MEC", unit:"mg/L", lesson:"er",
+     def:"The lower edge of the window on DoseCurve's charts: below it, the modeled level is taken as too low to act."},
+    {term:"Minimum toxic concentration", sym:"MTC", unit:"mg/L", lesson:"er",
+     def:"The upper edge of the window on DoseCurve's charts: above it, the modeled level is taken as too high."},
+    {term:"Therapeutic window", sym:"", unit:"", lesson:"er",
+     def:"The range between MEC and MTC. DoseCurve reports the share of the time window the curve spends inside it."},
+    {term:"Missed dose", sym:"", unit:"", lesson:"miss",
+     def:"A scheduled dose that isn't given: its curve is simply left out of the sum, and the level recovers over the following doses."},
+    {term:"Baseline effect", sym:"E₀", unit:"%", lesson:"potency",
+     def:"The effect with no drug present, as a percentage of the largest possible response."},
+    {term:"Maximum effect", sym:"Emax", unit:"%", lesson:"efficacy",
+     def:"The largest effect the drug can add on top of the baseline: a ceiling no concentration can pass."},
+    {term:"Potency", sym:"EC50", unit:"mg/L", lesson:"potency",
+     def:"The concentration that gives half of the maximum effect. A lower EC50 means less drug is needed for the same effect."},
+    {term:"Hill slope", sym:"n", unit:"", lesson:"hill",
+     def:"How steeply the effect rises around EC50. A large n makes the response close to on/off; n = 1 is a gradual curve."},
+    {term:"Emax model", sym:"E", unit:"%", lesson:"pdose",
+     def:"E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ). DoseCurve links the effect directly to the plasma concentration, with no delay."},
+    {term:"One-compartment model", sym:"", unit:"", lesson:"vd",
+     def:"The idealized body DoseCurve simulates: the drug spreads at once through one well-mixed volume and is eliminated in proportion to its concentration (first-order, linear)."}
+  ];
+
   /* ================= HIT THE WINDOW ================= */
   // Regimen design: for a made-up drug, choose a dose and an interval so that at steady state the trough stays at
   // or above the lower limit and the peak at or below the upper one. Each task is built around a regimen on the
@@ -1640,5 +1706,5 @@
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
-    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough};
+    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY};
 });

@@ -4,6 +4,7 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## 2026-09-30
 
+- **Glossary:** 30 terms under the lessons, each with its symbol, unit, the relation DoseCurve uses and a link to its lesson, with a search box.
 - **Hit the window:** regimen design. Choose a dose and an interval that keep a made-up drug's steady-state peak and trough inside a window, with a live verdict, a textbook route to an answer, and a link to share the task.
 
 ## 2026-09-29
