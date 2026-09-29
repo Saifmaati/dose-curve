@@ -1266,3 +1266,43 @@ test("kₐ equal to one disposition rate stays exact", ()=>{
   [1,4,10].forEach(t=> rel(PK.oralResp(twoTerms,t,ka), simpson(u=>ka*Math.exp(-ka*u)*PK.bolusResp(twoTerms,t-u),0,t), 1e-9, `t=${t}`));
   near(PK.oralResp(twoTerms,4,ka+2e-6), PK.oralResp(twoTerms,4,ka), 1e-6, "continuous across the switch to the limit");
 });
+
+/* ---------- guards and the short-vs-long infusion lesson ---------- */
+
+test("garbled PD settings in a link are clamped, never NaN or Infinity", ()=>{
+  ["ec50:abc,hill:NaN,e0:Infinity,emax:-Infinity", "ec50:1e999,hill:-3,e0:1e9,emax:0", "ec50:,hill:,e0:,emax:"].forEach(raw=>{
+    const p=PK.decodeScenario(raw);
+    PK.PD_KEYS.forEach(k=> assert.ok(Number.isFinite(p[k]), `${k} from "${raw}"`));
+    assert.ok(p.e0+p.emax<=100);
+    [0,1e-9,0.5,4,1e6].forEach(c=> assert.ok(Number.isFinite(PK.effectOf(p,c)), `effect at ${c}`));
+  });
+});
+
+test("effect metrics stay finite across random scenarios and every target", ()=>{
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  for(let i=0;i<60;i++){
+    const p=PK.normalizeScenario(scenario({route:["oral","iv","inf"][i%3], dosing:["single","repeated"][i%2], D:25+rnd()*1975,
+      thalf:0.5+rnd()*23.5, ec50:0.1+rnd()*99.9, hill:0.5+rnd()*4.5, emax:5+rnd()*95, e0:rnd()*50}));
+    [1,25,50,75,99].forEach(tg=>{
+      const e=PK.effectStats(p,48,tg);
+      assert.ok(Number.isFinite(e.peak) && Number.isFinite(e.tPeak) && Number.isFinite(e.tAbove), `scenario ${i}, target ${tg}`);
+      assert.ok(e.tAbove>=0 && e.tAbove<=48+1e-9);
+      assert.ok(e.onset===null || (e.onset>=0 && e.onset<=48));
+      assert.ok(e.ct===null || Number.isFinite(e.ct));
+    });
+  }
+});
+
+test("lesson: short vs long infusion", ()=>{
+  const {base,cur,T,mtc}=lesson("infdur"), a=stats(base,T,0,mtc), b=stats(cur,T,0,mtc);
+  near(base.D/base.tinf, 2000, 1e-9, "2,000 mg/h"); near(cur.D/cur.tinf, 250, 1e-9, "250 mg/h");
+  near(a.cmax, 19.8, 0.05, "short: 19.8 mg/L"); near(a.tmax, 0.5, 1e-9, "at 0.5 h");
+  near(a.tAbove, 0.8, 0.05, "0.8 h above the MTC line");
+  near(b.cmax, 16.3, 0.05, "long: 16.3 mg/L"); near(b.tmax, 4, 1e-9, "at 4 h"); assert.equal(b.tAbove, 0);
+  const reach=(p,level)=>{ for(let t=0;t<=12;t+=0.001) if(PK.conc(p,t)>=level) return t; return null; };
+  near(reach(base,10), 0.25, 0.01, "10 mg/L at 0.25 h"); near(reach(cur,10), 2.2, 0.05, "and at 2.2 h");
+  near(PK.derived(base).auc, 176.7, 0.05, "AUC 176.7"); rel(PK.derived(cur).auc, PK.derived(base).auc, 1e-12, "the same AUC");
+  const eight=PK.normalizeScenario(Object.assign({}, cur, {tinf:8}));
+  assert.ok(stats(eight,T).cmax < b.cmax && stats(eight,T).tmax > b.tmax, "8 h: lower and later");
+  rel(PK.derived(eight).auc, PK.derived(cur).auc, 1e-12, "and still the same AUC");
+});
