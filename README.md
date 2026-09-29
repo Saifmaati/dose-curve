@@ -31,6 +31,7 @@ A static site with no build step and no dependencies:
 | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest` | Browser, home-screen and install icons |
 | `og-image.png` | The preview image shown when a link is shared |
 | `sitemap.xml` | The page's address for search engines |
+| `robots.txt` | Crawler guidance and the sitemap's address (read once the site has its own domain) |
 
 The model is one-compartment and linear:
 
@@ -41,9 +42,9 @@ The model is one-compartment and linear:
 - Internally, every dose's response is built from a sum of exponential terms (a single term for this one-compartment model), which keeps AUC, peaks and steady state exact for every route
 - Steady state (a regimen repeated indefinitely) is computed exactly: each earlier dose's contribution forms a geometric series, so there is no cap on how many doses it takes to settle. It is shown only for regular repeated regimens (one dose every τ), never for single doses or custom schedules
 - In a custom schedule each dose has its own route: oral doses use the scenario's F and kₐ, IV doses count in full, and an infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop. There is one volume and one clearance whatever the route, overlapping infusions add their rates (the page says so whenever infusions overlap, including when the infusion time is longer than the dosing interval), and the line adds no delay. Infusions run 0.25–168 h, must end by 168 h and may carry up to 10,000 mg; other doses carry 25–4,000 mg
-- Effect (PK/PD): `E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ)`, as a percentage of the largest possible response (E₀ + Emax ≤ 100%). The effect follows plasma concentration instantly and reversibly: no effect-site delay and no tolerance
+- Effect (PK/PD): `E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ)`, as a percentage of the largest possible response (E₀ + Emax ≤ 100%). The effect follows plasma concentration instantly and reversibly. This is a simplified direct-effect model: it does not model delayed effects, tolerance, active metabolites, indirect responses, or any individual patient's outcome
 
-Share links carry every setting in the URL itself, including custom schedules. Each link is written at the lowest format version that holds it: v1 for regular regimens, v2 for custom schedules, v3 once doses use different routes or infusions have their own durations, v4 once the PK/PD settings or the effect charts are used. Older links open unchanged. Nothing is sent to or stored on a server.
+Share links carry every setting in the URL itself, including custom schedules. Each link is written at the lowest format version that holds it: v1 for regular regimens, v2 for custom schedules, v3 once doses use different routes or infusions have their own durations, v4 once the PK/PD settings or the effect charts are used. Older links open unchanged. Nothing is sent to or stored on a server: DoseCurve runs in your browser, and saved scenarios stay in it unless you export or share them. Do not enter patient-identifying information.
 
 ## Run it locally
 

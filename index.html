@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DoseCurve — Interactive PK/PD Simulator</title>
+<title>DoseCurve — Interactive PK/PD Lab</title>
 <meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 16 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
 <link rel="canonical" href="https://saifmaatimessi-droid.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
@@ -15,7 +15,7 @@
 <!-- link previews (Open Graph and X/Twitter need absolute URLs) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
-<meta property="og:title" content="DoseCurve — Interactive PK/PD Simulator">
+<meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 16 guided lessons. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaatimessi-droid.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
@@ -23,7 +23,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="DoseCurve, an interactive PK/PD simulator: a repeated-dosing concentration curve rising into a therapeutic window.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DoseCurve — Interactive PK/PD Simulator">
+<meta name="twitter:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta name="twitter:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Free and educational.">
 <meta name="twitter:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
@@ -581,6 +581,8 @@
     background:rgba(13,18,32,.55);backdrop-filter:blur(8px);color:var(--muted)}
   .foot .disc b{color:#C4CCE4}
   .foot .eq{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.8}
+  .foot .privacy{margin:14px 0 0;line-height:1.6;color:var(--muted)}
+  .foot .privacy b{color:#C9D0E6}
   .foot-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:16px;font-size:12.5px}
   .foot-links a{color:#B9BEDF;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(185,190,223,.4)}
   .foot-links a:hover{color:#fff}
@@ -642,13 +644,13 @@
 
   <main id="main">
   <section class="hero">
-    <div class="eyebrow">Pharmacokinetic Simulator</div>
+    <div class="eyebrow">Interactive PK/PD Lab</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
     <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons and practice problems.</p>
     <div class="hero-cta">
-      <button class="cta primary" data-go="ls">Start a lesson</button>
-      <button class="cta" data-go="cmp">Compare two regimens</button>
-      <button class="cta" data-go="sim">Explore the simulator</button>
+      <button class="cta primary" data-go="pd">Try the PK/PD Lab</button>
+      <button class="cta" data-go="ls">Start a lesson</button>
+      <button class="cta" data-go="cmp">Compare regimens</button>
     </div>
     <div class="hero-chip">Educational model · <b>not for clinical dosing</b></div>
     <noscript><p class="noscript">DoseCurve is an interactive simulator and needs JavaScript. Turn it on in your browser to use it.</p></noscript>
@@ -726,7 +728,7 @@
             </div>
             <details class="ev-model">
               <summary>How concentration becomes effect</summary>
-              <p>Effect follows the sigmoid Emax model, E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ), as a percentage of the largest possible response. EC50 is the concentration that gives half of Emax (potency), Emax the ceiling (efficacy) and n how steeply the effect turns on around EC50. The effect follows plasma concentration instantly and fully reversibly: no delay to the site of action, no tolerance. The curve is an empirical description, not a mechanism.</p>
+              <p>Effect follows the sigmoid Emax model, E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ), as a percentage of the largest possible response. EC50 is the concentration that gives half of Emax (potency), Emax the ceiling (efficacy) and n how steeply the effect turns on around EC50. The effect follows plasma concentration instantly and fully reversibly. This simplified direct-effect model does not model delayed effects, tolerance, active metabolites, indirect responses, or any individual patient's outcome. The curve is an empirical description, not a mechanism.</p>
             </details>
           </div>
 
@@ -997,6 +999,7 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
+      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
@@ -1016,7 +1019,7 @@
   <dialog class="lib" id="libDlg" aria-labelledby="libTitle">
     <div class="lib-inner">
       <div class="lib-head"><h2 id="libTitle">Scenario library</h2><button class="lesson-x" id="libClose" aria-label="Close the library">✕</button></div>
-      <p class="lib-privacy">Saved scenarios stay in this browser unless you export or share them. Clearing your browser data removes them.</p>
+      <p class="lib-privacy">Saved scenarios stay in this browser unless you export or share them. Clearing your browser data removes them. Don't use patient-identifying names.</p>
       <div class="lib-save">
         <p class="lib-current" id="libCurrent" hidden></p>
         <label for="libName">Name for the current setup</label>
@@ -3363,13 +3366,15 @@
 
   /* tabs: Simulator and Compare share one view in two modes */
   // Hero buttons: straight into lessons, a comparison, or the controls.
-  // Keyboard focus follows: the first lesson, the first comparison, or the controls.
+  // "Try the PK/PD Lab" opens the simulator with the effect charts on and focuses the chart (arrow keys move the
+  // time cursor); the other two go to the first lesson or the first comparison.
   document.querySelectorAll(".cta[data-go]").forEach(b=> b.addEventListener("click",()=>{
     const go=b.dataset.go;
-    showTab(go);
+    showTab(go==="pd" ? "sim" : go);
+    if(go==="pd" && !state.pd){ state.pd=true; syncPd(); render(); }
     const target=go==="ls" ? $("lsView") : go==="cmp" ? $("tplList") : $("app");
     target.scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"start"});
-    const first=go==="ls" ? document.querySelector(".ls-card") : go==="cmp" ? document.querySelector(".tpl") : $("app");
+    const first=go==="ls" ? document.querySelector(".ls-card") : go==="cmp" ? document.querySelector(".tpl") : $("plot");
     if(first) first.focus({preventScroll:true});
   }));
   // The skip link moves focus without touching the URL: a new hash would reload the page (see hashchange).
