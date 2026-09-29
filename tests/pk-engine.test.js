@@ -1306,3 +1306,67 @@ test("lesson: short vs long infusion", ()=>{
   assert.ok(stats(eight,T).cmax < b.cmax && stats(eight,T).tmax > b.tmax, "8 h: lower and later");
   rel(PK.derived(eight).auc, PK.derived(cur).auc, 1e-12, "and still the same AUC");
 });
+
+/* ---------- lessons: objective, prediction, challenge, why it matters ---------- */
+
+test("every lesson has an objective, a prediction, a challenge and why it matters, in a known group", ()=>{
+  const groups=PK.LESSON_GROUPS.map(g=>g.id), ids=new Set();
+  PK.LESSONS.forEach(L=>{
+    assert.ok(!ids.has(L.id), `duplicate id ${L.id}`); ids.add(L.id);
+    assert.ok(groups.includes(L.group), `${L.id}: group`);
+    assert.ok(typeof L.objective==="string" && L.objective.length>20, `${L.id}: objective`);
+    const P=L.predict;
+    assert.ok(typeof P.q==="string" && Array.isArray(P.choices) && P.choices.length>=2 && P.choices.length<=4, `${L.id}: question and choices`);
+    assert.ok(Number.isInteger(P.answer) && P.answer>=0 && P.answer<P.choices.length, `${L.id}: answer index`);
+    assert.ok(typeof P.why==="string" && typeof P.decide==="function" && typeof P.show==="function", `${L.id}: why, decide, show`);
+    assert.ok(typeof L.challenge.text==="string" && typeof L.challenge.goal==="function" && L.challenge.solution && typeof L.challenge.solution==="object", `${L.id}: challenge`);
+    assert.ok(typeof L.matters==="string" && L.matters.length>20, `${L.id}: why it matters`);
+  });
+  // grouped order: each group's lessons sit together, in the groups' order, and every group has one
+  const order=PK.LESSONS.map(L=>groups.indexOf(L.group));
+  assert.deepEqual(order, order.slice().sort((a,b)=>a-b));
+  groups.forEach(g=> assert.ok(PK.LESSONS.some(L=>L.group===g), `group ${g} has a lesson`));
+});
+
+test("every prediction's answer is the one the model gives", ()=>{
+  PK.LESSONS.forEach(L=>{
+    const m=PK.lessonCheck(L);
+    assert.equal(L.predict.decide(m), L.predict.answer, `${L.id}: "${L.predict.choices[L.predict.answer]}"`);
+    assert.ok(!/NaN|undefined|null|Infinity/.test(L.predict.show(m)), `${L.id}: ${L.predict.show(m)}`);
+  });
+});
+
+test("every challenge starts unmet and is met by its stated solution", ()=>{
+  PK.LESSONS.forEach(L=>{
+    assert.equal(PK.challengeMet(L, PK.lessonScenario(L)), false, `${L.id}: not met when the lesson opens`);
+    assert.equal(PK.challengeMet(L, PK.lessonScenario(L, L.challenge.solution)), true, `${L.id}: met by ${JSON.stringify(L.challenge.solution)}`);
+  });
+});
+
+test("challenges hold their conditions, not just the headline number", ()=>{
+  const L=id=>PK.LESSONS.find(x=>x.id===id);
+  assert.equal(PK.challengeMet(L("vd"), PK.lessonScenario(L("vd"),{D:1800, V:40})), false, "V must stay at 60 L");
+  assert.equal(PK.challengeMet(L("potency"), PK.lessonScenario(L("potency"),{D:2000, ec50:2})), false, "EC50 must stay at 8");
+  assert.equal(PK.challengeMet(L("split"), PK.lessonScenario(L("split"),{D:300, tau:8, nDoses:15})), false, "600 mg a day, not 900");
+  assert.equal(PK.challengeMet(L("ldinf"), PK.lessonScenario(L("ldinf"),{events:[{t:0,mg:400,route:"iv"},{t:0,mg:1456}]})), false, "the bolus must be under 350 mg");
+  assert.equal(PK.challengeMet(L("spacing"), PK.lessonScenario(L("spacing"),{events:[{t:0,mg:500},{t:6,mg:500},{t:12,mg:500},{t:18,mg:500}]})), false, "eight 250 mg doses");
+});
+
+test("lesson: evenly spaced vs bunched doses", ()=>{
+  const {base,cur,T,mec,mtc}=lesson("spacing"), a=stats(base,T,mec,mtc), b=stats(cur,T,mec,mtc);
+  assert.deepEqual([base.events.length, cur.events.length], [8, 8]);
+  assert.ok(base.events.concat(cur.events).every(e=>e.mg===250 && e.route==="oral"));
+  near(100*a.tIn/T, 99, 0.5, "evenly: in the window 99% of the time"); near(a.cmax, 7.7, 0.05, "peaking at 7.7 mg/L");
+  near(b.cmax, 13.9, 0.05, "bunched: 13.9 mg/L"); near(b.tAbove, 4.9, 0.05, "4.9 h above the MTC line");
+  near(PK.conc(cur,23.99), 0.85, 0.005, "0.85 mg/L before the next day's first dose"); near(b.tBelow, 10.3, 0.05, "10.3 h below the MEC");
+  near(PK.derived(base).auc, 296.8, 0.05, "AUC 296.8"); rel(PK.derived(cur).auc, PK.derived(base).auc, 1e-12, "identical AUC");
+});
+
+test("lesson and template wording stays descriptive", ()=>{
+  const words=/\b(safe|unsafe|best|recommended?)\b/i;
+  PK.LESSONS.forEach(L=>{
+    [L.title, L.sum, L.text, L.tryThis, L.objective, L.predict.q, L.predict.why, ...L.predict.choices, L.challenge.text, L.matters]
+      .forEach(t=> assert.ok(!words.test(t), `${L.id}: "${t}"`));
+  });
+  PK.TEMPLATES.forEach(t=> [t.title, t.nameA, t.nameB, t.look].forEach(x=> assert.ok(!words.test(x), `${t.id}: "${x}"`)));
+});
