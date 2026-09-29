@@ -1612,3 +1612,22 @@ test("show-the-math wording stays descriptive", ()=>{
       assert.ok(!words.test(s.m||s.t), `${route} ${dosing} ${k}: "${s.m||s.t}"`)));
   }));
 });
+
+test("worksheets: reproducible, the size asked for, one topic or all, kinds spread out", ()=>{
+  const a=PK.makeWorksheet({topic:"rep", count:10, seed:12345}), b=PK.makeWorksheet({topic:"rep", count:10, seed:12345});
+  assert.deepEqual(a.problems.map(p=>p.q), b.problems.map(p=>p.q));
+  assert.equal(a.problems.length, 10);
+  a.problems.forEach(p=> assert.equal(p.topic, "rep"));
+  PK.WORKSHEET_SIZES.forEach(count=> [""].concat(PK.PRACTICE_TOPICS.map(t=>t.id)).forEach(topic=> SEEDS.slice(0,15).forEach(seed=>{
+    const w=PK.makeWorksheet({topic, count, seed}), ids=w.problems.map(p=>p.id), pool=PK.PRACTICE.filter(g=>!topic||g.topic===topic).length;
+    assert.equal(ids.length, count);
+    assert.equal(new Set(ids.slice(0,Math.min(count,pool))).size, Math.min(count,pool), `${topic||"all"} ${count}: every kind before any repeats`);
+    ids.forEach((id,i)=>{ if(i) assert.notEqual(id, ids[i-1], `${topic||"all"} ${count} seed ${seed}: no kind twice running`); });
+    w.problems.forEach(p=> rel(p.check(PK.practiceScenario(p)), p.ans, 2e-3, p.id));
+  })));
+  // links
+  const t=PK.decodeTaskLink("#"+PK.encodeTaskLink({type:"worksheet", topic:"", count:15, seed:99}));
+  assert.deepEqual(t, {type:"worksheet", topic:"", count:15, seed:99});
+  assert.deepEqual(PK.decodeTaskLink("#ws=inf.5.7"), {type:"worksheet", topic:"inf", count:5, seed:7});
+  ["#ws=nope.10.1","#ws=all.7.1","#ws=all.10.4294967296","#ws=all.10","#ws=ALL.10.1"].forEach(h=> assert.equal(PK.decodeTaskLink(h), null, h));
+});
