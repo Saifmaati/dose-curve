@@ -1,6 +1,6 @@
 // Run with: node --test
 // Checks the engine against closed-form pharmacokinetics, the regimen edge cases, the comparison
-// metrics, the share-link codec, and every quantitative claim the lessons make.
+// metrics, the share-link codec, every quantitative claim the lessons make, and every practice answer.
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const PK=require("../pk-engine.js");
@@ -1369,4 +1369,95 @@ test("lesson and template wording stays descriptive", ()=>{
       .forEach(t=> assert.ok(!words.test(t), `${L.id}: "${t}"`));
   });
   PK.TEMPLATES.forEach(t=> [t.title, t.nameA, t.nameB, t.look].forEach(x=> assert.ok(!words.test(x), `${t.id}: "${x}"`)));
+});
+
+/* ---------- practice problems ---------- */
+// Every generator, over many seeds: the answer is what the simulation gives for the problem's own scenario,
+// that scenario fits the model's ranges, and the worked solution ends on the answer.
+const SEEDS=Array.from({length:60},(_,i)=>(i+1)*104729);
+const everyProblem=fn=> PK.PRACTICE.forEach(g=> SEEDS.forEach(seed=> fn(PK.makeProblem({id:g.id, seed}), g)));
+
+test("every practice topic has problems, and every problem a known topic", ()=>{
+  const topics=PK.PRACTICE_TOPICS.map(t=>t.id);
+  PK.PRACTICE.forEach(g=> assert.ok(topics.includes(g.topic), g.id));
+  topics.forEach(t=> assert.ok(PK.PRACTICE.filter(g=>g.topic===t).length>=3, `${t} has at least 3 kinds`));
+  assert.equal(new Set(PK.PRACTICE.map(g=>g.id)).size, PK.PRACTICE.length, "ids are unique");
+});
+
+test("a seed reproduces a problem, and the topic and kind filters hold", ()=>{
+  const a=PK.makeProblem({seed:42}), b=PK.makeProblem({seed:42});
+  assert.equal(a.q, b.q); assert.equal(a.ans, b.ans);
+  PK.PRACTICE_TOPICS.forEach(t=> SEEDS.slice(0,20).forEach(seed=> assert.equal(PK.makeProblem({topic:t.id, seed}).topic, t.id)));
+  assert.equal(PK.makeProblem({id:"rac", seed:1}).id, "rac");
+  SEEDS.slice(0,20).forEach(seed=> assert.notEqual(PK.makeProblem({topic:"pd", not:"effc", seed}).id, "effc"));
+  assert.equal(PK.makeProblem({topic:"nope"}), null);
+});
+
+test("every practice answer is what the simulation gives for the problem's scenario", ()=>{
+  everyProblem((pr,g)=>{
+    assert.ok(Number.isFinite(pr.ans) && pr.ans>0, `${g.id} seed ${pr.seed}: answer ${pr.ans}`);
+    rel(pr.check(PK.practiceScenario(pr)), pr.ans, 2e-3, `${g.id} seed ${pr.seed}`);
+  });
+});
+
+test("practice scenarios fit the model's ranges and keep the asked-about moment in view", ()=>{
+  everyProblem((pr,g)=>{
+    const p=PK.practiceScenario(pr), where=`${g.id} seed ${pr.seed}`;
+    Object.entries(pr.viz).forEach(([k,v])=>{
+      if(k==="events"){
+        assert.equal(p.events.length, v.length, `${where}: events kept`);
+        v.forEach((e,i)=> near(p.events[i].mg, e.mg, 0.05, `${where}: event ${i} amount`));
+        return;
+      }
+      if(PK.RANGES[k]) assert.ok(v>=PK.RANGES[k][0] && v<=PK.RANGES[k][1], `${where}: ${k}=${v} outside ${PK.RANGES[k]}`);
+      assert.equal(p[k], v, `${where}: ${k} unchanged by normalizing`);
+    });
+    const [lo,hi]=PK.VIEW_RANGES.duration;
+    assert.ok(pr.view.duration>=lo && pr.view.duration<=hi, `${where}: window ${pr.view.duration}`);
+    if(pr.at!==undefined) assert.ok(pr.at>=0 && pr.at<=pr.view.duration, `${where}: cursor at ${pr.at} in a ${pr.view.duration} h window`);
+    if(p.dosing==="repeated") assert.ok(p.nDoses*p.tau<=pr.view.duration, `${where}: every dose in view`);
+    assert.equal(pr.view.pd, g.topic==="pd", `${where}: effect charts on for concentration–effect problems only`);
+  });
+});
+
+test("worked solutions end on the answer, as the checker shows it", ()=>{
+  everyProblem((pr,g)=>{
+    const shown=String(+pr.ans.toFixed(pr.dp));
+    assert.ok(pr.sol.join("").includes(`<b>${shown}`), `${g.id} seed ${pr.seed}: solution doesn't show ${shown}`);
+    assert.ok(pr.q.length>20 && pr.type && pr.unit, `${g.id}: question, type and unit`);
+  });
+});
+
+test("the practice checker accepts rounded answers and rejects a 5% miss", ()=>{
+  everyProblem((pr,g)=>{
+    assert.ok(PK.practiceCorrect(pr, pr.ans), g.id);
+    assert.ok(PK.practiceCorrect(pr, +pr.ans.toFixed(pr.dp)), `${g.id}: the answer as shown`);
+    if(pr.ans*0.05>Math.pow(10,-pr.dp)/2) assert.ok(!PK.practiceCorrect(pr, pr.ans*1.05), `${g.id} seed ${pr.seed}: 5% high`);
+  });
+  const pr=PK.makeProblem({id:"ct", seed:7});
+  assert.ok(!PK.practiceCorrect(pr, NaN)); assert.ok(!PK.practiceCorrect(pr, "3")); assert.ok(!PK.practiceCorrect(pr, Infinity));
+});
+
+test("practice wording stays descriptive", ()=>{
+  const words=/\b(safe|unsafe|best|recommended?|patient)\b/i;
+  everyProblem((pr,g)=> [pr.type, pr.q, ...pr.sol].forEach(t=> assert.ok(!words.test(t), `${g.id}: "${t}"`)));
+});
+
+test("steady-state practice problems chart a regimen within 0.1% of steady state", ()=>{
+  // mean over [t0, t1] (Simpson's rule), of the regimen as charted and of the exact steady state
+  const simpson=(f,t0,t1)=>{ const N=400, h=(t1-t0)/N; let s=0; for(let i=0;i<=N;i++) s+=f(i===N ? t1-1e-9 : t0+i*h)*(i===0||i===N ? 1 : i%2 ? 4 : 2); return s*h/3/(t1-t0); };
+  SEEDS.forEach(seed=>{
+    let pr=PK.makeProblem({id:"trough", seed}), p=PK.practiceScenario(pr);
+    assert.equal(pr.at, p.nDoses*p.tau, "the cursor sits on the last trough");
+    rel(PK.conc(p, pr.at-1e-9), pr.ans, 1e-3, `trough seed ${seed}: the charted trough`);
+    ["cavg","mdose"].forEach(id=>{
+      pr=PK.makeProblem({id, seed}); p=PK.practiceScenario(pr);
+      const t1=p.nDoses*p.tau, charted=simpson(t=>PK.conc(p,t), t1-p.tau, t1), ss=simpson(s=>PK.ssConc(p,s), 0, p.tau);
+      rel(charted, ss, 1e-3, `${id} seed ${seed}: the last interval's mean`);
+      if(id==="cavg") rel(ss, pr.ans, 1e-3, `cavg seed ${seed}`);
+    });
+    pr=PK.makeProblem({id:"rate", seed}); p=PK.practiceScenario(pr);
+    const R0=p.D/p.tinf, long=PK.scenario(Object.assign({},p,{tinf:500, D:R0*500}));
+    rel(PK.conc(p,p.tinf), PK.conc(long,500), 1e-3, `rate seed ${seed}: the level at the end of the infusion`);
+  });
 });
