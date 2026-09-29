@@ -1140,7 +1140,8 @@
   </dialog>
 </div>
 
-<script src="pk-engine.js"></script>
+<!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
+<script src="pk-engine.js?v=72e35478c6"></script>
 <script>
 "use strict";
 (function(){

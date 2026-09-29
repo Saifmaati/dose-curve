@@ -64,4 +64,6 @@ Requires Node 18 or later; no packages to install.
 node --test
 ```
 
+When `pk-engine.js` changes, update the `?v=` stamp on its script tag in `index.html` (the test that fails prints the new value). It's the engine's content hash, so a browser holding a cached copy of an older engine fetches the new one instead of running a new page against it.
+
 The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, every quantitative claim the lessons make, every practice problem's answer against a simulation of its own scenario, and that every fit-the-data set can be fitted exactly on the sliders' steps while 20% misses don't count.
