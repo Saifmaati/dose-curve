@@ -1461,3 +1461,71 @@ test("steady-state practice problems chart a regimen within 0.1% of steady state
     rel(PK.conc(p,p.tinf), PK.conc(long,500), 1e-3, `rate seed ${seed}: the level at the end of the infusion`);
   });
 });
+
+/* ---------- fit the data ---------- */
+const FIT_SEEDS=Array.from({length:120},(_,i)=>i*7919+3);
+const eachFit=fn=> PK.FIT_KINDS.forEach(k=> FIT_SEEDS.forEach(seed=> fn(PK.makeFit({kind:k.id, seed}), k)));
+const fitGood=(f,over)=> PK.fitStatus(f, PK.fitScenario(f,over)).good;
+
+test("fit data: reproducible, on the sliders' steps, and measured inside the window", ()=>{
+  const a=PK.makeFit({kind:"oral", seed:9}), b=PK.makeFit({kind:"oral", seed:9});
+  assert.deepEqual(a.obs, b.obs); assert.deepEqual(a.truth, b.truth);
+  eachFit((f,k)=>{
+    const T=f.truth, where=`${k.id} seed ${f.seed}`;
+    assert.equal(T.thalf%0.5, 0, `${where}: t½ on a 0.5 h step`);
+    assert.ok(Number.isInteger(T.V), `${where}: V on a 1 L step`);
+    ["thalf","V","D"].concat(k.id==="oral" ? ["F","ka"] : []).forEach(key=>
+      assert.ok(T[key]>=PK.RANGES[key][0] && T[key]<=PK.RANGES[key][1], `${where}: ${key}=${T[key]}`));
+    if(k.id==="oral") assert.ok(Math.abs(T.ka/0.05-Math.round(T.ka/0.05))<1e-9, `${where}: kₐ on a 0.05 step`);
+    assert.ok(f.obs.length>=6, `${where}: at least 6 points`);
+    f.obs.forEach((o,i)=>{
+      assert.ok(o.t>=0.25 && o.t<=f.view.duration && o.c>0, `${where}: point ${i}`);
+      if(i) assert.ok(o.t>f.obs[i-1].t, `${where}: times ascending`);
+      assert.equal(o.c, +o.c.toPrecision(3), `${where}: 3 significant figures`);
+    });
+    assert.ok(f.view.duration<=PK.VIEW_RANGES.duration[1]);
+  });
+});
+
+test("fit data: the settings that made the data fit; the start and 20% misses don't", ()=>{
+  eachFit((f,k)=>{
+    const T=f.truth, where=`${k.id} seed ${f.seed}`;
+    assert.ok(fitGood(f), `${where}: the data's own settings`);
+    assert.ok(!fitGood(f, f.start), `${where}: the starting sliders`);
+    [{thalf:T.thalf*1.2},{thalf:T.thalf/1.2},{V:T.V*1.2},{V:T.V/1.2}].forEach(o=>
+      assert.ok(!fitGood(f,o), `${where}: ${JSON.stringify(o)}`));
+    const s=PK.fitStatus(f, PK.fitScenario(f));
+    assert.ok(s.floor>0 && s.floor<15 && s.target===s.floor+4, `${where}: scatter ${s.floor}`);
+  });
+});
+
+test("fit data: a different dose, route or physiology is a setup mismatch, never a good fit", ()=>{
+  const f=PK.makeFit({kind:"iv", seed:5});
+  [{D:f.truth.D+100},{route:"oral"},{dosing:"repeated"},{wt:80},{clFn:50}].forEach(o=>{
+    const s=PK.fitStatus(f, PK.fitScenario(f,o));
+    assert.equal(s.mismatch, "setup", JSON.stringify(o)); assert.ok(!s.good);
+  });
+  const g=PK.makeFit({kind:"oral", seed:5});
+  [{F:g.truth.F===1 ? 0.9 : 1},{ka:g.truth.ka+0.1}].forEach(o=> assert.equal(PK.fitStatus(g, PK.fitScenario(g,o)).mismatch, "setup"));
+});
+
+test("fit error is zero on exact data and grows with the misfit", ()=>{
+  const f=PK.makeFit({kind:"iv", seed:1}), p=PK.fitScenario(f);
+  const exact=f.obs.map(o=>({t:o.t, c:PK.conc(p,o.t)}));
+  near(PK.fitError(p, exact), 0, 1e-9);
+  near(PK.fitError(p, exact.map(o=>({t:o.t, c:o.c*Math.exp(0.1)}))), 10, 1e-9, "a uniform 10% log offset reads 10%");
+  const e1=PK.fitError(PK.fitScenario(f,{thalf:f.truth.thalf*1.1}), exact), e2=PK.fitError(PK.fitScenario(f,{thalf:f.truth.thalf*1.3}), exact);
+  assert.ok(e2>e1 && e1>0);
+});
+
+test("estimates made from the data by hand land near the settings that made it", ()=>{
+  eachFit((f,k)=>{
+    const e=PK.fitEstimate(f), tol=k.id==="iv" ? 0.12 : 0.25, where=`${k.id} seed ${f.seed}`;
+    rel(e.thalf, f.truth.thalf, tol, `${where}: t½`);
+    rel(e.V, f.truth.V, tol, `${where}: V`);
+  });
+  // on exact data the IV line gives the settings back exactly
+  const f=PK.makeFit({kind:"iv", seed:2}), p=PK.fitScenario(f);
+  const e=PK.fitEstimate(Object.assign({}, f, {obs:f.obs.map(o=>({t:o.t, c:PK.conc(p,o.t)}))}));
+  rel(e.thalf, f.truth.thalf, 1e-9); rel(e.V, f.truth.V, 1e-9);
+});
