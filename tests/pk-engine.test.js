@@ -1237,3 +1237,32 @@ test("lesson: dose vs duration of effect", ()=>{
   near(b.tAbove-a.tAbove, Math.LN2/PK.keOf(cur), 1e-6, "exactly one half-life");
   near(PK.effectStats(PK.normalizeScenario(Object.assign({}, cur, {D:2000})),T,tg).peak, 93, 0.5);
 });
+
+/* ---------- the exponential-sum engine ---------- */
+
+// A two-term body (fast and slow phase), the shape a two-compartment model will have.
+const twoTerms=[{c:1/20, k:0.9}, {c:1/80, k:0.08}];
+const simpson=(f,a,b,n=4000)=>{ if(b<=a) return 0; const h=(b-a)/n; let s=f(a)+f(b); for(let i=1;i<n;i++) s+=(i%2?4:2)*f(a+i*h); return s*h/3; };
+
+test("a one-compartment body is a single exponential term", ()=>{
+  const p=scenario({V:40, thalf:5, clFn:80, wt:84});
+  assert.deepEqual(PK.disposition(p), [{c:1/PK.vOf(p), k:PK.keOf(p)}]);
+  rel(1/PK.aucPerMg(PK.disposition(p)), PK.keOf(p)*PK.vOf(p), 1e-12, "CL = kₑ·V");
+  rel(PK.derived(p).CL, PK.keOf(p)*PK.vOf(p), 1e-12);
+});
+
+test("oral and infusion responses match numerical convolution for a two-term body", ()=>{
+  const ka=1.3, Ti=3;
+  [0.5,2,3,7,20].forEach(t=>{
+    rel(PK.oralResp(twoTerms,t,ka), simpson(u=>ka*Math.exp(-ka*u)*PK.bolusResp(twoTerms,t-u),0,t), 1e-9, `oral, t=${t}`);
+    rel(PK.infResp(twoTerms,t,Ti), simpson(u=>PK.bolusResp(twoTerms,t-u)/Ti,0,Math.min(t,Ti)), 1e-9, `infusion, t=${t}`);
+  });
+  rel(PK.aucPerMg(twoTerms), 1/20/0.9+1/80/0.08, 1e-12, "AUC per mg is Σ c/k");
+  rel(simpson(t=>PK.bolusResp(twoTerms,t),0,400,20000), PK.aucPerMg(twoTerms), 1e-6, "…which the curve integrates to");
+});
+
+test("kₐ equal to one disposition rate stays exact", ()=>{
+  const ka=0.9;   // the first term's rate
+  [1,4,10].forEach(t=> rel(PK.oralResp(twoTerms,t,ka), simpson(u=>ka*Math.exp(-ka*u)*PK.bolusResp(twoTerms,t-u),0,t), 1e-9, `t=${t}`));
+  near(PK.oralResp(twoTerms,4,ka+2e-6), PK.oralResp(twoTerms,4,ka), 1e-6, "continuous across the switch to the limit");
+});
