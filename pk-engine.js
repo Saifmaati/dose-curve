@@ -159,23 +159,42 @@
   // is the same as giving one dose fewer.
   const missedOf = p=> (p.dosing==="repeated" && p.missed>1 && p.missed<p.nDoses) ? p.missed : 0;
 
+  /* ---------- disposition: every dose response as a sum of exponentials ---------- */
+  // How the body handles 1 mg put straight into plasma, as terms {c, k}: C(t) = Σ c·e^(−k·t), c in 1/L. A
+  // one-compartment body is a single term, 1/V at kₑ. Every route, the steady state and the AUC are built
+  // from these terms, so a model with more of them works everywhere at once.
+  const disposition=p=> [{c:1/vOf(p), k:keOf(p)}];
+  const SAME_RATE=1e-6;   // kₐ this close to a disposition rate uses the exact limit, t·e^(−kₐt)
+  // Responses per mg: an instant bolus; an oral dose absorbed at kₐ (multiply by F); an infusion over Ti hours.
+  function bolusResp(terms, t){
+    let s=0;
+    for(const x of terms) s+=x.c*Math.exp(-x.k*t);
+    return s;
+  }
+  function oralResp(terms, t, ka){
+    let s=0;
+    for(const x of terms) s+= Math.abs(ka-x.k)<SAME_RATE ? x.c*ka*t*Math.exp(-ka*t)
+      : x.c*ka*(Math.exp(-x.k*t)-Math.exp(-ka*t))/(ka-x.k);
+    return s;
+  }
+  function infResp(terms, t, Ti){
+    let s=0;
+    for(const x of terms) s+= t<=Ti ? x.c*(1-Math.exp(-x.k*t))/x.k : x.c*(1-Math.exp(-x.k*Ti))/x.k*Math.exp(-x.k*(t-Ti));
+    return s/Ti;
+  }
+  // Exposure per mg reaching plasma: ∫ Σ c·e^(−kt) dt = Σ c/k, so AUC = F·D·Σ c/k and CL = 1 / Σ c/k.
+  const aucPerMg=terms=> terms.reduce((s,x)=>s+x.c/x.k,0);
+
   // Concentration at time t after one dose of `mg`, given by the dose's own route (and infusion duration)
   // when `e` carries one, else by the scenario's. Oral doses use the scenario's F and kₐ; IV doses have F = 1.
-  function singleConc(p, t, mg, e){
+  // `terms` can be passed in when many doses share one scenario.
+  function singleConc(p, t, mg, e, terms){
     if(t<0) return 0;
-    const k=keOf(p), V=vOf(p), D=mg, route=(e && e.route) || p.route;
-    if(route==="iv"){
-      return (D/V)*Math.exp(-k*t);
-    }
-    if(route==="inf"){
-      const Ti=(e && e.dur) || p.tinf, R0=D/Ti;
-      if(t<=Ti) return (R0/(k*V))*(1-Math.exp(-k*t));
-      const cEnd=(R0/(k*V))*(1-Math.exp(-k*Ti));
-      return cEnd*Math.exp(-k*(t-Ti));
-    }
-    const ka=p.ka, F=p.F;
-    if(Math.abs(ka-k)<1e-6) return (F*D/V)*ka*t*Math.exp(-ka*t);
-    return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*t)-Math.exp(-ka*t));
+    terms=terms||disposition(p);
+    const route=(e && e.route) || p.route;
+    if(route==="iv") return mg*bolusResp(terms,t);
+    if(route==="inf") return mg*infResp(terms, t, (e && e.dur) || p.tinf);
+    return p.F*mg*oralResp(terms, t, p.ka);
   }
 
   // Every dose actually given, as {t, mg, n, route} (+ dur for an infusion). This is the one place regimens
@@ -213,17 +232,19 @@
   // Superposition of every dose actually given.
   function conc(p, t, ev){
     ev=ev||doseEvents(p);
+    const terms=disposition(p);
     let sum=0;
-    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mg, e);
+    for(const e of ev) if(t>=e.t) sum+=singleConc(p, t-e.t, e.mg, e, terms);
     return sum;
   }
 
   function derived(p){
-    const k=keOf(p), V=vOf(p);
-    const d={thalfEff:Math.LN2/k, ke:k, CL:k*V, V:V, mgkg:p.D/p.wt};
+    const k=keOf(p), V=vOf(p), terms=disposition(p), perMg=aucPerMg(terms);
+    // the effective half-life is the slowest (terminal) one
+    const d={thalfEff:Math.LN2/Math.min(...terms.map(x=>x.k)), ke:k, CL:1/perMg, V:V, mgkg:p.D/p.wt};
     const Ffac = p.route==="oral" ? p.F : 1;
-    d.auc=(Ffac*p.D)/(V*k);
-    if(p.route==="iv"){ d.tmax=0; d.cmax=p.D/V; }
+    d.auc=Ffac*p.D*perMg;
+    if(p.route==="iv"){ d.tmax=0; d.cmax=p.D*bolusResp(terms,0); }
     else if(p.route==="inf"){
       d.tmax=p.tinf;
       d.cmax=singleConc(p,p.tinf,p.D);
@@ -237,7 +258,7 @@
       const given=doseEvents(p);
       d.nGiven=given.length; d.nMissed=p.events.length-given.length;
       d.totalMg=given.reduce((s,e)=>s+e.mg,0);
-      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/(V*k);   // each dose by its own route
+      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)*perMg;   // each dose by its own route
       d.mgkg=d.totalMg/p.wt;
     }
     if(p.dosing==="repeated"){
@@ -280,23 +301,29 @@
   // (once an infusion has stopped), so all but the first few terms form geometric series with exact sums.
   function ssConc(p, s){
     if(p.dosing!=="repeated") return null;   // only a regular periodic regimen has a steady state
-    const k=keOf(p), V=vOf(p), tau=p.tau, D=p.D, geo=l=>1/(1-Math.exp(-l*tau));
-    if(p.route==="iv") return (D/V)*Math.exp(-k*s)*geo(k);
+    const terms=disposition(p), tau=p.tau, D=p.D, geo=l=>1/(1-Math.exp(-l*tau));
+    let c=0;
+    if(p.route==="iv"){
+      for(const x of terms) c+=x.c*Math.exp(-x.k*s)*geo(x.k);
+      return D*c;
+    }
     if(p.route==="inf"){
-      // doses whose infusion is still running at this moment are added one by one; the rest have stopped
+      // doses whose infusion is still running at this moment are added one by one; the rest have stopped,
+      // and each term decays from where its infusion ended
       const Ti=p.tinf, J0=Math.max(0, Math.ceil((Ti-s)/tau-1e-12));
-      let c=0;
-      for(let j=0;j<J0;j++) c+=singleConc(p, s+j*tau, D);
-      const cEnd=(D/Ti/(k*V))*(1-Math.exp(-k*Ti));
-      return c+cEnd*Math.exp(-k*(s+J0*tau-Ti))*geo(k);
+      for(let j=0;j<J0;j++) c+=singleConc(p, s+j*tau, D, null, terms);
+      for(const x of terms) c+=(D/Ti)*x.c*(1-Math.exp(-x.k*Ti))/x.k*Math.exp(-x.k*(s+J0*tau-Ti))*geo(x.k);
+      return c;
     }
-    const ka=p.ka, F=p.F;
-    if(Math.abs(ka-k)<1e-6){
-      // C₁(t) = (F·D/V)·kₐ·t·e^(−kₐt): Σⱼ (s + jτ)·xʲ = s/(1 − x) + τx/(1 − x)² with x = e^(−kₐτ)
-      const x=Math.exp(-ka*tau);
-      return (F*D/V)*ka*Math.exp(-ka*s)*(s/(1-x)+tau*x/((1-x)*(1-x)));
+    const ka=p.ka;
+    for(const x of terms){
+      if(Math.abs(ka-x.k)<SAME_RATE){
+        // c·kₐ·t·e^(−kₐt) summed over t = s + jτ: Σⱼ (s + jτ)·Xʲ = s/(1 − X) + τX/(1 − X)² with X = e^(−kₐτ)
+        const X=Math.exp(-ka*tau);
+        c+=x.c*ka*Math.exp(-ka*s)*(s/(1-X)+tau*X/((1-X)*(1-X)));
+      } else c+=x.c*ka/(ka-x.k)*(Math.exp(-x.k*s)*geo(x.k)-Math.exp(-ka*s)*geo(ka));
     }
-    return (F*D*ka)/(V*(ka-k))*(Math.exp(-k*s)*geo(k)-Math.exp(-ka*s)*geo(ka));
+    return p.F*D*c;
   }
 
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
@@ -865,7 +892,7 @@
 
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
-    keOf, vOf, missedOf, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
+    keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
     PD_KEYS, effectOf, concForEffect, effectStats,
     DRUGS, LESSONS, TEMPLATES,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
