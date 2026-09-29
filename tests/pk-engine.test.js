@@ -1558,3 +1558,57 @@ test("the page loads the engine under its own content hash, so a cached older en
   assert.equal(tags[0], `<script src="pk-engine.js?v=${hash}"></script>`,
     `index.html must load pk-engine.js?v=${hash} (the engine changed: update the ?v= stamp)`);
 });
+
+/* ---------- show the math ---------- */
+test("every readout's worked formula gives the value the simulation computes", ()=>{
+  const rnd=PK.seededRandom(20260929), pick=(a,b)=> a+(b-a)*rnd();
+  const view={duration:48, mec:2, mtc:12};
+  let checked=0;
+  for(let i=0;i<300;i++){
+    const route=["oral","iv","inf"][i%3], dosing=["single","repeated"][Math.floor(i/3)%2];
+    const p=PK.normalizeScenario(scenario({route, dosing, D:Math.round(pick(50,1500)), F:+pick(0.2,1).toFixed(2), ka:+pick(0.2,3).toFixed(2),
+      thalf:+pick(1,20).toFixed(1), V:Math.round(pick(8,110)), tinf:+pick(0.5,12).toFixed(2), tau:Math.round(pick(4,24)), nDoses:Math.round(pick(2,12)),
+      wt:Math.round(pick(45,110)), clFn:Math.round(pick(30,140)), loadMult:i%7===0 ? 2 : 1, missed:i%5===0 ? 2 : 1}));
+    const d=PK.derived(p), ws=PK.windowStats(p,view.duration,view.mec,view.mtc);
+    const expect={cmax:d.cmax, tmax:d.tmax, thalf:d.thalfEff, cl:d.CL, v:d.V, auc:d.auc, mgkg:d.mgkg, ttr:100*ws.tIn/ws.T,
+      peak:d.cmaxSS, trough:d.cminSS, rac:d.Rac, t90:d.t90};
+    PK.READOUT_KEYS[dosing].forEach(key=>{
+      const r=PK.metricMath(p, key, view), where=`${route} ${dosing} #${i} ${key}`;
+      assert.ok(r && r.title && r.steps.length, where);
+      r.steps.forEach(s=> assert.ok((s.m||s.t) && !/NaN|undefined|Infinity/.test(s.m||s.t), `${where}: "${s.m||s.t}"`));
+      rel(r.value, expect[key], key==="peak" ? 2e-3 : 1e-9, where);   // an oral or infusion peak is found by sampling in both
+      checked++;
+    });
+  }
+  assert.ok(checked>=2400);
+});
+
+test("custom-schedule readouts explain themselves and match the window statistics", ()=>{
+  const p=PK.normalizeScenario(scenario({dosing:"custom", events:[
+    {t:0, mg:500, route:"iv", type:"loading", status:"given"}, {t:6, mg:250, route:"oral", status:"given"},
+    {t:12, mg:250, route:"oral", status:"missed"}, {t:18, mg:600, route:"inf", dur:4, status:"given"}]}));
+  const view={duration:36, mec:2, mtc:12}, ws=PK.windowStats(p,36,2,12);
+  const got=k=> PK.metricMath(p,k,view);
+  near(got("peakWin").value, ws.cmax, 1e-12); near(got("tpeakWin").value, ws.tmax, 1e-12); near(got("aucWin").value, ws.auc, 1e-12);
+  assert.equal(got("given").value, 3); assert.equal(got("total").value, 1350);
+  assert.match(got("total").steps[0].m, /500 \+ 250 \+ 600 = 1350 mg/);
+  assert.equal(PK.READOUT_KEYS.custom.length, 8);
+});
+
+test("the math is worked with the numbers it shows: an IV trough from the geometric series", ()=>{
+  const p=scenario({route:"iv", dosing:"repeated", D:400, V:40, thalf:6, tau:8, nDoses:5});
+  const r=PK.metricMath(p,"trough",{duration:48,mec:2,mtc:12});
+  const x=Math.exp(-Math.LN2/6*8);
+  near(r.value, 10*x*(1-Math.pow(x,5))/(1-x), 1e-12);
+  assert.ok(r.steps.some(s=> s.m && s.m.includes(`= ${+r.value.toFixed(2)} mg/L`)));
+  assert.ok(r.steps.some(s=> s.t && /settle at/.test(s.t)), "the steady-state comparison");
+});
+
+test("show-the-math wording stays descriptive", ()=>{
+  const words=/\b(safe|unsafe|best|recommended?|patient)\b/i;
+  ["oral","iv","inf"].forEach(route=> ["single","repeated"].forEach(dosing=>{
+    const p=scenario({route, dosing, clFn:60, wt:85, loadMult:dosing==="repeated" ? 1.5 : 1});
+    PK.READOUT_KEYS[dosing].forEach(k=> PK.metricMath(p,k,{duration:24,mec:2,mtc:12}).steps.forEach(s=>
+      assert.ok(!words.test(s.m||s.t), `${route} ${dosing} ${k}: "${s.m||s.t}"`)));
+  }));
+});
