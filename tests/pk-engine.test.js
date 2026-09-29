@@ -1547,3 +1547,14 @@ test("links to one practice problem or one fit-the-data set rebuild it exactly",
   assert.equal(PK.decodeLink("#p=rac.12"), null, "a task link is not a scenario link");
   assert.equal(PK.decodeLink("#fit=iv.12"), null);
 });
+
+test("the page loads the engine under its own content hash, so a cached older engine is never used", ()=>{
+  const fs=require("node:fs"), path=require("node:path"), crypto=require("node:crypto");
+  const root=path.join(__dirname,"..");
+  const hash=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,"pk-engine.js"))).digest("hex").slice(0,10);
+  const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
+  const tags=html.match(/<script src="pk-engine\.js[^"]*"><\/script>/g)||[];
+  assert.equal(tags.length, 1, "one engine script tag");
+  assert.equal(tags[0], `<script src="pk-engine.js?v=${hash}"></script>`,
+    `index.html must load pk-engine.js?v=${hash} (the engine changed: update the ?v= stamp)`);
+});
