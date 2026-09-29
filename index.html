@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoseCurve — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 16 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
-<link rel="canonical" href="https://saifmaatimessi-droid.github.io/dose-curve/">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 18 guided lessons plus unlimited practice problems. Built for pharmacy students and educators.">
+<link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -16,18 +16,18 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 16 guided lessons. Free, educational, not for clinical dosing.">
-<meta property="og:url" content="https://saifmaatimessi-droid.github.io/dose-curve/">
-<meta property="og:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 18 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
+<meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="DoseCurve, an interactive PK/PD simulator: a repeated-dosing concentration curve rising into a therapeutic window.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta name="twitter:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Free and educational.">
-<meta name="twitter:image" content="https://saifmaatimessi-droid.github.io/dose-curve/og-image.png">
+<meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaatimessi-droid.github.io/dose-curve/",
+{"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
  "description":"Interactive one-compartment pharmacokinetics and pharmacodynamics simulator for learning: regimens, custom dose schedules, side-by-side comparisons, lessons and practice problems.",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
@@ -348,8 +348,40 @@
   .lesson-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;margin-top:8px}
   .lesson-p{font-size:12.5px;color:#B9BEDF;line-height:1.65;margin-top:6px;max-width:78ch}
   .lesson-foot{display:flex;gap:12px;align-items:center;margin-top:11px;flex-wrap:wrap}
-  .lesson-try{font-size:12.5px;color:var(--muted);flex:1;min-width:220px;line-height:1.6}
-  .lesson-try b{color:var(--cyan);font-weight:600;margin-right:6px}
+  .lesson-try{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:10px;max-width:78ch}
+  .lesson-try b,.lesson-goal b,.lesson-why b,.lesson-chal b,.lp-k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--cyan);font-weight:600;margin-right:8px}
+  .lesson-goal{font-size:12.5px;color:#B9BEDF;line-height:1.6;margin-top:6px;max-width:78ch}
+  .lesson-predict{margin-top:11px;padding:11px 13px;border:1px solid rgba(124,107,255,.35);border-radius:10px;background:rgba(124,107,255,.06)}
+  .lp-k{margin:0}
+  .lp-q{font-size:13px;color:var(--text);margin:5px 0 9px;line-height:1.5}
+  .lp-choices{display:flex;flex-wrap:wrap;gap:8px}
+  .lp-choice{border:1px solid var(--glass-line-2);background:rgba(5,8,16,.6);color:#C9D0E6;border-radius:9px;padding:7px 12px;
+    font-family:Inter,sans-serif;font-size:12.5px;cursor:pointer}
+  .lp-choice:hover:not(:disabled){border-color:rgba(61,242,224,.5);color:#fff}
+  .lp-choice:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .lp-choice:disabled{cursor:default}
+  .lp-choice.right{border-color:rgba(59,229,138,.7);background:rgba(59,229,138,.12);color:#fff}
+  .lp-choice.wrong{border-color:rgba(255,92,122,.6);background:rgba(255,92,122,.1);color:#fff}
+  .lp-feedback{font-size:12.5px;line-height:1.6;color:#B9BEDF;margin-top:9px}
+  .lp-feedback:empty{display:none}
+  .lp-feedback:focus{outline:none}
+  .lp-feedback .ok{color:var(--green)}
+  .lp-feedback .no{color:#FF8FA3}
+  .lp-feedback .num{display:block;margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .lp-skip{border:0;background:none;padding:0;margin-top:9px;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .lp-skip:hover{color:#fff}
+  .lp-skip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
+  .lp-skip[hidden]{display:none}
+  #lsText:focus{outline:none}
+  .lesson-why{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;max-width:78ch}
+  .lesson-chal{font-size:12.5px;color:#B9BEDF;line-height:1.7;flex:1;min-width:220px;margin:0}
+  .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
+    border:1px solid var(--glass-line-2);color:var(--muted);white-space:nowrap}
+  .lc-status.met{border-color:rgba(59,229,138,.6);color:var(--green);background:rgba(59,229,138,.1)}
+  .ls-group{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:20px 0 9px}
+  .ls-group:first-child{margin-top:0}
   .lesson-btns{display:flex;gap:8px}
 
   /* lessons tab */
@@ -639,7 +671,7 @@
       </div>
       <div class="brand-name">Dose<em>Curve</em></div>
     </div>
-    <a class="top-link" href="https://github.com/saifmaatimessi-droid/dose-curve" target="_blank" rel="noopener">OPEN SOURCE · GITHUB ↗</a>
+    <a class="top-link" href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">OPEN SOURCE · GITHUB ↗</a>
   </header>
 
   <main id="main">
@@ -821,9 +853,21 @@
             <button class="lesson-x" id="lsClose" aria-label="Exit lesson">✕</button>
           </div>
           <div class="lesson-t" id="lsTitle"></div>
-          <p class="lesson-p" id="lsText"></p>
+          <p class="lesson-goal"><b>Goal</b><span id="lsGoal"></span></p>
+          <div class="lesson-predict" role="group" aria-labelledby="lsQ">
+            <p class="lp-k">Predict first</p>
+            <p class="lp-q" id="lsQ"></p>
+            <div class="lp-choices" id="lsChoices"></div>
+            <div class="lp-feedback" id="lsFeedback" aria-live="polite" tabindex="-1"></div>
+            <button class="lp-skip" id="lsSkip">Skip to the explanation</button>
+          </div>
+          <div id="lsMore" hidden>
+            <p class="lesson-p" id="lsText" tabindex="-1"></p>
+            <p class="lesson-why"><b>Why this matters</b><span id="lsWhy"></span></p>
+          </div>
+          <p class="lesson-try"><b>Try this</b><span id="lsTry"></span></p>
           <div class="lesson-foot">
-            <p class="lesson-try"><b>Try this</b><span id="lsTry"></span></p>
+            <p class="lesson-chal"><b>Challenge</b><span id="lsChal"></span><span class="lc-status" id="lsChalStatus" role="status" aria-live="polite"></span></p>
             <div class="lesson-btns">
               <button class="abtn" id="lsReset">↺ Reset</button>
               <button class="abtn" id="lsNext">Next lesson →</button>
@@ -963,7 +1007,7 @@
           <div class="pr-top">
             <div class="plot-title" style="font-size:16px">Lessons<span>One-click scenarios · each replaces the baseline with its own</span></div>
           </div>
-          <div class="ls-grid" id="lsGrid"></div>
+          <div id="lsGrid"></div>
         </div>
 
         <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
@@ -1007,8 +1051,8 @@
       </div>
       <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, and every quantitative claim the lessons make.</p>
       <nav class="foot-links" aria-label="Project links">
-        <a href="https://github.com/saifmaatimessi-droid/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
-        <a href="https://github.com/saifmaatimessi-droid/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
+        <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
         <span>Updated 28 September 2026</span>
       </nav>
     </footer>
@@ -1370,6 +1414,7 @@
     renderPanels();
     updateCursor();
     updateLibBadge();
+    renderChallenge();
   }
 
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
@@ -2774,13 +2819,15 @@
   }
 
   /* ================= LESSONS ================= */
+  // Lessons are listed under their group headings, in the order "Next lesson" follows.
   function buildLessons(){
     const el=byId("lsGrid");
-    el.innerHTML=LESSONS.map(L=>`
+    el.innerHTML=PK.LESSON_GROUPS.map(g=>`<h2 class="ls-group">${g.title}</h2><div class="ls-grid">`+
+      LESSONS.filter(L=>L.group===g.id).map(L=>`
       <button class="ls-card" data-id="${L.id}">
         <div class="ls-h"><span class="ltag">${L.tag}</span>${L.title}</div>
         <div class="ls-p">${L.sum}</div>
-      </button>`).join("");
+      </button>`).join("")+`</div>`).join("");
     el.querySelectorAll(".ls-card").forEach(btn=>{
       btn.addEventListener("click",()=> loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)));
     });
@@ -2798,17 +2845,61 @@
     byId("lsNext").textContent=i<LESSONS.length-1?"Next lesson →":"All lessons";
     byId("lsTag").textContent=L.tag;
     byId("lsTitle").textContent=L.title;
+    byId("lsGoal").textContent=L.objective;
     byId("lsText").textContent=L.text;
+    byId("lsWhy").textContent=L.matters;
     byId("lsTry").textContent=L.tryThis;
+    byId("lsChal").textContent=L.challenge.text;
+    renderPredict(L);
+    chalMet=null;
+    byId("quickStart").hidden=true;   // the lesson is its own guide
     byId("lessonBar").hidden=false;
     syncControls(); updateBaselineUI(); render();
     showTab("sim");
     const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     byId("lessonBar").scrollIntoView({behavior:reduce?"auto":"smooth", block:"nearest"});
   }
+  // Predict first: one pick locks the choices, the feedback gives the model's numbers, and the explanation opens
+  // (or opens early with "Skip").
+  function renderPredict(L){
+    const P=L.predict;
+    byId("lsQ").textContent=P.q;
+    byId("lsChoices").innerHTML=P.choices.map((c,i)=>`<button class="lp-choice" data-i="${i}" aria-pressed="false">${esc(c)}</button>`).join("");
+    byId("lsFeedback").textContent="";
+    byId("lsSkip").hidden=false;
+    byId("lsMore").hidden=true;
+  }
+  function revealLesson(){ byId("lsMore").hidden=false; byId("lsSkip").hidden=true; }
+  byId("lsChoices").addEventListener("click",e=>{
+    const b=e.target.closest(".lp-choice");
+    if(!b || b.disabled || !lesson) return;
+    const P=lesson.predict, pick=+b.dataset.i, right=pick===P.answer;
+    byId("lsChoices").querySelectorAll(".lp-choice").forEach((x,i)=>{
+      x.disabled=true; x.setAttribute("aria-pressed", i===pick);
+      x.classList.toggle("right", i===P.answer); x.classList.toggle("wrong", i===pick && !right);
+    });
+    byId("lsFeedback").innerHTML=`<b class="${right?"ok":"no"}">${right?"✓ Right.":`Not quite: the model gives “${esc(P.choices[P.answer])}”.`}</b> ${esc(P.why)}`+
+      `<span class="num">${esc(P.show(PK.lessonCheck(lesson)))}</span>`;
+    revealLesson();
+    byId("lsFeedback").focus();   // the chosen button is now disabled, so focus moves to the answer
+  });
+  byId("lsSkip").addEventListener("click",()=>{ revealLesson(); byId("lsText").focus(); });
+  // The challenge is checked against the live scenario on every render; the status only changes (and is
+  // announced) when the answer does.
+  let chalMet=null;
+  function renderChallenge(){
+    if(!lesson || mode!=="sim") return;
+    const met=PK.challengeMet(lesson, snapshot());
+    if(met===chalMet) return;
+    chalMet=met;
+    const el=byId("lsChalStatus");
+    el.textContent=met ? "✓ Challenge met" : "Not yet";
+    el.classList.toggle("met", met);
+  }
   function exitLesson(){
     lesson=null;
     byId("lessonBar").hidden=true;
+    byId("quickStart").hidden=qsDismissed;
   }
   byId("lsClose").addEventListener("click",exitLesson);
   byId("lsReset").addEventListener("click",()=>{ if(lesson) loadLesson(lesson); });

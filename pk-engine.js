@@ -463,6 +463,37 @@
     return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove:above, onset};
   }
 
+  /* ================= LESSON CHECKS ================= */
+  // One scenario's numbers over a lesson's window, each computed only when a prediction or challenge asks.
+  function lessonStats(p, view){
+    const T=view.duration, memo={}, once=(k,f)=> k in memo ? memo[k] : (memo[k]=f());
+    const w=()=>once("w",()=>windowStats(p,T,view.mec,view.mtc)), d=()=>once("d",()=>derived(p));
+    const ss=()=>once("ss",()=> p.dosing==="repeated" ? ssProfile(p) : null);
+    const rep=p.dosing==="repeated";
+    return {p,
+      get cmax(){ return w().cmax; }, get tmax(){ return w().tmax; }, get tin(){ return 100*w().tIn/T; },
+      get aucInf(){ return d().auc; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
+      get avgSS(){ return rep ? d().auc/p.tau : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
+      get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
+      effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
+      at:t=> conc(p,t),
+      reach:level=> once("r"+level,()=>{ for(let i=0;i<=T*100;i++){ if(conc(p,i/100)>=level) return i/100; } return null; })};
+  }
+  // "Higher", "Lower" or "About the same" (0, 1, 2): within 1% counts as the same.
+  const higherLowerSame=(a,b)=> Math.abs(a-b)<=0.01*Math.max(Math.abs(a),Math.abs(b),1e-9) ? 2 : a>b ? 0 : 1;
+  const lessonView=L=> Object.assign({},VIEW_DEFAULTS,L.view);
+  const lessonScenario=(L,over)=> normalizeScenario(scenario(Object.assign({},L.cur,over||{})));
+  // What a lesson's prediction is judged on: its baseline and its starting scenario.
+  function lessonCheck(L){
+    const view=lessonView(L);
+    return {view, base:lessonStats(normalizeScenario(scenario(L.base)),view), cur:lessonStats(lessonScenario(L),view)};
+  }
+  // Whether scenario p meets the lesson's challenge (judged over the lesson's own window and thresholds).
+  function challengeMet(L, p){
+    const view=lessonView(L);
+    return !!L.challenge.goal({view, now:lessonStats(normalizeScenario(p),view), base:lessonStats(normalizeScenario(scenario(L.base)),view)});
+  }
+
   /* ================= COMPARISON ================= */
   // Metrics for scenario a vs scenario b over the same window. kind says how the change is expressed:
   // pct = % change, ratio = % change of a ratio, pp = percentage points, abs = hours, count = doses.
@@ -537,6 +568,7 @@
   // A custom schedule in a lesson is stored validated, exactly as a link would decode it.
   const sched=(p,list)=> Object.assign(p,{dosing:"custom", events:normalizeEvents(list,p)});
   const every6h=Array.from({length:8},(_,i)=>({t:i*6, mg:360}));
+  const everyDay=hours=> [0,24].flatMap(day=> hours.map(h=>({t:day+h, mg:250})));   // 250 mg at these hours on two days
   const LESSONS = [
     {id:"route", tag:"F · Tmax", title:"Oral vs IV bolus", sum:"Absorption delay, Tmax, Cmax and bioavailability.", baseLabel:"IV bolus",
      text:"Same 500 mg dose, two routes. The IV bolus (dashed) puts everything in plasma at t = 0, so it peaks instantly at D/V. The oral dose has to be absorbed first: its peak comes later and sits lower, and its AUC is smaller by the bioavailability factor F.",
@@ -605,6 +637,11 @@
      tryThis:"Try 200 mg every 8 h and watch the swing narrow again.",
      view:{duration:120,mec:4,mtc:20},
      base:{dosing:"repeated",D:600,thalf:8,ka:1,tau:24,nDoses:5}, cur:{dosing:"repeated",D:300,thalf:8,ka:1,tau:12,nDoses:10}},
+    {id:"spacing", tag:"t", title:"Evenly spaced vs bunched doses", sum:"When you take a dose matters, not just how much.", baseLabel:"every 6 h",
+     text:"The same four 250 mg doses a day, two ways. Spread evenly every 6 hours, the level stays inside the 2–12 mg/L window 99% of the time and peaks at 7.7 mg/L. Bunched into the first 6 hours of the day, it peaks at 13.9 mg/L, spends 4.9 h above the MTC line, and falls to 0.85 mg/L before the next day's first dose, 10.3 h below the MEC in all. Total exposure (AUC) is identical, 296.8 mg·h/L: the same amount with a different shape.",
+     tryThis:"Drag the bunched doses at 4 h and 6 h on the timeline to 12 h and 18 h and watch the overnight dip shrink.",
+     view:{duration:48,mec:2,mtc:12},
+     base:sched({},everyDay([0,6,12,18])), cur:sched({},everyDay([0,2,4,6]))},
     // PK/PD: the same 500 mg IV bolus (V 35 L, t½ 4 h), read through different concentration–effect curves
     {id:"potency", tag:"EC50", title:"Potency (EC50)", sum:"Same levels, less effect: needing more drug, not a weaker drug.", baseLabel:"EC50 2 mg/L",
      text:"The concentration curves are identical; only the drug's EC50, the concentration that gives half the maximum effect, changes from 2 to 8 mg/L. The same levels now produce less effect: the peak falls from 88% to 64% and the time at or above the 50% target from 11.3 h to 3.3 h. That's lower potency, not lower efficacy: the maximum is still 100%.",
@@ -655,8 +692,157 @@
     {id:"hill", lesson:"hill", title:"Graded vs steep response", nameA:"Hill n = 1", nameB:"Hill n = 4",
      look:"Both cross 50% at 7.3 h, but B switches from nearly full effect to almost none within a few hours."},
     {id:"pdose", lesson:"pdose", title:"Dose vs double dose (effect)", nameA:"500 mg", nameB:"1,000 mg",
-     look:"B's peak effect is only 10 points higher, but it stays above target exactly one half-life (4 h) longer."}
+     look:"B's peak effect is only 10 points higher, but it stays above target exactly one half-life (4 h) longer."},
+    {id:"spacing", lesson:"spacing", title:"Evenly spaced vs bunched doses", nameA:"Every 6 h", nameB:"Four doses by 6 am",
+     look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."}
   ];
+
+  /* ---------- lesson structure: predict, explain, try, challenge ---------- */
+  // Each lesson has an objective, a question to answer before reading the explanation, a challenge the page
+  // checks live, and why the idea matters. Predictions and challenges are judged by the model, never by hand:
+  // `decide` returns the right choice from the lesson's computed numbers, and the tests check it against
+  // `answer`; `goal` says whether the live scenario meets the challenge, and `solution` is a change that does.
+  const LESSON_GROUPS=[{id:"pk",title:"PK fundamentals"},{id:"rep",title:"Repeated dosing and steady state"},
+    {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"}];
+  const r0=v=> String(Math.round(v)), r1=v=> String(Math.round(v*10)/10), r2=v=> String(Math.round(v*100)/100);
+  const HLS=["Higher","Lower","About the same"];
+  const givenOf=p=> p.dosing==="custom" ? p.events.filter(e=>e.status==="given") : [];
+  const LESSON_GUIDE={
+    route:{group:"pk", objective:"Explain why an oral dose peaks later and lower than the same IV bolus, and why its AUC is smaller.",
+      predict:{q:"Compared with the IV bolus, the oral dose's total exposure (AUC) will be…", choices:HLS, answer:1,
+        why:"Only the fraction F = 0.7 of the oral dose reaches the blood, so exposure falls by that fraction. Absorption speed changes the shape, not the total.",
+        decide:m=> higherLowerSame(m.cur.aucInf,m.base.aucInf), show:m=>`AUC ${r1(m.base.aucInf)} → ${r1(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Raise the oral dose's AUC to at least 90% of the IV bolus's.", goal:m=> m.now.aucInf>=0.9*m.base.aucInf, solution:{F:0.95}},
+      matters:"Bioavailability is why oral and IV doses of the same drug can differ, and why switching routes changes exposure even at the same dose."},
+    vd:{group:"pk", objective:"Separate what volume of distribution changes (the starting level and half-life) from what it doesn't (AUC, when clearance is fixed).",
+      predict:{q:"Tripling V while clearance stays the same changes total exposure (AUC)…", choices:["Up","Down","Not at all"], answer:2,
+        why:"AUC = F·D / CL. With clearance unchanged, the lower starting level is exactly offset by a longer half-life.",
+        decide:m=> higherLowerSame(m.cur.aucInf,m.base.aucInf), show:m=>`AUC ${r1(m.base.aucInf)} → ${r1(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Keep V at 60 L and bring the starting concentration back up to 30 mg/L.", goal:m=> m.now.p.V===60 && m.now.cmax>=29.5, solution:{D:1800}},
+      matters:"Volume sets how a dose dilutes and how fast levels fall. That's why a loading dose is sized on volume and a maintenance dose on clearance."},
+    cl:{group:"pk", objective:"Predict how halving clearance changes half-life, accumulation and total exposure.",
+      predict:{q:"With organ function at 50%, the exposure (AUC) from each dose becomes…", choices:["About the same","About 1.5×","About 2×"], answer:2,
+        why:"AUC = F·D / CL, so halving clearance doubles the exposure from every dose.",
+        decide:m=>{ const r=m.cur.aucInf/m.base.aucInf; return r<1.2 ? 0 : r<1.75 ? 1 : 2; },
+        show:m=>`AUC per dose ${r1(m.base.aucInf)} → ${r1(m.cur.aucInf)} mg·h/L (${r2(m.cur.aucInf/m.base.aucInf)}×)`},
+      challenge:{text:"Keep organ function at 50% and bring average steady-state exposure back to the baseline's (within 5%) by changing the dose or the interval.",
+        goal:m=> m.now.p.clFn===50 && m.now.avgSS!==null && Math.abs(m.now.avgSS/m.base.avgSS-1)<=0.05, solution:{D:200}},
+      matters:"Reduced kidney or liver function lowers clearance for many drugs. This is the mechanism behind adjusting a regimen for organ function."},
+    accum:{group:"rep", objective:"Explain why repeated doses build up and where the peaks level off.",
+      predict:{q:"Dosing every half-life, where does the peak settle compared with a single dose?", choices:["About the same","About twice as high","It keeps climbing without limit"], answer:1,
+        why:"Half of each dose is still there when the next arrives, so levels rise until the amount eliminated per interval matches the dose.",
+        decide:m=>{ const r=m.cur.peakSS/m.base.cmax; return r<1.3 ? 0 : r<3 ? 1 : 2; },
+        show:m=>`Single-dose peak ${r1(m.base.cmax)} → settled peak ${r1(m.cur.peakSS)} mg/L (${r1(m.cur.peakSS/m.base.cmax)}×)`},
+      challenge:{text:"Change only the dosing interval so the steady-state trough is at least 10 mg/L.",
+        goal:m=> m.now.p.D===300 && m.now.trough!==null && m.now.trough>=10, solution:{tau:6, nDoses:16}},
+      matters:"Accumulation is why the first dose rarely shows the levels a regimen eventually reaches, and why levels keep changing for several half-lives after dosing starts."},
+    load:{group:"rep", objective:"Distinguish what a loading dose changes (how soon levels arrive) from what it doesn't (where they settle).",
+      predict:{q:"Does the loading dose change where the troughs finally settle?", choices:["Higher","Lower","Same place, reached sooner"], answer:2,
+        why:"The extra drug from the first dose is eliminated over time. The plateau depends only on the maintenance dose, the interval and clearance.",
+        decide:m=> higherLowerSame(m.cur.trough,m.base.trough), show:m=>`Final trough ${r2(m.base.trough)} → ${r2(m.cur.trough)} mg/L`},
+      challenge:{text:"Raise the steady-state trough to at least 10 mg/L. The loading dose alone won't do it.",
+        goal:m=> m.now.trough!==null && m.now.trough>=10, solution:{D:400}},
+      matters:"For drugs with long half-lives, a loading dose shortens the wait for target levels, while the maintenance dose determines where they settle."},
+    half:{group:"rep", objective:"Relate half-life to dosing frequency, swing and accumulation.",
+      predict:{q:"Given every 8 h, how much does the 12 h drug accumulate compared with the 2 h drug?", choices:["Much more","Less","About the same"], answer:0,
+        why:"With an interval shorter than its half-life, most of each 12 h dose is still there when the next arrives.",
+        decide:m=> higherLowerSame(m.cur.rac,m.base.rac), show:m=>`Accumulation ${r2(m.base.rac)}× → ${r2(m.cur.rac)}×`},
+      challenge:{text:"Change only the interval so the 12 h drug's peak-to-trough swing is below 1.25×.",
+        goal:m=> m.now.p.thalf===12 && m.now.p.D===250 && m.now.swing!==null && m.now.swing<1.25, solution:{tau:6, nDoses:16}},
+      matters:"Half-life largely decides how often a drug is given and how much its levels fluctuate between doses."},
+    split:{group:"rep", objective:"Show that splitting the same daily dose keeps average exposure but narrows the swing.",
+      predict:{q:"Splitting 600 mg once daily into 300 mg every 12 h makes the steady-state trough…", choices:HLS, answer:0,
+        why:"Smaller, more frequent doses leave less time to decay between them: lower peaks and higher troughs from the same daily amount.",
+        decide:m=> higherLowerSame(m.cur.trough,m.base.trough), show:m=>`Trough ${r2(m.base.trough)} → ${r2(m.cur.trough)} mg/L`},
+      challenge:{text:"Keep 600 mg a day but raise the steady-state trough to at least 5.5 mg/L.",
+        goal:m=> m.now.trough!==null && Math.abs(m.now.p.D*24/m.now.p.tau-600)<1e-9 && m.now.trough>=5.5, solution:{D:200, tau:8, nDoses:15}},
+      matters:"Dosing frequency trades convenience against how evenly levels are held through the day."},
+    er:{group:"rep", objective:"Explain how slower absorption flattens the peak–trough swing without changing exposure.",
+      predict:{q:"Slowing absorption (kₐ 2 → 0.3 h⁻¹) makes the steady-state swing between peak and trough…", choices:["Larger","Smaller","Unchanged"], answer:1,
+        why:"Slow absorption keeps drug arriving through the interval, which lowers the peak and props up the trough. The same amount is still absorbed.",
+        decide:m=> higherLowerSame(m.cur.swing,m.base.swing), show:m=>`Peak ÷ trough ${r2(m.base.swing)}× → ${r2(m.cur.swing)}×`},
+      challenge:{text:"Keep kₐ at 0.3 and raise the steady-state trough to at least 6 mg/L while the peak stays under the 10 mg/L line.",
+        goal:m=> m.now.p.ka===0.3 && m.now.trough!==null && m.now.trough>=6 && m.now.peakSS<10, solution:{D:325}},
+      matters:"This is the idea behind extended-release formulations: the same exposure, delivered more evenly."},
+    miss:{group:"rep", objective:"See how a missed dose creates a dip, and how long regular dosing takes to recover.",
+      predict:{q:"Just before dose 7, compared with taking every dose, the level will be…", choices:HLS, answer:1,
+        why:"With nothing coming in over two intervals, elimination keeps going and the level falls further than a normal trough.",
+        decide:m=> higherLowerSame(m.cur.at(6*m.cur.p.tau-1e-6), m.base.at(6*m.base.p.tau-1e-6)),
+        show:m=>`Just before dose 7: ${r2(m.base.at(6*m.base.p.tau-1e-6))} → ${r2(m.cur.at(6*m.cur.p.tau-1e-6))} mg/L`},
+      challenge:{text:"Keep dose 6 missed but change the interval so the level just before dose 7 stays above 5 mg/L.",
+        goal:m=> m.now.p.dosing==="repeated" && m.now.p.missed===6 && m.now.p.nDoses>6 && m.now.at(6*m.now.p.tau-1e-6)>5, solution:{tau:6}},
+      matters:"Missed doses are common. How deep the dip goes depends on the half-life relative to the dosing interval."},
+    spacing:{group:"custom", objective:"Show that when doses are given matters as much as how much is given.",
+      predict:{q:"Bunching the day's four doses into the morning changes the peak…", choices:HLS, answer:0,
+        why:"Doses 2 hours apart pile on top of each other before much is eliminated, then nothing arrives for 18 hours.",
+        decide:m=> higherLowerSame(m.cur.cmax,m.base.cmax), show:m=>`Peak ${r1(m.base.cmax)} → ${r1(m.cur.cmax)} mg/L`},
+      challenge:{text:"Keep eight 250 mg oral doses over the two days but get the time in window to 95% or more.",
+        goal:m=>{ const ev=givenOf(m.now.p); return ev.length===8 && ev.every(e=>e.mg===250 && e.route==="oral") && m.now.tin>=95; },
+        solution:{events:everyDay([0,6,12,18])}},
+      matters:"Real schedules drift from the ideal. Spreading doses through the day keeps levels steadier than taking them close together."},
+    inf:{group:"inf", objective:"Explain how infusing a dose over time lowers and delays the peak without changing total exposure.",
+      predict:{q:"Giving the same 1 g over 3 hours instead of all at once changes total exposure (AUC)…", choices:["Up","Down","Not at all"], answer:2,
+        why:"The same amount enters the body and meets the same clearance; only the rate of entry changes.",
+        decide:m=> higherLowerSame(m.cur.aucInf,m.base.aucInf), show:m=>`AUC ${r1(m.base.aucInf)} → ${r1(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Keep the full 1 g and make the peak arrive at 6 h or later.",
+        goal:m=> m.now.p.route==="inf" && m.now.p.dosing==="single" && m.now.p.D===1000 && m.now.tmax>=6, solution:{tinf:6}},
+      matters:"Infusion time is a lever on the peak: the same dose can be given with a lower peak, at the cost of a slower rise."},
+    infdur:{group:"inf", objective:"Compare short and long infusions of the same dose: peak, time of peak, rise and total exposure.",
+      predict:{q:"Compared with the 30-minute infusion, the 4-hour infusion's peak comes…", choices:["Later","Earlier","At the same time"], answer:0,
+        why:"An infusion's level climbs for as long as it runs, so the peak arrives when it ends.",
+        decide:m=> higherLowerSame(m.cur.tmax,m.base.tmax), show:m=>`Peak at ${r1(m.base.tmax)} h → ${r1(m.cur.tmax)} h`},
+      challenge:{text:"Keep the full 1 g and find an infusion time that keeps the peak under 15 mg/L.",
+        goal:m=> m.now.p.route==="inf" && m.now.p.dosing==="single" && m.now.p.D===1000 && m.now.cmax<15, solution:{tinf:6}},
+      matters:"The rate a drug is infused at shapes how fast levels rise and how high they peak, even when the total dose is fixed."},
+    ldinf:{group:"inf", objective:"Explain how a loading bolus lets an infusion reach its plateau straight away.",
+      predict:{q:"With the loading bolus, how soon does the level reach the 8 mg/L effective line?", choices:["Immediately","After about 4 h","After about 9 h, as with the infusion alone"], answer:0,
+        why:"The bolus fills the volume of distribution to the plateau at once, and the infusion then replaces what is cleared.",
+        decide:m=>{ const t=m.cur.reach(8); return t===null || t>6 ? 2 : t>0.5 ? 1 : 0; },
+        show:m=>`Infusion alone: ${r1(m.base.reach(8))} h · with the bolus: ${r1(m.cur.reach(8))} h`},
+      challenge:{text:"Reach 8 mg/L within 1 hour using a loading bolus smaller than 350 mg.",
+        goal:m=>{ const bolus=givenOf(m.now.p).filter(e=>e.route==="iv").reduce((s,e)=>s+e.mg,0), t=m.now.reach(8);
+          return bolus>0 && bolus<350 && t!==null && t<=1; },
+        solution:{events:[{t:0,mg:280,route:"iv",type:"loading"},{t:0,mg:1456}]}},
+      matters:"Pairing a loading bolus with an infusion is a common way to reach steady levels quickly when the half-life would otherwise make that slow."},
+    cvi:{group:"inf", objective:"Compare a continuous infusion with intermittent infusions of the same total amount.",
+      predict:{q:"Compared with the continuous infusion, the intermittent schedule's total exposure (AUC) is…", choices:HLS, answer:2,
+        why:"Both deliver 2,880 mg against the same clearance; only the pattern differs.",
+        decide:m=> higherLowerSame(m.cur.aucInf,m.base.aucInf), show:m=>`AUC ${r1(m.base.aucInf)} → ${r1(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Keep eight 360 mg infusions but bring the peak under 13 mg/L.",
+        goal:m=>{ const ev=givenOf(m.now.p); return ev.length===8 && ev.every(e=>e.mg===360 && e.route==="inf") && m.now.cmax<13; },
+        solution:{events:every6h.map(e=>Object.assign({dur:3},e))}},
+      matters:"Continuous and intermittent infusions deliver the same exposure with very different peaks and troughs."},
+    potency:{group:"pd", objective:"Tell potency (EC50) apart from efficacy (Emax).",
+      predict:{q:"With EC50 four times higher, the same concentrations give a peak effect that is…", choices:HLS, answer:1,
+        why:"A higher EC50 means every level of effect needs more drug, so the same concentrations sit lower on the curve.",
+        decide:m=> higherLowerSame(m.cur.epeak,m.base.epeak), show:m=>`Peak effect ${r0(m.base.epeak)}% → ${r0(m.cur.epeak)}%`},
+      challenge:{text:"Keep EC50 at 8 mg/L and get back to 11.3 h at or above the 50% target.",
+        goal:m=> m.now.p.ec50===8 && m.now.effAbove(50)>=11.3, solution:{D:2000}},
+      matters:"A less potent drug isn't a weaker one: it needs higher concentrations for the same effect, which a larger dose can provide."},
+    efficacy:{group:"pd", objective:"Show that efficacy (Emax) sets a ceiling no dose can exceed.",
+      predict:{q:"Can a larger dose push the partial agonist (Emax 60%) above the 70% target?", choices:["Yes, with enough drug","No: 70% is above its ceiling"], answer:1,
+        why:"Effect can approach E₀ + Emax but never pass it, whatever the concentration.",
+        decide:m=> m.cur.top>=m.view.etgt ? 0 : 1, show:m=>`Ceiling ${r0(m.cur.top)}% · target ${m.view.etgt}%`},
+      challenge:{text:"Keep Emax at 60% and find a dose that gives a peak effect of at least 55%.",
+        goal:m=> m.now.p.emax===60 && m.now.epeak>=55, solution:{D:800}},
+      matters:"When a drug's maximum effect is below what's needed, raising the dose doesn't close the gap; only a more efficacious drug can."},
+    hill:{group:"pd", objective:"Describe how the Hill slope turns a graded response into a switch-like one.",
+      predict:{q:"Which curve stays at or above 50% effect for longer?", choices:["n = 4","n = 1","Both the same"], answer:2,
+        why:"Whatever the slope, the effect is exactly 50% when the concentration equals EC50, so both cross 50% at the same moment.",
+        decide:m=> higherLowerSame(m.cur.effAbove(50),m.base.effAbove(50)), show:m=>`At or above 50%: ${r1(m.base.effAbove(50))} h and ${r1(m.cur.effAbove(50))} h`},
+      challenge:{text:"Keep n = 4 and hold the effect at or above 80% for at least 8 hours.",
+        goal:m=> m.now.p.hill===4 && m.now.effAbove(80)>=8, solution:{D:800}},
+      matters:"With a steep concentration–effect curve, small changes in level can switch an effect on or off."},
+    pdose:{group:"pd", objective:"Explain why doubling a dose adds duration of effect more than peak effect.",
+      predict:{q:"Doubling the dose raises the peak effect by about…", choices:["Twice as much (+78 points)","About 10 points","Nothing"], answer:1,
+        why:"Near the top of the sigmoid, doubling the concentration moves the effect only a little further up the curve.",
+        decide:m=>{ const d=m.cur.epeak-m.base.epeak; return d>40 ? 0 : d>2 ? 1 : 2; }, show:m=>`Peak effect ${r0(m.base.epeak)}% → ${r0(m.cur.epeak)}%`},
+      challenge:{text:"Keep the effect at or above 50% for 15 hours or more.", goal:m=> m.now.effAbove(50)>=15, solution:{D:2000}},
+      matters:"Near the top of the concentration–effect curve, extra dose mostly buys time, not intensity: each doubling adds about one half-life."}
+  };
+  LESSONS.forEach(L=> Object.assign(L, LESSON_GUIDE[L.id]));
+  // Grouped order: "Next lesson" and the numbering follow it.
+  LESSONS.sort((a,b)=> LESSON_GROUPS.findIndex(g=>g.id===a.group)-LESSON_GROUPS.findIndex(g=>g.id===b.group));
 
   /* ================= COMPARE STATE ================= */
   // A comparison is {a, b, names:{a,b}, lock, edit}. These operations never modify their input; each
@@ -901,7 +1087,7 @@
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
     PD_KEYS, effectOf, concForEffect, effectStats,
-    DRUGS, LESSONS, TEMPLATES,
+    DRUGS, LESSONS, TEMPLATES, LESSON_GROUPS, lessonStats, lessonCheck, lessonScenario, challengeMet,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary};

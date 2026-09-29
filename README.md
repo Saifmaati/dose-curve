@@ -2,7 +2,7 @@
 
 An interactive pharmacokinetics lab for exploring how drug, patient and regimen choices shape exposure over time.
 
-**Live:** https://saifmaatimessi-droid.github.io/dose-curve/
+**Live:** https://saifmaati.github.io/dose-curve/
 
 > Educational simulation only. DoseCurve models idealized one-compartment linear pharmacokinetics for learning and demonstration. It is not validated clinical software and must not be used to make dosing decisions for real patients.
 
@@ -14,7 +14,7 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **Watch steady state build up:** peak and trough for every dose, accumulation, and how long 90% of steady state takes.
 - **Inspect any moment:** drag a cursor across the chart (or focus it and use the arrow keys) to read the concentration, window status, whether it's rising or falling, and the last dose given; jump between doses, peaks and troughs, or play the curve at 1×, 2× or 4×.
 - **See the effect (PK/PD):** switch on the effect charts to turn concentration into response with the sigmoid Emax model. Set EC50, Emax, the Hill slope and a baseline, pick a target effect, and read the effect over time, the concentration–effect curve with a dot that follows the time cursor, and how long the effect stays at or above target.
-- **Learn** through 16 guided lessons, and practice with unlimited generated problems that come with worked solutions.
+- **Learn** through 18 guided lessons in five groups (PK fundamentals, repeated dosing, custom regimens, infusion and route, PK/PD). Each one sets a goal, asks you to predict the result before explaining it, and ends with a challenge the app checks live; every answer and every number a lesson states is checked by the test suite. Practise with unlimited generated problems that come with worked solutions.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV.
 - **Save** setups in a local scenario library: save, update, rename, duplicate, delete, and export or import them as JSON. Saved scenarios stay in your browser (`localStorage`) unless you export or share them.
 

@@ -3,4 +3,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://saifmaatimessi-droid.github.io/dose-curve/sitemap.xml
+Sitemap: https://saifmaati.github.io/dose-curve/sitemap.xml
