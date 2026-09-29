@@ -1529,3 +1529,21 @@ test("estimates made from the data by hand land near the settings that made it",
   const e=PK.fitEstimate(Object.assign({}, f, {obs:f.obs.map(o=>({t:o.t, c:PK.conc(p,o.t)}))}));
   rel(e.thalf, f.truth.thalf, 1e-9); rel(e.V, f.truth.V, 1e-9);
 });
+
+test("links to one practice problem or one fit-the-data set rebuild it exactly", ()=>{
+  PK.PRACTICE.forEach(g=>{
+    const pr=PK.makeProblem({id:g.id, seed:3141592653}), link=PK.encodeTaskLink({type:"problem", id:pr.id, seed:pr.seed});
+    const t=PK.decodeTaskLink("#"+link);
+    assert.deepEqual(t, {type:"problem", id:g.id, seed:3141592653});
+    const again=PK.makeProblem({id:t.id, seed:t.seed});
+    assert.equal(again.q, pr.q); assert.equal(again.ans, pr.ans);
+  });
+  PK.FIT_KINDS.forEach(k=>{
+    const f=PK.makeFit({kind:k.id, seed:4294967295}), t=PK.decodeTaskLink(PK.encodeTaskLink({type:"fit", kind:f.kind, seed:f.seed}));
+    assert.deepEqual(PK.makeFit({kind:t.kind, seed:t.seed}).obs, f.obs);
+  });
+  ["", "#", "#p=", "#p=nope.12", "#p=rac.", "#p=rac.-1", "#p=rac.4294967296", "#fit=im.5", "#fit=iv.1.2", "#p=rac.12&x=1", "#v=4&s=D:500", "p=rac.12;alert(1)"]
+    .forEach(h=> assert.equal(PK.decodeTaskLink(h), null, JSON.stringify(h)));
+  assert.equal(PK.decodeLink("#p=rac.12"), null, "a task link is not a scenario link");
+  assert.equal(PK.decodeLink("#fit=iv.12"), null);
+});
