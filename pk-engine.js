@@ -1381,6 +1381,25 @@
     return pr;
   }
   const practiceScenario=pr=> normalizeScenario(scenario(pr.viz));
+  // A worksheet: `count` problems from one topic (or all), each kind at most once until every kind in the pool
+  // has been used, in a shuffled order. The seed rebuilds the same sheet.
+  const WORKSHEET_SIZES=[5,10,15];
+  function makeWorksheet(o){
+    o=o||{};
+    const topic=PRACTICE_TOPICS.some(t=>t.id===o.topic) ? o.topic : "";
+    const count=WORKSHEET_SIZES.includes(o.count) ? o.count : 10;
+    const seed=o.seed===undefined ? Math.floor(Math.random()*4294967296) : o.seed>>>0;
+    const rnd=seededRandom(seed), pool=PRACTICE.filter(g=> !topic || g.topic===topic).map(g=>g.id);
+    const kinds=[];
+    while(kinds.length<count){
+      const round=pool.slice();
+      for(let i=round.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [round[i],round[j]]=[round[j],round[i]]; }
+      if(kinds.length && round[0]===kinds[kinds.length-1]) round.push(round.shift());   // never the same kind twice running
+      kinds.push(...round);
+    }
+    const problems=kinds.slice(0,count).map(id=> makeProblem({id, seed:Math.floor(rnd()*4294967296)}));
+    return {topic, count, seed, problems};
+  }
   // An answer within 2% (or half a unit in the last decimal shown) counts: working with ln2 = 0.693 or
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
@@ -1509,9 +1528,16 @@
   const sig3=v=> +v.toPrecision(3);
   // Links to one practice problem (#p=kind.seed) or one fit-the-data set (#fit=iv.seed): the seed rebuilds
   // exactly the same numbers, so a class can work the same problem. Scenario links (#v=…) are separate.
-  const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : `p=${t.id}.${t.seed>>>0}`;
+  const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : t.type==="worksheet" ? `ws=${t.topic||"all"}.${t.count}.${t.seed>>>0}`
+    : `p=${t.id}.${t.seed>>>0}`;
   function decodeTaskLink(hash){
-    const m=/^#?(p|fit)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(String(hash||"").trim());
+    const h=String(hash||"").trim(), w=/^#?ws=([a-z]{1,12})\.(\d{1,2})\.(\d{1,10})$/.exec(h);
+    if(w){
+      const topic=w[1]==="all" ? "" : w[1], count=Number(w[2]), seed=Number(w[3]);
+      if((topic && !PRACTICE_TOPICS.some(t=>t.id===topic)) || !WORKSHEET_SIZES.includes(count) || seed>4294967295) return null;
+      return {type:"worksheet", topic, count, seed};
+    }
+    const m=/^#?(p|fit)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(h);
     if(!m) return null;
     const seed=Number(m[3]);
     if(!Number.isInteger(seed) || seed>4294967295) return null;
@@ -1563,7 +1589,7 @@
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
-    PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect,
+    PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
     READOUT_KEYS, metricMath};
 });

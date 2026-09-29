@@ -17,8 +17,10 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **See the effect (PK/PD):** switch on the effect charts to turn concentration into response with the sigmoid Emax model. Set EC50, Emax, the Hill slope and a baseline, pick a target effect, and read the effect over time, the concentration–effect curve with a dot that follows the time cursor, and how long the effect stays at or above target.
 - **Learn** through 18 guided lessons in five groups (PK fundamentals, repeated dosing, custom regimens, infusion and route, PK/PD). Each one sets a goal, asks you to predict the result before explaining it, and ends with a challenge the app checks live; every answer and every number a lesson states is checked by the test suite.
 - **Practise** with generated calculation problems: 21 kinds in four topics (single dose, repeated dosing, infusions, concentration–effect), from half-life and AUC to steady-state troughs, loading doses and the Emax model. Each comes with a worked solution, and "Visualize on curve" opens its scenario with the time cursor on the moment the question asks about. The tests work every answer out again from a simulation of the problem's own scenario.
+- **Worksheets:** make a set of 5, 10 or 15 problems from one topic or all of them, work it on screen with an answers toggle, or print it (black on white, with a worked answer key on its own page). Its link (`#ws=topic.count.seed`) rebuilds the same sheet.
 - **Fit the data:** get a set of measured concentrations after an IV bolus or an oral dose (made by the model with about 5% measurement scatter) and move the half-life and volume until the curve runs through them, with a live fit error. A "how to estimate" panel works the same numbers out by hand: the log-linear slope and intercept for an IV bolus, and the terminal slope plus the area under the points for an oral dose.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV. A practice problem or a fit-the-data set has its own link too (`#p=kind.seed`, `#fit=iv.seed`), which rebuilds exactly the same numbers, so a whole class can work the same one.
+- **Use it offline:** after one visit a service worker keeps a copy of the app, so it opens without a connection (in a classroom or on a phone). Online, the page always comes from the network first, so updates show up at once.
 - **Save** setups in a local scenario library: save, update, rename, duplicate, delete, and export or import them as JSON. Saved scenarios stay in your browser (`localStorage`) unless you export or share them.
 
 ## How it's built
@@ -29,7 +31,10 @@ A static site with no build step and no dependencies:
 | --- | --- |
 | `index.html` | The app: UI, charts, lessons and the practice view |
 | `pk-engine.js` | The model: PK equations, regimens, metrics, presets, lessons, practice problems and the share-link format. Has no DOM access, so it runs in the browser and in Node |
+| `CHANGELOG.md` | What changed in each release |
+| `sw.js` | The service worker for offline use: network first for the page, cached engine, icons and fonts |
 | `tests/pk-engine.test.js` | Automated tests for the engine |
+| `tests/sw.test.js` | Tests for the service worker against a simulated cache and network |
 | `404.html` | The page GitHub Pages shows for a missing address |
 | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest` | Browser, home-screen and install icons |
 | `og-image.png` | The preview image shown when a link is shared |
@@ -67,4 +72,4 @@ node --test
 
 When `pk-engine.js` changes, update the `?v=` stamp on its script tag in `index.html` (the test that fails prints the new value). It's the engine's content hash, so a browser holding a cached copy of an older engine fetches the new one instead of running a new page against it.
 
-The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, every quantitative claim the lessons make, every practice problem's answer against a simulation of its own scenario, and that every fit-the-data set can be fitted exactly on the sliders' steps while 20% misses don't count.
+The suite checks the engine against closed-form one-compartment results, regimen edge cases (missed and final doses, drug that fully clears between doses), the comparison metrics, the share-link format, the concentration–effect model, every quantitative claim the lessons make, every practice problem's answer against a simulation of its own scenario, the offline service worker (online and offline pages, engine versions, fonts, pass-through requests), and that every fit-the-data set can be fitted exactly on the sliders' steps while 20% misses don't count.

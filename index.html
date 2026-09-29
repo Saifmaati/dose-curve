@@ -326,8 +326,43 @@
   .pr-topics{margin:0 0 12px;flex-wrap:wrap}
   .fit-card{margin-top:14px}
   .pr-shared{margin:10px 0 0;font-size:12px;color:var(--cyan)}
+  .ws-card .seg{flex:0 1 200px}
+  .ws-view{margin-top:14px;padding:18px 20px;border:1px solid rgba(61,242,224,.35);border-radius:var(--r-md,14px);background:rgba(5,8,16,.55)}
+  .ws-view[hidden]{display:none}
+  .ws-head{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+  .ws-head h2{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0}
+  .ws-head h2:focus{outline:none}
+  .ws-code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2)}
+  .ws-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 4px}
+  .ws-list{margin:10px 0 0;padding-left:22px;color:#D6DCEF}
+  .ws-list>li{margin:0 0 14px;padding-left:4px;line-height:1.6;font-size:14px}
+  .ws-list b{color:#fff;font-family:'JetBrains Mono',monospace;font-weight:600}
+  .ws-type{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:2px}
+  .ws-a{margin-top:6px;padding:9px 12px;border-left:2px solid rgba(59,229,138,.6);background:rgba(59,229,138,.05);font-size:13px;color:#B9BEDF}
+  .ws-a[hidden]{display:none}
+  .ws-a .step{display:block}
+  #wsPrint{display:none}
+  @media print{
+    @page{margin:16mm}
+    body.ws-printing{background:#fff !important;color:#000}
+    body.ws-printing>:not(#wsPrint){display:none !important}
+    body.ws-printing #wsPrint{display:block;font-family:Inter,system-ui,sans-serif;font-size:11pt;color:#000;line-height:1.5}
+    #wsPrint h1{font-size:16pt;margin:0 0 4pt}
+    #wsPrint .wp-meta{margin:0 0 2pt;font-size:9.5pt;color:#333}
+    #wsPrint ol{padding-left:18pt}
+    #wsPrint li{break-inside:avoid;margin:0 0 16pt}
+    #wsPrint .wp-type{display:block;font-size:8.5pt;letter-spacing:.08em;text-transform:uppercase;color:#555}
+    #wsPrint .wp-ans{margin-top:10pt}
+    #wsPrint .wp-key{break-before:page}
+    #wsPrint .wp-key h2{font-size:14pt;margin:0 0 8pt}
+    #wsPrint .step{display:block}
+    #wsPrint footer{margin-top:18pt;font-size:8.5pt;color:#555}
+  }
   .pr-shared[hidden]{display:none}
   .fit-card .seg{flex:0 1 260px}
+  .fit-sliders{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;margin-top:12px;max-width:600px}
+  .fit-sliders .ctrl{margin-top:0}
+  @media (max-width:560px){ .fit-sliders{grid-template-columns:1fr} }
   .fit-meter{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:11px;font-size:12.5px;color:var(--muted)}
   .fit-meter b{font-family:'JetBrains Mono',monospace;font-size:15px;color:#FF8FA3;font-weight:600}
   .fit-meter b.ok{color:var(--green)}
@@ -919,6 +954,7 @@
           <p class="pr-shared" id="fitShared" hidden>Opened from a shared link: everyone who opens it gets these same measurements.</p>
           <p class="lesson-goal"><b>Goal</b><span id="fitGoal"></span></p>
           <p class="lesson-try"><b>Tip</b><span id="fitTip"></span></p>
+          <div class="fit-sliders" id="fitSliders" role="group" aria-label="The settings to fit"></div>
           <div class="fit-meter"><span>Fit error</span><b id="fitErr"></b><span id="fitTarget"></span></div>
           <p class="fit-status" id="fitStatus" role="status"></p>
           <details class="fit-data"><summary>The measurements</summary><table id="fitTable"></table></details>
@@ -1105,6 +1141,25 @@
               <button class="pr-btn" id="fitStart" style="margin-left:auto">Start fitting →</button>
             </div>
           </div>
+          <div class="pr-card ws-card">
+            <div class="pr-type">Worksheet</div>
+            <div class="pr-q">A set of problems from the topic chosen above, to work on screen or print, with a worked answer key on its own page. Its link rebuilds the same sheet.</div>
+            <div class="pr-foot">
+              <div class="seg" id="wsSizeSeg" role="group" aria-label="Number of problems"></div>
+              <button class="pr-btn" id="wsMake" style="margin-left:auto">Make a worksheet →</button>
+            </div>
+          </div>
+          <section class="ws-view" id="wsView" aria-labelledby="wsTitle" hidden>
+            <div class="ws-head"><h2 id="wsTitle" tabindex="-1"></h2><span class="ws-code" id="wsCode"></span></div>
+            <p class="pr-shared" id="wsShared" hidden>Opened from a shared link: everyone who opens it gets this same worksheet.</p>
+            <div class="ws-actions">
+              <button class="pr-btn" id="wsPrintBtn">Print</button>
+              <button class="pr-btn ghosted" id="wsAnswers" aria-pressed="false">Show answers</button>
+              <button class="pr-btn ghosted" id="wsLink">Copy link to this worksheet</button>
+              <button class="pr-btn ghosted" id="wsClose">Close</button>
+            </div>
+            <ol class="ws-list" id="wsList"></ol>
+          </section>
         </div>
       </section>
     </div>
@@ -1114,7 +1169,7 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
+      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
@@ -1155,9 +1210,10 @@
     </div>
   </dialog>
 </div>
+<div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=2b888a7a01"></script>
+<script src="pk-engine.js?v=8d211ff121"></script>
 <script>
 "use strict";
 (function(){
@@ -2331,12 +2387,16 @@
     // a log slider moves in log10 units (1% steps) and keeps two significant figures
     const toS=v=> cfg.log ? Math.round(Math.log10(v)*1000)/1000 : v;
     const fromS=x=> !cfg.log ? x : Math.min(range[1],Math.max(range[0],(v=>v>=10?Math.round(v):v>=1?Math.round(v*10)/10:Math.round(v*100)/100)(Math.pow(10,x))));
+    // A value between the slider's steps (from a link) would have its thumb snapped to the nearest step, so the
+    // slider takes any value until it's first pressed; from then on it moves in its own steps.
+    const step=cfg.log ? 0.01 : cfg.step;
+    const offStep=v=>{ const n=(toS(v)-toS(range[0]))/step; return Math.abs(n-Math.round(n))>1e-6; };
     wrap.innerHTML=`
       <div class="ctrl-top">
         <span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span>
         <span class="ctrl-val"></span>
       </div>
-      <input type="range" min="${toS(range[0])}" max="${toS(max)}" step="${cfg.log?0.01:cfg.step}" value="${toS(state[key])}" aria-label="${cfg.name}">`;
+      <input type="range" min="${toS(range[0])}" max="${toS(max)}" step="${offStep(state[key]) ? "any" : step}" value="${toS(state[key])}" aria-label="${cfg.name}">`;
     container.appendChild(wrap);
     const sl=wrap.querySelector("input"), val=wrap.querySelector(".ctrl-val");
     const show=()=>{
@@ -2346,6 +2406,19 @@
     };
     show();
     sliderRefs[key]={sl,show};
+    // A press puts the slider back on its steps (a pointer then sets the value where it lands). The first arrow
+    // key goes to the next step in its direction: from 4.3 h, 4.5 h up or 4.0 h down.
+    sl.addEventListener("pointerdown",()=>{ if(sl.step==="any") sl.step=String(step); });
+    sl.addEventListener("keydown",e=>{
+      if(sl.step!=="any") return;
+      const x=parseFloat(sl.value), base=toS(range[0]), dir={ArrowRight:1, ArrowUp:1, ArrowLeft:-1, ArrowDown:-1}[e.key];
+      sl.step=String(step);
+      if(!dir) return;   // Home, End and Page keys work as usual from here
+      e.preventDefault();
+      const n=(x-base)/step, k=dir>0 ? Math.floor(n+1e-9)+1 : Math.ceil(n-1e-9)-1;
+      sl.value=String(Math.min(toS(max), Math.max(base, +(base+k*step).toFixed(6))));
+      sl.dispatchEvent(new Event("input",{bubbles:true}));
+    });
     sl.addEventListener("input",()=>{
       state[key]=fromS(parseFloat(sl.value)); state.drug=null; markDrug(); show();
       if(key==="nDoses"){ syncMissedMax(); changed(["nDoses","missed"]); }
@@ -3071,9 +3144,30 @@
     byId("fitStatus").textContent="";
     byId("quickStart").hidden=true;
     byId("fitBar").hidden=false;
-    syncControls(); render();
+    syncControls(); buildFitSliders(); render();
     showTab("sim");
   }
+  // The settings to fit, repeated in the fit bar so the chart stays in view while they move (on a phone the
+  // controls are far above it). They drive the same settings as the sliders in the controls.
+  function buildFitSliders(){
+    byId("fitSliders").innerHTML=fit.free.map(k=>{ const cfg=SLIDERS[k], r=PK.RANGES[k];
+      return `<div class="ctrl"><div class="ctrl-top"><span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span><span class="ctrl-val" data-v="${k}"></span></div>`+
+        `<input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${cfg.step}" value="${state[k]}" aria-label="${cfg.name}"></div>`;
+    }).join("");
+    syncFitSliders();
+  }
+  function syncFitSliders(){
+    byId("fitSliders").querySelectorAll("input[data-k]").forEach(i=>{ if(document.activeElement!==i) i.value=state[i.dataset.k]; });
+    byId("fitSliders").querySelectorAll("[data-v]").forEach(el=> el.textContent=`${trim(state[el.dataset.v])} ${SLIDERS[el.dataset.v].unit}`);
+  }
+  byId("fitSliders").addEventListener("input",e=>{
+    const i=e.target.closest("input[data-k]");
+    if(!i) return;
+    const k=i.dataset.k, r=sliderRefs[k];
+    state[k]=parseFloat(i.value); state.drug=null;
+    if(r){ r.sl.step=String(SLIDERS[k].step); r.sl.value=state[k]; r.show(); }
+    changed([k]);
+  });
   function exitFit(){
     if(!fit) return;
     fit=null;
@@ -3083,6 +3177,7 @@
   }
   function renderFit(){
     if(!fit || mode!=="sim") return;
+    syncFitSliders();
     const s=PK.fitStatus(fit, snapshot()), T=fit.truth;
     byId("fitErr").textContent=s.err>=1000 ? "over 999%" : `${fmt(s.err,1)}%`;
     byId("fitErr").classList.toggle("ok", s.good);
@@ -3662,6 +3757,55 @@
     $("plot").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"center"});
   });
 
+  /* ================= WORKSHEETS ================= */
+  // A sheet of problems from the chosen topic (PK.makeWorksheet). On screen with an answers toggle; printed
+  // black on white with the answer key on its own page. Its link (#ws=topic.count.seed) rebuilds it.
+  let ws=null, wsSize=10;
+  $("wsSizeSeg").innerHTML=PK.WORKSHEET_SIZES.map(n=>`<button data-n="${n}" aria-pressed="${n===wsSize}"${n===wsSize?' class="on"':""}>${n} problems</button>`).join("");
+  $("wsSizeSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-n]");
+    if(!b) return;
+    wsSize=+b.dataset.n;
+    $("wsSizeSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
+  });
+  const topicTitle=id=> id ? PK.PRACTICE_TOPICS.find(t=>t.id===id).title : "All topics";
+  const wsLinkHash=()=> PK.encodeTaskLink({type:"worksheet", topic:ws.topic, count:ws.count, seed:ws.seed});
+  const ansText=pr=> `${pr.ans.toFixed(pr.dp)}${pr.unit && pr.unit!=="(fraction)" ? " "+pr.unit : ""}`;
+  function showWorksheet(w, shared){
+    if(!shared) clearTaskHash();
+    ws=w;
+    $("wsTitle").textContent=`Worksheet · ${topicTitle(w.topic)} · ${w.count} problems`;
+    $("wsCode").textContent=`code ${wsLinkHash().slice(3)}`;
+    $("wsShared").hidden=!shared;
+    $("wsAnswers").setAttribute("aria-pressed","false"); $("wsAnswers").textContent="Show answers";
+    $("wsList").innerHTML=w.problems.map(pr=>`<li><span class="ws-type">${pr.type}</span><div>${pr.q}</div>`+
+      `<div class="ws-a" hidden>Answer: <b>${ansText(pr)}</b>${pr.sol.join("")}</div></li>`).join("");
+    $("wsView").hidden=false;
+    $("wsTitle").focus({preventScroll:true});
+    $("wsView").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"start"});
+  }
+  $("wsMake").addEventListener("click",()=> showWorksheet(PK.makeWorksheet({topic:prTopic, count:wsSize})));
+  $("wsAnswers").addEventListener("click",()=>{
+    const on=$("wsAnswers").getAttribute("aria-pressed")!=="true";
+    $("wsAnswers").setAttribute("aria-pressed", on); $("wsAnswers").textContent=on ? "Hide answers" : "Show answers";
+    $("wsList").querySelectorAll(".ws-a").forEach(a=> a.hidden=!on);
+  });
+  $("wsLink").addEventListener("click",()=>{ if(ws) copyHash(wsLinkHash()); });
+  $("wsClose").addEventListener("click",()=>{ ws=null; $("wsView").hidden=true; clearTaskHash(); $("wsMake").focus(); });
+  $("wsPrintBtn").addEventListener("click",()=>{
+    if(!ws) return;
+    const url=location.href.split("#")[0]+"#"+wsLinkHash();
+    $("wsPrint").innerHTML=`<h1>DoseCurve · practice worksheet</h1>`+
+      `<p class="wp-meta">${esc(topicTitle(ws.topic))} · ${ws.count} problems · code ${esc(wsLinkHash().slice(3))}</p>`+
+      `<p class="wp-meta">Open it online: ${esc(url)}</p>`+
+      `<ol>${ws.problems.map(pr=>`<li><span class="wp-type">${pr.type}</span><div>${pr.q}</div><div class="wp-ans">Answer: ______________ ${pr.unit}</div></li>`).join("")}</ol>`+
+      `<section class="wp-key"><h2>Answer key</h2><ol>${ws.problems.map(pr=>`<li><b>${ansText(pr)}</b> · ${pr.type}<div>${pr.sol.join("")}</div></li>`).join("")}</ol></section>`+
+      `<footer>Generated by DoseCurve, an educational one-compartment simulation. Not for dosing real patients.</footer>`;
+    document.body.classList.add("ws-printing");
+    window.print();
+  });
+  window.addEventListener("afterprint",()=> document.body.classList.remove("ws-printing"));
+
   /* tabs: Simulator and Compare share one view in two modes */
   // Hero buttons: straight into lessons, a comparison, or the controls.
   // "Try the PK/PD Lab" opens the simulator with the effect charts on and focuses the chart (arrow keys move the
@@ -3730,8 +3874,18 @@
   const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);
   if(shared) applyLink(shared);
   else if(task && task.type==="problem"){ render(); showTab("pr"); showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true); }
+  else if(task && task.type==="worksheet"){
+    render(); showTab("pr");
+    showProblem(PK.makeProblem({topic:task.topic||undefined}), false);   // not newProblem, which would clear the link
+    showWorksheet(PK.makeWorksheet(task), true);
+  }
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
   else render();
+
+  // Offline use: after one visit a service worker (sw.js) keeps a copy of the app, so it opens without a
+  // connection. Only over https or on localhost; opened as a local file, the page simply runs without it.
+  if("serviceWorker" in navigator && window.isSecureContext && /^https?:$/.test(location.protocol))
+    window.addEventListener("load",()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
 })();
 </script>
 </body>
