@@ -1385,6 +1385,76 @@
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
 
+  /* ================= FIT THE DATA ================= */
+  // A dose was given and the concentration measured several times, with a little measurement noise. The
+  // student moves the half-life and volume until the model runs through the points. The data come from settings
+  // on the sliders' own steps, so an exact match is always within reach, and from half-lives of 6–16 h, where one
+  // 0.5 h step is small next to the tolerance. For an oral dose F and kₐ are given: with points like these, kₐ is
+  // barely pinned down by the data, and leaving it free makes the fit a search in three tangled directions.
+  const FIT_KINDS=[{id:"iv", title:"IV bolus", free:["thalf","V"]}, {id:"oral", title:"Oral dose", free:["thalf","V"]}];
+  const FIT_NOISE=0.05;   // measurement scatter: log-normal, about ±5%
+  const gaussian=rnd=>{ const u=1-rnd(), v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  const toStep=(v,st)=> +(Math.round(v/st)*st).toFixed(4);
+  function makeFit(o){
+    o=o||{};
+    const kind=FIT_KINDS.find(k=>k.id===o.kind) || FIT_KINDS[0];
+    const seed=o.seed===undefined ? Math.floor(Math.random()*4294967296) : o.seed>>>0;
+    const rnd=seededRandom(seed), d=drawFrom(rnd);
+    const thalf=d(6,16,0.5), V=d(15,80,1), D=d(200,1000,100), k=Math.LN2/thalf;
+    const truth={route:kind.id, dosing:"single", D, thalf, V};
+    let times;
+    if(kind.id==="oral"){
+      truth.F=d(0.6,1,0.05);
+      truth.ka=until(()=>d(0.3,2.5,0.05), ka=> ka>=3*k);   // absorption clearly faster than elimination
+      const tm=Math.log(truth.ka/k)/(truth.ka-k);
+      times=[0.35*tm, 0.75*tm, 1.3*tm, tm+0.6*thalf, tm+1.3*thalf, tm+2.2*thalf, tm+3.2*thalf];
+    } else times=[0.1,0.35,0.7,1.2,1.8,2.6,3.5].map(f=>f*thalf);
+    times=[...new Set(times.map(t=> Math.max(0.25, toStep(t,0.25))))].sort((a,b)=>a-b);
+    const p=scenario(truth);
+    const obs=times.map(t=>({t, c:sig3(conc(p,t)*Math.exp(FIT_NOISE*gaussian(rnd)))}));
+    // the sliders start well away from the answer
+    const start={thalf:thalf>=11 ? 4 : 16, V:V>=45 ? 20 : 70};
+    return {kind:kind.id, seed, truth, obs, start, free:kind.free.slice(),
+      view:Object.assign({}, VIEW_DEFAULTS, {duration:evenUp(times[times.length-1]+thalf)})};
+  }
+  const sig3=v=> +v.toPrecision(3);
+  // How far the model is from the measurements: the root-mean-square of the log ratios, in %.
+  function fitError(p, obs){
+    const ev=doseEvents(p);
+    const s=obs.reduce((a,o)=>{ const c=Math.max(conc(p,o.t,ev),1e-12), r=Math.log(c/o.c); return a+r*r; },0);
+    return 100*Math.sqrt(s/obs.length);
+  }
+  // The scenario the data were made from, and the one the student starts with.
+  const fitScenario=(f, over)=> normalizeScenario(scenario(Object.assign({}, f.truth, over||{})));
+  // A fit counts when it's within 4 percentage points of the error the data's own settings give (that error is
+  // the measurement scatter). The dose, route, F, kₐ and physiology have to stay as the data were collected.
+  function fitStatus(f, p){
+    const floor=fitError(fitScenario(f), f.obs), target=floor+4, err=fitError(p, f.obs);
+    const fixed=["route","dosing","D"].concat(f.kind==="oral" ? ["F","ka"] : []);
+    let mismatch=null;
+    if(fixed.some(k=> p[k]!==f.truth[k]) || p.wt!==DEFAULTS.wt || p.clFn!==DEFAULTS.clFn) mismatch="setup";
+    return {err, floor, target, good:!mismatch && err<=target, mismatch};
+  }
+  // Estimates straight from the data, the way they're made by hand: the log-linear fall gives kₑ (from its
+  // slope) and, for an IV bolus, C₀ (where it meets t = 0) and so V = D / C₀. For an oral dose the last three
+  // points give kₑ, the area under the points (plus the tail, C_last / kₑ) gives CL = F·D / AUC, and V = CL / kₑ.
+  function fitEstimate(f){
+    const line=pts=>{   // least-squares line through (t, ln c)
+      const n=pts.length, mt=pts.reduce((a,o)=>a+o.t,0)/n, ml=pts.reduce((a,o)=>a+Math.log(o.c),0)/n;
+      let sxy=0, sxx=0; pts.forEach(o=>{ sxy+=(o.t-mt)*(Math.log(o.c)-ml); sxx+=(o.t-mt)*(o.t-mt); });
+      const b=sxy/sxx; return {k:-b, lnC0:ml-b*mt};
+    };
+    const D=f.truth.D;
+    if(f.kind==="iv"){
+      const {k,lnC0}=line(f.obs), C0=Math.exp(lnC0);
+      return {k, thalf:Math.LN2/k, C0, V:D/C0};
+    }
+    const {k}=line(f.obs.slice(-3)), pts=[{t:0,c:0}].concat(f.obs);
+    let auc=0; for(let i=1;i<pts.length;i++) auc+=(pts[i].t-pts[i-1].t)*(pts[i].c+pts[i-1].c)/2;
+    const last=f.obs[f.obs.length-1], aucInf=auc+last.c/k, CL=f.truth.F*D/aucInf;
+    return {k, thalf:Math.LN2/k, auc:aucInf, CL, V:CL/k};
+  }
+
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
@@ -1393,5 +1463,6 @@
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
-    PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect};
+    PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect,
+    FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate};
 });

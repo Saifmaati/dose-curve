@@ -185,6 +185,7 @@
     font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:9px 10px;border-radius:var(--r-sm);
     display:flex;align-items:center;justify-content:center;gap:7px;transition:all .16s ease;
   }
+  .abtn[hidden]{display:none}
   .abtn:hover{border-color:rgba(124,107,255,.6);box-shadow:0 0 16px rgba(124,107,255,.2)}
   .abtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .abtn.pinned{border-color:rgba(61,242,224,.55);color:var(--cyan)}
@@ -309,6 +310,21 @@
   .pr-btn.ghosted{background:rgba(5,8,16,.55);border-color:var(--glass-line-2);color:#C9D0E6;font-weight:500}
   .pr-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .pr-topics{margin:0 0 12px;flex-wrap:wrap}
+  .fit-card{margin-top:14px}
+  .fit-card .seg{flex:0 1 260px}
+  .fit-meter{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:11px;font-size:12.5px;color:var(--muted)}
+  .fit-meter b{font-family:'JetBrains Mono',monospace;font-size:15px;color:#FF8FA3;font-weight:600}
+  .fit-meter b.ok{color:var(--green)}
+  .fit-status{font-size:12.5px;line-height:1.6;color:#B9BEDF;margin-top:6px;max-width:78ch}
+  .fit-status:empty{display:none}
+  .fit-status .ok{color:var(--green);font-weight:600}
+  .fit-data{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .fit-data summary{cursor:pointer;width:max-content}
+  .fit-data summary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
+  .fit-data table{margin-top:7px;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#C9D0E6}
+  .fit-data th,.fit-data td{padding:3px 12px 3px 0;text-align:right;font-weight:500}
+  .fit-data th{color:var(--muted-2);font-weight:500}
+  .lk.obs{width:9px;height:9px;border-radius:50%;background:#05070E;border:1.7px solid #fff}
   .pr-topics button{flex:1 1 auto;white-space:nowrap}
   .pr-verdict{margin-top:13px;font-size:13px;font-weight:600}
   .pr-verdict:empty{margin:0}
@@ -376,7 +392,7 @@
   .lp-skip:hover{color:#fff}
   .lp-skip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
   .lp-skip[hidden]{display:none}
-  #lsText:focus,#lsTitle:focus{outline:none}
+  #lsText:focus,#lsTitle:focus,#fitTitle:focus,#fitHow:focus{outline:none}
   .lesson-why{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;max-width:78ch}
   .lesson-chal{font-size:12.5px;color:#B9BEDF;line-height:1.7;flex:1;min-width:220px;margin:0}
   .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
@@ -878,6 +894,27 @@
           </div>
         </div>
 
+        <div class="lesson" id="fitBar" hidden>
+          <div class="lesson-top">
+            <span class="ltag">FIT</span><span class="lesson-k">Fit the data</span>
+            <button class="lesson-x" id="fitClose" aria-label="Stop fitting">✕</button>
+          </div>
+          <div class="lesson-t" id="fitTitle" tabindex="-1"></div>
+          <p class="lesson-goal"><b>Goal</b><span id="fitGoal"></span></p>
+          <p class="lesson-try"><b>Tip</b><span id="fitTip"></span></p>
+          <div class="fit-meter"><span>Fit error</span><b id="fitErr"></b><span id="fitTarget"></span></div>
+          <p class="fit-status" id="fitStatus" role="status"></p>
+          <details class="fit-data"><summary>The measurements</summary><table id="fitTable"></table></details>
+          <p class="lesson-p" id="fitHow" tabindex="-1" hidden></p>
+          <div class="lesson-foot">
+            <div class="lesson-btns">
+              <button class="abtn" id="fitHowBtn">How to estimate from the data</button>
+              <button class="abtn" id="fitReset">↺ Start over</button>
+              <button class="abtn" id="fitNew">New data set</button>
+            </div>
+          </div>
+        </div>
+
         <div class="qs" id="quickStart" role="region" aria-label="Quick start" hidden>
           <div class="qs-step"><b>1</b><span>Change any setting on the left. The curve updates instantly.</span></div>
           <div class="qs-step"><b>2</b><span>Set a baseline, then change something. The panel below explains what moved and why.</span></div>
@@ -1038,6 +1075,14 @@
               <button class="pr-btn" id="prNext" style="margin-left:auto">Next problem</button>
             </div>
           </div>
+          <div class="pr-card fit-card">
+            <div class="pr-type">Fit the data</div>
+            <div class="pr-q">Get a set of measured concentrations, then move the model's settings until its curve runs through them. It's how a half-life and a volume of distribution are estimated from measurements.</div>
+            <div class="pr-foot">
+              <div class="seg" id="fitKindSeg" role="group" aria-label="Data from"></div>
+              <button class="pr-btn" id="fitStart" style="margin-left:auto">Start fitting →</button>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -1113,6 +1158,7 @@
   let mode="sim";      // "sim": one scenario, optionally against a baseline. "cmp": scenarios A and B.
   let baseline=null;   // {p, label} (simulator)
   let lesson=null;     // active LESSONS entry (simulator)
+  let fit=null;        // active "fit the data" exercise (simulator): PK.makeFit
   let simSaved=null;   // the simulator scenario while Compare is open
   const DEFAULT_NAMES=PK.DEFAULT_NAMES;
   const cmp={a:null, b:null, names:{...DEFAULT_NAMES}, edit:"a", lock:"", template:null};
@@ -1205,6 +1251,8 @@
         cv.raw.push({t,c});
       }
     });
+    const fitting=fit && mode==="sim";
+    if(fitting) fit.obs.forEach(o=>{ if(o.c>yMax) yMax=o.c; });
     const yTop=Math.max(yMax, state.mtc)*1.14 || 1;
     const iw=PW-M.l-M.r, ih=PH-M.t-M.b;
     const isLog=state.scale==="log";
@@ -1354,6 +1402,11 @@
 
     g+=lateLabels;
 
+    // the measured points, while fitting
+    if(fitting) fit.obs.forEach(o=>{
+      if(inView(o.t)) g+=`<circle cx="${sx(o.t)}" cy="${sy(o.c)}" r="4.3" fill="#05070E" stroke="#FFFFFF" stroke-width="1.7"><title>Measured at ${trim(o.t)} h: ${o.c} mg/L</title></circle>`;
+    });
+
     // direct labels at the right end of each compared curve, nudged apart if they would collide
     if(mode==="cmp"){
       const ends=curves.map(cv=>({cv, y:cv.pts[cv.pts.length-1].y}));
@@ -1429,6 +1482,7 @@
     updateCursor();
     updateLibBadge();
     renderChallenge();
+    renderFit();
   }
 
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
@@ -1868,6 +1922,7 @@
     } else {
       items.push(`<div class="li"><span class="lk c"></span>Current</div>`);
       if(baseline) items.push(`<div class="li"><span class="lk g"></span>Baseline · ${esc(baseline.label)}</div>`);
+      if(fit) items.push(`<div class="li"><span class="lk obs"></span>Measured</div>`);
     }
     items.push(`<div class="li"><span class="lk band"></span>Therapeutic</div>`, `<div class="li"><span class="lk tox"></span>Toxic</div>`);
     byId("legend").innerHTML=items.join("");
@@ -2833,7 +2888,7 @@
         state.loadMult=1; state.missed=1; state.view="full";
         Object.assign(state,d.s);
         state.drug=d.id;
-        if(mode==="sim") exitLesson();
+        if(mode==="sim"){ exitLesson(); exitFit(); }
         syncControls();
         changed(Object.keys(d.s).concat("loadMult","missed"));
       });
@@ -2859,6 +2914,7 @@
   }
   function loadLesson(L){
     setMode("sim");
+    exitFit();
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
     Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.cur,L.view);   // a lesson says whether the effect charts show
@@ -2926,7 +2982,7 @@
   function exitLesson(){
     lesson=null;
     byId("lessonBar").hidden=true;
-    byId("quickStart").hidden=qsDismissed;
+    byId("quickStart").hidden=qsDismissed || !!fit;
   }
   byId("lsClose").addEventListener("click",()=>{ exitLesson(); byId("app").focus({preventScroll:true}); });
   byId("lsReset").addEventListener("click",()=>{ if(lesson) loadLesson(lesson); });
@@ -2935,6 +2991,83 @@
     const i=LESSONS.indexOf(lesson);
     if(i<LESSONS.length-1){ loadLesson(LESSONS[i+1]); focusLesson(); } else { showTab("ls"); byId("tabLs").focus(); }
   });
+
+  /* ================= FIT THE DATA ================= */
+  // Measured points on the chart; the half-life and volume (and kₐ) sliders move the curve onto them. The fit
+  // error updates live; the status line is announced only when the fit becomes good (or stops being good).
+  const FIT_SLIDER_NAMES={thalf:"Half-life", V:"Volume"};
+  let fitShown=null;
+  function startFit(f){
+    fit=f;
+    setMode("sim");
+    exitLesson();
+    loadScenario(PK.fitScenario(fit, fit.start));
+    const v=fit.view, T=fit.truth, oral=fit.kind==="oral";
+    Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:"lin", view:"full", pd:false, etgt:v.etgt, drug:null});
+    baseline=null; updateBaselineUI();
+    evSel=null; cursorT=null; fitShown=null;
+    const names=fit.free.map(k=>FIT_SLIDER_NAMES[k]), list=names.length===2 ? names.join(" and ") : `${names.slice(0,-1).join(", ")} and ${names[names.length-1]}`;
+    byId("fitTitle").textContent=oral ? `Oral dose · ${T.D} mg, F = ${T.F}, kₐ = ${trim(T.ka)} h⁻¹` : `IV bolus · ${T.D} mg`;
+    byId("fitGoal").textContent=`${oral?`A ${T.D} mg oral dose was taken (F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹ are known)`:`A ${T.D} mg IV bolus was given`} and the concentration measured ${fit.obs.length} times: the white dots. Move ${list} until the curve runs through them.`;
+    byId("fitTip").textContent=oral
+      ? "On the LOG scale the tail becomes a straight line. Match its slope with the half-life, then its height with the volume. The rise and the peak come from absorption, which is given."
+      : "On the LOG scale an IV bolus falls in a straight line. Match its slope with the half-life, then its height with the volume.";
+    byId("fitTable").innerHTML=`<thead><tr><th scope="col">t (h)</th><th scope="col">C (mg/L)</th></tr></thead><tbody>`+
+      fit.obs.map(o=>`<tr><td>${trim(o.t)}</td><td>${o.c}</td></tr>`).join("")+`</tbody>`;
+    byId("fitHow").hidden=true; byId("fitHowBtn").hidden=false;
+    byId("fitStatus").textContent="";
+    byId("quickStart").hidden=true;
+    byId("fitBar").hidden=false;
+    syncControls(); render();
+    showTab("sim");
+  }
+  function exitFit(){
+    if(!fit) return;
+    fit=null;
+    byId("fitBar").hidden=true;
+    byId("quickStart").hidden=qsDismissed || !!lesson;
+  }
+  function renderFit(){
+    if(!fit || mode!=="sim") return;
+    const s=PK.fitStatus(fit, snapshot()), T=fit.truth;
+    byId("fitErr").textContent=s.err>=1000 ? "over 999%" : `${fmt(s.err,1)}%`;
+    byId("fitErr").classList.toggle("ok", s.good);
+    byId("fitTarget").textContent=`a good fit is ${fmt(s.target,1)}% or less (the measurements scatter by about ${fmt(s.floor,1)}%)`;
+    const now=s.mismatch ? "setup" : s.good ? "good" : "no";
+    if(now===fitShown) return;
+    fitShown=now;
+    const made=`t½ = ${trim(T.thalf)} h and V = ${trim(T.V)} L`;
+    byId("fitStatus").innerHTML= now==="good" ? `<span class="ok">✓ Good fit.</span> The data were made with ${made}.`
+      : now==="setup" ? `The data came from ${fit.kind==="oral" ? `a single ${T.D} mg oral dose with F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹` : `a single ${T.D} mg IV bolus`}, at 70 kg and 100% organ function. Start over puts those back.`
+      : "Not yet: the curve misses the dots.";
+  }
+  function fitHowText(){
+    const e=PK.fitEstimate(fit), T=fit.truth;
+    if(fit.kind==="iv")
+      return `On the log scale the points lie close to a straight line. The best line through them has slope −kₑ = −${fmt(e.k,3)} h⁻¹, so t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h. `+
+        `The line meets t = 0 at C₀ = ${fmt(e.C0,2)} mg/L, so V = D / C₀ = ${T.D} / ${fmt(e.C0,2)} = ${fmt(e.V,1)} L. `+
+        `The scatter in the measurements is why these differ a little from the settings that made the data.`;
+    return `The last three points lie on a straight line on the log scale, with slope −kₑ = −${fmt(e.k,3)} h⁻¹, so t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h. `+
+      `The area under the points (trapezoids) plus the tail, C_last / kₑ, gives AUC ≈ ${fmt(e.auc,1)} mg·h/L. Then CL = F·D / AUC = ${T.F} × ${T.D} / ${fmt(e.auc,1)} = ${fmt(e.CL,2)} L/h, `+
+      `and V = CL / kₑ = ${fmt(e.V,1)} L. Absorption shapes the rise and the peak but not the tail, which is why the tail gives the half-life.`;
+  }
+  let fitKind="iv";
+  byId("fitKindSeg").innerHTML=PK.FIT_KINDS.map(k=>`<button data-kind="${k.id}" aria-pressed="${k.id===fitKind}"${k.id===fitKind?' class="on"':""}>${k.title}</button>`).join("");
+  byId("fitKindSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-kind]");
+    if(!b) return;
+    fitKind=b.dataset.kind;
+    byId("fitKindSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
+  });
+  byId("fitStart").addEventListener("click",()=>{ startFit(PK.makeFit({kind:fitKind})); byId("fitTitle").focus({preventScroll:true}); byId("fitBar").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"nearest"}); });
+  byId("fitNew").addEventListener("click",()=>{ if(fit){ startFit(PK.makeFit({kind:fit.kind})); byId("fitTitle").focus({preventScroll:true}); } });
+  byId("fitReset").addEventListener("click",()=>{ if(fit) startFit(fit); });
+  byId("fitHowBtn").addEventListener("click",()=>{
+    byId("fitHow").textContent=fitHowText();
+    byId("fitHow").hidden=false; byId("fitHowBtn").hidden=true;
+    byId("fitHow").focus();   // the button is gone, so focus moves to what it revealed
+  });
+  byId("fitClose").addEventListener("click",()=>{ exitFit(); renderLegend(); render(); byId("app").focus({preventScroll:true}); });
 
   /* ================= COMPARE MODE ================= */
   // The simulator view doubles as the compare view; the controls edit whichever side is selected.
@@ -2953,6 +3086,7 @@
     state.drug=null; evSel=null;
     document.body.dataset.mode=mode;
     byId("lessonBar").hidden=!(lesson && mode==="sim");
+    byId("fitBar").hidden=!(fit && mode==="sim");
     syncControls(); render();
   }
   function setEdit(side){
@@ -3251,6 +3385,7 @@
       syncControls(); render();
     } else {
       showTab("sim");
+      exitFit();
       if(st.lesson) loadLesson(LESSONS.find(L=>L.id===st.lesson)); else exitLesson();
       loadScenario(st.s);
       baseline=st.base ? {p:st.base, label:st.baseLabel||(lesson?lesson.baseLabel:scenarioLabel(st.base))} : null;
@@ -3447,7 +3582,7 @@
   $("prViz").addEventListener("click",()=>{
     if(!prob) return;
     setMode("sim");
-    exitLesson();
+    exitLesson(); exitFit();
     loadScenario(PK.practiceScenario(prob));
     const v=prob.view;
     Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:v.scale, view:v.zoom==="last" ? "last" : "full",
