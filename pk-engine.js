@@ -1404,6 +1404,54 @@
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
 
+  /* ================= HIT THE WINDOW ================= */
+  // Regimen design: for a made-up drug, choose a dose and an interval so that at steady state the trough stays at
+  // or above the lower limit and the peak at or below the upper one. Each task is built around a regimen on the
+  // sliders' own steps (dose in 25 mg, interval in whole hours), with some room either side, so it can always be
+  // met; a few other regimens meet it too.
+  const WINDOW_KINDS=[{id:"iv", title:"IV bolus"}, {id:"oral", title:"Oral dose"}];
+  // Steady-state peak and trough of a regular regimen (the peak searched over the interval, then refined).
+  function ssPeakTrough(p){
+    const tau=p.tau, N=240;
+    let best=0, sBest=0;
+    for(let i=0;i<=N;i++){ const s=Math.min(tau*i/N, tau-1e-9), c=ssConc(p,s); if(c>best){ best=c; sBest=s; } }
+    let lo=Math.max(0,sBest-tau/N), hi=Math.min(tau-1e-9,sBest+tau/N);
+    for(let i=0;i<60;i++){ const a=lo+(hi-lo)/3, b=hi-(hi-lo)/3; if(ssConc(p,a)<ssConc(p,b)) lo=a; else hi=b; }
+    return {peak:Math.max(best, ssConc(p,(lo+hi)/2)), trough:ssConc(p, tau-1e-9)};
+  }
+  const TAUS=[6,8,12,24];
+  function makeWindowTask(o){
+    o=o||{};
+    const kind=WINDOW_KINDS.find(k=>k.id===o.kind) || WINDOW_KINDS[0];
+    const seed=o.seed===undefined ? Math.floor(Math.random()*4294967296) : o.seed>>>0;
+    const rnd=seededRandom(seed), d=drawFrom(rnd);
+    const drug={route:kind.id, dosing:"repeated", thalf:d(4,16,0.5), V:d(20,80,1)};
+    if(kind.id==="oral"){ drug.F=d(0.6,1,0.05); drug.ka=d(0.6,2,0.05); }
+    // a regimen that works, with the window set around its steady state
+    const x=until(()=>{
+      const tau=TAUS[Math.floor(rnd()*TAUS.length)], D=d(100,1200,25);
+      const p=scenario(Object.assign({},drug,{tau, D, nDoses:2})), {peak, trough}=ssPeakTrough(p);
+      const lo=+(trough*d(0.7,0.9,0.05)).toFixed(1), hi=+(peak*d(1.1,1.35,0.05)).toFixed(1);
+      return {tau, D, peak, trough, lo, hi};
+    }, x=> x.lo>=0.5 && x.hi<=200 && x.hi/x.lo<=12 && x.peak/x.trough<=6);
+    const task={kind:kind.id, seed, drug, window:{lo:x.lo, hi:x.hi}, solution:{D:x.D, tau:x.tau}};
+    // start away from any answer: a regimen that misses the window
+    const cands=[{D:1500,tau:6},{D:100,tau:24},{D:1000,tau:24},{D:200,tau:6},{D:500,tau:12}];
+    task.start=cands.find(c=> !windowStatus(task, windowScenario(task,c)).good) || cands[0];
+    return task;
+  }
+  const windowScenario=(t, over)=> normalizeScenario(scenario(Object.assign({}, t.drug, {D:t.solution.D, tau:t.solution.tau},
+    {nDoses:Math.min(20, Math.floor(168/((over&&over.tau)||t.solution.tau)))}, over||{})));
+  // Met when the steady-state trough is at or above the lower limit and the peak at or below the upper one. The
+  // drug's own settings and the physiology have to stay as given; so does a regular regimen.
+  function windowStatus(t, p){
+    const keys=["route","thalf","V"].concat(t.kind==="oral" ? ["F","ka"] : []);
+    if(p.dosing!=="repeated" || keys.some(k=> p[k]!==t.drug[k]) || p.wt!==DEFAULTS.wt || p.clFn!==DEFAULTS.clFn)
+      return {mismatch:"setup", good:false};
+    const {peak, trough}=ssPeakTrough(p), lowOk=trough>=t.window.lo, highOk=peak<=t.window.hi;
+    return {peak, trough, lowOk, highOk, good:lowOk && highOk, mismatch:null};
+  }
+
   /* ================= SHOW THE MATH ================= */
   // Each readout worked out with the scenario's own numbers: `steps` are formulas ({m}) and plain notes ({t}).
   // `value` is computed from the formula shown, independently of the simulation, and the tests hold it to
@@ -1528,8 +1576,8 @@
   const sig3=v=> +v.toPrecision(3);
   // Links to one practice problem (#p=kind.seed) or one fit-the-data set (#fit=iv.seed): the seed rebuilds
   // exactly the same numbers, so a class can work the same problem. Scenario links (#v=…) are separate.
-  const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : t.type==="worksheet" ? `ws=${t.topic||"all"}.${t.count}.${t.seed>>>0}`
-    : `p=${t.id}.${t.seed>>>0}`;
+  const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : t.type==="window" ? `win=${t.kind}.${t.seed>>>0}`
+    : t.type==="worksheet" ? `ws=${t.topic||"all"}.${t.count}.${t.seed>>>0}` : `p=${t.id}.${t.seed>>>0}`;
   function decodeTaskLink(hash){
     const h=String(hash||"").trim(), w=/^#?ws=([a-z]{1,12})\.(\d{1,2})\.(\d{1,10})$/.exec(h);
     if(w){
@@ -1537,11 +1585,12 @@
       if((topic && !PRACTICE_TOPICS.some(t=>t.id===topic)) || !WORKSHEET_SIZES.includes(count) || seed>4294967295) return null;
       return {type:"worksheet", topic, count, seed};
     }
-    const m=/^#?(p|fit)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(h);
+    const m=/^#?(p|fit|win)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(h);
     if(!m) return null;
     const seed=Number(m[3]);
     if(!Number.isInteger(seed) || seed>4294967295) return null;
     if(m[1]==="p") return PRACTICE.some(g=>g.id===m[2]) ? {type:"problem", id:m[2], seed} : null;
+    if(m[1]==="win") return WINDOW_KINDS.some(k=>k.id===m[2]) ? {type:"window", kind:m[2], seed} : null;
     return FIT_KINDS.some(k=>k.id===m[2]) ? {type:"fit", kind:m[2], seed} : null;
   }
   // How far the model is from the measurements: the root-mean-square of the log ratios, in %.
@@ -1591,5 +1640,5 @@
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
-    READOUT_KEYS, metricMath};
+    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough};
 });

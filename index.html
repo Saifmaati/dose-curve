@@ -443,7 +443,11 @@
   .lp-skip:hover{color:#fff}
   .lp-skip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
   .lp-skip[hidden]{display:none}
-  #lsText:focus,#lsTitle:focus,#fitTitle:focus,#fitHow:focus{outline:none}
+  #lsText:focus,#lsTitle:focus,#fitTitle:focus,#fitHow:focus,#winTitle:focus,#winHow:focus{outline:none}
+  .win-meter{margin:11px 0 0;font-size:12.5px;color:var(--muted);line-height:1.7}
+  .win-meter b{font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:600}
+  .win-meter .ok{color:var(--green)}
+  .win-meter .no{color:#FF8FA3}
   .lesson-why{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;max-width:78ch}
   .lesson-chal{font-size:12.5px;color:#B9BEDF;line-height:1.7;flex:1;min-width:220px;margin:0}
   .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
@@ -969,6 +973,29 @@
           </div>
         </div>
 
+        <div class="lesson" id="winBar" hidden>
+          <div class="lesson-top">
+            <span class="ltag">RX</span><span class="lesson-k">Hit the window</span>
+            <button class="lesson-x" id="winClose" aria-label="Stop the regimen task">✕</button>
+          </div>
+          <div class="lesson-t" id="winTitle" tabindex="-1"></div>
+          <p class="pr-shared" id="winShared" hidden>Opened from a shared link: everyone who opens it gets this same drug and window.</p>
+          <p class="lesson-goal"><b>Goal</b><span id="winGoal"></span></p>
+          <p class="lesson-try"><b>Tip</b><span id="winTip"></span></p>
+          <div class="fit-sliders" id="winSliders" role="group" aria-label="The regimen"></div>
+          <p class="win-meter" id="winMeter"></p>
+          <p class="fit-status" id="winStatus" role="status"></p>
+          <p class="lesson-p" id="winHow" tabindex="-1" hidden></p>
+          <div class="lesson-foot">
+            <div class="lesson-btns">
+              <button class="abtn" id="winHowBtn">Show a regimen that works</button>
+              <button class="abtn" id="winReset">↺ Start over</button>
+              <button class="abtn" id="winNew">New drug</button>
+              <button class="abtn" id="winLink">Copy link to this task</button>
+            </div>
+          </div>
+        </div>
+
         <div class="qs" id="quickStart" role="region" aria-label="Quick start" hidden>
           <div class="qs-step"><b>1</b><span>Change any setting on the left. The curve updates instantly.</span></div>
           <div class="qs-step"><b>2</b><span>Set a baseline, then change something. The panel below explains what moved and why.</span></div>
@@ -1141,6 +1168,14 @@
               <button class="pr-btn" id="fitStart" style="margin-left:auto">Start fitting →</button>
             </div>
           </div>
+          <div class="pr-card fit-card">
+            <div class="pr-type">Hit the window</div>
+            <div class="pr-q">A made-up drug and a concentration window. Choose a dose and a dosing interval so that, once the regimen settles, both the peak and the trough stay inside the window.</div>
+            <div class="pr-foot">
+              <div class="seg" id="winKindSeg" role="group" aria-label="Given as"></div>
+              <button class="pr-btn" id="winStart" style="margin-left:auto">Start →</button>
+            </div>
+          </div>
           <div class="pr-card ws-card">
             <div class="pr-type">Worksheet</div>
             <div class="pr-q">A set of problems from the topic chosen above, to work on screen or print, with a worked answer key on its own page. Its link rebuilds the same sheet.</div>
@@ -1213,7 +1248,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=8d211ff121"></script>
+<script src="pk-engine.js?v=0d44e35bef"></script>
 <script>
 "use strict";
 (function(){
@@ -1238,6 +1273,7 @@
   let baseline=null;   // {p, label} (simulator)
   let lesson=null;     // active LESSONS entry (simulator)
   let fit=null;        // active "fit the data" exercise (simulator): PK.makeFit
+  let win=null;        // active "hit the window" regimen task (simulator): PK.makeWindowTask
   let simSaved=null;   // the simulator scenario while Compare is open
   const DEFAULT_NAMES=PK.DEFAULT_NAMES;
   const cmp={a:null, b:null, names:{...DEFAULT_NAMES}, edit:"a", lock:"", template:null};
@@ -1562,6 +1598,7 @@
     updateLibBadge();
     renderChallenge();
     renderFit();
+    renderWindow();
   }
 
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
@@ -3012,7 +3049,7 @@
         state.loadMult=1; state.missed=1; state.view="full";
         Object.assign(state,d.s);
         state.drug=d.id;
-        if(mode==="sim"){ exitLesson(); exitFit(); }
+        if(mode==="sim"){ exitLesson(); exitFit(); exitWindow(); }
         syncControls();
         changed(Object.keys(d.s).concat("loadMult","missed"));
       });
@@ -3038,7 +3075,7 @@
   }
   function loadLesson(L){
     setMode("sim");
-    exitFit();
+    exitFit(); exitWindow();
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
     Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.cur,L.view);   // a lesson says whether the effect charts show
@@ -3106,7 +3143,7 @@
   function exitLesson(){
     lesson=null;
     byId("lessonBar").hidden=true;
-    byId("quickStart").hidden=qsDismissed || !!fit;
+    byId("quickStart").hidden=qsDismissed || !!fit || !!win;
   }
   byId("lsClose").addEventListener("click",()=>{ exitLesson(); byId("app").focus({preventScroll:true}); });
   byId("lsReset").addEventListener("click",()=>{ if(lesson) loadLesson(lesson); });
@@ -3123,6 +3160,7 @@
   let fitShown=null;
   function startFit(f, shared){
     if(fit!==f && !shared) clearTaskHash();   // a shared set and Start over keep the link; a new set leaves it
+    exitWindow();
     fit=f;
     byId("fitShared").hidden=!shared;
     setMode("sim");
@@ -3144,40 +3182,47 @@
     byId("fitStatus").textContent="";
     byId("quickStart").hidden=true;
     byId("fitBar").hidden=false;
-    syncControls(); buildFitSliders(); render();
+    syncControls(); buildMirror("fitSliders", fit.free); render();
     showTab("sim");
   }
-  // The settings to fit, repeated in the fit bar so the chart stays in view while they move (on a phone the
+  // A task's own settings, repeated in its bar so the chart stays in view while they move (on a phone the
   // controls are far above it). They drive the same settings as the sliders in the controls.
-  function buildFitSliders(){
-    byId("fitSliders").innerHTML=fit.free.map(k=>{ const cfg=SLIDERS[k], r=PK.RANGES[k];
+  function buildMirror(id, keys){
+    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=PK.RANGES[k];
       return `<div class="ctrl"><div class="ctrl-top"><span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span><span class="ctrl-val" data-v="${k}"></span></div>`+
         `<input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${cfg.step}" value="${state[k]}" aria-label="${cfg.name}"></div>`;
     }).join("");
-    syncFitSliders();
+    syncMirror(id);
   }
-  function syncFitSliders(){
-    byId("fitSliders").querySelectorAll("input[data-k]").forEach(i=>{ if(document.activeElement!==i) i.value=state[i.dataset.k]; });
-    byId("fitSliders").querySelectorAll("[data-v]").forEach(el=> el.textContent=`${trim(state[el.dataset.v])} ${SLIDERS[el.dataset.v].unit}`);
+  function syncMirror(id){
+    byId(id).querySelectorAll("input[data-k]").forEach(i=>{ if(document.activeElement!==i) i.value=state[i.dataset.k]; });
+    byId(id).querySelectorAll("[data-v]").forEach(el=> el.textContent=`${trim(state[el.dataset.v])} ${SLIDERS[el.dataset.v].unit}`);
   }
+  const setFromMirror=(k,v)=>{
+    const r=sliderRefs[k];
+    state[k]=v; state.drug=null;
+    if(r){
+      const st=SLIDERS[k].step, lo=(SLIDERS[k].range||PK.RANGES[k])[0], n=(v-lo)/st;
+      r.sl.step=Math.abs(n-Math.round(n))>1e-6 ? "any" : String(st);   // an off-step value sits exactly, as from a link
+      r.sl.value=v; r.show();
+    }
+  };
   byId("fitSliders").addEventListener("input",e=>{
     const i=e.target.closest("input[data-k]");
     if(!i) return;
-    const k=i.dataset.k, r=sliderRefs[k];
-    state[k]=parseFloat(i.value); state.drug=null;
-    if(r){ r.sl.step=String(SLIDERS[k].step); r.sl.value=state[k]; r.show(); }
-    changed([k]);
+    setFromMirror(i.dataset.k, parseFloat(i.value));
+    changed([i.dataset.k]);
   });
   function exitFit(){
     if(!fit) return;
     fit=null;
     clearTaskHash();
     byId("fitBar").hidden=true;
-    byId("quickStart").hidden=qsDismissed || !!lesson;
+    byId("quickStart").hidden=qsDismissed || !!lesson || !!win;
   }
   function renderFit(){
     if(!fit || mode!=="sim") return;
-    syncFitSliders();
+    syncMirror("fitSliders");
     const s=PK.fitStatus(fit, snapshot()), T=fit.truth;
     byId("fitErr").textContent=s.err>=1000 ? "over 999%" : `${fmt(s.err,1)}%`;
     byId("fitErr").classList.toggle("ok", s.good);
@@ -3219,6 +3264,101 @@
   });
   byId("fitClose").addEventListener("click",()=>{ exitFit(); renderLegend(); render(); byId("app").focus({preventScroll:true}); });
 
+  /* ================= HIT THE WINDOW ================= */
+  // A made-up drug and a window: the band on the chart runs from the lower limit (MEC line) to the upper one (MTC
+  // line). The status is judged at steady state; the chart shows the last dose interval of a regimen long enough
+  // to be there. The status line is announced only when the verdict changes.
+  let winShown=null, winKind="iv";
+  const kOfDrug=t=> Math.LN2/t.drug.thalf;
+  function startWindow(t, shared){
+    if(win!==t && !shared) clearTaskHash();
+    exitFit();
+    win=t;
+    setMode("sim");
+    exitLesson();
+    loadScenario(PK.windowScenario(win, win.start));
+    Object.assign(state,{duration:state.nDoses*state.tau, mec:win.window.lo, mtc:win.window.hi, scale:"lin", view:"last", pd:false, drug:null});
+    baseline=null; updateBaselineUI();
+    evSel=null; cursorT=null; winShown=null;
+    const D=win.drug, oral=win.kind==="oral";
+    byId("winTitle").textContent=`${oral ? "Oral" : "IV bolus"} · t½ = ${trim(D.thalf)} h, V = ${trim(D.V)} L`+(oral ? `, F = ${D.F}, kₐ = ${trim(D.ka)} h⁻¹` : "");
+    byId("winShared").hidden=!shared;
+    byId("winGoal").textContent=`Choose a dose and a dosing interval so that, once the regimen settles (steady state), the trough stays at or above ${win.window.lo} mg/L and the peak at or below ${win.window.hi} mg/L: the shaded band on the chart.`;
+    byId("winTip").textContent=oral
+      ? "The interval sets the swing between peak and trough (at most e^(kₑτ); absorption smooths it). Find an interval whose swing fits the band, then scale the dose to move the whole curve into it."
+      : "The interval sets the swing: at steady state the peak is e^(kₑτ) times the trough, whatever the dose. Find an interval whose swing fits the band, then scale the dose to move the whole curve into it.";
+    byId("winHow").hidden=true; byId("winHowBtn").hidden=false;
+    byId("winStatus").textContent="";
+    byId("quickStart").hidden=true;
+    byId("winBar").hidden=false;
+    syncControls(); buildMirror("winSliders", ["D","tau"]); render();
+    showTab("sim");
+  }
+  function exitWindow(){
+    if(!win) return;
+    win=null;
+    clearTaskHash();
+    byId("winBar").hidden=true;
+    byId("quickStart").hidden=qsDismissed || !!lesson || !!fit;
+  }
+  function renderWindow(){
+    if(!win || mode!=="sim") return;
+    syncMirror("winSliders");
+    const s=PK.windowStatus(win, snapshot()), W=win.window;
+    byId("winMeter").innerHTML=s.mismatch ? "" :
+      `At steady state: trough <b class="${s.lowOk?"ok":"no"}">${fmt(s.trough,2)} mg/L</b> (at least ${W.lo}) ${s.lowOk?"✓":"✗"} · `+
+      `peak <b class="${s.highOk?"ok":"no"}">${fmt(s.peak,2)} mg/L</b> (at most ${W.hi}) ${s.highOk?"✓":"✗"}`;
+    const now=s.mismatch ? "setup" : s.good ? "good" : !s.lowOk && !s.highOk ? "both" : !s.lowOk ? "low" : "high";
+    if(now===winShown) return;
+    winShown=now;
+    const D=win.drug;
+    byId("winStatus").innerHTML=
+      now==="good" ? `<span class="ok">✓ In the window.</span> At steady state the level stays between ${W.lo} and ${W.hi} mg/L.`
+      : now==="setup" ? `The task is for this drug as given (${win.kind==="oral" ? `oral, F = ${D.F}, kₐ = ${trim(D.ka)} h⁻¹` : "IV bolus"}, t½ = ${trim(D.thalf)} h, V = ${trim(D.V)} L) on a regular repeated regimen, at 70 kg and 100% organ function. Start over puts those back.`
+      : now==="both" ? "Not yet: the peak is above the window and the trough below it. The swing is wider than the band, so try a shorter interval."
+      : now==="low" ? "Not yet: the trough falls below the window."
+      : "Not yet: the peak goes above the window.";
+  }
+  function winHowText(){
+    const D=win.drug, S=win.solution, W=win.window, k=kOfDrug(win), CL=k*D.V, F=win.kind==="oral" ? D.F : 1;
+    const s=PK.windowStatus(win, PK.windowScenario(win)), tauMax=Math.log(W.hi/W.lo)/k;
+    return `One regimen that works: ${S.D} mg every ${S.tau} h (steady-state trough ${fmt(s.trough,2)} mg/L, peak ${fmt(s.peak,2)} mg/L). `+
+      `A textbook route: the swing e^(kₑτ) has to fit the band, so τ ≤ ln(${W.hi} / ${W.lo}) / kₑ = ln(${fmt(W.hi/W.lo,2)}) / ${fmt(k,4)} = ${fmt(tauMax,1)} h`+
+      (win.kind==="oral" ? " (a little longer works orally, since absorption smooths the swing)" : "")+`. `+
+      `Then the average level is F·D / (CL·τ), with CL = kₑ·V = ${fmt(CL,2)} L/h: aim it near the middle of the band. Other doses and intervals work too.`;
+  }
+  byId("winKindSeg").innerHTML=PK.WINDOW_KINDS.map(k=>`<button data-kind="${k.id}" aria-pressed="${k.id===winKind}"${k.id===winKind?' class="on"':""}>${k.title}</button>`).join("");
+  byId("winKindSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-kind]");
+    if(!b) return;
+    winKind=b.dataset.kind;
+    byId("winKindSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
+  });
+  // Changing the interval here also sets the regimen long enough to reach steady state, and the window to show it.
+  byId("winSliders").addEventListener("input",e=>{
+    const i=e.target.closest("input[data-k]");
+    if(!i) return;
+    const k=i.dataset.k;
+    setFromMirror(k, parseFloat(i.value));
+    if(k==="tau"){
+      setFromMirror("nDoses", Math.min(20, Math.floor(168/state.tau)));
+      setFromMirror("duration", state.nDoses*state.tau);
+      syncMissedMax();
+    }
+    changed(k==="tau" ? ["tau","nDoses","duration"] : [k]);
+  });
+  const winFocus=()=>{ byId("winTitle").focus({preventScroll:true}); byId("winBar").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"nearest"}); };
+  byId("winStart").addEventListener("click",()=>{ startWindow(PK.makeWindowTask({kind:winKind})); winFocus(); });
+  byId("winNew").addEventListener("click",()=>{ if(win){ startWindow(PK.makeWindowTask({kind:win.kind})); winFocus(); } });
+  byId("winReset").addEventListener("click",()=>{ if(win) startWindow(win, !byId("winShared").hidden); });
+  byId("winLink").addEventListener("click",()=>{ if(win) copyHash(PK.encodeTaskLink({type:"window", kind:win.kind, seed:win.seed})); });
+  byId("winHowBtn").addEventListener("click",()=>{
+    byId("winHow").textContent=winHowText();
+    byId("winHow").hidden=false; byId("winHowBtn").hidden=true;
+    byId("winHow").focus();
+  });
+  byId("winClose").addEventListener("click",()=>{ exitWindow(); render(); byId("app").focus({preventScroll:true}); });
+
   /* ================= COMPARE MODE ================= */
   // The simulator view doubles as the compare view; the controls edit whichever side is selected.
   function setMode(m){
@@ -3237,6 +3377,7 @@
     document.body.dataset.mode=mode;
     byId("lessonBar").hidden=!(lesson && mode==="sim");
     byId("fitBar").hidden=!(fit && mode==="sim");
+    byId("winBar").hidden=!(win && mode==="sim");
     syncControls(); render();
   }
   function setEdit(side){
@@ -3540,7 +3681,7 @@
       syncControls(); render();
     } else {
       showTab("sim");
-      exitFit();
+      exitFit(); exitWindow();
       if(st.lesson) loadLesson(LESSONS.find(L=>L.id===st.lesson)); else exitLesson();
       loadScenario(st.s);
       baseline=st.base ? {p:st.base, label:st.baseLabel||(lesson?lesson.baseLabel:scenarioLabel(st.base))} : null;
@@ -3742,7 +3883,7 @@
   $("prViz").addEventListener("click",()=>{
     if(!prob) return;
     setMode("sim");
-    exitLesson(); exitFit();
+    exitLesson(); exitFit(); exitWindow();
     loadScenario(PK.practiceScenario(prob));
     const v=prob.view;
     Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:v.scale, view:v.zoom==="last" ? "last" : "full",
@@ -3879,6 +4020,7 @@
     showProblem(PK.makeProblem({topic:task.topic||undefined}), false);   // not newProblem, which would clear the link
     showWorksheet(PK.makeWorksheet(task), true);
   }
+  else if(task && task.type==="window") startWindow(PK.makeWindowTask({kind:task.kind, seed:task.seed}), true);
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
   else render();
 
