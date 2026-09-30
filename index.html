@@ -10,7 +10,7 @@
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
   if(t==="light") d.classList.add("light"); })();</script>
 <title>DoseCurve — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 20 guided lessons plus practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 21 guided lessons plus practice problems. Built for pharmacy students and educators.">
 <link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
 <meta name="color-scheme" content="dark">
@@ -22,7 +22,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 20 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 21 guided lessons. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -733,6 +733,10 @@
   .foot .privacy{margin:14px 0 0;line-height:1.6;color:var(--muted)}
   .foot .privacy b{color:var(--text-3)}
   .foot-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:16px;font-size:12.5px}
+  .foot-keys{border:0;background:none;padding:0;font:inherit;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+    text-decoration-color:rgba(185,190,223,.4)}
+  .foot-keys:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
+  html.light .foot-keys{text-decoration-color:rgba(40,60,130,.4)}
   .foot-links a{color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(185,190,223,.4)}
   .foot-links a:hover{color:var(--hi)}
   .foot-links a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
@@ -831,6 +835,14 @@
   }
 
   /* embed mode (?embed): just the app, with the disclaimer and a way out to the full page */
+  .keys-dlg{width:min(560px,calc(100vw - 32px))}
+  .keys{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
+  .keys th,.keys td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--glass-line);vertical-align:top;color:var(--text-3)}
+  .keys thead th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:500}
+  .keys tbody th{font-weight:600;color:var(--text);padding-top:12px}
+  .keys td:first-child{white-space:nowrap}
+  kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--glass-line-2);border-bottom-width:2px;border-radius:5px;
+    background:rgba(var(--well-rgb),.6);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--hi);text-align:center}
   .embed-bar{display:none}
   html.embed .top,html.embed .hero,html.embed .foot,html.embed #quickStart,html.embed #sharedPill{display:none !important}
   html.embed .wrap{padding-top:10px}
@@ -1175,6 +1187,7 @@
               <button data-speed="1" class="on">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button>
             </div>
             <button class="ib" id="navReset">Reset</button>
+            <button class="ib" id="keysBtn" aria-haspopup="dialog" title="Keyboard shortcuts">⌨ Keys</button>
           </div>
           <div class="insp-read" id="inspRead" aria-live="polite"></div>
         </div>
@@ -1343,6 +1356,7 @@
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
         <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
         <span>Updated 30 September 2026</span>
       </nav>
@@ -1350,6 +1364,30 @@
   </div>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog class="lib keys-dlg" id="keysDlg" aria-labelledby="keysTitle">
+    <div class="lib-in">
+      <div class="lib-head"><h2 id="keysTitle">Keyboard shortcuts</h2><button class="lesson-x" id="keysClose" aria-label="Close the keyboard shortcuts">✕</button></div>
+      <table class="keys">
+        <thead><tr><th scope="col">Keys</th><th scope="col">What they do</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" colspan="2">On the chart (focus it with Tab)</th></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the time cursor 0.5 h</td></tr>
+          <tr><td><kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd></td><td>Move it 5 h</td></tr>
+          <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>Jump to the start or the end of the window</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Clear the cursor (or cancel a dose you're dragging)</td></tr>
+          <tr><th scope="row" colspan="2">Everywhere else</th></tr>
+          <tr><td><kbd>Tab</kbd> <kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>Move between controls</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Change a slider by one step; in the tab bar, move between tabs (<kbd>Home</kbd> <kbd>End</kbd> for the first and last)</td></tr>
+          <tr><td><kbd>Page Up</kbd> <kbd>Page Down</kbd></td><td>Change a slider by a larger step</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>Check a practice answer; save a name in the library</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close a dialog; cancel a rename</td></tr>
+        </tbody>
+      </table>
+      <p class="lib-note">The ⟨ dose ⟩, ⟨ peak ⟩ and ⟨ trough ⟩ buttons under the chart move the cursor to the previous or next dose, peak or trough.</p>
+    </div>
+  </dialog>
 
   <dialog class="lib" id="libDlg" aria-labelledby="libTitle">
     <div class="lib-inner">
@@ -1378,7 +1416,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=8fb4bcbd6c"></script>
+<script src="pk-engine.js?v=c1f78c4349"></script>
 <script>
 "use strict";
 (function(){
@@ -3877,6 +3915,12 @@
   }
   window.addEventListener("beforeprint",()=>{ if(!document.body.classList.contains("ws-printing")) fillPrintHead(); });
   byId("printBtn").addEventListener("click",()=>{ fillPrintHead(); window.print(); });
+  // The keyboard shortcuts, in a dialog opened from under the chart or the footer; focus goes back where it came from.
+  let keysOpener=null;
+  ["keysBtn","keysFoot"].forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
+  byId("keysClose").addEventListener("click",()=> byId("keysDlg").close());
+  byId("keysDlg").addEventListener("click",e=>{ if(e.target===byId("keysDlg")) byId("keysDlg").close(); });   // backdrop
+  byId("keysDlg").addEventListener("close",()=>{ if(keysOpener) keysOpener.focus(); });
   // An iframe for a course page or website: the compact embed view of this scenario.
   byId("embedBtn").addEventListener("click",()=>{
     const src=`${pageUrl()}?embed${isLight() ? "&theme=light" : ""}#${PK.encodeLink(linkState())}`;   // the embed keeps the theme in use
