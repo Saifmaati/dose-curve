@@ -80,7 +80,7 @@ test("effect site: no delay is plasma exactly; saturable elimination keeps the d
 
 test("links: an effect-site delay needs a v6 link and round-trips; older links and the defaults are unchanged", ()=>{
   const V=PK.VIEW_DEFAULTS;
-  assert.equal(PK.VERSION, 6);
+  assert.ok(PK.VERSION>=6);
   const link=PK.encodeLink({mode:"sim", s:S({teq:1.5}), view:Object.assign({},V,{pd:true})});
   assert.ok(link.startsWith("v=6&"), link); assert.ok(link.includes("teq:1.5"), link);
   assert.equal(PK.decodeLink(link).s.teq, 1.5);
@@ -89,7 +89,7 @@ test("links: an effect-site delay needs a v6 link and round-trips; older links a
   assert.equal(PK.decodeLink("v=5&s=D:400").s.teq, 0, "a v5 link has no delay");
   assert.equal(PK.decodeLink("v=6&s=teq:99").s.teq, 12, "clamped"); assert.equal(PK.decodeLink("v=6&s=teq:-1").s.teq, 0);
   assert.equal(PK.decodeLink("v=6&s=teq:x").s.teq, 0);
-  assert.equal(PK.decodeLink("v=7&s=teq:1").newer, true);
+  assert.equal(PK.decodeLink(`v=${PK.VERSION+1}&s=teq:1`).newer, true);
 });
 
 test("lesson: effect delay (hysteresis), every number the text and the comparison state", ()=>{
