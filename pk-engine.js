@@ -322,8 +322,9 @@
   // where a peak can sit), then a golden-section search between the neighbours of the grid's highest point.
   function peakIn(p, t0, t1, ev, N){
     ev=ev||(p.kin==="mm" ? null : doseEvents(p)); N=N||400;
+    // the span is [t0, t1): a bolus at t1 belongs to the next interval, so the grid stops just before it
     const ts=[];
-    for(let i=0;i<=N;i++) ts.push(t0+(t1-t0)*i/N);
+    for(let i=0;i<=N;i++) ts.push(i===N ? t1-1e-9 : t0+(t1-t0)*i/N);
     (ev||doseEvents(p)).forEach(e=>{ [e.t, e.route==="inf" ? e.t+e.dur : null].forEach(t=>{ if(t!==null && t>t0 && t<t1) ts.push(t); }); });
     ts.sort((a,b)=>a-b);
     const at=t=>conc(p,t,ev||undefined);

@@ -2,6 +2,11 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.4.1 (2026-09-30)
+
+- **Fix: the dose table for IV boluses was off by one dose.** Each row's peak included the next dose's bolus, which lands at the end of the row's interval. Dose 1 of 500 mg every 12 h showed 15.63 mg/L instead of 12.50. Intervals are now read as [start, end), so a bolus at the end belongs to the next row. This dates from 1.0 and was found by the new standing cross-check.
+- **A standing cross-check in the test suite:** 40 random scenarios (routes, loading and missed doses, one and two compartments), each checking the last-dose peak, every dose-table peak, the steady-state peak and the window area against dense scans of the engine's own curve. It was also run on 800 more scenarios before release.
+
 ## 1.4.0 (2026-09-30)
 
 - **Three glossary terms (47):** method of residuals, AUC from two levels, and the Sawchuk–Zaske method. Each formula they state is tested against the model.
