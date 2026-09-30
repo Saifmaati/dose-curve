@@ -43,6 +43,29 @@
      also:"How sick the patient is and where the infection is, whether the creatinine is stable enough for Cockcroft–Gault to mean anything, other nephrotoxic drugs, hearing and balance, fluid status (gentamicin distributes in extracellular fluid), and when to draw levels to check the model against the patient.",
      refs:["gent","cg"]},
 
+    {id:"gent-lv", drug:"gent", title:"Gentamicin after burns: individualizing from two levels", tag:"Aminoglycoside · Sawchuk–Zaske",
+     patient:{age:28, sex:"M", ht:178, wt:75, scr:0.8}, clMult:1.8, vMult:1.4,   // the case's premise: 1.8× the predicted clearance, 1.4× the volume
+     current:{D:130, tau:8}, sample:{after:0.5, second:6},   // a level 30 min after the infusion ends, and one 6 h after it started
+     indication:"A serious Gram-negative infection after extensive burns. He has had 130 mg (about 5 mg/kg a day) every 8 h as 30-minute infusions, long enough to be at steady state, and two levels were drawn in one interval (see Levels). In this case (its premise, not a general figure) he clears gentamicin 1.8 times faster than his creatinine suggests, and it spreads through a volume 1.4 times the usual estimate.",
+     target:{kind:"pt", peak:[5,12], troughMax:2,
+       why:"The label asks for dosing that avoids prolonged peaks above 12 mcg/mL and troughs above 2 mcg/mL. A peak of at least 5 mg/L is a teaching target (unverified). In burn patients on 5 mg/kg/day, Zaske et al. (1976) found peaks below 4 mg/L and unusually short half-lives, shortened the interval, and individualized each regimen from measured levels."},
+     choices:{step:10, min:40, max:600, taus:[4,6,8,12,24], tinf:0.5},
+     start:{D:130, tau:8},
+     task:"From the two levels, work out his own elimination rate and volume (the Sawchuk–Zaske approach), then choose a dose and interval that give a steady-state peak of 5–12 mg/L and a trough at or below 2 mg/L. Compare his half-life with the one Cockcroft–Gault predicts.",
+     plan(x){ const L=levelsOf(this), T=L.T, t1=T+L.after, t2=L.second, k=Math.log(L.peak/L.trough)/(t2-t1);
+       const Cmax=L.peak*Math.exp(k*L.after), Cmin=L.trough*Math.exp(-k*(L.tau-t2)), V=(L.D/T)*(1-Math.exp(-k*T))/(k*(Cmax-Cmin*Math.exp(-k*T)));
+       const tauIdeal=T+Math.log(8/1)/k, tau=x.upTau(tauIdeal), D=8*k*V*T*(1-Math.exp(-k*tau))/(1-Math.exp(-k*T));
+       return {reg:{D, tau}, steps:[
+         `The levels: ${nf(L.peak,2)} mg/L at ${nf(t1,2)} h (30 minutes after the infusion ended) and ${nf(L.trough,2)} mg/L at ${nf(t2,2)} h after it started. Both come from the decline, ${nf(t2-t1,2)} h apart.`,
+         `His elimination rate: k = ln(${nf(L.peak,2)} / ${nf(L.trough,2)}) / ${nf(t2-t1,2)} = <b>${nf(k,4)} h⁻¹</b>, a half-life of <b>${nf(LN2/k,2)} h</b>, against the ${nf(LN2*(x.V/this.vMult)/(x.CL/this.clMult),2)} h Cockcroft–Gault predicts.`,
+         `Back to the end of the infusion: C<sub>max</sub> = ${nf(L.peak,2)} × e^(${nf(k,4)} × ${L.after}) = ${nf(Cmax,2)} mg/L; forward to the end of the interval: C<sub>min</sub> = ${nf(L.trough,2)} × e^(−${nf(k,4)} × ${nf(L.tau-t2,2)}) = ${nf(Cmin,2)} mg/L.`,
+         `His volume, from the infusion equation at steady state (Sawchuk–Zaske): V = (D/T)·(1 − e^(−kT)) / (k·[C<sub>max</sub> − C<sub>min</sub>·e^(−kT)]) = (${L.D} / ${T})·${nf(1-Math.exp(-k*T),4)} / (${nf(k,4)} × [${nf(Cmax,2)} − ${nf(Cmin,2)} × ${nf(Math.exp(-k*T),4)}]) = <b>${nf(V,1)} L</b>, against the ${nf(x.V/this.vMult,1)} L population estimate.`,
+         `For a peak of 8 and a trough of 1 mg/L: τ = T + ln(8 / 1) / k = ${T} + ${nf(Math.log(8),3)} / ${nf(k,4)} = ${nf(tauIdeal,2)} h, so every <b>${tau} h</b>; dose D = C<sub>peak</sub>·k·V·T·(1 − e^(−kτ)) / (1 − e^(−kT)) = <b>${nf(D,0)} mg</b>, or ${nf(x.round(D),0)} mg rounded.`]};
+     },
+     wrong:[{reg:{D:130, tau:8}, hint:"increase"}, {reg:{D:360, tau:6}, hint:"reducePeak"}],
+     also:"Burn care changes gentamicin handling as the wounds, fluids and kidney function change, so levels are repeated. Other points: the infection, other nephrotoxic drugs, hearing and balance, and whether the levels were drawn at the charted times.",
+     refs:["zaske1976","sawchukZaske","gent","cg"]},
+
     {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
@@ -206,6 +229,7 @@
     if(reg){ over.D=reg.D; over.tau=reg.tau; if(base.route==="inf") over.tinf=tinfFor(c, reg.D); }
     const p=Object.assign({}, base, over);
     if(c.clMult) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
+    if(c.vMult){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
     if(c.id==="phe") p.vmax=pheVmax(c)/(pt.wt*PK.clFactor(p));   // her Vmax, net of the model's renal factor
     // enough doses to show the approach to steady state inside two weeks
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
@@ -215,9 +239,12 @@
   const twoCmtOf=p=> PK.normalizeScenario(Object.assign({}, p, {cmt:2, V:p.V/2, thalf:p.thalf/2, k12:0.545, k21:0.545}));
   // Levels drawn at steady state on a case's current regimen, as a laboratory reports them (to 0.1 mg/L): a peak
   // `after` hours after the infusion ends, and a trough just before the next dose.
+  // `second` (hours after the start) replaces the trough with a mid-interval level. Levels below 1 mg/L are
+  // reported to two significant figures.
   function levelsOf(c){
-    const p=caseScenario(c, c.current), T=p.tinf, r1=v=> Math.round(v*10)/10;
-    return {p, D:c.current.D, tau:c.current.tau, T, after:c.sample.after, peak:r1(PK.ssConc(p, T+c.sample.after)), trough:r1(PK.ssConc(p, p.tau-1e-9))};
+    const p=caseScenario(c, c.current), T=p.tinf, rep=v=> v>=1 ? Math.round(v*10)/10 : +v.toPrecision(2), second=c.sample.second;
+    return {p, D:c.current.D, tau:c.current.tau, T, after:c.sample.after, second, peak:rep(PK.ssConc(p, T+c.sample.after)),
+      trough:rep(PK.ssConc(p, second===undefined ? p.tau-1e-9 : second))};
   }
   // First-order two-level AUC: k from the fall between the levels, the level back at the end of the infusion, then
   // the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
@@ -347,6 +374,8 @@
     const steps=[
       `CrCl (Cockcroft–Gault) = (140 − ${p.age}) × ${p.wt} / (72 × ${p.scr})${f ? " × 0.85" : ""} = <b>${nf(pt.crcl,1)} mL/min</b>.`,
       p.kin==="mm" ? `Saturable elimination: Km ${nf(p.km,1)} mg/L and this patient's Vmax (below).`
+        : c.current && (c.clMult || c.vMult) ? (()=>{ const V0=x.V/(c.vMult||1), CL0=x.CL/(c.clMult||1);
+            return `Before any levels, Cockcroft–Gault predicts a clearance of CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*V0,2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(CL0,2)} L/h</b>, a half-life of ${nf(LN2*V0/CL0,1)} h with V = ${nf(V0,1)} L.`; })()
         : `Clearance = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*PK.vOf(p)*(c.clMult||1),2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(x.CL,2)} L/h</b>; V = ${nf(x.V,1)} L; k = ${nf(x.k,4)} h⁻¹; t½ = ${nf(x.th,1)} h.`];
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
@@ -477,7 +506,7 @@
       <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
-        ${c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,1)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,1)} mg/L</b> just before the next dose.</dd>`)(levelsOf(c)) : ""}
+        ${c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
         <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl>
       <p class="cs-task"><b>Task.</b> ${h.esc(c.task)}</p>
       <form id="csForm" novalidate>${form}<div class="cs-actions"><button class="abtn" type="submit">Check regimen</button>

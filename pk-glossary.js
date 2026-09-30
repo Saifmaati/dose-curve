@@ -96,6 +96,12 @@
     {term:"Two-compartment model", sym:"α, β", unit:"h⁻¹", lesson:"twocmt",
      def:"A central volume (plasma and fast tissues) that exchanges drug with a peripheral one at k12 and k21. A bolus falls as A·e^(−αt) + B·e^(−βt): a fast distribution phase, then the slower terminal phase. Clearance and AUC are the same as with one compartment."},
     {term:"Distribution phase", sym:"t½ α", unit:"h", lesson:"twocmt",
-     def:"The early, fast fall in level while drug moves from the central volume into the tissues. Levels drawn during it run higher than the terminal phase would predict."}
+     def:"The early, fast fall in level while drug moves from the central volume into the tissues. Levels drawn during it run higher than the terminal phase would predict."},
+    {term:"Method of residuals", sym:"α, A", unit:"h⁻¹", lesson:"twocmt",
+     def:"Stripping a two-phase curve by hand. Fit the straight terminal line on the log scale (β and B), subtract it from the early points, and what remains falls on a steeper line (α and A). Then k21 = (A·β + B·α) / (A + B), k10 = α·β / k21 and k12 = α + β − k21 − k10. Fit the data has a two-compartment set to strip."},
+    {term:"AUC from two levels", sym:"AUC24", unit:"mg·h/L", lesson:"twocmt",
+     def:"First-order estimate at steady state from a peak drawn after distribution and a trough: k from their fall, the level back at the end of the infusion, then the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k. AUC24 is that area × 24 / τ. The vancomycin cases work it."},
+    {term:"Sawchuk–Zaske method", sym:"k, V", unit:"h⁻¹, L", lesson:"infdur",
+     def:"Individualizing an intermittent-infusion regimen from measured levels: k from two levels, V from the steady-state infusion equation, V = (D/T)·(1 − e^(−kT)) / (k·[Cmax − Cmin·e^(−kT)]), then the interval and dose for a target peak and trough. The gentamicin case after burns works it."}
   ];
 });
