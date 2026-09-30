@@ -101,10 +101,10 @@ No case stores an answer: every target check, hint, walkthrough number and refer
 
 ## Practice and assessment
 
-- **Practice problems.** There are 30 kinds of calculation problem in five topics:
-  - single dose (11 kinds)
+- **Practice problems.** There are 32 kinds of calculation problem in five topics:
+  - single dose (12 kinds, including clearance from a two-compartment fit)
   - repeated dosing (6)
-  - infusions (5)
+  - infusions (6, including the AUC from two measured levels)
   - concentration–effect (4)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
 
@@ -113,8 +113,8 @@ No case stores an answer: every target check, hint, walkthrough number and refer
 - **Worksheets.** Choose a topic (or all topics) and a size of 5, 10 or 15 problems.
   - Students can work the sheet on screen, with an answers toggle.
   - It also prints black on white, with the worked answer key on its own page at the end. To hand it out without answers, print only the pages before the key.
-  - The sheet's link rebuilds the same problems, so it can be set as homework and marked against the key.
-- **Fit the data** (estimation). Students get concentrations measured after an IV bolus or an oral dose, with realistic scatter. They move the half-life and volume until the curve runs through the points, while a live fit error shows how close they are.
+  - The sheet's link rebuilds the same problems, so it can be set as homework and marked against the key. New problem kinds never change a sheet that has already been shared.
+- **Fit the data** (estimation). Students get concentrations measured after an IV bolus or an oral dose, with realistic scatter. They move the half-life and volume until the curve runs through the points, while a live fit error shows how close they are. A third type gives a two-compartment IV bolus: students strip the curve by the method of residuals (the working is one click away) and set k10's half-life, V1, k12 and k21.
   - Once the fit is good, the app shows the settings that made the data.
   - **How to estimate from the data** works the same numbers out by hand: the log-linear line for an IV bolus, or the terminal slope and the area under the points for an oral dose.
   - Each data set has its own link.
@@ -150,7 +150,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent. Practice: *Infusions* |
 | 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
-| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels. Population mode and probability of target attainment |
+| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Fit the data (two compartments: the method of residuals). Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels. Population mode and probability of target attainment |
 | 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Population mode on phenytoin: how many virtual patients have no steady state as the dose rises. Practice: *Saturable (Michaelis–Menten)* |
 | 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect. Case: Theophylline in a smoker. A mixed worksheet |
 

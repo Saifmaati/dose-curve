@@ -149,3 +149,21 @@ The number of tests rose from 246 to 257, in 10 files.
 
 There are now 263 tests in 10 files.
 
+Live check after merging (pull request #3, merge 2d50c74):
+- CI was green on the branch head and the pull request, and a fresh clone of the branch passed 263/263.
+- The deployed files are byte-identical to the repository's.
+- In the browser: defaults unchanged, Version 1.2.0, offline cache dosecurve-v11, and phenytoin's population (200 virtual patients) in about 1.4 s.
+- Live Lighthouse: mobile 97–100 in performance (85 before), desktop 100, and 100 for accessibility, best practices and SEO on both.
+
+## 11. 1.3.0
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Fit the data, two compartments: data that can be stripped by hand, and the method of residuals worked with the data's own numbers (by-hand values alone fit 97% of sets) | Simulator → Fit the data → Two compartments | `pk-engine.test.js` (fit tests over 120 seeds) |
+| Practice: AUC from two levels, and two-compartment clearance (32 kinds) | Practice → Infusions; Single dose | `pk-engine.test.js` (every answer against the model) |
+| Worksheet links keep their problems when new kinds arrive (a pool version in the link) | Practice → Worksheet → Copy link | `pk-engine.test.js` (five 1.2.0 sheets rebuilt exactly) |
+| The practice problems load with the Practice tab (`pk-practice.js`); initial script +25.2% → +14.1% | Practice tab | `release.test.js` (stamps, id list, budget) |
+| Validation page: no jump when results arrive; Lighthouse mobile 95 → 100 | validation.html | — |
+
+There are now 265 tests in 10 files.
+
