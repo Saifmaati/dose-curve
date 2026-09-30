@@ -56,13 +56,27 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 | Initial JS (inline script + engine) | 318,996 bytes | 392,768 bytes (+23.1%; budget +25%, tested) |
 | Loaded on demand | — | `cases.js` 38,230 B, `pk-glossary.js` 9,949 B, `pop-worker.js` 4,445 B |
 | Inline CSS | 59,903 bytes | 71,622 bytes |
-| Lighthouse mobile (perf · a11y · best practices · SEO) | 75 · 100 · 100 · 100 (live) | 76 · 100 · 100 · 100 (local build) |
-| Lighthouse desktop | 92 · 100 · 100 · 100, CLS 0.144 (live) | 96 · 100 · 100 · 100, CLS 0.034 (local build) |
+| Lighthouse mobile (perf · a11y · best practices · SEO) | 75 · 100 · 100 · 100 (live) | 85 · 100 · 100 · 100 (live), CLS 0 |
+| Lighthouse desktop | 92 · 100 · 100 · 100, CLS 0.144 (live) | 98 · 100 · 100 · 100 (live), CLS 0.006 |
 | Validation page accessibility (Lighthouse) | — | 100 |
 | axe-core 4.10.2 violations (app states checked, both themes) | 0 | 0 |
 | Library values with a cited source | 0 of 6 drugs sourced | 54 cited values (15 sources), 27 flagged unverified, across 9 drugs |
 | Lessons · comparisons · practice kinds · glossary terms · cases | 21 · 15 · 26 · 30 · 0 | 23 · 17 · 30 · 42 · 8 |
 | Independent validation | — | 94 scenarios, 376 comparisons, largest difference 0.025% |
+
+### The live check after merging
+
+- Pull request #1 merged `v1.0` into `main` as commit a75f28c, after CI passed on the branch and on the pull request.
+- A fresh clone of the branch passed all 246 tests.
+- After the Pages deploy, all 20 site files were byte-identical to the local ones.
+- Checked on the live site:
+  - Simulator defaults unchanged (Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% in the window).
+  - Lessons (23, with the 42-term glossary loading with the tab) and the Kidney function lesson.
+  - Compare, and Practice (30 kinds).
+  - The Cases tab (8 cases).
+  - Population mode with a band.
+  - The validation page: 376 of 376 comparisons within tolerance, run in the browser.
+  - The offline cache (dosecurve-v9) holds the page, cases, worker, glossary and validation files, with the service worker in control.
 
 ## 5. How to verify each headline claim
 
