@@ -1640,412 +1640,26 @@
   const drawFrom=rnd=> (a,b,st)=> +(Math.round((a+(b-a)*rnd())/st)*st).toFixed(4);
   const nf=(v,dp)=> String(+v.toFixed(dp));          // a number to dp decimals, without trailing zeros
   const sig4=v=> +v.toPrecision(4);                  // a quoted measurement: 4 significant figures
+  // First-order two-level AUC at steady state, as practice does it by hand: k from a peak drawn `after` hours after
+  // a T-hour infusion ends and the trough at τ, the level back at the end of the infusion, then the infusion phase
+  // as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
+  function twoLevelAUC(Cp, Ct, T, after, tau){
+    const dt=tau-T-after, k=Math.log(Cp/Ct)/dt, Cmax=Cp*Math.exp(k*after), aInf=T*(Ct+Cmax)/2, aDecl=(Cmax-Ct)/k;
+    return {dt, k, Cmax, aInf, aDecl, auc24:(aInf+aDecl)*24/tau};
+  }
   const evenUp=h=> Math.min(168, Math.max(6, 2*Math.ceil(h/2)));   // a time window in whole even hours
-  const step=s=>`<span class="step">${s}</span>`;
-  const LN2="0.693";
-  // Mean concentration over one dose interval at steady state (Simpson's rule on the exact steady-state curve).
-  function ssMean(p){
-    const N=400, h=p.tau/N;
-    let s=0;
-    for(let i=0;i<=N;i++) s+=ssConc(p, i===N ? p.tau-1e-9 : i*h)*(i===0||i===N ? 1 : i%2 ? 4 : 2);
-    return s*h/3/p.tau;
-  }
-  // Total exposure out to 40 half-lives (Simpson's rule on the simulated curve; what's left beyond is < 10⁻¹²).
-  function areaUnder(p){
-    const T=40*Math.LN2/keOf(p), N=20000, h=T/N, ev=doseEvents(p);
-    let s=0;
-    for(let i=0;i<=N;i++) s+=conc(p,i*h,ev)*(i===0||i===N ? 1 : i%2 ? 4 : 2);
-    return s*h/3;
-  }
-  // Steady-state concentration per mg/h of constant infusion, from an infusion run for 30 half-lives.
-  function cssPerRate(p){
-    const T=30*Math.LN2/keOf(p), q=scenario(Object.assign({},p,{route:"inf", dosing:"single", tinf:T, D:T}));
-    return conc(q,T);
-  }
-  // Where a rising function first reaches a value (bisection; f must increase on [lo, hi]).
-  function solveUp(f, target, lo, hi){
-    for(let i=0;i<200;i++){ const m=(lo+hi)/2; if(f(m)<target) lo=m; else hi=m; }
-    return (lo+hi)/2;
-  }
-  // Doses for a regimen to run 10 half-lives, when it is within 0.1% of steady state; with a final interval that
-  // starts after those 10 half-lives when the interval's average is asked about. It has to fit 20 doses and 168 h.
-  const ssDoses=(th,tau,whole)=> Math.ceil(10*th/tau)+(whole ? 1 : 0);
-  const ssFits=(th,tau,whole)=> ssDoses(th,tau,whole)<=20 && ssDoses(th,tau,whole)*tau<=168;
-  const mostDoses=tau=> Math.min(20, Math.floor(168/tau));   // as close to steady state as the chart can show
   // Keep drawing until the numbers fit the model's ranges.
   const until=(make, ok)=>{ let x; for(let i=0;i<60;i++){ x=make(); if(ok(x)) return x; } return x; };
-
-  const PRACTICE=[
-    /* ----- single dose ----- */
-    {id:"ke", topic:"single", gen(d){
-      const th=d(1,12,0.5), k=Math.LN2/th;
-      return {type:"Elimination rate constant", unit:"h⁻¹", dp:3, ans:k,
-        q:`A drug has an elimination half-life of <b>${th} h</b>. What is its first-order elimination rate constant kₑ?`,
-        sol:[step(`kₑ and t½ are linked by <b>kₑ = ln2 / t½</b>.`), step(`kₑ = ${LN2} / ${th} = <b>${nf(k,3)} h⁻¹</b>`),
-          step(`So each hour the body removes ${nf(100*(1-Math.exp(-k)),1)}% of the drug present at the start of that hour.`)],
-        viz:{route:"iv", D:500, V:35, thalf:th}, view:{duration:evenUp(th*5)}, at:th,
-        check:p=> Math.log(conc(p,0)/conc(p,1))};
-    }},
-    {id:"c0", topic:"single", gen(d){
-      const D=d(100,1000,50), V=d(10,60,5);
-      return {type:"IV bolus · starting concentration", unit:"mg/L", dp:2, ans:D/V,
-        q:`A <b>${D} mg</b> IV bolus is given, and the drug's volume of distribution is <b>${V} L</b>. What is the concentration straight after the dose (C₀)?`,
-        sol:[step(`An IV bolus spreads through the volume of distribution at once: <b>C₀ = D / V</b>.`), step(`C₀ = ${D} / ${V} = <b>${nf(D/V,2)} mg/L</b>`)],
-        viz:{route:"iv", D, V, thalf:4}, view:{duration:24}, at:0, check:p=> conc(p,0)};
-    }},
-    {id:"ct", topic:"single", gen(d){
-      const D=d(200,800,50), V=d(15,50,5), th=d(2,10,1), t=d(2,12,1), k=Math.LN2/th, C0=D/V, C=C0*Math.exp(-k*t);
-      return {type:"IV bolus · concentration at a time", unit:"mg/L", dp:2, ans:C,
-        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), what is the concentration at <b>t = ${t} h</b>?`,
-        sol:[step(`C₀ = D / V = ${D} / ${V} = <b>${nf(C0,2)} mg/L</b>`), step(`kₑ = ${LN2} / ${th} = <b>${nf(k,3)} h⁻¹</b>`),
-          step(`C(t) = C₀·e^(−kₑt) = ${nf(C0,2)}·e^(−${nf(k,3)} × ${t}) = <b>${nf(C,2)} mg/L</b>`),
-          step(`Check: ${t} h is ${nf(t/th,2)} half-lives, so about ${nf(100*Math.pow(0.5,t/th),0)}% of C₀ is left.`)],
-        viz:{route:"iv", D, V, thalf:th}, view:{duration:evenUp(Math.max(t+4, th*4))}, at:t, check:p=> conc(p,t)};
-    }},
-    {id:"remain", topic:"single", gen(d){
-      const th=d(2,12,1), t=d(1,3*th,1), f=100*Math.pow(0.5,t/th);
-      return {type:"Fraction remaining", unit:"%", dp:1, ans:f,
-        q:`A drug has a half-life of <b>${th} h</b>. What percentage of an IV bolus dose is still in the body <b>${t} h</b> after it's given?`,
-        sol:[step(`Each half-life halves what is left: <b>fraction remaining = (½)^(t / t½)</b>.`),
-          step(`t / t½ = ${t} / ${th} = <b>${nf(t/th,2)}</b> half-lives`), step(`(½)^${nf(t/th,2)} = <b>${nf(f,1)}%</b> of the dose`)],
-        viz:{route:"iv", D:500, V:35, thalf:th}, view:{duration:evenUp(Math.max(t+4, th*4))}, at:t,
-        check:p=> 100*conc(p,t)/conc(p,0)};
-    }},
-    {id:"thalf2", topic:"single", gen(d){
-      const C1=d(8,40,2), t1=d(1,3,1), n=d(1,3,1), th=d(2,8,1), t2=t1+n*th, C2=C1/Math.pow(2,n), V=10;
-      return {type:"Half-life from two levels", unit:"h", dp:2, ans:th,
-        q:`After an IV bolus, the concentration is <b>${nf(C1,2)} mg/L</b> at <b>t = ${t1} h</b> and <b>${nf(C2,2)} mg/L</b> at <b>t = ${t2} h</b>. What is the elimination half-life?`,
-        sol:[step(`<b>t½ = (t₂ − t₁)·ln2 / ln(C₁ / C₂)</b>`),
-          step(`t½ = (${t2} − ${t1})·${LN2} / ln(${nf(C1,2)} / ${nf(C2,2)}) = <b>${th} h</b>`),
-          step(`Check: the level halved ${n===1?"once":n+" times"} in ${t2-t1} h, so each halving took ${th} h. On the log scale the fall is a straight line.`)],
-        viz:{route:"iv", D:Math.round(C1*V*Math.exp(Math.LN2/th*t1)), V, thalf:th}, view:{duration:evenUp(t2+2*th), scale:"log"}, at:t2,
-        check:p=> (t2-t1)*Math.LN2/Math.log(conc(p,t1)/conc(p,t2))};
-    }},
-    {id:"auc", topic:"single", gen(d){
-      const D=d(200,800,50), F=d(0.5,1,0.05), th=d(2,10,1), V=d(15,50,5), CL=Math.LN2/th*V, auc=F*D/CL;
-      return {type:"Exposure (AUC)", unit:"mg·h/L", dp:1, ans:auc,
-        q:`An oral dose of <b>${D} mg</b> with bioavailability <b>F = ${F}</b> is given (t½ = <b>${th} h</b>, V = <b>${V} L</b>). What is the total exposure, AUC from zero to infinity?`,
-        sol:[step(`<b>AUC = F·D / CL</b>. How fast the drug is absorbed changes the curve's shape, not its area.`),
-          step(`CL = kₑ·V = (${LN2} / ${th})·${V} = <b>${nf(CL,2)} L/h</b>`), step(`AUC = ${F} × ${D} / ${nf(CL,2)} = <b>${nf(auc,1)} mg·h/L</b>`)],
-        viz:{route:"oral", D, F, ka:1.2, thalf:th, V}, view:{duration:evenUp(th*6)},
-        check:p=> areaUnder(p)};
-    }},
-    {id:"cl", topic:"single", gen(d){
-      const D=d(100,1000,50), th=d(2,12,1), V=d(10,60,5), auc=sig4(D/(Math.LN2/th*V)), CL=D/auc;
-      return {type:"Clearance from AUC", unit:"L/h", dp:2, ans:CL,
-        q:`A <b>${D} mg</b> IV bolus gives a total exposure of <b>AUC = ${auc} mg·h/L</b>. What is the drug's clearance?`,
-        sol:[step(`All of an IV dose is eventually cleared, so <b>CL = D / AUC</b> (for an oral dose, F·D / AUC).`),
-          step(`CL = ${D} / ${auc} = <b>${nf(CL,2)} L/h</b>`),
-          step(`Clearance is the volume of plasma cleared of drug each hour. It sets total exposure; the half-life depends on V too.`)],
-        viz:{route:"iv", D, V, thalf:th}, view:{duration:evenUp(th*6)},
-        check:p=> p.D/areaUnder(p)};
-    }},
-    {id:"bioF", topic:"single", gen(d){
-      const F=d(0.3,0.95,0.05), th=d(2,12,1), V=d(15,50,5), Div=d(100,500,50), Dpo=d(200,800,50), CL=Math.LN2/th*V;
-      const aIv=sig4(Div/CL), aPo=sig4(F*Dpo/CL), ans=(aPo/Dpo)/(aIv/Div);
-      return {type:"Bioavailability from AUCs", unit:"(fraction)", dp:2, ans,
-        q:`The same drug is given two ways. A <b>${Div} mg</b> IV bolus gives <b>AUC = ${aIv} mg·h/L</b>; a <b>${Dpo} mg</b> oral dose gives <b>AUC = ${aPo} mg·h/L</b>. What is the oral bioavailability F?`,
-        sol:[step(`Compare exposure per mg: <b>F = (AUC_oral / D_oral) / (AUC_IV / D_IV)</b>.`),
-          step(`Oral: ${aPo} / ${Dpo} = ${nf(aPo/Dpo,4)} · IV: ${aIv} / ${Div} = ${nf(aIv/Div,4)} (mg·h/L per mg)`),
-          step(`F = ${nf(aPo/Dpo,4)} / ${nf(aIv/Div,4)} = <b>${nf(ans,2)}</b>, so ${nf(100*ans,0)}% of the oral dose reaches the circulation.`)],
-        viz:{route:"oral", D:Dpo, F, ka:1, thalf:th, V}, view:{duration:evenUp(th*6)},
-        check:p=>{
-          const iv=scenario(Object.assign({},p,{route:"iv", D:Div}));
-          return (areaUnder(p)/p.D)/(areaUnder(iv)/Div);
-        }};
-    }},
-    {id:"tmax", topic:"single", gen(d){
-      const ka=d(0.6,3,0.1), th=d(2,12,1), k=Math.LN2/th, tm=Math.log(ka/k)/(ka-k);
-      return {type:"Oral dose · time of the peak", unit:"h", dp:2, ans:tm,
-        q:`An oral dose has an absorption rate constant <b>kₐ = ${ka} h⁻¹</b> and an elimination half-life of <b>${th} h</b>. When does the concentration peak (tmax)?`,
-        sol:[step(`The peak is where absorption and elimination balance: <b>tmax = ln(kₐ / kₑ) / (kₐ − kₑ)</b>.`),
-          step(`kₑ = ${LN2} / ${th} = <b>${nf(k,3)} h⁻¹</b>`),
-          step(`tmax = ln(${ka} / ${nf(k,3)}) / (${ka} − ${nf(k,3)}) = <b>${nf(tm,2)} h</b>`),
-          step(`The dose isn't in the formula: tmax depends only on the two rate constants.`)],
-        viz:{route:"oral", D:500, F:0.9, ka, thalf:th, V:35}, view:{duration:evenUp(Math.max(24, th*4))}, at:tm,
-        check:p=>{   // the peak of the simulated curve, by ternary search
-          let lo=0, hi=24;
-          for(let i=0;i<200;i++){ const a=lo+(hi-lo)/3, b=hi-(hi-lo)/3; if(conc(p,a)<conc(p,b)) lo=a; else hi=b; }
-          return (lo+hi)/2;
-        }};
-    }},
-    {id:"tbelow", topic:"single", gen(d){
-      const D=d(200,1000,50), V=d(10,50,5), th=d(2,12,1), C0=D/V, Ct=+(C0*d(0.1,0.5,0.05)).toFixed(2), k=Math.LN2/th, t=Math.log(C0/Ct)/k;
-      return {type:"IV bolus · time to fall to a level", unit:"h", dp:1, ans:t,
-        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), how long until the concentration falls to <b>${Ct} mg/L</b>?`,
-        sol:[step(`C₀ = D / V = ${D} / ${V} = <b>${nf(C0,2)} mg/L</b>`),
-          step(`Solve C₀·e^(−kₑt) = C for t: <b>t = ln(C₀ / C) / kₑ</b>`),
-          step(`kₑ = ${LN2} / ${th} = ${nf(k,4)} h⁻¹, so t = ln(${nf(C0,2)} / ${Ct}) / ${nf(k,4)} = <b>${nf(t,1)} h</b>`),
-          step(`Check: that is ${nf(t/th,2)} half-lives, and (½)^${nf(t/th,2)} = ${nf(Ct/C0,3)} of C₀.`)],
-        viz:{route:"iv", D, V, thalf:th}, view:{duration:evenUp(Math.max(t+4, th*4))}, at:t,
-        check:p=> solveUp(x=> -conc(p,x), -Ct, 0, 400)};
-    }},
-    {id:"thalfcl", topic:"single", gen(d){
-      const {CL,V,th}=until(()=>{ const CL=d(1,12,0.5), V=d(10,80,5); return {CL, V, th:Math.LN2*V/CL}; }, x=> x.th>=1 && x.th<=20);
-      return {type:"Half-life from clearance and volume", unit:"h", dp:2, ans:th,
-        q:`A drug has a clearance of <b>${CL} L/h</b> and a volume of distribution of <b>${V} L</b>. What is its elimination half-life?`,
-        sol:[step(`kₑ = CL / V, and t½ = ln2 / kₑ, so <b>t½ = 0.693·V / CL</b>.`),
-          step(`t½ = ${LN2} × ${V} / ${CL} = <b>${nf(th,2)} h</b>`),
-          step(`A larger volume or a smaller clearance both lengthen the half-life; neither alone decides it.`)],
-        viz:{route:"iv", D:500, V, thalf:+th.toFixed(4)}, view:{duration:evenUp(th*5)}, at:th,
-        check:p=> solveUp(x=> -conc(p,x), -conc(p,0)/2, 0, 400)};
-    }},
-    /* ----- repeated dosing ----- */
-    {id:"t90", topic:"rep", gen(d){
-      const th=d(2,12,1), t=Math.log2(10)*th, tau=Math.max(2,Math.min(24,th)), n=Math.min(20, Math.ceil(2*t/tau)+1);
-      return {type:"Time to steady state", unit:"h", dp:1, ans:t,
-        q:`A drug with a half-life of <b>${th} h</b> is started on a regular dosing schedule. About how long until concentrations reach <b>90%</b> of steady state?`,
-        sol:[step(`After n half-lives the approach to steady state is 1 − (½)ⁿ complete, so 90% takes <b>n = log₂10 ≈ 3.32</b> half-lives.`),
-          step(`t₉₀ = 3.32 × ${th} = <b>${nf(t,1)} h</b>. The dose and interval don't change it; only the half-life does.`)],
-        viz:{route:"iv", dosing:"repeated", D:300, V:30, thalf:th, tau, nDoses:n}, view:{duration:evenUp(n*tau)}, at:t,
-        check:p=>{ const css=cssPerRate(p), q=scenario(Object.assign({},p,{route:"inf", dosing:"single", tinf:168, D:168}));
-          return solveUp(x=> conc(q,x)/css, 0.9, 0, 168); }};
-    }},
-    {id:"rac", topic:"rep", gen(d){
-      const th=d(2,24,1), tau=d(4,Math.max(4,Math.min(24,2*th)),2), k=Math.LN2/th, x=Math.exp(-k*tau), r=1/(1-x), n=Math.min(20, Math.floor(168/tau), Math.max(4, Math.ceil(5*th/tau)+1));
-      return {type:"Accumulation ratio", unit:"×", dp:2, ans:r,
-        q:`An IV bolus is repeated every <b>${tau} h</b> for a drug with a half-life of <b>${th} h</b>. At steady state, how many times higher is the peak than the first dose's peak (the accumulation ratio)?`,
-        sol:[step(`Each dose adds to what's left of the earlier ones: <b>R = 1 / (1 − e^(−kₑτ))</b>.`),
-          step(`kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>; e^(−kₑτ) = e^(−${nf(k,4)} × ${tau}) = <b>${nf(x,3)}</b>`),
-          step(`R = 1 / (1 − ${nf(x,3)}) = <b>${nf(r,2)}</b>. The shorter the interval compared with the half-life, the more the drug builds up.`)],
-        viz:{route:"iv", dosing:"repeated", D:300, V:30, thalf:th, tau, nDoses:n}, view:{duration:evenUp(n*tau)},
-        check:p=> ssConc(p,0)/conc(p,0)};
-    }},
-    {id:"cavg", topic:"rep", gen(d){
-      const D=d(100,600,50), F=d(0.5,1,0.05), th=d(4,14,1), V=d(20,60,5), tau=until(()=>d(6,24,6), t=> ssFits(th,t,true));
-      const CL=Math.LN2/th*V, c=F*D/(CL*tau), n=mostDoses(tau);
-      return {type:"Average steady-state concentration", unit:"mg/L", dp:2, ans:c,
-        q:`An oral dose of <b>${D} mg</b> (F = <b>${F}</b>) is taken every <b>${tau} h</b>. The drug has t½ = <b>${th} h</b> and V = <b>${V} L</b>. What is the average concentration at steady state?`,
-        sol:[step(`At steady state, what's absorbed each interval is cleared each interval: <b>Css,avg = F·D / (CL·τ)</b>.`),
-          step(`CL = (${LN2} / ${th})·${V} = <b>${nf(CL,2)} L/h</b>`),
-          step(`Css,avg = ${F} × ${D} / (${nf(CL,2)} × ${tau}) = <b>${nf(c,2)} mg/L</b>. Only the dose rate D/τ matters, not how it's split.`)],
-        viz:{route:"oral", dosing:"repeated", D, F, ka:1, thalf:th, V, tau, nDoses:n}, view:{duration:evenUp(n*tau), zoom:"last"},
-        check:p=> ssMean(p)};
-    }},
-    {id:"mdose", topic:"rep", gen(d){
-      const x=until(()=>{ const c=d(2,15,1), F=d(0.5,1,0.05), th=d(4,14,1), V=d(20,60,5), tau=d(6,24,6), CL=Math.LN2/th*V;
-        return {c,F,th,V,tau,CL,D:c*CL*tau/F}; }, x=> x.D>=50 && x.D<=2000 && ssFits(x.th,x.tau,true));
-      const {c,F,th,V,tau,CL,D}=x, n=mostDoses(tau);
-      return {type:"Dose for an average level", unit:"mg", dp:0, ans:D,
-        q:`A drug has F = <b>${F}</b>, t½ = <b>${th} h</b> and V = <b>${V} L</b>. Which oral dose, taken every <b>${tau} h</b>, gives an average steady-state concentration of <b>${c} mg/L</b>?`,
-        sol:[step(`Rearrange Css,avg = F·D / (CL·τ): <b>D = Css,avg·CL·τ / F</b>.`),
-          step(`CL = (${LN2} / ${th})·${V} = <b>${nf(CL,2)} L/h</b>`),
-          step(`D = ${c} × ${nf(CL,2)} × ${tau} / ${F} = <b>${nf(D,0)} mg</b>`)],
-        viz:{route:"oral", dosing:"repeated", D:Math.round(D), F, ka:1, thalf:th, V, tau, nDoses:n}, view:{duration:evenUp(n*tau), zoom:"last"},
-        check:p=> c*p.D/ssMean(p)};
-    }},
-    {id:"trough", topic:"rep", gen(d){
-      const D=d(100,1000,50), V=d(10,60,5), th=d(2,12,1), tau=d(2*Math.ceil(th/4),Math.min(24,3*th),2), k=Math.LN2/th, x=Math.exp(-k*tau), cmin=D/V*x/(1-x);
-      const n=mostDoses(tau);
-      return {type:"Steady-state trough", unit:"mg/L", dp:2, ans:cmin,
-        q:`An IV bolus of <b>${D} mg</b> is given every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). What is the steady-state trough, just before a dose?`,
-        sol:[step(`At steady state the trough is what's left of every earlier dose: <b>Cmin,ss = (D/V)·e^(−kₑτ) / (1 − e^(−kₑτ))</b>.`),
-          step(`D/V = <b>${nf(D/V,2)} mg/L</b>; kₑ = ${LN2} / ${th} = ${nf(k,4)} h⁻¹; e^(−kₑτ) = <b>${nf(x,3)}</b>`),
-          step(`Cmin,ss = ${nf(D/V,2)} × ${nf(x,3)} / (1 − ${nf(x,3)}) = <b>${nf(cmin,2)} mg/L</b>, and the peak is D/V higher: ${nf(cmin+D/V,2)} mg/L.`)],
-        viz:{route:"iv", dosing:"repeated", D, V, thalf:th, tau, nDoses:n}, view:{duration:evenUp(n*tau), zoom:"last"}, at:n*tau,
-        check:p=> ssConc(p, p.tau-1e-9)};
-    }},
-    {id:"taumax", topic:"rep", gen(d){
-      const x=until(()=>{ const th=d(2,12,1), lo=d(2,10,1), ratio=d(2,6,0.5), k=Math.LN2/th, tau=Math.log(ratio)/k;
-        return {th, lo, hi:+(lo*ratio).toFixed(1), k, tau}; }, x=> x.tau>=2 && x.tau<=24 && 20*Math.floor(x.tau)>=10*x.th);
-      const {th, lo, hi, k}=x, tau=Math.log(hi/lo)/k, tv=Math.floor(tau), V=30, n=mostDoses(tv);
-      return {type:"Longest interval for a window", unit:"h", dp:1, ans:tau,
-        q:`A drug given as a repeated IV bolus has a half-life of <b>${th} h</b>. Its level should stay between <b>${lo} mg/L</b> and <b>${hi} mg/L</b>. What is the longest dosing interval whose steady-state swing fits that window?`,
-        sol:[step(`At steady state an IV bolus peaks at e^(kₑτ) times its trough, so the swing fits when e^(kₑτ) ≤ upper / lower: <b>τ ≤ ln(upper / lower) / kₑ</b>.`),
-          step(`kₑ = ${LN2} / ${th} = ${nf(k,4)} h⁻¹; upper / lower = ${hi} / ${lo} = ${nf(hi/lo,3)}`),
-          step(`τ = ln(${nf(hi/lo,3)}) / ${nf(k,4)} = <b>${nf(tau,1)} h</b>. The dose then decides where the swing sits in the window.`)],
-        viz:{route:"iv", dosing:"repeated", D:+(V*hi*(1-Math.exp(-k*tv))).toFixed(1), V, thalf:th, tau:tv, nDoses:n},
-        view:{duration:evenUp(n*tv), zoom:"last", mec:lo, mtc:hi},
-        check:p=> solveUp(t=>{ const s=ssPeakTrough(scenario(Object.assign({},p,{tau:t}))); return s.peak/s.trough; }, hi/lo, 0.5, 48)};
-    }},
-    /* ----- infusions ----- */
-    {id:"rate", topic:"inf", gen(d){
-      const th=d(2,9,1), dur=evenUp(10*th), {V,c}=until(()=>({V:d(10,40,5), c:d(2,10,1)}), x=> x.c*Math.LN2/th*x.V*dur<=2000);
-      const CL=Math.LN2/th*V, R0=c*CL;
-      return {type:"Infusion rate for a steady state", unit:"mg/h", dp:1, ans:R0,
-        q:`A drug has t½ = <b>${th} h</b> and V = <b>${V} L</b>. What constant IV infusion rate gives a steady-state concentration of <b>${c} mg/L</b>?`,
-        sol:[step(`At steady state, rate in equals rate out: <b>R₀ = Css·CL</b>.`),
-          step(`CL = kₑ·V = (${LN2} / ${th})·${V} = <b>${nf(CL,2)} L/h</b>`),
-          step(`R₀ = ${c} × ${nf(CL,2)} = <b>${nf(R0,1)} mg/h</b>. Getting there takes 4–5 half-lives, whatever the rate.`)],
-        viz:{route:"inf", D:+(R0*dur).toFixed(1), tinf:dur, V, thalf:th}, view:{duration:evenUp(dur+2*th)}, at:dur,
-        check:p=> c/cssPerRate(p)};
-    }},
-    {id:"infpct", topic:"inf", gen(d){
-      const th=d(2,12,1), t=d(1,4*th,1), f=100*(1-Math.pow(0.5,t/th)), dur=evenUp(Math.max(t+2, 5*th));
-      return {type:"Infusion · approach to steady state", unit:"%", dp:1, ans:f,
-        q:`A constant IV infusion is started for a drug with a half-life of <b>${th} h</b>. After <b>${t} h</b>, what percentage of the steady-state concentration has been reached?`,
-        sol:[step(`The level climbs toward steady state as <b>1 − (½)^(t / t½)</b>, the mirror image of elimination.`),
-          step(`t / t½ = ${t} / ${th} = <b>${nf(t/th,2)}</b> half-lives`),
-          step(`1 − (½)^${nf(t/th,2)} = <b>${nf(f,1)}%</b> of steady state`)],
-        viz:{route:"inf", D:1000, tinf:dur, V:30, thalf:th}, view:{duration:evenUp(dur+2*th)}, at:t,
-        check:p=> 100*conc(p,t)/(cssPerRate(p)*p.D/p.tinf)};
-    }},
-    {id:"infend", topic:"inf", gen(d){
-      const D=d(200,1500,100), T=d(1,8,1), V=d(15,50,5), th=d(2,12,1), R0=D/T, k=Math.LN2/th, CL=k*V, c=R0/CL*(1-Math.exp(-k*T));
-      return {type:"Infusion · level at the end", unit:"mg/L", dp:2, ans:c,
-        q:`<b>${D} mg</b> is infused at a constant rate over <b>${T} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). What is the concentration when the infusion ends?`,
-        sol:[step(`R₀ = D / T = ${D} / ${T} = <b>${nf(R0,1)} mg/h</b>; kₑ = ${LN2} / ${th} = ${nf(k,3)} h⁻¹; CL = kₑ·V = <b>${nf(CL,2)} L/h</b>`),
-          step(`During an infusion <b>C(t) = (R₀ / CL)·(1 − e^(−kₑt))</b>`),
-          step(`C(${T}) = (${nf(R0,1)} / ${nf(CL,2)})·(1 − e^(−${nf(k,3)} × ${T})) = <b>${nf(c,2)} mg/L</b>`)],
-        viz:{route:"inf", D, tinf:T, V, thalf:th}, view:{duration:evenUp(T+4*th)}, at:T, check:p=> conc(p,p.tinf)};
-    }},
-    {id:"ldinf", topic:"inf", gen(d){
-      const c=d(2,10,1), V=d(15,50,5), th=d(4,12,1), CL=Math.LN2/th*V, R0=c*CL, LD=c*V, dur=evenUp(3*th);
-      return {type:"Loading dose with an infusion", unit:"mg", dp:0, ans:LD,
-        q:`An infusion of <b>${nf(R0,1)} mg/h</b> settles at <b>${c} mg/L</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). Which IV bolus, given as the infusion starts, puts the concentration at ${c} mg/L straight away?`,
-        sol:[step(`A bolus fills the volume of distribution: <b>LD = C·V</b>.`), step(`LD = ${c} × ${V} = <b>${nf(LD,0)} mg</b>`),
-          step(`From then on the infusion replaces exactly what's cleared, so the level stays flat. Clearance sets the rate, not the loading dose.`)],
-        viz:{route:"iv", dosing:"custom", V, thalf:th, events:[
-          {id:"e1", t:0, mg:LD, type:"loading", status:"given", route:"iv"},
-          {id:"e2", t:0, mg:+(R0*dur).toFixed(1), type:"maintenance", status:"given", route:"inf", dur}]},
-        view:{duration:evenUp(dur+2*th)}, at:dur/2,
-        check:p=> LD*c/conc(p,dur/2)};
-    }},
-    {id:"clinf", topic:"inf", gen(d){
-      const R0=d(10,100,5), th=d(2,9,1), V=d(10,40,5), CL=Math.LN2/th*V, css=sig4(R0/CL), ans=R0/css, dur=evenUp(10*th);
-      return {type:"Clearance from a steady-state infusion", unit:"L/h", dp:2, ans,
-        q:`A constant IV infusion of <b>${R0} mg/h</b> has settled at a steady-state concentration of <b>${css} mg/L</b>. What is the drug's clearance?`,
-        sol:[step(`At steady state the drug leaves as fast as it goes in: R₀ = CL·Css, so <b>CL = R₀ / Css</b>.`),
-          step(`CL = ${R0} / ${css} = <b>${nf(ans,2)} L/h</b>`),
-          step(`That is how clearance is measured: one steady level and the known rate, with no need to know the volume or the half-life.`)],
-        viz:{route:"inf", dosing:"custom", V, thalf:th, events:[{id:"e1", t:0, mg:+(R0*dur).toFixed(1), type:"maintenance", status:"given", route:"inf", dur}]},
-        view:{duration:evenUp(dur+2*th)}, at:dur,
-        check:p=> 1/cssPerRate(p)};   // the model's clearance, from the level a never-ending infusion settles at
-    }},
-    /* ----- concentration–effect ----- */
-    {id:"effc", topic:"pd", gen(d){
-      const ec50=d(1,10,0.5), emax=d(60,100,10), hill=d(1,3,0.5), C=d(1,20,1), E=emax/(1+Math.pow(ec50/C,hill));
-      return {type:"Effect at a concentration", unit:"%", dp:1, ans:E,
-        q:`A drug's effect follows the Emax model with <b>E₀ = 0</b>, <b>Emax = ${emax}%</b>, <b>EC50 = ${ec50} mg/L</b> and Hill slope <b>n = ${hill}</b>. What effect does a concentration of <b>${C} mg/L</b> give?`,
-        sol:[step(`<b>E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ)</b>`),
-          step(`Cⁿ = ${C}^${hill} = ${nf(Math.pow(C,hill),3)}; EC50ⁿ = ${ec50}^${hill} = ${nf(Math.pow(ec50,hill),3)}`),
-          step(`E = ${emax} × ${nf(Math.pow(C,hill),3)} / (${nf(Math.pow(ec50,hill),3)} + ${nf(Math.pow(C,hill),3)}) = <b>${nf(E,1)}%</b>`),
-          step(`At C = EC50 the effect is always half of Emax, whatever the slope.`)],
-        viz:{route:"iv", D:70*C, V:35, thalf:4, e0:0, emax, ec50, hill}, view:{duration:24, pd:true}, at:4,
-        check:p=> effectOf(p, conc(p,4))};
-    }},
-    {id:"cfore", topic:"pd", gen(d){
-      const x=until(()=>{ const ec50=d(1,10,0.5), emax=d(60,100,10), hill=d(1,3,0.5), E=d(10,emax-10,5);
-        return {ec50,emax,hill,E,C:ec50*Math.pow(E/(emax-E),1/hill)}; }, x=> x.C>=0.5 && x.C<=25);
-      const {ec50,emax,hill,E,C}=x;
-      return {type:"Concentration for an effect", unit:"mg/L", dp:2, ans:C,
-        q:`A drug's effect follows the Emax model with <b>E₀ = 0</b>, <b>Emax = ${emax}%</b>, <b>EC50 = ${ec50} mg/L</b> and Hill slope <b>n = ${hill}</b>. Which concentration gives an effect of <b>${E}%</b>?`,
-        sol:[step(`Solve the Emax model for C: <b>C = EC50·(E / (Emax − E))^(1/n)</b>.`),
-          step(`E / (Emax − E) = ${E} / ${emax-E} = ${nf(E/(emax-E),4)}`),
-          step(`C = ${ec50} × ${nf(E/(emax-E),4)}^(1/${hill}) = <b>${nf(C,2)} mg/L</b>`)],
-        viz:{route:"iv", D:+(70*C).toFixed(1), V:35, thalf:4, e0:0, emax, ec50, hill}, view:{duration:24, pd:true, etgt:E}, at:4,
-        check:p=> Math.exp(solveUp(lc=> effectOf(p, Math.exp(lc)), E, Math.log(1e-6), Math.log(1e4)))};
-    }},
-    {id:"effdur", topic:"pd", gen(d){
-      const x=until(()=>{ const D=d(300,1500,100), V=d(20,50,5), th=d(2,8,1), ec50=d(1,6,0.5), E=d(20,80,10);
-        return {D, V, th, ec50, E, C0:D/V, Ce:ec50*E/(100-E)}; }, x=> x.C0>=1.5*x.Ce);
-      const {D, V, th, ec50, E, C0, Ce}=x, k=Math.LN2/th, t=Math.log(C0/Ce)/k, dur=evenUp(t+2*th);
-      return {type:"Duration of effect", unit:"h", dp:1, ans:t,
-        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), the effect follows the Emax model (E₀ = 0, Emax = 100%, EC50 = <b>${ec50} mg/L</b>, n = 1). For how long does the effect stay at or above <b>${E}%</b>?`,
-        sol:[step(`The concentration that gives ${E}%: C = EC50·E / (Emax − E) = ${ec50} × ${E} / ${100-E} = <b>${nf(Ce,3)} mg/L</b>`),
-          step(`It starts at C₀ = D / V = ${D} / ${V} = <b>${nf(C0,2)} mg/L</b>`),
-          step(`It falls to ${nf(Ce,3)} mg/L after t = ln(C₀ / C) / kₑ = ln(${nf(C0,2)} / ${nf(Ce,3)}) / ${nf(k,4)} = <b>${nf(t,1)} h</b>`),
-          step(`Doubling the dose adds one half-life to this time; it doesn't double it.`)],
-        viz:{route:"iv", D, V, thalf:th, e0:0, emax:100, ec50, hill:1}, view:{duration:dur, pd:true, etgt:E}, at:t,
-        check:p=> effectStats(p, dur, E).tAbove};
-    }},
-    {id:"efft", topic:"pd", gen(d){
-      const D=d(200,1000,100), V=d(20,50,5), th=d(2,8,1), t=d(1,12,1), ec50=d(1,8,0.5), hill=d(1,2,0.5);
-      const k=Math.LN2/th, C=D/V*Math.exp(-k*t), E=100/(1+Math.pow(ec50/C,hill));
-      return {type:"Effect over time", unit:"%", dp:1, ans:E,
-        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), the effect follows the Emax model (E₀ = 0, Emax = 100%, EC50 = <b>${ec50} mg/L</b>, n = <b>${hill}</b>). What is the effect at <b>t = ${t} h</b>?`,
-        sol:[step(`First the concentration: C(${t}) = (${D} / ${V})·e^(−${nf(k,3)} × ${t}) = <b>${nf(C,3)} mg/L</b>`),
-          step(`Then the effect: E = 100·Cⁿ / (EC50ⁿ + Cⁿ) = 100 × ${nf(Math.pow(C,hill),3)} / (${nf(Math.pow(ec50,hill),3)} + ${nf(Math.pow(C,hill),3)}) = <b>${nf(E,1)}%</b>`),
-          step(`The effect falls more slowly than the concentration while C is well above EC50, then faster.`)],
-        viz:{route:"iv", D, V, thalf:th, e0:0, emax:100, ec50, hill}, view:{duration:evenUp(Math.max(t+4, th*4)), pd:true}, at:t,
-        check:p=> effectOf(p, conc(p,t))};
-    }},
-    /* ----- saturable (Michaelis–Menten) elimination ----- */
-    // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
-    // and the t90 formula assume. Vmax is for 70 kg.
-    {id:"mmcss", topic:"nl", gen(d){
-      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), salt=d(0,1,1)===1, D=d(150,500,25), S=salt ? 0.92 : 1, Vm=vk*70, R=S*D;
-        return {vk,km,salt,D,S,Vm,R,css:km*R/(Vm-R)}; }, x=> x.R>=0.3*x.Vm && x.R<=0.92*x.Vm);
-      const {vk,km,salt,D,S,Vm,R,css}=x;
-      return {type:"Steady state with saturable elimination", unit:"mg/L", dp:2, ans:css,
-        q:`A drug is eliminated by saturable (Michaelis–Menten) metabolism with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>.${salt ? ` It is given as a sodium salt with <b>S = 0.92</b>.` : ""} What steady-state concentration does <b>${D} mg a day</b> reach?`,
-        sol:[step(`The daily input is R = ${salt ? `S·D = 0.92 × ${D}` : `D = ${D}`} = <b>${nf(R,1)} mg/day</b>, below Vmax, so a steady state exists.`),
-          step(`At steady state input equals elimination, R = Vmax·C / (Km + C), so <b>Css = Km·R / (Vmax − R)</b>.`),
-          step(`Css = ${km} × ${nf(R,1)} / (${nf(Vm,0)} − ${nf(R,1)}) = <b>${nf(css,2)} mg/L</b>`)],
-        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(css*1.5)},
-        check:p=> mmSteady(p).avg};
-    }},
-    {id:"mmdose", topic:"nl", gen(d){
-      const vk=d(5,10,0.5), km=d(2,8,0.5), c=d(8,20,1), Vm=vk*70, R=Vm*c/(km+c), D=R/0.92;
-      return {type:"Dose for a saturable drug", unit:"mg/day", dp:0, ans:D,
-        q:`A drug given as a sodium salt (<b>S = 0.92</b>) is eliminated with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>. Which daily dose of the salt gives a steady-state concentration of <b>${c} mg/L</b>?`,
-        sol:[step(`At steady state the input matches elimination: <b>R = Vmax·Css / (Km + Css)</b>.`),
-          step(`R = ${nf(Vm,0)} × ${c} / (${km} + ${c}) = <b>${nf(R,1)} mg/day</b> of the drug`),
-          step(`Of the salt: D = R / S = ${nf(R,1)} / 0.92 = <b>${nf(D,0)} mg/day</b>`)],
-        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S:0.92, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(c*1.5)},
-        // the dose that gives c: at the answer dose the simulated steady state is c
-        check:p=> p.D*mmSteady(p).avg/c};
-    }},
-    {id:"mmt90", topic:"nl", gen(d){
-      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), D=d(150,450,25), Vm=vk*70, R=D, t90=V*km*(Math.LN10*Vm-0.9*R)/((Vm-R)*(Vm-R));
-        return {vk,km,V,D,Vm,R,t90}; }, x=> x.R<=0.85*x.Vm && x.R>=0.3*x.Vm && x.t90*24<=300);
-      const {vk,km,V,D,Vm,R,t90}=x;
-      return {type:"Time to steady state, saturable", unit:"days", dp:1, ans:t90,
-        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> is started at a steady <b>${D} mg/day</b>. How many days until it reaches 90% of its steady-state level?`,
-        sol:[step(`With saturable elimination the approach to steady state depends on the dose. Integrating the model at a constant input gives <b>t₉₀ = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)²</b>.`),
-          step(`t₉₀ = ${V} × ${km} × (2.303 × ${nf(Vm,0)} − 0.9 × ${R}) / (${nf(Vm,0)} − ${R})² = <b>${nf(t90,1)} days</b>`),
-          step(`A linear drug's 3.32 half-lives would not change with the dose; here a higher dose means a longer wait.`)],
-        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, vmax:vk, km, V}, view:{duration:336, mec:0, mtc:0}, at:t90*24,
-        check:p=>{ const css=mmCss(p).css; return solveUp(x=> conc(p,x), 0.9*css, 0, 336)/24; }};
-    }},
-    {id:"mmhalf", topic:"nl", gen(d){
-      const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), C=d(2,25,1), Vm=vk*70, th=Math.LN2*V*(km+C)/(Vm/24);
-      return {type:"Half-life at a concentration", unit:"h", dp:1, ans:th,
-        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> has a level of <b>${C} mg/L</b>. What is its half-life at that level?`,
-        sol:[step(`Elimination is Vmax·C / (Km + C), so the clearance at C is Vmax / (Km + C) and <b>t½ = 0.693·V·(Km + C) / Vmax</b>, with Vmax per hour.`),
-          step(`Vmax = ${nf(Vm,0)} / 24 = ${nf(Vm/24,2)} mg/h`),
-          step(`t½ = ${LN2} × ${V} × (${km} + ${C}) / ${nf(Vm/24,2)} = <b>${nf(th,1)} h</b>`),
-          step(`At a higher level the half-life is longer: the enzymes are closer to saturation.`)],
-        viz:{kin:"mm", route:"iv", dosing:"single", D:C*V, vmax:vk, km, V}, view:{duration:evenUp(3*th), mec:0, mtc:0}, at:0,
-        // the instantaneous half-life at t = 0: 0.693·C / (−dC/dt)
-        check:p=>{ const c0=conc(p,0), h=1e-4; return Math.LN2*c0/((c0-conc(p,h))/h); }};
-    }},
-  ];
-  // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).
-  function makeProblem(o){
-    o=o||{};
-    const pool=PRACTICE.filter(g=> (!o.topic || g.topic===o.topic) && (!o.id || g.id===o.id) && g.id!==o.not);
-    if(!pool.length) return null;
-    const seed=o.seed===undefined ? Math.floor(Math.random()*4294967296) : o.seed>>>0;
-    const rnd=seededRandom(seed), g=pool[Math.floor(rnd()*pool.length)], pr=g.gen(drawFrom(rnd));
-    pr.q=pr.q.replace(/<b>([^<]*)<\/b>/g, (m,x)=> `<b>${x.replace(/ /g,"\u00a0")}</b>`);   // a value never wraps away from its unit
-    pr.id=g.id; pr.topic=g.topic; pr.seed=seed;
-    pr.view=Object.assign({}, VIEW_DEFAULTS, pr.view);
-    return pr;
-  }
-  const practiceScenario=pr=> normalizeScenario(scenario(pr.viz));
-  // A worksheet: `count` problems from one topic (or all), each kind at most once until every kind in the pool
-  // has been used, in a shuffled order. The seed rebuilds the same sheet.
   const WORKSHEET_SIZES=[5,10,15];
-  function makeWorksheet(o){
-    o=o||{};
-    const topic=PRACTICE_TOPICS.some(t=>t.id===o.topic) ? o.topic : "";
-    const count=WORKSHEET_SIZES.includes(o.count) ? o.count : 10;
-    const seed=o.seed===undefined ? Math.floor(Math.random()*4294967296) : o.seed>>>0;
-    const rnd=seededRandom(seed), pool=PRACTICE.filter(g=> !topic || g.topic===topic).map(g=>g.id);
-    const kinds=[];
-    while(kinds.length<count){
-      const round=pool.slice();
-      for(let i=round.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [round[i],round[j]]=[round[j],round[i]]; }
-      if(kinds.length && round[0]===kinds[kinds.length-1]) round.push(round.shift());   // never the same kind twice running
-      kinds.push(...round);
-    }
-    const problems=kinds.slice(0,count).map(id=> makeProblem({id, seed:Math.floor(rnd()*4294967296)}));
-    return {topic, count, seed, problems};
-  }
-  // An answer within 2% (or half a unit in the last decimal shown) counts: working with ln2 = 0.693 or
-  // rounded intermediate values still lands inside it.
-  const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
+  // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
+  // version 1 had, and each later kind records the version it arrived in (`since`).
+  const WS_VERSION=2;
+  // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
+  // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","mmcss","mmdose","mmt90","mmhalf"];
+  let practiceMod=null;
+  const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
+  const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
 
   /* ================= PROGRESS ================= */
   // What a learner has done, kept in their own browser only: per lesson, whether the prediction was answered right
@@ -2177,7 +1791,8 @@
   // on the sliders' own steps, so an exact match is always within reach, and from half-lives of 6–16 h, where one
   // 0.5 h step is small next to the tolerance. For an oral dose F and kₐ are given: with points like these, kₐ is
   // barely pinned down by the data, and leaving it free makes the fit a search in three tangled directions.
-  const FIT_KINDS=[{id:"iv", title:"IV bolus", free:["thalf","V"]}, {id:"oral", title:"Oral dose", free:["thalf","V"]}];
+  const FIT_KINDS=[{id:"iv", title:"IV bolus", free:["thalf","V"]}, {id:"oral", title:"Oral dose", free:["thalf","V"]},
+    {id:"iv2", title:"Two compartments", free:["thalf","V","k12","k21"]}];
   const FIT_NOISE=0.05;   // measurement scatter: log-normal, about ±5%
   const gaussian=rnd=>{ const u=1-rnd(), v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
   const toStep=(v,st)=> +(Math.round(v/st)*st).toFixed(4);
@@ -2194,32 +1809,46 @@
       truth.ka=until(()=>d(0.3,2.5,0.05), ka=> ka>=3*k);   // absorption clearly faster than elimination
       const tm=Math.log(truth.ka/k)/(truth.ka-k);
       times=[0.35*tm, 0.75*tm, 1.3*tm, tm+0.6*thalf, tm+1.3*thalf, tm+2.2*thalf, tm+3.2*thalf];
+    } else if(kind.id==="iv2"){
+      // two compartments, with phases far enough apart to strip by hand: α at least 8·β, a distribution half-life
+      // of at least 0.6 h (so quarter-hour samples catch it), a terminal half-life of 3–20 h, and a clear
+      // distribution phase (A at least 0.8·B)
+      const ok=x=>{ const q=disposition(scenario(Object.assign({route:"iv", cmt:2}, x))), a=q[0].k, b=q[1].k;
+        return a>=8*b && Math.LN2/a>=0.6 && Math.LN2/b>=3 && Math.LN2/b<=20 && q[0].c>=0.8*q[1].c; };
+      let set;   // about 11% of draws qualify, so 400 tries always find one
+      for(let i=0;i<400;i++){ set={thalf:d(1,6,0.5), V:d(8,40,1), k12:d(0.3,1.5,0.05), k21:d(0.15,1,0.05)}; if(ok(set)) break; }
+      Object.assign(truth, set, {route:"iv", cmt:2});
+      const q=disposition(scenario(truth)), ta=Math.LN2/q[0].k, tb=Math.LN2/q[1].k, late=5*ta;
+      times=[0.4,0.9,1.5,2.3,3.3].map(f=>f*ta).concat([0,0.5,1,1.6,2.3,3].map(f=>late+f*tb));
     } else times=[0.1,0.35,0.7,1.2,1.8,2.6,3.5].map(f=>f*thalf);
     times=[...new Set(times.map(t=> Math.max(0.25, toStep(t,0.25))))].sort((a,b)=>a-b);
     const p=scenario(truth);
     const obs=times.map(t=>({t, c:sig3(conc(p,t)*Math.exp(FIT_NOISE*gaussian(rnd)))}));
     // the sliders start well away from the answer
-    const start={thalf:thalf>=11 ? 4 : 16, V:V>=45 ? 20 : 70};
+    const T=truth, start=kind.id==="iv2"
+      ? {thalf:T.thalf>=3 ? 1 : 5, V:T.V>=24 ? 10 : 36, k12:T.k12>=1 ? 0.3 : 1.8, k21:T.k21>=0.6 ? 0.2 : 1.1}
+      : {thalf:thalf>=11 ? 4 : 16, V:V>=45 ? 20 : 70};
+    const tail=kind.id==="iv2" ? Math.LN2/disposition(p)[1].k : thalf;
     return {kind:kind.id, seed, truth, obs, start, free:kind.free.slice(),
-      view:Object.assign({}, VIEW_DEFAULTS, {duration:evenUp(times[times.length-1]+thalf)})};
+      view:Object.assign({}, VIEW_DEFAULTS, {duration:evenUp(times[times.length-1]+tail)})};
   }
   const sig3=v=> +v.toPrecision(3);
   // Links to one practice problem (#p=kind.seed) or one fit-the-data set (#fit=iv.seed): the seed rebuilds
   // exactly the same numbers, so a class can work the same problem. Scenario links (#v=…) are separate.
   const encodeTaskLink=t=> t.type==="fit" ? `fit=${t.kind}.${t.seed>>>0}` : t.type==="window" ? `win=${t.kind}.${t.seed>>>0}`
-    : t.type==="worksheet" ? `ws=${t.topic||"all"}.${t.count}.${t.seed>>>0}` : `p=${t.id}.${t.seed>>>0}`;
+    : t.type==="worksheet" ? `ws=${t.topic||"all"}.${t.count}.${t.seed>>>0}${t.v>1 ? "."+t.v : ""}` : `p=${t.id}.${t.seed>>>0}`;
   function decodeTaskLink(hash){
-    const h=String(hash||"").trim(), w=/^#?ws=([a-z]{1,12})\.(\d{1,2})\.(\d{1,10})$/.exec(h);
+    const h=String(hash||"").trim(), w=/^#?ws=([a-z]{1,12})\.(\d{1,2})\.(\d{1,10})(?:\.(\d{1,2}))?$/.exec(h);
     if(w){
-      const topic=w[1]==="all" ? "" : w[1], count=Number(w[2]), seed=Number(w[3]);
-      if((topic && !PRACTICE_TOPICS.some(t=>t.id===topic)) || !WORKSHEET_SIZES.includes(count) || seed>4294967295) return null;
-      return {type:"worksheet", topic, count, seed};
+      const topic=w[1]==="all" ? "" : w[1], count=Number(w[2]), seed=Number(w[3]), v=w[4]===undefined ? 1 : Number(w[4]);
+      if((topic && !PRACTICE_TOPICS.some(t=>t.id===topic)) || !WORKSHEET_SIZES.includes(count) || seed>4294967295 || v<1 || v>WS_VERSION) return null;
+      return {type:"worksheet", topic, count, seed, v};
     }
     const m=/^#?(p|fit|win)=([a-z0-9]{1,12})\.(\d{1,10})$/i.exec(h);
     if(!m) return null;
     const seed=Number(m[3]);
     if(!Number.isInteger(seed) || seed>4294967295) return null;
-    if(m[1]==="p") return PRACTICE.some(g=>g.id===m[2]) ? {type:"problem", id:m[2], seed} : null;
+    if(m[1]==="p") return PRACTICE_IDS.includes(m[2]) ? {type:"problem", id:m[2], seed} : null;
     if(m[1]==="win") return WINDOW_KINDS.some(k=>k.id===m[2]) ? {type:"window", kind:m[2], seed} : null;
     return FIT_KINDS.some(k=>k.id===m[2]) ? {type:"fit", kind:m[2], seed} : null;
   }
@@ -2237,7 +1866,8 @@
     const floor=fitError(fitScenario(f), f.obs), target=floor+4, err=fitError(p, f.obs);
     const fixed=["route","dosing","D"].concat(f.kind==="oral" ? ["F","ka"] : []);
     let mismatch=null;
-    if(fixed.some(k=> p[k]!==f.truth[k]) || p.wt!==DEFAULTS.wt || p.clFn!==DEFAULTS.clFn) mismatch="setup";
+    if(fixed.some(k=> p[k]!==f.truth[k]) || p.wt!==DEFAULTS.wt || p.clFn!==DEFAULTS.clFn
+      || p.cmt!==(f.truth.cmt||DEFAULTS.cmt) || p.kin!==DEFAULTS.kin) mismatch="setup";   // and the model the data came from
     return {err, floor, target, good:!mismatch && err<=target, mismatch};
   }
   // Estimates straight from the data, the way they're made by hand: the log-linear fall gives kₑ (from its
@@ -2250,6 +1880,15 @@
       const b=sxy/sxx; return {k:-b, lnC0:ml-b*mt};
     };
     const D=f.truth.D;
+    if(f.kind==="iv2"){
+      // the method of residuals: the last four points give the terminal line (β and B); what the early points
+      // have above that line gives the distribution line (α and A); then the rate constants and V1
+      const n=f.obs.length, tl=line(f.obs.slice(-4)), beta=tl.k, B=Math.exp(tl.lnC0);
+      const residuals=f.obs.slice(0, n-4).map(o=>({t:o.t, c:o.c, r:o.c-B*Math.exp(-beta*o.t)})).filter(o=>o.r>0).slice(0,4);
+      const dl=line(residuals.map(o=>({t:o.t, c:o.r}))), alpha=dl.k, A=Math.exp(dl.lnC0);
+      const k21=(A*beta+B*alpha)/(A+B), k10=alpha*beta/k21, k12=alpha+beta-k21-k10, V1=D/(A+B);
+      return {alpha, beta, A, B, k21, k10, k12, V:V1, thalf:Math.LN2/k10, residuals};
+    }
     if(f.kind==="iv"){
       const {k,lnC0}=line(f.obs), C0=Math.exp(lnC0);
       return {k, thalf:Math.LN2/k, C0, V:D/C0};
@@ -2268,7 +1907,11 @@
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
-    PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
+    PRACTICE_TOPICS, PRACTICE_IDS, seededRandom, WORKSHEET_SIZES, WS_VERSION, twoLevelAUC, practiceHelpers,
+    get PRACTICE(){ const m=practiceApi(); return m ? m.PRACTICE : null; },
+    makeProblem:o=> practiceApi().makeProblem(o), practiceScenario:pr=> practiceApi().practiceScenario(pr),
+    makeWorksheet:o=> practiceApi().makeWorksheet(o), practiceCorrect:(pr,v)=> practiceApi().practiceCorrect(pr,v),
+    get practiceModule(){ return practiceMod; }, set practiceModule(v){ practiceMod=v; },
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
     READOUT_KEYS, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough,
     get GLOSSARY(){ if(!glossary && typeof require==='function') glossary=require('./pk-glossary.js'); return glossary; },

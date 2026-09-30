@@ -29,7 +29,7 @@
 **Teach and practise**
 - **24 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **9 clinical cases** (gentamicin conventional and once daily, vancomycin to an AUC24 target and from two measured levels, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **30 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" and "Hit the window" exercises, and a 44-term glossary.
+- **32 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 44-term glossary.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
 ![A clinical case graded by the model](docs/img/case-gentamicin.png)
@@ -75,7 +75,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py
 ```
 
-When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
+When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pk-practice.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
 
 ## How it's built
 
@@ -86,6 +86,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `cases.js` | The clinical cases and their grader, loaded when the Cases tab opens |
 | `pk-math.js` | The worked formulas behind each readout, loaded the first time one is opened |
 | `pk-glossary.js` | The glossary, loaded with the Lessons tab |
+| `pk-practice.js` | The generated practice problems and worksheets, loaded with the Practice tab |
 | `pop-worker.js` | Population mode, run as a Web Worker |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
 | `sw.js` | The service worker for offline use |
@@ -100,7 +101,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 1.2.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 1.3.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 

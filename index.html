@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.2.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.3.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1525,7 +1525,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.2.0 · updated 30 September 2026</span>
+        <span>Version 1.3.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1595,7 +1595,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=1e915c3fcb" defer></script>
+<script src="pk-engine.js?v=14972673b8" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -3945,7 +3945,7 @@
   /* ================= FIT THE DATA ================= */
   // Measured points on the chart; the half-life and volume (and kₐ) sliders move the curve onto them. The fit
   // error updates live; the status line is announced only when the fit becomes good (or stops being good).
-  const FIT_SLIDER_NAMES={thalf:"Half-life", V:"Volume"};
+  const FIT_SLIDER_NAMES={thalf:"Half-life", V:"Volume", k12:"k12", k21:"k21"}, FIT_SLIDER_NAMES2={thalf:"the half-life of k10", V:"the central volume"};
   let fitShown=null;
   function startFit(f, shared){
     if(fit!==f && !shared) clearTaskHash();   // a shared set and Start over keep the link; a new set leaves it
@@ -3959,11 +3959,13 @@
     Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:"lin", view:"full", pd:false, etgt:v.etgt, drug:null});
     baseline=null; updateBaselineUI();
     evSel=null; cursorT=null; fitShown=null;
-    const names=fit.free.map(k=>FIT_SLIDER_NAMES[k]), list=names.length===2 ? names.join(" and ") : `${names.slice(0,-1).join(", ")} and ${names[names.length-1]}`;
-    byId("fitTitle").textContent=oral ? `Oral dose · ${T.D} mg, F = ${T.F}, kₐ = ${trim(T.ka)} h⁻¹` : `IV bolus · ${T.D} mg`;
-    byId("fitGoal").textContent=`${oral?`A ${T.D} mg oral dose was taken (F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹ are known)`:`A ${T.D} mg IV bolus was given`} and the concentration measured ${fit.obs.length} times: the white dots. Move ${list} until the curve runs through them.`;
+    const two=fit.kind==="iv2", names=fit.free.map(k=>(two && FIT_SLIDER_NAMES2[k]) || FIT_SLIDER_NAMES[k]);
+    const list=names.length===2 ? names.join(" and ") : `${names.slice(0,-1).join(", ")} and ${names[names.length-1]}`;
+    byId("fitTitle").textContent=oral ? `Oral dose · ${T.D} mg, F = ${T.F}, kₐ = ${trim(T.ka)} h⁻¹` : two ? `IV bolus, two compartments · ${T.D} mg` : `IV bolus · ${T.D} mg`;
+    byId("fitGoal").textContent=`${oral?`A ${T.D} mg oral dose was taken (F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹ are known)`:`A ${T.D} mg IV bolus was given`}${two ? " to a drug that distributes into a second compartment," : ""} and the concentration measured ${fit.obs.length} times: the white dots. Move ${list} until the curve runs through them.`;
     byId("fitTip").textContent=oral
       ? "On the LOG scale the tail becomes a straight line. Match its slope with the half-life, then its height with the volume. The rise and the peak come from absorption, which is given."
+      : two ? "On the LOG scale the curve falls steeply at first (distribution), then in a straight line (the terminal phase). Get the tail's slope and height first, then the early drop; How to estimate from the data works through the method of residuals."
       : "On the LOG scale an IV bolus falls in a straight line. Match its slope with the half-life, then its height with the volume.";
     byId("fitTable").innerHTML=`<thead><tr><th scope="col">t (h)</th><th scope="col">C (mg/L)</th></tr></thead><tbody>`+
       fit.obs.map(o=>`<tr><td>${trim(o.t)}</td><td>${o.c}</td></tr>`).join("")+`</tbody>`;
@@ -3977,7 +3979,8 @@
   // A task's own settings, repeated in its bar so the chart stays in view while they move (on a phone the
   // controls are far above it). They drive the same settings as the sliders in the controls.
   function buildMirror(id, keys){
-    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=rangeOf(k);
+    byId(id).innerHTML=keys.map(k=>{ const r=rangeOf(k), cfg=state.cmt===2 && state.kin!=="mm" && (k==="thalf"||k==="V")
+        ? Object.assign({}, SLIDERS[k], {name:k==="thalf" ? "Half-life of k10" : "Central volume V1"}) : SLIDERS[k];
       return `<div class="ctrl"><div class="ctrl-top"><span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span><span class="ctrl-val" data-v="${k}"></span></div>`+
         `<input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${cfg.step}" value="${state[k]}" aria-label="${cfg.name}"></div>`;
     }).join("");
@@ -4020,13 +4023,21 @@
     if(now==="good" && !fit.counted){ fit.counted=true; saveProgress(PK.recordTask(prog, "fit")); }   // once per data set
     if(now===fitShown) return;
     fitShown=now;
-    const made=`t½ = ${trim(T.thalf)} h and V = ${trim(T.V)} L`;
+    const made=fit.kind==="iv2" ? `k10's half-life = ${trim(T.thalf)} h, V1 = ${trim(T.V)} L, k12 = ${trim(T.k12)} and k21 = ${trim(T.k21)} h⁻¹` : `t½ = ${trim(T.thalf)} h and V = ${trim(T.V)} L`;
     byId("fitStatus").innerHTML= now==="good" ? `<span class="ok">✓ Good fit.</span> The data were made with ${made}.`
-      : now==="setup" ? `The data came from ${fit.kind==="oral" ? `a single ${T.D} mg oral dose with F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹` : `a single ${T.D} mg IV bolus`}, at 70 kg and 100% organ function. Start over puts those back.`
+      : now==="setup" ? `The data came from ${fit.kind==="oral" ? `a single ${T.D} mg oral dose with F = ${T.F} and kₐ = ${trim(T.ka)} h⁻¹` : `a single ${T.D} mg IV bolus`} (${T.cmt===2 ? "two compartments" : "one compartment"}, first-order), at 70 kg and 100% organ function. Start over puts those back.`
       : "Not yet: the curve misses the dots.";
   }
   function fitHowText(){
     const e=PK.fitEstimate(fit), T=fit.truth;
+    if(fit.kind==="iv2"){
+      const n=fit.obs.length, late=fit.obs.slice(-4);
+      return `The method of residuals. The last ${late.length} points (${late.map(o=>trim(o.t)).join(", ")} h) lie on a straight line on the log scale: the terminal phase. Its slope is −β = −${fmt(e.beta,4)} h⁻¹ `+
+        `(terminal half-life ${fmt(Math.LN2/e.beta,1)} h), and it meets t = 0 at B = ${fmt(e.B,2)} mg/L. `+
+        `Take that line away from the early points: the residuals (${e.residuals.map(o=>`${fmt(o.r,2)} at ${trim(o.t)} h`).join(", ")}) fall on a steeper line, slope −α = −${fmt(e.alpha,3)} h⁻¹ (distribution half-life ${fmt(Math.LN2/e.alpha,2)} h), meeting t = 0 at A = ${fmt(e.A,2)} mg/L. `+
+        `Then k21 = (A·β + B·α) / (A + B) = ${fmt(e.k21,3)} h⁻¹, k10 = α·β / k21 = ${fmt(e.k10,3)} h⁻¹ (a half-life of ${fmt(e.thalf,1)} h), k12 = α + β − k21 − k10 = ${fmt(e.k12,3)} h⁻¹, and V1 = D / (A + B) = ${T.D} / ${fmt(e.A+e.B,2)} = ${fmt(e.V,1)} L. `+
+        `Set these, then fine-tune on the sliders: stripping two phases compounds the scatter in the measurements.`;
+    }
     if(fit.kind==="iv")
       return `On the log scale the points lie close to a straight line. The best line through them has slope −kₑ = −${fmt(e.k,3)} h⁻¹, so t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h. `+
         `The line meets t = 0 at C₀ = ${fmt(e.C0,2)} mg/L, so V = D / C₀ = ${T.D} / ${fmt(e.C0,2)} = ${fmt(e.V,1)} L. `+
@@ -4694,7 +4705,22 @@
   // against a simulation of the problem's own scenario.
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
-  $("prSub").textContent=`${PK.PRACTICE.length} kinds of generated problems · worked solutions · every answer checked against the model`;
+  // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
+  const PRACTICE_SRC="pk-practice.js?v=d12a568be2";
+  let practiceLoad=null;
+  function loadPractice(){
+    if(PK.practiceModule) return Promise.resolve();
+    if(!practiceLoad) practiceLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=PRACTICE_SRC;
+      sc.onload=()=> PK.practiceModule ? res() : rej(new Error("no practice"));
+      sc.onerror=()=>{ practiceLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return practiceLoad;
+  }
+  const practiceFailed=()=>{ $("prQ").textContent="The problems couldn't load. Check the connection and open the tab again."; };
+  $("prSub").textContent=`${PK.PRACTICE_IDS.length} kinds of generated problems · worked solutions · every answer checked against the model`;
   $("prTopics").innerHTML=[{id:"", title:"All topics"}].concat(PK.PRACTICE_TOPICS).map(t=>
     `<button data-topic="${t.id}" aria-pressed="${t.id===prTopic}"${t.id===prTopic?' class="on"':""}>${t.title}</button>`).join("");
   $("prTopics").addEventListener("click",e=>{
@@ -4707,7 +4733,8 @@
 
   function newProblem(focus=true){
     clearTaskHash();
-    showProblem(PK.makeProblem({topic:prTopic||undefined, not:prob ? prob.id : undefined}), focus);   // never the same kind twice running
+    loadPractice().then(()=> showProblem(PK.makeProblem({topic:prTopic||undefined, not:prob ? prob.id : undefined}), focus))   // never the same kind twice running
+      .catch(practiceFailed);
   }
   function showProblem(pr, focus, shared){
     prob=pr;
@@ -4786,7 +4813,7 @@
     $("wsSizeSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
   });
   const topicTitle=id=> id ? PK.PRACTICE_TOPICS.find(t=>t.id===id).title : "All topics";
-  const wsLinkHash=()=> PK.encodeTaskLink({type:"worksheet", topic:ws.topic, count:ws.count, seed:ws.seed});
+  const wsLinkHash=()=> PK.encodeTaskLink({type:"worksheet", topic:ws.topic, count:ws.count, seed:ws.seed, v:ws.v});
   const ansText=pr=> `${pr.ans.toFixed(pr.dp)}${pr.unit && pr.unit!=="(fraction)" ? " "+pr.unit : ""}`;
   function showWorksheet(w, shared){
     if(!shared) clearTaskHash();
@@ -4801,7 +4828,7 @@
     $("wsTitle").focus({preventScroll:true});
     $("wsView").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"start"});
   }
-  $("wsMake").addEventListener("click",()=> showWorksheet(PK.makeWorksheet({topic:prTopic, count:wsSize})));
+  $("wsMake").addEventListener("click",()=> loadPractice().then(()=> showWorksheet(PK.makeWorksheet({topic:prTopic, count:wsSize}))).catch(practiceFailed));
   $("wsAnswers").addEventListener("click",()=>{
     const on=$("wsAnswers").getAttribute("aria-pressed")!=="true";
     $("wsAnswers").setAttribute("aria-pressed", on); $("wsAnswers").textContent=on ? "Hide answers" : "Show answers";
@@ -4875,7 +4902,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=77d4de3940";
+  const CASES_SRC="cases.js?v=a01b88b610";
   let casesReady=null, casesMounted=false;
   function loadCases(){
     if(!casesReady) casesReady=new Promise((res,rej)=>{
@@ -4920,11 +4947,13 @@
   const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash), caseLink=/^#case=/.test(location.hash);
   if(caseLink){ render(); loadCases().then(C=> openCases(C.decodeCaseLink(location.hash))).catch(()=>openCases(null)); }
   else if(shared) applyLink(shared);
-  else if(task && task.type==="problem"){ render(); showTab("pr"); showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true); }
+  else if(task && task.type==="problem"){ render(); showTab("pr"); loadPractice().then(()=> showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true)).catch(practiceFailed); }
   else if(task && task.type==="worksheet"){
     render(); showTab("pr");
-    showProblem(PK.makeProblem({topic:task.topic||undefined}), false);   // not newProblem, which would clear the link
-    showWorksheet(PK.makeWorksheet(task), true);
+    loadPractice().then(()=>{
+      showProblem(PK.makeProblem({topic:task.topic||undefined}), false);   // not newProblem, which would clear the link
+      showWorksheet(PK.makeWorksheet(task), true);
+    }).catch(practiceFailed);
   }
   else if(task && task.type==="window") startWindow(PK.makeWindowTask({kind:task.kind, seed:task.seed}), true);
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
