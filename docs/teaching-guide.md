@@ -14,10 +14,11 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
   3. The panel under the chart explains what moved and why. Its table gives the metrics before and after.
-- **Two regimens side by side.** The **Compare** tab has 14 one-click comparisons:
+- **Two regimens side by side.** The **Compare** tab has 15 one-click comparisons:
   - Once vs twice daily
   - Loading dose
   - Normal vs 50% clearance
+  - 50 kg vs 100 kg, same dose
   - IV bolus vs oral
   - Bolus vs infusion
   - Short vs long infusion
@@ -36,13 +37,13 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
 - **Walk through time.** Drag across the chart, or focus it and use the arrow keys, to read the concentration at any moment. **Play** animates the whole window.
 - **Show the effect.** **Effect** turns on the concentration–effect charts. They show the effect over time, where the curve sits on the Emax curve, and how long the effect stays above a target.
 
-## Guided lessons (20)
+## Guided lessons (21)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Volume of distribution · Double the dose · Flip-flop kinetics |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent |
@@ -92,7 +93,7 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 ## A possible sequence
 
 1. **Fundamentals:**
-   - lessons: Oral vs IV bolus, Reduced clearance, Volume of distribution, Double the dose
+   - lessons: Oral vs IV bolus, Reduced clearance, Volume of distribution, Dosing by weight, Double the dose
    - practice: *Single dose*
    - Fit the data (IV bolus)
 2. **Repeated dosing:**
