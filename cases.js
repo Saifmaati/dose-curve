@@ -13,6 +13,7 @@
 
   const LN2=Math.LN2;
   const nf=(v,dp)=> String(+v.toFixed(dp));
+  const signed=(v,dp)=> (v<0 ? "−" : "+")+nf(Math.abs(v),dp);
   const drugOf=id=> PK.DRUGS.find(d=>d.id===id);
 
   /* ================= CASES ================= */
@@ -80,6 +81,30 @@
      wrong:[{reg:{D:1000, tau:8}, hint:"aucHigh"}, {reg:{D:500, tau:12}, hint:"aucLow"}],
      also:"This one-compartment model is a teaching simplification: vancomycin distributes in two phases, and practice estimates the AUC from two levels or with Bayesian software. Kidney function trends, other nephrotoxins, the infection site, and whether a loading dose is needed all shape the choice.",
      refs:["rybak","idsaVanc","vanc","cg"]},
+
+    {id:"vanc-lv", drug:"vanc", title:"Vancomycin: the AUC from two levels", tag:"Glycopeptide · two-level AUC",
+     patient:{age:52, sex:"M", ht:175, wt:95, scr:0.9},
+     current:{D:1000, tau:12}, sample:{after:1},   // the levels: a peak 1 h after the infusion ends, and a trough
+     indication:"A serious MRSA infection. He has had 1 g every 12 h long enough to be at steady state, and two levels were drawn in one interval: one an hour after the infusion ended, after distribution, and one just before the next dose (see Levels).",
+     target:{kind:"auc", auc:[400,600],
+       why:"The 2020 consensus guideline suggests an AUC between 400 and 600 mg·h/L for serious MRSA infections. One approach it describes estimates the AUC from two levels near steady state, a post-distribution peak 1–2 hours after the infusion and a trough, with first-order equations; Bayesian software is its preferred approach."},
+     choices:{step:250, min:250, max:3000, taus:[8,12,24], tinf:"label"},
+     start:{D:1000, tau:12},
+     task:"Estimate his AUC24 from the two levels with first-order equations: the elimination rate from the fall between them, the level at the end of the infusion, then the area over one interval. Then choose a regimen that brings the steady-state AUC24 into 400–600 mg·h/L.",
+     plan(x){ const L=levelsOf(this), e=twoLevel(L), target=500, daily=L.D*(24/L.tau)*target/e.auc24, tau=12, D=daily*tau/24, exact=PK.derived(L.p).auc*24/L.tau;
+       const q=twoCmtOf(L.p), trueTwo=PK.derived(q).auc*24/L.tau, at=a=>twoLevel({peak:PK.ssConc(q, L.T+a), trough:PK.ssConc(q, L.tau-1e-9), T:L.T, after:a, tau:L.tau}).auc24;
+       return {reg:{D, tau}, steps:[
+         `The levels: ${nf(L.peak,1)} mg/L at ${nf(L.T+L.after,2)} h (an hour after the ${nf(L.T,2)} h infusion ended) and ${nf(L.trough,1)} mg/L at ${L.tau} h, just before the next dose. They are ${nf(e.dt,2)} h apart.`,
+         `Elimination rate: k = ln(${nf(L.peak,1)} / ${nf(L.trough,1)}) / ${nf(e.dt,2)} = <b>${nf(e.k,4)} h⁻¹</b>, a half-life of ${nf(LN2/e.k,1)} h.`,
+         `Back to the end of the infusion: C<sub>max</sub> = ${nf(L.peak,1)} × e^(${nf(e.k,4)} × ${L.after}) = ${nf(e.Cmax,1)} mg/L. At steady state the level when the infusion starts is the trough, ${nf(L.trough,1)} mg/L.`,
+         `Area over one interval: the infusion as a straight line, T·(C<sub>min</sub> + C<sub>max</sub>) / 2 = ${nf(L.T,2)} × (${nf(L.trough,1)} + ${nf(e.Cmax,1)}) / 2 = ${nf(e.aInf,1)}, plus the decline, (C<sub>max</sub> − C<sub>min</sub>) / k = ${nf(e.aDecl,1)}: ${nf(e.aInf+e.aDecl,1)} mg·h/L. AUC24 = ${nf(e.aInf+e.aDecl,1)} × 24 / ${L.tau} = <b>${nf(e.auc24,0)} mg·h/L</b>, ${e.auc24<400 ? "below" : e.auc24>600 ? "above" : "inside"} the target.`,
+         `The AUC rises in proportion to the daily dose: for 500 mg·h/L, ${nf(L.D*24/L.tau,0)} × 500 / ${nf(e.auc24,0)} = ${nf(daily,0)} mg a day, or ${nf(D,0)} mg every ${tau} h; rounded to 250 mg, <b>${nf(Math.round(D/250)*250,0)} mg every ${tau} h</b>.`,
+         `The model's own AUC24 on 1 g every 12 h is ${nf(exact,0)} mg·h/L (daily dose / CL), so the estimate from the two levels is within ${nf(Math.abs(100*(e.auc24/exact-1)),1)}%: the straight-line infusion phase and the levels' rounding account for the difference.`,
+         `Why the peak is drawn after distribution: in a two-compartment version of him (the same clearance, a teaching assumption), a peak drawn as the infusion ends would put the AUC24 at ${nf(at(0),0)} instead of ${nf(trueTwo,0)} mg·h/L (${signed(100*(at(0)/trueTwo-1),1)}%), while one drawn an hour later gives ${nf(at(1),0)} (${signed(100*(at(1)/trueTwo-1),1)}%).`]};
+     },
+     wrong:[{reg:{D:1000, tau:12}, hint:"aucLow"}, {reg:{D:2000, tau:12}, hint:"aucHigh"}],
+     also:"Bayesian software (the guideline's preferred approach, which can work from one or two levels before steady state), whether the levels were drawn at the charted times and truly at steady state, the infusion's actual start and stop times, kidney function trends, and other nephrotoxic drugs.",
+     refs:["rybakCid","rybak","idsaVanc","vanc","cg"]},
 
     {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics · albumin",
      patient:{age:60, sex:"F", ht:163, wt:60, scr:0.8, alb:2.5},
@@ -188,6 +213,19 @@
   }
   // The same patient with two compartments: half the volume central, the same clearance (k10 doubles).
   const twoCmtOf=p=> PK.normalizeScenario(Object.assign({}, p, {cmt:2, V:p.V/2, thalf:p.thalf/2, k12:0.545, k21:0.545}));
+  // Levels drawn at steady state on a case's current regimen, as a laboratory reports them (to 0.1 mg/L): a peak
+  // `after` hours after the infusion ends, and a trough just before the next dose.
+  function levelsOf(c){
+    const p=caseScenario(c, c.current), T=p.tinf, r1=v=> Math.round(v*10)/10;
+    return {p, D:c.current.D, tau:c.current.tau, T, after:c.sample.after, peak:r1(PK.ssConc(p, T+c.sample.after)), trough:r1(PK.ssConc(p, p.tau-1e-9))};
+  }
+  // First-order two-level AUC: k from the fall between the levels, the level back at the end of the infusion, then
+  // the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
+  function twoLevel(L){
+    const dt=L.tau-L.T-L.after, k=Math.log(L.peak/L.trough)/dt, Cmax=L.peak*Math.exp(k*L.after);
+    const aInf=L.T*(L.trough+Cmax)/2, aDecl=(Cmax-L.trough)/k;
+    return {dt, k, Cmax, aInf, aDecl, auc24:(aInf+aDecl)*24/L.tau};
+  }
   // Phenytoin: this patient's Vmax (mg/day) from her albumin-adjusted steady-state level, with Km fixed.
   function pheVmax(c){
     const m=c.measured, st=PK.sheinerTozer(m.C, c.patient.alb, false), R=0.92*m.D, km=drugOf("phe").s.km;
@@ -443,6 +481,7 @@
       <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
+        ${c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,1)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,1)} mg/L</b> just before the next dose.</dd>`)(levelsOf(c)) : ""}
         <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl>
       <p class="cs-task"><b>Task.</b> ${h.esc(c.task)}</p>
       <form id="csForm" novalidate>${form}<div class="cs-actions"><button class="abtn" type="submit">Check regimen</button>
@@ -471,5 +510,5 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
+    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
 });

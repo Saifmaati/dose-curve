@@ -2,6 +2,18 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.2.0 (2026-09-30)
+
+- **A ninth case, *Vancomycin: the AUC from two levels*.** Two levels drawn at steady state (a post-distribution peak and a trough), which the model generates for the patient and reports to 0.1 mg/L. The student estimates k, the level at the end of the infusion and the AUC24 with first-order equations, then scales the dose to the target. The walkthrough compares the estimate with the model's exact AUC24 (within 1%). It also shows why the peak is drawn after distribution: with a two-compartment version of the patient, a peak drawn as the infusion ends overstates the AUC24 by 17%, and one an hour later is within 3.5%. The method is the one the guideline's executive summary describes (Rybak et al., *Clin Infect Dis* 2020), now cited.
+- **Population mode for saturable drugs** (phenytoin, or any Michaelis–Menten scenario):
+  - The variability is on Vmax (with Km fixed) and volume, and the CV field says so.
+  - PTA and the AUC24 range use each virtual patient's exact periodic steady state.
+  - The panel reports the share with no steady state (input above their own Vmax). They count as missing the target. At 300 mg/day of phenytoin that is 2% of 200 virtual patients; at 425 mg/day, 25%.
+  - 1,000 saturable virtual patients take about a second in the worker.
+- **The saturable steady state is now solved directly**, as the pre-dose amount that one interval maps onto itself (a secant search), about 100× faster. Near Vmax the old search, which simulated blocks of doses until the trough stopped moving, could stop 0.12% short. The steady-state peak is refined between samples.
+- A population job still running when the settings change is stopped, not queued behind.
+- **Faster first paint on phones.** The font stylesheet no longer blocks rendering; metric-matched fallbacks keep the layout still. The engine and the app script now run after the page is parsed (the engine deferred, the app as a module). Lighthouse mobile performance rose from 85 to 98–99 on a local server that compresses like GitHub Pages: first paint 3.3 s → 1.1–1.9 s, LCP 3.4 s → 1.8–1.9 s, CLS still 0. Desktop is 100.
+
 ## 1.1.0 (2026-09-30)
 
 - **Two compartments** (Drug Parameters → One compartment / Two compartments):

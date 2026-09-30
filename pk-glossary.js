@@ -90,7 +90,7 @@
     {term:"Albumin-adjusted concentration", sym:"", unit:"mg/L", lesson:"mm",
      def:"A measured total phenytoin level scaled to what it would be at normal albumin (Sheiner–Tozer): C / (0.2 × albumin + 0.1), with 0.1 in place of 0.2 in end-stage kidney disease. It interprets a measurement; the simulation doesn't use it."},
     {term:"Inter-individual variability", sym:"CV", unit:"%", lesson:"cl",
-     def:"How much clearance and volume differ from one person to the next. DoseCurve's population mode draws them log-normally around the scenario's values (30% and 20% by default, teaching assumptions rather than drug-specific figures)."},
+     def:"How much clearance (Vmax, for a saturable drug) and volume differ from one person to the next. DoseCurve's population mode draws them log-normally around the scenario's values (30% and 20% by default, teaching assumptions rather than drug-specific figures)."},
     {term:"Probability of target attainment", sym:"PTA", unit:"%", lesson:"er",
      def:"The share of a simulated population whose levels meet a target, here a steady-state trough at or above MEC with the peak at or below MTC, or an AUC24 within a range."},
     {term:"Two-compartment model", sym:"α, β", unit:"h⁻¹", lesson:"twocmt",
