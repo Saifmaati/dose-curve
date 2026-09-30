@@ -54,3 +54,8 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 13:14 | 1.7 | Version 1.7.0, cache v17, share card 26 lessons, build report section 16, decisions 73–74 | done | b59bdd6 |
 | 2026-09-30 13:25 | 1.6 | Deployed 1.6.0: branch v1.6.0 by web upload (3 commits), fresh clone 277/277, CI green on push and PR, PR #8 merged | done | 0845417 |
 | 2026-09-30 13:20 | 1.7 | Teaching guide: the effect-site delay | done | ee22c1d |
+| 2026-09-30 13:40 | 1.7 | Deployed 1.7.0: branch v1.7.0 by web upload (4 commits), fresh clone 283/283, CI green, PR #9 merged; live byte check, lesson 26 and validation 584/584 live | done | b1ae2f3 |
+| 2026-09-30 13:50 | 1.8 | Practice: effect delay, time of peak effect (34 kinds), worksheet pool v4 with v3 snapshot | done | b7584f4 |
+| 2026-09-30 13:55 | 1.8 | Service worker installs past the HTTP cache; validation results by content hash | done | 441700c |
+| 2026-09-30 14:00 | 1.8 | Vary only: effect-site delay | done | b2d3210 |
+
