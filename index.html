@@ -238,6 +238,19 @@
   .mini-seg button.on{background:rgba(var(--violet-rgb),.25);color:var(--hi);box-shadow:0 0 0 1px rgba(var(--violet-rgb),.4)}
   .mini-seg button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
+  .clin-label{font-size:11px;color:var(--muted);margin:12px 0 6px}
+  .clin-math{margin-top:10px;padding:10px 12px;border:1px solid var(--glass-line);border-radius:10px;background:rgba(var(--well-rgb),.5);
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;line-height:1.6;color:var(--text-3);overflow-wrap:anywhere}
+  .clin-math b{color:var(--hi);font-weight:600}
+  .clin-math .cm-h{font-family:'Inter','Inter Fallback',sans-serif;color:var(--muted);font-size:10.5px;margin-top:6px}
+  .clin-note,.drug-info .di-note{font-size:11px;color:var(--amber-text);margin-top:8px}
+  .drug-info{margin-top:10px;padding:10px 12px;border:1px solid var(--glass-line);border-radius:10px;background:rgba(var(--well-rgb),.5);font-size:12px;color:var(--text-3)}
+  .drug-info .di-h{font-size:12.5px;color:var(--hi);font-weight:600;margin-bottom:4px}
+  .drug-info dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0}
+  .drug-info dt{color:var(--muted)} .drug-info dd{color:var(--text-2)}
+  .drug-info details{margin-top:6px} .drug-info summary{cursor:pointer;color:var(--cyan-text, var(--hi))}
+  .drug-info ol{margin:6px 0 0 16px;display:grid;gap:5px}
+  .drug-info li{line-height:1.45} .drug-info .unv{color:var(--amber-text)} .drug-info a{color:inherit}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 22px 0;min-height:27px}   /* one row reserved before the script fills it: no layout shift */
   .legend .li{display:flex;align-items:center;gap:6px}
   .legend .lk{width:14px;height:3px;border-radius:2px}
@@ -961,9 +974,32 @@
             <div id="sliders"></div>
           </div>
 
-          <div class="sec">
+          <div class="sec" id="patientSec">
             <p class="sec-label">Patient</p>
+            <div class="seg" id="pmSeg" role="group" aria-label="Patient model">
+              <button data-pm="simple" class="on">Simple</button>
+              <button data-pm="clinical">Clinical (CrCl)</button>
+            </div>
             <div id="patientSliders"></div>
+            <div id="clinPanel" hidden>
+              <div class="seg" id="sexSeg" role="group" aria-label="Sex" style="margin-top:8px">
+                <button data-sex="M" class="on">Male</button>
+                <button data-sex="F">Female</button>
+              </div>
+              <div id="clinSliders"></div>
+              <p class="clin-label" id="wtmLabel">Weight for Cockcroft–Gault</p>
+              <div class="seg" id="wtmSeg" role="group" aria-labelledby="wtmLabel">
+                <button data-wtm="actual" class="on">Actual</button>
+                <button data-wtm="ibw">Ideal (IBW)</button>
+                <button data-wtm="adj">Adjusted</button>
+              </div>
+              <details class="ev-model">
+                <summary>Which weight?</summary>
+                <p>Cockcroft and Gault derived their equation with actual body weight. For patients well above their ideal weight, many references use ideal body weight (IBW, Devine: 50 kg for men or 45.5 kg for women, plus 2.3 kg per inch over 5 feet), or an adjusted weight, IBW + 0.4 × (actual − IBW). Some use actual weight when it is below IBW. Conventions differ between references and institutions, so the choice is left to you here.</p>
+              </details>
+              <div class="clin-math" id="clinMath" aria-live="polite"></div>
+              <p class="clin-note">Educational model, not for clinical dosing.</p>
+            </div>
           </div>
 
           <div class="sec" id="pdSec" hidden>
@@ -997,7 +1033,8 @@
           <div class="sec">
             <p class="sec-label">Drug Library</p>
             <div class="drugs" id="drugs"></div>
-            <p class="lib-note">Teaching profiles with typical literature values for a 70 kg adult — starting points for exploration, not prescribing references.</p>
+            <div class="drug-info" id="drugInfo" hidden></div>
+            <p class="lib-note">Teaching profiles for a 70 kg adult. Each value names its source (FDA labels on DailyMed, or a paper) or is marked unverified. Educational model, not for clinical dosing.</p>
           </div>
 
           <div class="sec">
@@ -1427,7 +1464,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=c1f78c4349"></script>
+<script src="pk-engine.js?v=68d2e83b1b"></script>
 <script>
 "use strict";
 (function(){
@@ -1465,15 +1502,26 @@
     const live=snapshot();
     return {a:cmp.edit==="a"?live:cmp.a, b:cmp.edit==="b"?live:cmp.b};
   }
+  // Units: charts and numbers use the live scenario's unit system (A's in Compare). A scenario measured in other
+  // units (B, or a baseline set before a drug with other units was loaded) is converted into it for display, so
+  // the two curves share one axis; links and saved scenarios keep each scenario in its own units.
+  const shownUnit=()=> mode==="cmp" ? pair().a.unit : state.unit;
+  const U=()=> PK.unitsOf({unit:shownUnit()});
+  const inShown=p=> !p || p.unit===shownUnit() ? p : PK.convertUnits(p, shownUnit());
+  function shownPair(){ const {a,b}=pair(); return {a, b:inShown(b)}; }
+  const cdp=dp=> dp+U().cdp;   // decimals for a concentration: one more for ng/mL and mEq/L
+  const AXIS_UNIT={mg:"mg/L ≡ µg/mL", mcg:"ng/mL ≡ µg/L", meq:"mEq/L"};
+  const CSV_UNIT={mg:"mg_L", mcg:"ng_mL", meq:"mEq_L"};
 
   const ALL=["oral","iv","inf"];
   const SLIDERS = {
-    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"]},
+    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"], fmt:v=>`${trim(v)} ${U().dose}`},
     F:    {name:"Bioavailability",    sym:"F",   step:0.05, unit:"",    routes:["oral"]},
     ka:   {name:"Absorption rate",    sym:"kₐ",  step:0.05, unit:"h⁻¹", routes:["oral"]},
     tinf: {name:"Infusion duration",  sym:"T·inf", step:0.25, unit:"h", routes:["inf"]},
-    thalf:{name:"Half-life (base)",   sym:"t½",  step:0.5,  unit:"h",   routes:ALL},
-    V:    {name:"Volume of dist. (70 kg)", sym:"V", step:1, unit:"L",   routes:ALL},
+    // the usual ranges widen when a value needs them (digoxin's volume and half-life)
+    thalf:{name:"Half-life (base)",   sym:"t½",  step:0.5,  unit:"h",   routes:ALL, range:()=> state.thalf>24 ? PK.RANGES.thalf : [0.5,24]},
+    V:    {name:"Volume of dist. (70 kg)", sym:"V", step:1, unit:"L",   routes:ALL, range:()=> state.V>120 ? PK.RANGES.V : [5,120]},
     tau:  {name:"Dosing interval",    sym:"τ",   step:1,    unit:"h",   routes:ALL, dosing:"repeated"},
     nDoses:{name:"Number of doses",   sym:"n",   step:1,    unit:"",    routes:ALL, dosing:"repeated"},
     missed:{name:"Missed dose",       sym:"✕",   step:1,    unit:"",    routes:ALL, dosing:"repeated",
@@ -1484,9 +1532,21 @@
     wt:  {name:"Body weight", sym:"kg", step:1, unit:"kg"},
     clFn:{name:"Organ function (CL)", sym:"%", step:5, unit:"%"}
   };
+  // The clinical patient: Cockcroft–Gault inputs, albumin (used for phenytoin) and the drug's renal fraction.
+  const CLIN = {
+    age:{name:"Age", sym:"y", step:1, unit:"years"},
+    ht: {name:"Height", sym:"ht", step:1, unit:"cm", fmt:v=>`${v} cm (${trim(+(v/2.54).toFixed(1))} in)`},
+    scr:{name:"Serum creatinine", sym:"SCr", step:0.1, unit:"mg/dL"},
+    alb:{name:"Albumin (for phenytoin)", sym:"Alb", step:0.1, unit:"g/dL"},
+    fe: {name:"Renal fraction", sym:"fe", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% excreted unchanged`}
+  };
+  // Settings of the patient, not the drug: changing them keeps the drug selected.
+  const PATIENT_KEYS=["wt","clFn","age","ht","scr","alb"];
+  const WTM_NAME={actual:"actual weight", ibw:"ideal body weight", adj:"adjusted body weight"};
+  const rangeOf=(k,cfg)=>{ const r=(cfg||SLIDERS[k]||{}).range; return typeof r==="function" ? r() : r || PK.RANGES[k]; };
   // EC50 spans three decades, so its slider moves on a log scale.
   const PD_SLIDERS = {
-    ec50:{name:"Potency (EC50)",  sym:"EC₅₀", log:true, unit:"mg/L", fmt:v=>`${trim(v)} mg/L`},
+    ec50:{name:"Potency (EC50)",  sym:"EC₅₀", log:true, unit:"mg/L", fmt:v=>`${trim(v)} ${U().conc}`},
     emax:{name:"Maximum effect",  sym:"Emax", step:1,   unit:"%", max:()=>100-state.e0},
     hill:{name:"Hill slope",      sym:"n",    step:0.1, unit:""},
     e0:  {name:"Baseline effect", sym:"E₀",   step:1,   unit:"%"}
@@ -1501,11 +1561,11 @@
   // What the main chart draws: the live scenario (plus baseline), or scenarios A and B.
   function chartCurves(){
     if(mode==="cmp"){
-      const {a,b}=pair();
+      const {a,b}=shownPair();
       return [{id:"a", p:a, col:COL.a, tag:"A"}, {id:"b", p:b, col:COL.b, tag:"B"}];
     }
     const list=[{id:"cur", p:snapshot(), primary:true}];
-    if(baseline) list.push({id:"base", p:baseline.p, ghost:true});
+    if(baseline) list.push({id:"base", p:inShown(baseline.p), ghost:true});
     return list;
   }
   const finalInterval=p=>{ const t0=(p.nDoses-1)*p.tau; return [t0, t0+p.tau]; };
@@ -1533,8 +1593,24 @@
       `<text x="${tx}" y="${y-8}" text-anchor="${anchor||"start"}" font-family="JetBrains Mono" font-size="10" fill="${color}">${label}</text>`;
   }
 
+  // The clinical patient panel's working: IBW, AdjBW, Cockcroft–Gault CrCl and the clearance it gives.
+  function renderClin(){
+    if(state.pm!=="clinical") return;
+    const p=snapshot(), pt=PK.patientOf(p), f=p.sex==="F", V=PK.vOf(p), ref=Math.LN2/p.thalf*V, n1=v=>fmt(v,1);
+    byId("clinMath").innerHTML=
+      `<div class="cm-h">Ideal and adjusted body weight (height ${n1(pt.heightIn)} in)</div>`+
+      `IBW = ${f?"45.5":"50"} + 2.3 × (${n1(pt.heightIn)} − 60) = <b>${n1(pt.ibw)} kg</b><br>`+
+      `AdjBW = ${n1(pt.ibw)} + 0.4 × (${p.wt} − ${n1(pt.ibw)}) = <b>${n1(pt.adj)} kg</b>`+
+      `<div class="cm-h">Creatinine clearance (Cockcroft–Gault, ${WTM_NAME[p.wtm]})</div>`+
+      `CrCl = (140 − ${p.age}) × ${n1(pt.wtUsed)} / (72 × ${trim(p.scr)})${f?" × 0.85":""} = <b>${n1(pt.crcl)} mL/min</b>`+
+      `<div class="cm-h">Clearance, against a reference CrCl of ${PK.CRCL_REF} mL/min</div>`+
+      `CL<sub>ref</sub> = 0.693 / ${trim(p.thalf)} h × ${n1(V)} L = ${fmt(ref,2)} L/h<br>`+
+      `CL = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / ${PK.CRCL_REF}] = ${fmt(ref,2)} × [(1 − ${trim(p.fe)}) + ${trim(p.fe)} × ${n1(pt.crcl)} / ${PK.CRCL_REF}] = <b>${fmt(ref*pt.factor,2)} L/h</b>`;
+  }
+
   function render(){
     checkWindow();
+    renderClin();
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
     let yMax=0;
@@ -1735,7 +1811,7 @@
 
     // axis titles
     g+=`<text x="${M.l+iw/2}" y="${PH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Time (h)</text>`;
-    g+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Concentration (mg/L ≡ µg/mL)${isLog?" · log":""}</text>`;
+    g+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Concentration (${AXIS_UNIT[U().id]})${isLog?" · log":""}</text>`;
 
     const dots=curves.filter(cv=>!cv.ghost).map((cv,i)=>
       `<circle id="chDot${i}" r="4.5" fill="${cv.col?cv.col.line:"#3DF2E0"}" stroke="#05070E" stroke-width="2"/>`).join("");
@@ -1832,36 +1908,36 @@
   function renderReadouts(p, d, ws){
     const ttr=100*ws.tIn/ws.T;
     let cards=[
-      {k:"Cmax", hot:1, v:fmt(d.cmax,1), u:"mg/L"},
+      {k:"Cmax", hot:1, v:fmt(d.cmax,cdp(1)), u:U().conc},
       {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
       {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
       {k:"CL", v:fmt(d.CL,2), u:"L/h"},
       {k:"Vd (patient)", v:fmt(d.V,0), u:"L"},
-      {k:"AUC∞", v:fmt(d.auc,1), u:"mg·h/L"},
-      {k:"Dose / wt", v:fmt(d.mgkg,1), u:"mg/kg"},
+      {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc},
+      {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
       {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
     ];
     if(p.dosing==="repeated"){
       cards=[
-        {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,1), u:"mg/L"},
-        {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,1), u:"mg/L"},
+        {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:U().conc},
+        {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:U().conc},
         {k:"Accum. ratio", v:fmt(d.Rac,2), u:"×"},
         {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
         {k:"→90% SS", v:fmt(d.t90,1), u:"h"},
-        {k:"Dose / wt", v:fmt(d.mgkg,1), u:"mg/kg"},
+        {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
     if(p.dosing==="custom"){
       cards=[
-        {k:"Peak (window)", hot:1, v:fmt(ws.cmax,1), u:"mg/L"},
+        {k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:U().conc},
         {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
         {k:"Doses given", v:d.nMissed ? `${d.nGiven}/${d.nGiven+d.nMissed}` : String(d.nGiven), u:""},
-        {k:"Total given", v:fmt(d.totalMg,0), u:"mg"},
+        {k:"Total given", v:fmt(d.totalMg,0), u:U().dose},
         {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
-        {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,1), u:"mg·h/L"},
+        {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:U().auc},
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
@@ -1940,12 +2016,12 @@
       // same 1% rule as the steady-state panel: below it, a peak-to-trough ratio is meaningless
       const swing = d.cminSS < 0.01*d.cmaxSS ? "the drug clears almost completely between doses" : `peak-to-trough <b>${fmt(d.cmaxSS/d.cminSS,1)}×</b>`;
       const ssTag = d.fSS>=0.97 ? "effectively at steady state" : `at <b>${fmt(d.fSS*100,0)}%</b> of steady state — not there yet`;
-      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
+      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,cdp(1))}</b>, trough <b>${fmt(d.cminSS,cdp(1))} ${U().conc}</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
       if(p.loadMult>1) msg+=` Loading dose (${p.loadMult}×) lifts the first cycle toward steady state immediately.`;
       if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
     }
     if(p.dosing==="custom"){
-      msg+=`Custom schedule: <b>${d.nGiven}</b> dose${d.nGiven===1?"":"s"} given${d.nMissed?`, <b>${d.nMissed}</b> missed`:""}, <b>${fmt(d.totalMg,0)} mg</b> in total. Steady-state figures aren't shown because the doses don't follow a fixed interval.`;
+      msg+=`Custom schedule: <b>${d.nGiven}</b> dose${d.nGiven===1?"":"s"} given${d.nMissed?`, <b>${d.nMissed}</b> missed`:""}, <b>${fmt(d.totalMg,0)} ${U().dose}</b> in total. Steady-state figures aren't shown because the doses don't follow a fixed interval.`;
     }
     if(msg){ note.classList.add("show"); note.innerHTML=msg; }
     else note.classList.remove("show");
@@ -1956,12 +2032,12 @@
     const panel=byId("ssPanel");
     let series;
     if(mode==="cmp"){
-      const {a,b}=pair();
+      const {a,b}=shownPair();
       series=[{p:a, col:COL.a, tag:"A"}, {p:b, col:COL.b, tag:"B"}].filter(s=>s.p.dosing==="repeated");
     } else {
       const p=snapshot();
       series=p.dosing==="repeated" ? [{p, main:true}] : [];
-      if(series.length && baseline && baseline.p.dosing==="repeated") series.push({p:baseline.p, ghost:true});
+      if(series.length && baseline && baseline.p.dosing==="repeated") series.push({p:inShown(baseline.p), ghost:true});
     }
     if(!series.length){ panel.style.display="none"; return; }
     panel.style.display="block";
@@ -2055,10 +2131,19 @@
   const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
     missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""],
-    ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"]};
+    ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],
+    pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
+    wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
+    if(k==="D") return `${trim(s.D)} ${PK.unitsOf(s).dose}`;
+    if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
+    if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
+    if(k==="sex") return s.sex==="F" ? "female" : "male";
+    if(k==="wtm") return WTM_NAME[s.wtm];
+    if(k==="unit") return PK.unitsOf(s).conc;
+    if(k==="S") return trim(+s.S.toPrecision(5));
     if(k==="route") return ROUTE_NAME[PK.routeOf(s)];
     if(k==="dosing") return s.dosing;
     if(k==="missed") return missedOf(s)?"dose "+missedOf(s):"none";
@@ -2098,7 +2183,7 @@
     if(a.dosing!==b.dosing){
       const tb=PK.doseTotals(b,state.duration);
       out.push(b.dosing==="custom"
-        ? `<b>Custom schedule</b>: doses follow their own times and amounts instead of a fixed interval (${tb.n} given, ${fmt(tb.mg,0)} mg within the window).`
+        ? `<b>Custom schedule</b>: doses follow their own times and amounts instead of a fixed interval (${tb.n} given, ${fmt(tb.mg,0)} ${U().dose} within the window).`
         : b.dosing==="repeated"
         ? "<b>Repeated dosing</b>: each dose adds to what's left of the earlier ones, so levels build up until the amount eliminated per interval matches the dose."
         : "<b>Single dose</b>: no accumulation. The curve rises once and decays back toward zero.");
@@ -2108,11 +2193,11 @@
       const ta=PK.doseTotals(a,state.duration), tb=PK.doseTotals(b,state.duration);
       const [ra,rb]=mode==="cmp" ? ["A","B"] : ["the baseline","the current schedule"];
       out.push(ta.n===tb.n && Math.abs(ta.mg-tb.mg)<1e-9
-        ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} mg) within the window, so exposure differs only through when they are given.`
-        : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} mg) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} mg). Exposure follows the total amount given and how the doses are spread over time.`);
+        ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} ${U().dose}) within the window, so exposure differs only through when they are given.`
+        : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} ${U().dose}) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} ${U().dose}). Exposure follows the total amount given and how the doses are spread over time.`);
     }
     if(a.D!==b.D && !sameRate && PK.isRelevant("D",a) && PK.isRelevant("D",b)){
-      out.push(`Dose ${a.D} → ${b.D} mg (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
+      out.push(`Dose ${a.D} → ${b.D} ${U().dose} (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
     }
     if(a.route==="oral" && b.route==="oral"){
       if(a.F!==b.F) out.push(`Bioavailability ${trim(a.F)} → ${trim(b.F)}. Only that fraction of the oral dose reaches circulation, so exposure changes by <b>${pctTxt(a.F,b.F)}</b> with the same shape.`);
@@ -2126,11 +2211,53 @@
         : `Shorter infusion (${trim(a.tinf)} → ${trim(b.tinf)} h): the same amount goes in faster, so the peak is higher and earlier, with the same AUC.`);
     }
 
-    // physiology and drug properties, explained through what they do to CL, V and t½
+    // units and salt factor: what a dose delivers and how levels are measured
+    if(a.unit!==b.unit) out.push(`${mode==="cmp" ? "B" : "The current scenario"} is measured in ${PK.unitsOf(b).conc} and ${ref} in ${PK.unitsOf(a).conc}. Both curves are drawn and compared in ${U().conc}, so each concentration here is converted.`);
+    else if(a.S!==b.S) out.push(`Salt factor S ${trim(+a.S.toPrecision(5))} → ${trim(+b.S.toPrecision(5))}: each ${PK.unitsOf(b).dose} of dose delivers <b>${fmt(b.S/a.S,2)}×</b> as much active drug, so every concentration and the AUC scale by that factor.`);
+
+    // the clinical patient: creatinine clearance and the renal fraction of clearance
     const dCL=moved(da.CL,db.CL), dV=moved(da.V,db.V), dT=moved(da.thalfEff,db.thalfEff);
-    if(dCL||dV||dT){
+    const clinA=a.pm==="clinical", clinB=b.pm==="clinical";
+    let clinSaid=false;
+    if(clinA!==clinB){
+      const pc=PK.patientOf(clinB ? b : a);
+      out.push(clinB
+        ? `<b>Clinical patient model</b>: clearance now follows creatinine clearance. Cockcroft–Gault gives ${fmt(pc.crcl,0)} mL/min, so this drug (fe ${trim(b.fe)}) keeps ${fmt(100*pc.factor,0)}% of its reference clearance.`
+        : `<b>Simple patient model</b>: clearance follows the organ-function setting (${b.clFn}%) instead of creatinine clearance.`);
+    } else if(clinA && clinB){
+      const pa=PK.patientOf(a), pb=PK.patientOf(b), dCr=moved(pa.crcl,pb.crcl);
+      if(dCr || a.fe!==b.fe){
+        const why=[];
+        if(a.age!==b.age) why.push(`age ${a.age} → ${b.age} years`);
+        if(a.scr!==b.scr) why.push(`SCr ${trim(a.scr)} → ${trim(b.scr)} mg/dL`);
+        if(a.sex!==b.sex) why.push(b.sex==="F" ? "female, × 0.85" : "male");
+        if(a.wtm!==b.wtm) why.push(`${WTM_NAME[a.wtm]} → ${WTM_NAME[b.wtm]}`);
+        else if(moved(pa.wtUsed,pb.wtUsed)) why.push(`weight used ${fmt(pa.wtUsed,1)} → ${fmt(pb.wtUsed,1)} kg`);
+        const pc=v=>`${fmt(100*v,0)}%`;
+        let txt=dCr ? `CrCl ${pb.crcl<pa.crcl?"fell":"rose"} from ${fmt(pa.crcl,0)} to ${fmt(pb.crcl,0)} mL/min${why.length?` (${why.join(", ")})`:""}` : "";
+        if(a.fe!==b.fe) txt+=(txt ? ", and " : "")+`the renal fraction changed from ${pc(a.fe)} to ${pc(b.fe)}`;
+        txt=cap(txt);
+        // the clearance change is the renal factor's alone only when the drug and the weight are the same
+        const onlyRenal=a.thalf===b.thalf && a.V===b.V && a.wt===b.wt;
+        if(!onlyRenal) txt+=`: clearance now keeps ${fmt(100*pb.factor,0)}% of the drug's reference value (it was ${fmt(100*pa.factor,0)}%)`;
+        else if(!dCL) txt+=`, but this drug's clearance doesn't move with it${b.fe===0 ? " (fe = 0: none of it goes through the kidneys)" : ""}`;
+        else {
+          txt+=`, so the clearance of ${a.fe===b.fe ? `a drug that is ${pc(b.fe)} renally excreted` : "the drug"} ${db.CL<da.CL?"fell":"rose"} <b>${fmt(Math.abs(db.CL/da.CL-1)*100,0)}%</b>`;
+          if(dT) txt+=`; the half-life ${db.thalfEff>da.thalfEff?"rose":"fell"} from ${fmt(da.thalfEff,1)} h to ${fmt(db.thalfEff,1)} h`;
+          if(a.dosing==="repeated" && b.dosing==="repeated"){
+            const ta=PK.ssProfile(inShown(a)).ssTrough, tb=PK.ssProfile(inShown(b)).ssTrough;
+            if(moved(ta,tb)) txt+=`; the steady-state trough ${tb>ta?"rose":"fell"} from ${fmt(ta,cdp(1))} to ${fmt(tb,cdp(1))} ${U().conc}`;
+          }
+        }
+        out.push(txt+".");
+        clinSaid=onlyRenal && !dV;   // then the clearance sentence below would only repeat this
+      }
+    }
+
+    // physiology and drug properties, explained through what they do to CL, V and t½
+    if((dCL||dV||dT) && !clinSaid){
       const causes=[];
-      if(a.clFn!==b.clFn) causes.push(`organ function ${a.clFn} → ${b.clFn}%`);
+      if(a.clFn!==b.clFn && !clinA && !clinB) causes.push(`organ function ${a.clFn} → ${b.clFn}%`);
       if(a.wt!==b.wt) causes.push(`weight ${a.wt} → ${b.wt} kg`);
       const parts=[];
       if(dCL) parts.push(`Clearance ${fmt(da.CL,2)} → ${fmt(db.CL,2)} L/h (<b>${pctTxt(da.CL,db.CL)}</b>), and since AUC = F·D / CL, total exposure moves the opposite way.`);
@@ -2145,7 +2272,7 @@
 
     if(a.dosing==="repeated" && b.dosing==="repeated"){
       if(a.tau!==b.tau){
-        out.push((sameRate?`Dose ${a.D} → ${b.D} mg and interval ${a.tau} → ${b.tau} h. `:`Interval ${a.tau} → ${b.tau} h. `)+(sameRate
+        out.push((sameRate?`Dose ${a.D} → ${b.D} ${U().dose} and interval ${a.tau} → ${b.tau} h. `:`Interval ${a.tau} → ${b.tau} h. `)+(sameRate
           ? `The dose per hour (D/τ) is unchanged, so average exposure is the same. Only the swing changes: ${b.tau<a.tau?"smaller, more frequent doses give lower peaks and higher troughs":"larger, less frequent doses give higher peaks and lower troughs"}.`
           : b.tau>a.tau
             ? "More time to decay between doses: lower troughs, a bigger peak-to-trough swing, less accumulation and less drug per day."
@@ -2160,13 +2287,13 @@
       if(ma!==mb){
         if(mb){
           const tq=mb*b.tau-1e-9;
-          out.push(`Dose ${mb} missed: with nothing coming in, concentration keeps falling through the gap. Just before the next dose it reaches <b>${fmt(conc(b,tq),2)} mg/L</b>, versus ${fmt(conc(a,tq),2)} mg/L in ${ref}, and it takes a few intervals of regular dosing to climb back.`);
+          out.push(`Dose ${mb} missed: with nothing coming in, concentration keeps falling through the gap. Just before the next dose it reaches <b>${fmt(conc(inShown(b),tq),cdp(2))} ${U().conc}</b>, versus ${fmt(conc(inShown(a),tq),cdp(2))} ${U().conc} in ${ref}, and it takes a few intervals of regular dosing to climb back.`);
         } else out.push(`Missed dose ${ma} restored: the regimen is uninterrupted again.`);
       }
     }
 
     // the drug's response to concentration (pharmacodynamics)
-    if(a.ec50!==b.ec50) out.push(`EC50 ${trim(a.ec50)} → ${trim(b.ec50)} mg/L: ${b.ec50>a.ec50
+    if(a.ec50!==b.ec50 && a.unit===b.unit) out.push(`EC50 ${trim(a.ec50)} → ${trim(b.ec50)} ${U().conc}: ${b.ec50>a.ec50
       ? `every effect now needs <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do less. That's lower potency; the maximum possible effect is unchanged.`
       : `every effect now needs only <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do more. That's higher potency; the maximum possible effect is unchanged.`}`);
     if(a.emax!==b.emax) out.push(`Emax ${trim(a.emax)} → ${trim(b.emax)}%: the ceiling on the response ${b.emax<a.emax
@@ -2220,7 +2347,8 @@
     }
     panel.style.display="block"; empty.style.display="none";
 
-    const C=PK.compareRows(a,b,state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
+    // numbers in the units shown (either side converted when the two differ); settings compared as they are
+    const C=PK.compareRows(inShown(a),inShown(b),state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
     const diffs=paramDiffs(a,b);
     const chips=diffs.map(k=>`<span class="chip">${PLABEL[k][0]} ${pval(k,a)} → <b>${pval(k,b)}</b></span>`);
     if(moved(C.da.CL,C.db.CL)) chips.push(`<span class="chip eff">CL ${fmt(C.da.CL,2)} → <b>${fmt(C.db.CL,2)} L/h</b></span>`);
@@ -2255,20 +2383,21 @@
 
   function scenarioLabel(p){
     if(p.dosing==="custom") return `${ROUTE_NAME[PK.routeOf(p)]} custom ×${derived(p).nGiven}`;
-    return `${ROUTE_NAME[p.route]} ${trim(p.D)} mg${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
+    return `${ROUTE_NAME[p.route]} ${trim(p.D)} ${PK.unitsOf(p).dose}${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
   }
   function customSummary(p){
     const d=derived(p);
-    return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} mg`;
+    return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} ${PK.unitsOf(p).dose}`;
   }
   function scenarioSummary(p){
     let s=p.dosing==="custom" ? `${cap(ROUTE_NAME[PK.routeOf(p)])} · custom schedule · ${customSummary(p)}`
-      : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} mg · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
+      : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} ${PK.unitsOf(p).dose} · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
     if(p.loadMult>1) s+=` · ${p.loadMult}× load`;
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
-    if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
-    if(state.pd) s+=` · EC50 ${trim(p.ec50)} mg/L${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}`;
+    if(p.pm==="clinical") s+=` · CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
+    else if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
+    if(state.pd) s+=` · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}`;
     return s;
   }
   function renderScenarioCards(a,b){
@@ -2386,15 +2515,15 @@
   function lastDoseTxt(i){
     if(!i.last) return "no dose given yet";
     const L=i.last;
-    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} mg${routeWord(L.route,L.dur)}${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
+    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} ${U().dose}${routeWord(L.route,L.dur)}${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
   }
   // What's running now: one infusion in detail, or several as their combined rate.
   function infusingTxt(i){
     const R=i.infusing;
     if(!R.length) return "";
-    if(R.length>1) return ` · ${R.length} infusions running, ${fmt(R.reduce((s,r)=>s+r.rate,0),1)} mg/h in total`;
+    if(R.length>1) return ` · ${R.length} infusions running, ${fmt(R.reduce((s,r)=>s+r.rate,0),1)} ${U().dose}/h in total`;
     const r=R[0];
-    return ` · infusion running at ${fmt(r.rate,1)} mg/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} mg in, ends at ${fmt(r.end,1)} h`;
+    return ` · infusion running at ${fmt(r.rate,1)} ${U().dose}/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} ${U().dose} in, ends at ${fmt(r.end,1)} h`;
   }
   const missedTxt=i=> i.missedSince.length ? ` · missed since then: ${i.missedSince.map(t=>fmt(t,1)+" h").join(", ")}` : "";
   // With the effect charts on: the effect at the cursor, against the target, and where C sits relative to EC50.
@@ -2418,21 +2547,21 @@
     const st=s=>`<span class="st ${s}">${STATUS_TXT[s]}</span>`;
     let h=`<div class="ir-t">t = <b>${fmt(cursorT,1)} h</b></div>`;
     if(mode==="cmp"){
-      const {a,b}=pair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
+      const {a,b}=shownPair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
       ["a","b"].forEach(side=>{
         const i=I[side];
-        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].css}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}${effectTxt(side==="a"?a:b,i.c)}</span></div>`;
+        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].css}">${side.toUpperCase()}</span><b>${fmt(i.c,cdp(2))} ${U().conc}</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}${effectTxt(side==="a"?a:b,i.c)}</span></div>`;
       });
       const d=I.b.c-I.a.c, pct=Math.abs(I.a.c)>1e-9 ? ` (${d>=0?"+":"−"}${fmt(Math.abs(d/I.a.c*100),0)}%)` : "";
-      h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</b>${pct}</div>`;
+      h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),cdp(2))} ${U().conc}</b>${pct}</div>`;
     } else {
       const i=PK.inspectAt(snapshot(),cursorT,state.mec,state.mtc);
-      h+=`<div class="ir-line"><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
+      h+=`<div class="ir-line"><b>${fmt(i.c,cdp(2))} ${U().conc}</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
       if(state.pd) h+=`<div class="ir-meta">${cap(effectTxt(snapshot(),i.c).replace(/^ · /,""))}</div>`;
       h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${infusingTxt(i)}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${routeWord(i.next.route)}${i.next.missed?" (missed)":""}`:""}</div>`;
       if(baseline){
-        const bc=conc(baseline.p,cursorT), d=i.c-bc;
-        h+=`<div class="ir-meta">Baseline <b>${fmt(bc,2)} mg/L</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</div>`;
+        const bc=conc(inShown(baseline.p),cursorT), d=i.c-bc;
+        h+=`<div class="ir-meta">Baseline <b>${fmt(bc,cdp(2))} ${U().conc}</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),cdp(2))} ${U().conc}</div>`;
       }
     }
     el.innerHTML=h;
@@ -2562,12 +2691,12 @@
       : c>=state.mec ? '<span style="color:#7BE0A8">therapeutic</span>' : '<span style="color:#F2C46B">sub-therapeutic</span>';
     let html=`<span class="tt-t">t = ${lead[bi].t.toFixed(1)} h</span>`;
     if(mode==="cmp"){
-      live.forEach(cv=>{ const c=cv.pts[bi].c; html+=`<br><span style="color:${cv.col.css}">${cv.tag}</span> <b>${c.toFixed(2)} mg/L</b> · ${status(c)}`; });
+      live.forEach(cv=>{ const c=cv.pts[bi].c; html+=`<br><span style="color:${cv.col.css}">${cv.tag}</span> <b>${c.toFixed(cdp(2))} ${U().conc}</b> · ${status(c)}`; });
     } else {
       const c=live[0].pts[bi].c;
-      html+=`<br><b>${c.toFixed(2)} mg/L</b> · ${status(c)}`;
+      html+=`<br><b>${c.toFixed(cdp(2))} ${U().conc}</b> · ${status(c)}`;
       const base=plotCurves.find(cv=>cv.ghost);
-      if(base) html+=`<br><span style="color:#98A2C8">baseline: ${base.pts[bi].c.toFixed(2)} mg/L</span>`;
+      if(base) html+=`<br><span style="color:#98A2C8">baseline: ${base.pts[bi].c.toFixed(cdp(2))} ${U().conc}</span>`;
     }
     tip.innerHTML=html;
     tip.style.opacity=1;
@@ -2600,7 +2729,7 @@
   function makeSlider(container,key,cfg){
     const wrap=document.createElement("div");
     wrap.className="ctrl";
-    const range=cfg.range||PK.RANGES[key];
+    const range=rangeOf(key,cfg);
     const max=typeof cfg.max==="function"?cfg.max():range[1];
     // a log slider moves in log10 units (1% steps) and keeps two significant figures
     const toS=v=> cfg.log ? Math.round(Math.log10(v)*1000)/1000 : v;
@@ -2638,7 +2767,8 @@
       sl.dispatchEvent(new Event("input",{bubbles:true}));
     });
     sl.addEventListener("input",()=>{
-      state[key]=fromS(parseFloat(sl.value)); state.drug=null; markDrug(); show();
+      state[key]=fromS(parseFloat(sl.value)); show();
+      if(!PATIENT_KEYS.includes(key)){ state.drug=null; markDrug(); }
       if(key==="nDoses"){ syncMissedMax(); changed(["nDoses","missed"]); }
       else if(key==="e0"){ syncEmaxMax(); changed(["e0","emax"]); }
       else changed([key]);
@@ -2667,9 +2797,14 @@
       makeSlider(el,key,cfg);
     });
     syncRouteSeg();
-    const pel=byId("patientSliders");
+    const pel=byId("patientSliders"), clinical=state.pm==="clinical";
     pel.innerHTML="";
-    Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
+    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(!(clinical && key==="clFn")) makeSlider(pel,key,cfg); });
+    byId("clinPanel").hidden=!clinical;
+    const cel=byId("clinSliders");
+    cel.innerHTML="";
+    if(clinical) Object.entries(CLIN).forEach(([key,cfg])=> makeSlider(cel,key,cfg));
+    setSegVal("pmSeg","pm",state.pm); setSegVal("sexSeg","sex",state.sex); setSegVal("wtmSeg","wtm",state.wtm);
     const dl=byId("pdSliders");
     dl.innerHTML="";
     Object.entries(PD_SLIDERS).forEach(([key,cfg])=> makeSlider(dl,key,cfg));
@@ -2726,6 +2861,9 @@
     markDrug(); buildSliders(); changed(["dosing","events"]);
   });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
+  seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
+  seg("sexSeg","sex",v=>{ state.sex=v; changed(["sex"]); });
+  seg("wtmSeg","wtm",v=>{ state.wtm=v; changed(["wtm"]); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
   seg("viewSeg","view",v=>{ state.view=v; render(); });
   seg("editSeg","edit",v=>setEdit(v));
@@ -2801,7 +2939,7 @@
 
   function renderEventSummary(){
     const L=state.events, given=L.filter(e=>e.status==="given"), missed=L.length-given.length, full=L.length>=PK.EVENT_LIMITS.max;
-    byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} mg in total`+
+    byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} ${U().dose} in total`+
       (full?` · limit of ${PK.EVENT_LIMITS.max} doses reached`:"");
     const atEnd=!full && PK.nextEventTime(L)===null;
     byId("evAdd").disabled=full || atEnd;
@@ -2824,9 +2962,9 @@
     const mixed=PK.routeOf(state)==="mixed";
     const tags=(e.route==="inf" ? `<span class="ev-tag inf">INF ${trim(e.dur)} h</span>` : mixed ? `<span class="ev-tag rt">${e.route==="iv"?"IV":"PO"}</span>` : "")+
       (e.type==="loading"?'<span class="ev-tag">LD</span>':"")+(e.status==="missed"?'<span class="ev-tag miss">missed</span>':"");
-    return `<span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} mg</span>${tags}`;
+    return `<span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} ${U().dose}</span>${tags}`;
   }
-  const rateTxt=e=> `${fmt(e.mg/e.dur,1)} mg/h · runs ${trim(e.t)}–${trim(r2(e.t+e.dur))} h`;
+  const rateTxt=e=> `${fmt(e.mg/e.dur,1)} ${U().dose}/h · runs ${trim(e.t)}–${trim(r2(e.t+e.dur))} h`;
   function evRow(e){
     const open=e.id===evSel, missed=e.status==="missed", inf=e.route==="inf";
     let h=`<div class="ev-row${open?" open":""}" data-id="${e.id}">`+
@@ -2836,7 +2974,7 @@
       const full=state.events.length>=PK.EVENT_LIMITS.max, mgMax=(inf ? PK.EVENT_LIMITS.mgInf : PK.EVENT_LIMITS.mg)[1];
       h+=`<div class="ev-edit">
         <label>${inf?"Start":"Time"} (h)<input type="number" data-f="t" min="0" max="${lastStart(e)}" step="0.25" value="${e.t}"></label>
-        <label>${inf?"Total amount":"Amount"} (mg)<input type="number" data-f="mg" min="25" max="${mgMax}" step="25" value="${e.mg}"></label>
+        <label>${inf?"Total amount":"Amount"} (${U().dose})<input type="number" data-f="mg" min="25" max="${mgMax}" step="25" value="${e.mg}"></label>
         <div class="seg" role="group" aria-label="Route"><button data-f="route" data-v="oral"${on("route","oral")}>Oral</button><button data-f="route" data-v="iv"${on("route","iv")}>IV bolus</button><button data-f="route" data-v="inf"${on("route","inf")}>Infusion</button></div>
         ${inf ? `<label>Duration (h)<input type="number" data-f="dur" min="0.25" max="${r2(PK.EVENT_LIMITS.t[1]-e.t)}" step="0.25" value="${e.dur}"></label><p class="ev-rate">= <span class="ev-rate-v">${rateTxt(e)}</span></p>` : ""}
         <div class="ev-nudge" role="group" aria-label="Move this dose"><button class="abtn" data-act="nudge" data-d="-0.5" aria-label="Move this dose 0.5 hours earlier"${e.t<=PK.EVENT_LIMITS.t[0]?" disabled":""}>◀ 0.5 h earlier</button><button class="abtn" data-act="nudge" data-d="0.5" aria-label="Move this dose 0.5 hours later"${e.t>=lastStart(e)?" disabled":""}>0.5 h later ▶</button></div>
@@ -2908,7 +3046,7 @@
   // doesn't move selects it instead. The strip only claims sideways movement (touch-action: pan-y), so a
   // vertical swipe still scrolls the page on touch screens.
   const sameEvents=(a,b)=> JSON.stringify(a)===JSON.stringify(b);
-  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} mg ${e.type==="loading"?"loading ":""}`+
+  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} ${U().dose} ${e.type==="loading"?"loading ":""}`+
     (e.route==="inf" ? `infusion (${trim(e.dur)} h)` : e.route==="iv" ? "IV bolus" : "dose");
   const othersAt=(list,e)=> list.filter(x=>x.id!==e.id && Math.abs(x.t-e.t)<1e-9).length;
 
@@ -3127,7 +3265,7 @@
       curves.map((cv,i)=>`<circle class="effDot" data-i="${i}" r="4.5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2"/>`).join("")+`</g>`;
     effEl.innerHTML=g;
     const primary=curves.find(cv=>mode==="cmp" ? cv.id===cmp.edit : cv.primary);
-    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} mg/L · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}`;
+    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} ${U().conc} · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}`;
     renderSigmoid(curves, primary);
     renderPdStats(curves);
   }
@@ -3167,7 +3305,7 @@
       g+=cv.ghost ? `<path d="${d}" fill="none" stroke="#98A2C8" stroke-width="1.6" stroke-dasharray="6 5" opacity="0.75"/>`
         : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.2"/>`;
     });
-    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (mg/L, log scale)</text>`+
+    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (${U().conc}, log scale)</text>`+
       `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Effect (%)</text>`+
       curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2" style="display:none"/>`).join("");
     ecEl.innerHTML=g;
@@ -3228,16 +3366,39 @@
       btn.addEventListener("click",()=>{
         const d=DRUGS.find(x=>x.id===btn.dataset.id);
         state.loadMult=1; state.missed=1; state.view="full";
-        Object.assign(state,d.s);
+        Object.assign(state,PK.drugScenario(d));
         state.drug=d.id;
         if(mode==="sim"){ exitLesson(); exitFit(); exitWindow(); }
         syncControls();
-        changed(Object.keys(d.s).concat("loadMult","missed"));
+        changed(Object.keys(PK.drugScenario(d)).concat("loadMult","missed"));
       });
     });
   }
   function markDrug(){
     document.querySelectorAll(".drug").forEach(b=>b.classList.toggle("on", b.dataset.id===state.drug));
+    renderDrugInfo();
+  }
+  // The selected drug's profile and where each value comes from.
+  const REF_NAME={thalf:"Half-life", V:"Volume (70 kg)", F:"Bioavailability F", ka:"Absorption kₐ", fe:"Renal fraction fe", fu:"Unbound fraction fu",
+    S:"Salt factor S", window:"Window", strengths:"Strengths", round:"Dose rounding", dose:"Usual dose", target:"Target", smoking:"Smoking", model:"Model"};
+  function renderDrugInfo(){
+    const el=byId("drugInfo"), d=DRUGS.find(x=>x.id===state.drug);
+    el.hidden=!d;
+    if(!d) return;
+    const u=PK.unitsOf({unit:d.units}), st=d.strengths;
+    const forms=st.mg ? `${st.mg.join(", ")} ${u.dose} ${st.form}` : `${st.form}${st.round ? `; doses rounded to ${st.round} ${u.dose}` : ""}`;
+    el.innerHTML=`<p class="di-h">${esc(d.name)}</p>`+
+      `<dl><dt>Kinetics</dt><dd>${d.kinetics==="linear" ? "linear (first-order)" : "saturable (Michaelis–Menten)"}</dd>`+
+      `<dt>fe</dt><dd>${trim(d.fe)} excreted unchanged in urine</dd>`+
+      (d.fu!=null ? `<dt>fu</dt><dd>${trim(d.fu)} unbound in plasma</dd>` : "")+
+      (d.S!==1 ? `<dt>S</dt><dd>${trim(+d.S.toPrecision(5))} ${d.units==="meq" ? "mEq of lithium per mg" : "active drug per mg of salt"}</dd>` : "")+
+      `<dt>Units</dt><dd>dose in ${u.dose}, levels in ${u.conc}</dd><dt>Forms</dt><dd>${esc(forms)}</dd></dl>`+
+      `<details><summary>Where these values come from</summary><ol>`+
+      d.refs.map(r=>{ const src=r.src && PK.SOURCES[r.src];
+        return `<li><b>${REF_NAME[r.k]||esc(r.k)}</b> ${esc(r.v)}: `+(src
+          ? `${esc(r.note)}. <a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite)}</a>`
+          : `<span class="unv">${esc(r.note)}</span>`)+`</li>`; }).join("")+
+      `</ol></details><p class="di-note">Educational model, not for clinical dosing.</p>`;
   }
 
   /* ================= LESSONS ================= */
@@ -3427,7 +3588,7 @@
   // A task's own settings, repeated in its bar so the chart stays in view while they move (on a phone the
   // controls are far above it). They drive the same settings as the sliders in the controls.
   function buildMirror(id, keys){
-    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=PK.RANGES[k];
+    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=rangeOf(k);
       return `<div class="ctrl"><div class="ctrl-top"><span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span><span class="ctrl-val" data-v="${k}"></span></div>`+
         `<input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${cfg.step}" value="${state[k]}" aria-label="${cfg.name}"></div>`;
     }).join("");
@@ -3441,7 +3602,7 @@
     const r=sliderRefs[k];
     state[k]=v; state.drug=null;
     if(r){
-      const st=SLIDERS[k].step, lo=(SLIDERS[k].range||PK.RANGES[k])[0], n=(v-lo)/st;
+      const st=SLIDERS[k].step, lo=rangeOf(k)[0], n=(v-lo)/st;
       r.sl.step=Math.abs(n-Math.round(n))>1e-6 ? "any" : String(st);   // an off-step value sits exactly, as from a link
       r.sl.value=v; r.show();
     }
@@ -3921,7 +4082,7 @@
     let h=`<b>DoseCurve</b> · educational model, not for clinical dosing<br>`;
     if(mode==="cmp"){ const {a,b}=pair(); h+=`A · ${esc(cmp.names.a)}: ${esc(scenarioSummary(a))}. ${esc(settingsLine(a))}<br>B · ${esc(cmp.names.b)}: ${esc(scenarioSummary(b))}. ${esc(settingsLine(b))}<br>`; }
     else { const p=snapshot(); h+=`${esc(scenarioSummary(p))}. ${esc(settingsLine(p))}<br>`; if(baseline) h+=`Compared with the baseline: ${esc(baseline.label)}<br>`; }
-    h+=`<span class="ph-meta">Window ${trim(state.duration)} h · MEC ${trim(state.mec)} · MTC ${trim(state.mtc)} mg/L · printed ${esc(when)} · ${esc(link)}</span>`;
+    h+=`<span class="ph-meta">Window ${trim(state.duration)} h · MEC ${trim(state.mec)} · MTC ${trim(state.mtc)} ${U().conc} · printed ${esc(when)} · ${esc(link)}</span>`;
     byId("printHead").innerHTML=h;
   }
   window.addEventListener("beforeprint",()=>{ if(!document.body.classList.contains("ws-printing")) fillPrintHead(); });
@@ -4006,12 +4167,13 @@
 
   byId("csvBtn").addEventListener("click",()=>{
     const curves=chartCurves().map(cv=>({...cv, ev:doseEvents(cv.p)}));
-    let head=mode==="cmp" ? ["A_mg_L","B_mg_L"] : curves.map(cv=>cv.ghost?"baseline_mg_L":"concentration_mg_L");
+    const cu=CSV_UNIT[U().id];
+    let head=mode==="cmp" ? [`A_${cu}`,`B_${cu}`] : curves.map(cv=>cv.ghost?`baseline_${cu}`:`concentration_${cu}`);
     if(state.pd) head=head.concat(mode==="cmp" ? ["A_effect_pct","B_effect_pct"] : curves.map(cv=>cv.ghost?"baseline_effect_pct":"effect_pct"));
     const label=cv=> mode==="cmp" ? cv.tag : cv.ghost ? "baseline" : "current";
     // custom schedules go above the table as # comment lines, so the table itself stays a plain grid
     let csv=curves.filter(cv=>cv.p.dosing==="custom").map(cv=>`# ${label(cv)} dose schedule: `+
-      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} mg `+(e.route==="inf" ? `IV infusion over ${e.dur} h (${r2(e.mg/e.dur)} mg/h)` : e.route==="iv" ? "IV bolus" : "oral")+
+      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} ${U().dose} `+(e.route==="inf" ? `IV infusion over ${e.dur} h (${r2(e.mg/e.dur)} ${U().dose}/h)` : e.route==="iv" ? "IV bolus" : "oral")+
         `${e.type==="loading"?" loading":""}${e.status==="missed"?" missed":""}`).join("; ") : "no doses")+"\n").join("");
     csv+="time_h,"+head.join(",")+"\n";
     const Tend=state.duration, N=600;

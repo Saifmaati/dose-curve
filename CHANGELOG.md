@@ -2,6 +2,28 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## Unreleased: v1.0 (in progress on the `v1.0` branch)
+
+- **Clinical patient mode.** Age, sex, height, weight, serum creatinine and albumin. The panel shows the working, with the numbers substituted, for:
+  - ideal body weight (Devine) and adjusted body weight
+  - Cockcroft–Gault creatinine clearance, with the weight used selectable
+  - the drug's clearance, CL = CL_ref × [(1 − fe) + fe × CrCl / 120]
+
+  Simple mode and every older link are unchanged.
+- **Drug library with sources.** Nine profiles. Digoxin, phenytoin and lithium carbonate are new, and each profile has a renal fraction, protein binding, salt factor, units and forms. Every value is tied to its FDA label on DailyMed or a paper, or marked "typical textbook value, unverified". Some profiles now follow their labels:
+  - amoxicillin: t½ 1.0 h
+  - vancomycin: 1 g every 12 h, t½ 4.8 h, V 0.4 L/kg
+  - theophylline: V 0.45 L/kg, 450 mg every 12 h
+  - caffeine: V 0.6 L/kg
+- **Units end to end.** Digoxin in mcg and ng/mL, lithium in mEq/L, with the salt factor applied to every dose. Readouts, axes, tables, explanations and CSV columns follow the drug. A scenario in other units is converted when two are compared.
+- **New lesson and comparison, *Kidney function (CrCl)*** (22 lessons, 16 comparisons), and six glossary terms (36).
+- **What changed** explains changes in creatinine clearance, the renal fraction, the salt factor and units.
+- **Links, version 5.** Links carry the clinical patient, units and the wider ranges (volume to 600 L, half-life to 72 h, weight to 200 kg, window to 14 days). Other links are written exactly as before, and a scenario link without a version is read as version 1.
+- **Fixes:**
+  - No layout shift on first load (desktop CLS 0.144 → 0.01).
+  - The inspector's ⟨ dose ⟩ buttons now carry their visible text in their accessible names.
+  - Safari's `-webkit-` blur prefix, and a fallback for `100dvh`.
+
 ## 2026-09-30
 
 - **New lesson, *Dosing by weight*** (21 lessons in all), and a matching one-click comparison (15 in all). The same 500 mg gives a 100 kg adult half the peak and half the AUC of a 50 kg adult at the same half-life; 10 mg/kg each makes the curves identical.
