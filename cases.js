@@ -316,6 +316,7 @@
     if(c.clMult && !prior) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
     if(c.vMult && !prior){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
     if(c.id==="phe") p.vmax=pheVmax(c)/(pt.wt*PK.clFactor(p));   // her Vmax, net of the model's renal factor
+    if(c.over) Object.assign(p, c.over);   // a community case's own values in place of the library's (shown as the author's)
     // enough doses to show the approach to steady state inside two weeks
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
     return PK.normalizeScenario(PK.scenario(p));
@@ -495,7 +496,7 @@
       p.kin==="mm" ? `Saturable elimination: Km ${nf(p.km,1)} mg/L and this patient's Vmax (below).`
         : c.current && (c.clMult || c.vMult) ? (()=>{ const V0=x.V/(c.vMult||1), CL0=x.CL/(c.clMult||1);
             return `Before any levels, Cockcroft–Gault predicts a clearance of CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*V0,2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(CL0,2)} L/h</b>, a half-life of ${nf(LN2*V0/CL0,1)} h with V = ${nf(V0,1)} L.`; })()
-        : `Clearance = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*PK.vOf(p)*(c.clMult||1),2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(x.CL,2)} L/h</b>; V = ${nf(x.V,1)} L; k = ${nf(x.k,4)} h⁻¹; t½ = ${nf(x.th,1)} h.`];
+        : `Clearance = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/p.thalf*PK.vOf(p),2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(x.CL,2)} L/h</b>; V = ${nf(x.V,1)} L; k = ${nf(x.k,4)} h⁻¹; t½ = ${nf(x.th,1)} h.`];
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
     const m=g.metrics;
@@ -533,6 +534,191 @@
     return out;
   }
 
+
+  /* ================= COMMUNITY CASES (written by instructors) ================= */
+  // An instructor writes a case as a spec: the patient, a first-order drug from the library (with any values the
+  // author changes, shown as the author's), the regimen choices, a target (peak and trough, or AUC24), the task,
+  // and optional notes and references (shown as author-provided). The spec travels in the link, compressed where
+  // the browser can, versioned; it is checked on the way in and the case is only offered when some regimen on its
+  // grid meets the target. Community cases say they are unreviewed.
+  const COMMUNITY_VERSION=1;
+  const TEXT_LIMITS={title:80, setting:500, task:600, also:600, ref:200, refs:5};
+  const AUTHOR_TAUS=[4,6,8,12,24,36,48];
+  const AUTHOR_DRUG_IDS=()=> PK.DRUGS.filter(d=>d.kinetics!=="michaelis-menten").map(d=>d.id);   // levels scale with the dose
+  const R=PK.RANGES, num=(v,lo,hi)=> typeof v==="number" && isFinite(v) && v>=lo && v<=hi;
+  const str=(v,max)=> typeof v==="string" ? v.replace(/[\u0000-\u001f\u007f]/g," ").trim().slice(0,max) : "";
+  // A checked spec, or the reasons it isn't one.
+  function checkSpec(o){
+    const err=[], ok=o && typeof o==="object";
+    if(!ok) return {errors:["not a case"]};
+    const title=str(o.title, TEXT_LIMITS.title), task=str(o.task, TEXT_LIMITS.task);
+    if(!title) err.push("a title"); if(!task) err.push("a task");
+    const drug=AUTHOR_DRUG_IDS().includes(o.drug) ? o.drug : null;
+    if(!drug) err.push("a first-order drug from the library");
+    const pt=o.patient||{}, patient={age:Math.round(pt.age), sex:pt.sex==="F" ? "F" : "M", ht:Math.round(pt.ht), wt:pt.wt, scr:pt.scr};
+    if(!num(patient.age, R.age[0], R.age[1])) err.push(`an age of ${R.age[0]}–${R.age[1]} years`);
+    if(!num(patient.ht, R.ht[0], R.ht[1])) err.push(`a height of ${R.ht[0]}–${R.ht[1]} cm`);
+    if(!num(patient.wt, R.wt[0], R.wt[1])) err.push(`a weight of ${R.wt[0]}–${R.wt[1]} kg`);
+    if(!num(patient.scr, R.scr[0], R.scr[1])) err.push(`a serum creatinine of ${R.scr[0]}–${R.scr[1]} mg/dL`);
+    const over={};
+    ["thalf","V","F"].forEach(k=>{ const v=o.over && o.over[k]; if(v!=null){ if(num(v, R[k][0], R[k][1])) over[k]=v; else err.push(`${k} within ${R[k][0]}–${R[k][1]}`); } });
+    const d=drug && drugOf(drug), inf=d && d.s.route==="inf";
+    if(over.F!=null && d && d.s.route!=="oral") err.push("F only for an oral drug");
+    const ch=o.choices||{}, taus=[...new Set((ch.taus||[]).filter(t=>AUTHOR_TAUS.includes(t)))].sort((a,b)=>a-b);
+    if(!taus.length) err.push("at least one dosing interval");
+    const choices={taus, step:ch.step, min:ch.min, max:ch.max};
+    if(!num(choices.step, 0.01, 1000)) err.push("a dose step"); if(!num(choices.min, 0.01, 10000)) err.push("a lowest dose");
+    if(!num(choices.max, choices.min||0, 10000)) err.push("a highest dose above the lowest");
+    if(inf){ choices.tinf=ch.tinf; if(!num(ch.tinf, 0.25, Math.min(24, taus[0]||24))) err.push("an infusion time shorter than the interval"); }
+    const t=o.target||{}; let target=null;
+    if(t.kind==="auc"){ if(Array.isArray(t.auc) && num(t.auc[0],1,100000) && num(t.auc[1],t.auc[0],100000) && t.auc[1]>t.auc[0]) target={kind:"auc", auc:[t.auc[0], t.auc[1]]}; else err.push("an AUC24 range"); }
+    else if(t.kind==="pt"){
+      const pk=t.peak, tmax=t.troughMax, tmin=t.troughMin;
+      if(Array.isArray(pk) && num(pk[0],0,100000) && num(pk[1],pk[0],100000) && pk[1]>pk[0]){
+        target={kind:"pt", peak:[pk[0], pk[1]]};
+        if(tmax!=null){ if(num(tmax,0,pk[1])) target.troughMax=tmax; else err.push("a trough limit below the peak's top"); }
+        if(tmin!=null){ if(num(tmin,0,target.troughMax!=null ? target.troughMax : pk[1])) target.troughMin=tmin; else err.push("a trough floor below its limit"); }
+      } else err.push("a peak range");
+    } else err.push("a target (peak and trough, or AUC24)");
+    const st=o.start||{}, start={D:st.D, tau:st.tau};
+    if(!num(start.D, choices.min||0, choices.max||0) || !taus.includes(start.tau)) err.push("a starting regimen within the choices");
+    const refs=(Array.isArray(o.refs) ? o.refs : []).map(r=>str(r, TEXT_LIMITS.ref)).filter(Boolean).slice(0, TEXT_LIMITS.refs);
+    if(err.length) return {errors:err};
+    const spec={v:COMMUNITY_VERSION, title, drug, patient, setting:str(o.setting, TEXT_LIMITS.setting), task, also:str(o.also, TEXT_LIMITS.also), refs, target, choices, start};
+    if(Object.keys(over).length) spec.over=over;
+    return {spec};
+  }
+  // The case object the grader, walkthrough and page use for a spec.
+  function communityCase(spec){
+    const c={id:"community", community:true, spec, drug:spec.drug, title:spec.title, tag:"Community case · unreviewed",
+      patient:Object.assign({}, spec.patient), over:spec.over, indication:spec.setting || "Written by an instructor.",
+      target:Object.assign({why:"Set by the case's author."}, spec.target), choices:Object.assign({}, spec.choices), start:Object.assign({}, spec.start),
+      // the library's own sources for the drug and for Cockcroft–Gault, which the model uses; the author's are listed apart
+      task:spec.task, also:spec.also || "The author added no notes.", refs:[spec.drug, "cg"].filter(k=>PK.SOURCES[k]), authorRefs:spec.refs, wrong:[],
+      plan(){ const sol=solveCase(this), r=sol.best;
+        return {reg:{D:r.D, tau:r.tau}, steps:[
+          `The grid of regimens the case allows: ${sol.total} (doses ${sol.doses} × intervals ${this.choices.taus.join(", ")} h); ${sol.count} of them meet the target in this model.`,
+          `One of them, nearest the middle of the target: <b>${nf(r.D,1)} ${PK.unitsOf({unit:drugOf(this.drug).units}).dose} every ${r.tau} h</b>.`]};
+      }};
+    return c;
+  }
+  // Every regimen on the case's grid, checked against its target. First-order levels scale with the dose, so each
+  // interval is simulated once at a unit dose and every dose on it is checked by scaling; the chosen regimen is then
+  // graded in full.
+  function solveCase(c){
+    const t=c.target, ch=c.choices, list=achievable(c), doses=(list ? list.filter(D=>D>=ch.min-1e-9 && D<=ch.max+1e-9)
+      : Array.from({length:Math.min(4000, Math.floor((ch.max-ch.min)/ch.step+1e-9)+1)}, (_,i)=> +(ch.min+i*ch.step).toFixed(6)));
+    let count=0, best=null;
+    ch.taus.forEach(tau=>{
+      const m=metricsOf(c, caseScenario(c, {D:1, tau}));
+      doses.forEach(D=>{
+        let ok, score;
+        if(t.kind==="auc"){ const a=m.auc24*D; ok=a>=t.auc[0] && a<=t.auc[1]; score=Math.abs(a/((t.auc[0]+t.auc[1])/2)-1); }
+        else { const pk=m.peak*D, tr=m.trough*D; ok=pk>=t.peak[0] && pk<=t.peak[1] && (t.troughMax==null || tr<=t.troughMax) && (t.troughMin==null || tr>=t.troughMin); score=Math.abs(pk/((t.peak[0]+t.peak[1])/2)-1); }
+        if(ok){ count++; if(!best || score<best.score-1e-12 || (Math.abs(score-best.score)<=1e-12 && tau===c.start.tau)) best={D, tau, score}; }
+      });
+    });
+    if(best) best.grade=gradeCase(c, {D:best.D, tau:best.tau});
+    return {count, total:doses.length*ch.taus.length, doses:doses.length, best, solvable:!!(best && best.grade.ok)};
+  }
+
+  /* ---------- packing a spec into a link ---------- */
+  // "z." + deflate-raw + base64url where CompressionStream exists, else "j." + base64url of the JSON; both decode everywhere
+  // DecompressionStream exists (every current browser and Node 18+).
+  const MAX_TOKEN=16000, MAX_JSON=65536;
+  const b64u={enc:bytes=>{ let s=""; bytes.forEach(b=>{ s+=String.fromCharCode(b); }); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); },
+    dec:str=>{ const b=atob(str.replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(b, ch=>ch.charCodeAt(0)); }};
+  const utf8=new TextEncoder(), fromUtf8=new TextDecoder();
+  async function packJSON(obj, plain){
+    const bytes=utf8.encode(JSON.stringify(obj));
+    if(!plain && typeof CompressionStream==="function"){
+      const z=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());
+      return "z."+b64u.enc(z);
+    }
+    return "j."+b64u.enc(bytes);
+  }
+  async function unpackJSON(tok){
+    try{
+      if(typeof tok!=="string" || tok.length>MAX_TOKEN || !/^[zj]\.[A-Za-z0-9_-]+$/.test(tok)) return null;
+      let bytes=b64u.dec(tok.slice(2));
+      if(tok[0]==="z"){
+        if(typeof DecompressionStream!=="function") return null;
+        const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw")), reader=stream.getReader(), parts=[]; let n=0;
+        for(;;){ const {done, value}=await reader.read(); if(done) break; n+=value.length; if(n>MAX_JSON){ reader.cancel(); return null; } parts.push(value); }
+        bytes=new Uint8Array(n); let o=0; parts.forEach(p=>{ bytes.set(p,o); o+=p.length; });
+      }
+      if(bytes.length>MAX_JSON) return null;
+      return JSON.parse(fromUtf8.decode(bytes));
+    }catch(e){ return null; }
+  }
+  // "case=c1.<token>" (+ &d= &t= for a proposed regimen, as for the built-in cases)
+  async function encodeCommunityLink(spec, reg, plain){
+    let h="case=c"+COMMUNITY_VERSION+"."+await packJSON(spec, plain);
+    if(reg && isFinite(reg.D)) h+=`&d=${+reg.D.toFixed(2)}&t=${reg.tau}`;
+    return h;
+  }
+  // Any case link: the built-in ones exactly as decodeCaseLink reads them, and community ones (checked, and only if
+  // solvable). {id, reg} for a built-in case, {id:"community", case, reg} for a community one, or null.
+  async function decodeAnyCaseLink(hash){
+    const q={};
+    String(hash||"").replace(/^#/,"").split("&").forEach(kv=>{ const i=kv.indexOf("="); if(i>0) q[kv.slice(0,i)]=kv.slice(i+1); });
+    const m=/^c(\d+)\.(.+)$/.exec(q.case||"");
+    if(!m) return decodeCaseLink(hash);
+    if(+m[1]!==COMMUNITY_VERSION) return null;
+    const got=checkSpec(await unpackJSON(m[2]));
+    if(!got.spec) return null;
+    const c=communityCase(got.spec);
+    if(!solveCase(c).solvable) return null;
+    const out={id:"community", case:c, reg:null};
+    if(q.d!==undefined){ const D=parseFloat(q.d), tau=parseInt(q.t,10); if(isFinite(D) && D>0 && D<=10000 && c.choices.taus.includes(tau)) out.reg={D, tau}; }
+    return out;
+  }
+
+  /* ================= ASSIGNMENTS AND COMPLETION CODES ================= */
+  // An assignment (bundle) is an ordered list of up to 12 items: built-in cases, community cases (their specs) and
+  // worksheets (topic, count, seed, pool version). It travels in "#bundle=b1.<token>". Progress stays in the browser.
+  // A completion code is an HMAC-SHA256, keyed by a class key the teacher gives out, over the assignment, a
+  // teacher-chosen identifier (not a name), the items finished, the score and the date. Nothing is sent anywhere.
+  // Anyone who knows the key can make a code, so it records completion in the app, not proof.
+  const BUNDLE_VERSION=1, BUNDLE_MAX=12;
+  function checkBundle(o){
+    if(!o || typeof o!=="object" || !Array.isArray(o.items)) return null;
+    const title=str(o.title, TEXT_LIMITS.title) || "Assignment", items=[];
+    for(const it of o.items.slice(0, BUNDLE_MAX)){
+      if(it && it.kind==="case" && caseById(it.id)) items.push({kind:"case", id:it.id});
+      else if(it && it.kind==="case" && it.spec){ const g=checkSpec(it.spec); if(g.spec && solveCase(communityCase(g.spec)).solvable) items.push({kind:"case", spec:g.spec}); else return null; }
+      else if(it && it.kind==="ws"){ const t=PK.decodeTaskLink(`ws=${it.topic||"all"}.${it.count}.${it.seed}.${it.v||1}`); if(t) items.push({kind:"ws", topic:t.topic, count:t.count, seed:t.seed, v:t.v}); else return null; }
+      else return null;
+    }
+    return items.length ? {v:BUNDLE_VERSION, title, items} : null;
+  }
+  async function encodeBundleLink(b, plain){ const ok=checkBundle(b); return ok ? "bundle=b"+BUNDLE_VERSION+"."+await packJSON(ok, plain) : null; }
+  async function decodeBundleLink(hash){
+    const m=/^#?bundle=b(\d+)\.([zj]\.[A-Za-z0-9_-]+)$/.exec(String(hash||""));
+    if(!m || +m[1]!==BUNDLE_VERSION) return null;
+    return checkBundle(await unpackJSON(m[2]));
+  }
+  // Short, stable names for items, used in the payload a code covers.
+  const itemId=(it,i)=> it.kind==="case" ? (it.id || `community${i+1}`) : `ws:${it.topic||"all"}.${it.count}.${it.seed}.${it.v}`;
+  const IDENT=/^[A-Za-z0-9_-]{1,24}$/;
+  const hex=bytes=> Array.from(bytes, b=>b.toString(16).padStart(2,"0")).join("");
+  async function sha256Hex(text){ return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", utf8.encode(text)))); }
+  const B32="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no I, O, 0, 1
+  function base32(bytes, n){ let bits=0, val=0, out=""; for(const b of bytes){ val=(val<<8)|b; bits+=8; while(bits>=5 && out.length<n){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } } return out; }
+  // The readable payload: what the code vouches for.
+  function completionPayload(o){
+    return ["DoseCurve completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
+  }
+  async function completionCode(key, payload){
+    const k=await crypto.subtle.importKey("raw", utf8.encode(String(key)), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+    const sig=new Uint8Array(await crypto.subtle.sign("HMAC", k, utf8.encode(payload)));
+    return base32(sig, 16).replace(/(.{4})(?!$)/g,"$1-");
+  }
+  async function verifyCode(key, payload, code){
+    const want=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    return want.length===16 && (await completionCode(key, String(payload||"").replace(/\r\n?/g,"\n").trim())).replace(/-/g,"")===want;
+  }
+
   /* ================= THE CASES TAB (browser only) ================= */
   // host: {esc, fmt, toast, copyHash(hash), openScenario(p, view, drugId)} from the page.
   let host=null, rootEl=null, current=null;
@@ -557,9 +743,223 @@
       <p>Each case gives a patient and a drug. Propose a regimen and the model grades it at steady state, with a hint when it misses and the same regimen rounded to the forms available. The walkthrough works the textbook route with the patient's own numbers.</p>
       <p class="cs-disc">Educational model, not for clinical dosing. The cases teach the reasoning; they are not prescribing instructions.</p></div>
       <div class="cs-list">${CASES.map(c=>`<button class="cs-card" data-id="${c.id}"><span class="cs-tag">${h.esc(c.tag)}</span><span class="cs-title">${h.esc(c.title)}</span><span class="cs-who">${h.esc(who(c))}</span></button>`).join("")}</div>
+      <div class="cs-tools"><p class="cs-sub">For instructors</p>
+        <p>Write your own case and share it as a link, put cases and worksheets together as an assignment, and check the completion codes students bring back. Everything stays in the link and in each browser: nothing is sent anywhere.</p>
+        <div class="cs-actions"><button class="abtn" type="button" id="csAuthorBtn">Write a case</button><button class="abtn" type="button" id="csBundleBtn">Make an assignment</button><button class="abtn" type="button" id="csVerifyBtn">Verify a completion code</button></div></div>
+      <section class="cs-panel" id="csPanel" hidden tabindex="-1"></section>
       <article class="cs-case" id="csCase" hidden tabindex="-1"></article>`;
     el.querySelector(".cs-list").addEventListener("click",e=>{ const b=e.target.closest(".cs-card"); if(b) open({id:b.dataset.id, reg:null}); });
+    el.querySelector("#csAuthorBtn").addEventListener("click",()=> renderAuthor());
+    el.querySelector("#csBundleBtn").addEventListener("click",()=> renderBundleMaker());
+    el.querySelector("#csVerifyBtn").addEventListener("click",()=> renderVerify());
   }
+
+  /* ---------- the tab's views ---------- */
+  // One view at a time: the list (with the intro and the instructor tools), a case, or an instructor panel.
+  function showOnly(el){
+    ["cs-intro","cs-list","cs-tools"].forEach(cl=>{ rootEl.querySelector("."+cl).hidden=!!el; });
+    ["#csPanel","#csCase"].forEach(id=>{ const x=rootEl.querySelector(id); x.hidden=x!==el; });
+  }
+  const showList=()=> showOnly(null);
+  function panel(html){
+    const el=rootEl.querySelector("#csPanel");
+    el.innerHTML=`<p><button class="abtn" type="button" data-back>← All cases</button></p>`+html;
+    el.querySelector("[data-back]").addEventListener("click",()=>{ showList(); rootEl.querySelector("#csAuthorBtn").focus(); });
+    showOnly(el); el.focus({preventScroll:true}); el.scrollIntoView({block:"start"});
+    return el;
+  }
+  // Browser storage for drafts and assignment progress: a convenience that may be unavailable.
+  const store={get:k=>{ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ /* not kept */ } }};
+  let lastSpec=null;
+
+  /* ---------- write a case ---------- */
+  const TEMPLATE={title:"", drug:"gent", patient:{age:70, sex:"F", ht:160, wt:60, scr:1.5}, setting:"", task:"Choose a dose and interval that meet the target at steady state.",
+    also:"", refs:[], target:{kind:"pt", peak:[5,10], troughMax:1}, choices:{taus:[8,12,24,36], step:10, min:40, max:400, tinf:0.5}, start:{D:80, tau:8}};
+  function renderAuthor(){
+    const h=host, sp=Object.assign({}, TEMPLATE, store.get("dosecurve-author-draft")||{}), t=sp.target||{}, ch=sp.choices||{}, pt=sp.patient||{}, ov=sp.over||{};
+    const v=x=> x==null ? "" : String(x), sel=(a,b)=> a===b ? " selected" : "";
+    const el=panel(`<h2 class="cs-h">Write a case</h2>
+      <p class="cs-intro-p">A case is a patient, a drug from the library and a target. Students propose a regimen and the model grades it. Before the link is made, every regimen your choices allow is checked, and the link is offered only if at least one meets the target. It opens as a community case, marked unreviewed. Don't include a patient's name or other identifiers.</p>
+      <p class="cs-disc">Educational model, not for clinical dosing.</p>
+      <form id="auForm" class="cs-author" novalidate>
+        <label class="wide">Title<input id="auTitle" maxlength="${TEXT_LIMITS.title}" value="${h.esc(v(sp.title))}"></label>
+        <label>Drug<select id="auDrug">${AUTHOR_DRUG_IDS().map(id=>`<option value="${id}"${sel(id, sp.drug)}>${h.esc(drugOf(id).name)}</option>`).join("")}</select></label>
+        <fieldset><legend>Patient</legend>
+          <label>Age (years)<input id="auAge" type="number" min="18" max="100" step="1" value="${v(pt.age)}"></label>
+          <label>Sex<select id="auSex"><option value="F"${sel("F",pt.sex)}>Female</option><option value="M"${sel("M",pt.sex)}>Male</option></select></label>
+          <label>Height (cm)<input id="auHt" type="number" min="120" max="220" step="1" value="${v(pt.ht)}"></label>
+          <label>Weight (kg)<input id="auWt" type="number" min="40" max="200" step="0.5" value="${v(pt.wt)}"></label>
+          <label>Serum creatinine (mg/dL)<input id="auScr" type="number" min="0.2" max="15" step="0.1" value="${v(pt.scr)}"></label></fieldset>
+        <fieldset><legend>Your own values (optional; blank uses the library's)</legend>
+          <label>Half-life (h)<input id="auThalf" type="number" min="0.5" max="72" step="0.1" value="${v(ov.thalf)}"></label>
+          <label>Volume per 70 kg (L)<input id="auV" type="number" min="5" max="600" step="0.5" value="${v(ov.V)}"></label>
+          <label>Bioavailability (oral)<input id="auF" type="number" min="0.1" max="1" step="0.01" value="${v(ov.F)}"></label></fieldset>
+        <label class="wide">Setting<textarea id="auSetting" rows="2" maxlength="${TEXT_LIMITS.setting}">${h.esc(v(sp.setting))}</textarea></label>
+        <label class="wide">Task<textarea id="auTask" rows="2" maxlength="${TEXT_LIMITS.task}">${h.esc(v(sp.task))}</textarea></label>
+        <fieldset><legend>Regimens students can choose</legend>
+          <div class="au-taus">${AUTHOR_TAUS.map(x=>`<label class="au-chk"><input type="checkbox" value="${x}"${(ch.taus||[]).includes(x) ? " checked" : ""}> every ${x} h</label>`).join("")}</div>
+          <label>Lowest dose<input id="auMin" type="number" min="0.01" step="any" value="${v(ch.min)}"></label>
+          <label>Highest dose<input id="auMax" type="number" min="0.01" step="any" value="${v(ch.max)}"></label>
+          <label>Dose step<input id="auStep" type="number" min="0.01" step="any" value="${v(ch.step)}"></label>
+          <label id="auTinfL">Infusion time (h)<input id="auTinf" type="number" min="0.25" max="24" step="0.25" value="${v(ch.tinf)}"></label>
+          <label>Opening dose<input id="auD" type="number" min="0.01" step="any" value="${v((sp.start||{}).D)}"></label>
+          <label>Opening interval<select id="auTau">${AUTHOR_TAUS.map(x=>`<option value="${x}"${sel(x,(sp.start||{}).tau)}>${x} h</option>`).join("")}</select></label></fieldset>
+        <fieldset><legend>Target at steady state</legend>
+          <label>Kind<select id="auKind"><option value="pt"${sel("pt",t.kind)}>Peak and trough</option><option value="auc"${sel("auc",t.kind)}>AUC24</option></select></label>
+          <label class="au-pt">Peak from<input id="auPkLo" type="number" min="0" step="any" value="${v((t.peak||[])[0])}"></label>
+          <label class="au-pt">Peak to<input id="auPkHi" type="number" min="0" step="any" value="${v((t.peak||[])[1])}"></label>
+          <label class="au-pt">Trough at most (optional)<input id="auTrMax" type="number" min="0" step="any" value="${v(t.troughMax)}"></label>
+          <label class="au-pt">Trough at least (optional)<input id="auTrMin" type="number" min="0" step="any" value="${v(t.troughMin)}"></label>
+          <label class="au-auc">AUC24 from<input id="auAucLo" type="number" min="0" step="any" value="${v((t.auc||[])[0])}"></label>
+          <label class="au-auc">AUC24 to<input id="auAucHi" type="number" min="0" step="any" value="${v((t.auc||[])[1])}"></label></fieldset>
+        <label class="wide">What a pharmacist also weighs (optional)<textarea id="auAlso" rows="2" maxlength="${TEXT_LIMITS.also}">${h.esc(v(sp.also))}</textarea></label>
+        <label class="wide">References, one per line (optional, up to ${TEXT_LIMITS.refs}; shown as author-provided)<textarea id="auRefs" rows="2">${h.esc((sp.refs||[]).join("\n"))}</textarea></label>
+        <div class="cs-actions"><button class="abtn" type="submit">Check and make the link</button></div>
+      </form>
+      <div id="auOut" class="cs-result" aria-live="polite"></div>`);
+    const f=el.querySelector("#auForm"), $=id=>el.querySelector("#"+id), nv=id=>{ const x=$(id).value.trim(); return x==="" ? null : parseFloat(x); };
+    const sync=()=>{ const inf=drugOf($("auDrug").value).s.route==="inf", auc=$("auKind").value==="auc";
+      $("auTinfL").hidden=!inf; el.querySelectorAll(".au-pt").forEach(x=>x.hidden=auc); el.querySelectorAll(".au-auc").forEach(x=>x.hidden=!auc);
+      $("auF").closest("label").hidden=drugOf($("auDrug").value).s.route!=="oral"; };
+    ["auDrug","auKind"].forEach(id=> $(id).addEventListener("change", sync)); sync();
+    const read=()=>{
+      const drug=$("auDrug").value, inf=drugOf(drug).s.route==="inf", oral=drugOf(drug).s.route==="oral", kind=$("auKind").value, over={};
+      [["thalf","auThalf"],["V","auV"]].concat(oral ? [["F","auF"]] : []).forEach(([k,id])=>{ const x=nv(id); if(x!=null) over[k]=x; });
+      const target=kind==="auc" ? {kind, auc:[nv("auAucLo"), nv("auAucHi")]} : {kind, peak:[nv("auPkLo"), nv("auPkHi")]};
+      if(kind==="pt"){ const a=nv("auTrMax"), b=nv("auTrMin"); if(a!=null) target.troughMax=a; if(b!=null) target.troughMin=b; }
+      const choices={taus:[...el.querySelectorAll(".au-taus input:checked")].map(x=>+x.value), min:nv("auMin"), max:nv("auMax"), step:nv("auStep")};
+      if(inf) choices.tinf=nv("auTinf");
+      return {title:$("auTitle").value, drug, patient:{age:nv("auAge"), sex:$("auSex").value, ht:nv("auHt"), wt:nv("auWt"), scr:nv("auScr")}, over:Object.keys(over).length ? over : undefined,
+        setting:$("auSetting").value, task:$("auTask").value, also:$("auAlso").value, refs:$("auRefs").value.split("\n").map(x=>x.trim()).filter(Boolean),
+        target, choices, start:{D:nv("auD"), tau:+$("auTau").value}};
+    };
+    f.addEventListener("submit",e=>{
+      e.preventDefault();
+      const raw=read(); store.set("dosecurve-author-draft", raw);
+      const got=checkSpec(raw), out=$("auOut");
+      if(!got.spec){ out.innerHTML=`<p class="cs-no">The case needs ${h.esc(got.errors.join("; "))}.</p>`; return; }
+      const c=communityCase(got.spec), sol=solveCase(c), u=PK.unitsOf({unit:drugOf(c.drug).units});
+      if(!sol.solvable){ out.innerHTML=`<p class="cs-no">✗ None of the ${sol.total} regimens your choices allow meets the target in the model. Widen the dose range, add intervals, or relax the target.</p>`; return; }
+      lastSpec=got.spec;
+      const g=sol.best.grade, m=g.metrics;
+      out.innerHTML=`<p class="cs-ok">✓ ${sol.count} of the ${sol.total} regimens your choices allow meet the target; for example ${nf(sol.best.D,1)} ${u.dose} every ${sol.best.tau} h (${c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} ${u.auc}` : `peak ${nf(m.peak,2)}, trough ${nf(m.trough,2)} ${u.conc}`}).</p>`+
+        `<p class="cs-sub">Link, ready to share</p><input class="cs-linkbox" id="auLink" readonly aria-label="The case's link">`+
+        `<div class="cs-actions"><button class="abtn" type="button" id="auCopy">Copy link</button><button class="abtn" type="button" id="auOpen">Open the case</button><button class="abtn" type="button" id="auBundle">Put it in an assignment</button></div>`;
+      encodeCommunityLink(got.spec).then(hash=>{ $("auLink").value=location.href.split("#")[0]+"#"+hash;
+        $("auCopy").addEventListener("click",()=> h.copyHash(hash)); });
+      $("auOpen").addEventListener("click",()=> open({id:"community", case:c, reg:null}));
+      $("auBundle").addEventListener("click",()=> renderBundleMaker(true));
+    });
+  }
+
+  /* ---------- make an assignment ---------- */
+  function renderBundleMaker(withSpec){
+    const h=host, items=[];
+    if(withSpec && lastSpec) items.push({kind:"case", spec:lastSpec});
+    const el=panel(`<h2 class="cs-h">Make an assignment</h2>
+      <p class="cs-intro-p">Put up to ${BUNDLE_MAX} cases and worksheets in order and share one link. Students open it, work through the items (worksheet answers are checked as they go), and can make a completion code at the end. Choose a class key and tell it to your class separately: it is not in the link, and you need it to verify their codes.</p>
+      <label class="cs-field">Title<input id="bmTitle" maxlength="${TEXT_LIMITS.title}" value="Assignment"></label>
+      <fieldset class="cs-field"><legend>Add a case</legend><select id="bmCase">${CASES.map(c=>`<option value="${c.id}">${h.esc(c.title)}</option>`).join("")}${lastSpec ? `<option value="community">Your case: ${h.esc(lastSpec.title)}</option>` : ""}</select>
+        <button class="abtn" type="button" id="bmAddCase">Add</button></fieldset>
+      <fieldset class="cs-field"><legend>Add a worksheet</legend><select id="bmTopic"><option value="">All topics</option>${PK.PRACTICE_TOPICS.map(t=>`<option value="${t.id}">${h.esc(t.title)}</option>`).join("")}</select>
+        <select id="bmCount">${PK.WORKSHEET_SIZES.map(n=>`<option value="${n}"${n===5 ? " selected" : ""}>${n} problems</option>`).join("")}</select>
+        <button class="abtn" type="button" id="bmAddWs">Add</button></fieldset>
+      <ol class="cs-items" id="bmItems"></ol>
+      <div class="cs-actions"><button class="abtn" type="button" id="bmMake">Make the link</button></div>
+      <div id="bmOut" class="cs-result" aria-live="polite"></div>`);
+    const $=id=>el.querySelector("#"+id);
+    const label=it=> it.kind==="case" ? `Case: ${it.id ? caseById(it.id).title : it.spec.title + " (community)"}` : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"} · ${it.count} problems`;
+    const draw=()=>{ $("bmItems").innerHTML=items.map((it,i)=>`<li>${h.esc(label(it))} <button class="bz-del" type="button" data-rm="${i}" aria-label="Remove item ${i+1}">✕</button></li>`).join("") || `<li class="cs-empty">No items yet.</li>`; };
+    $("bmItems").addEventListener("click",e=>{ const b=e.target.closest("[data-rm]"); if(b){ items.splice(+b.dataset.rm,1); draw(); } });
+    $("bmAddCase").addEventListener("click",()=>{ if(items.length>=BUNDLE_MAX) return; const v=$("bmCase").value; items.push(v==="community" ? {kind:"case", spec:lastSpec} : {kind:"case", id:v}); draw(); });
+    $("bmAddWs").addEventListener("click",()=>{ if(items.length>=BUNDLE_MAX) return; items.push({kind:"ws", topic:$("bmTopic").value, count:+$("bmCount").value, seed:1+Math.floor(Math.random()*999999), v:PK.WS_VERSION}); draw(); });
+    $("bmMake").addEventListener("click",()=>{
+      encodeBundleLink({title:$("bmTitle").value, items}).then(hash=>{
+        if(!hash){ $("bmOut").innerHTML=`<p class="cs-no">Add at least one item first.</p>`; return; }
+        $("bmOut").innerHTML=`<p class="cs-ok">✓ ${items.length} item${items.length>1 ? "s" : ""}.</p><input class="cs-linkbox" readonly aria-label="The assignment's link" value="${h.esc(location.href.split("#")[0]+"#"+hash)}">`+
+          `<div class="cs-actions"><button class="abtn" type="button" id="bmCopy">Copy link</button><button class="abtn" type="button" id="bmOpen">Open it</button></div>`;
+        $("bmCopy").addEventListener("click",()=> h.copyHash(hash));
+        $("bmOpen").addEventListener("click",()=> decodeBundleLink(hash).then(b=>openBundle(b, hash.slice(7))));
+      });
+    });
+    draw();
+  }
+
+  /* ---------- work through an assignment ---------- */
+  function progressKey(token){ return "dosecurve-assignment-"+token.slice(-24); }
+  function markDone(from, i, val){ const k=progressKey(from.token), pr=store.get(k)||{}; pr[i]=Object.assign(pr[i]||{}, val); store.set(k, pr); }
+  function openBundle(b, token){
+    if(!b){ panel(`<p class="cs-no">This assignment link couldn't be read. Ask for the link again.</p>`); return; }
+    token=token || (location.hash.match(/bundle=b\d+\.(.+)$/)||[])[1] || "local";
+    const h=host, pr=store.get(progressKey(token))||{}, from=i=>({bundle:b, token, index:i});
+    const status=(it,i)=>{ const p=pr[i]||{};
+      if(it.kind==="case") return p.ok ? "✓ on target" : "not yet";
+      const n=Object.values(p.answers||{}).filter(a=>a.ok).length; return `${n} of ${it.count} right`; };
+    const el=panel(`<p class="cs-tag">Assignment</p><h2 class="cs-h">${h.esc(b.title)}</h2>
+      <p class="cs-disc">Educational model, not for clinical dosing.</p>
+      <ol class="cs-items">${b.items.map((it,i)=>`<li><span>${h.esc(it.kind==="case" ? (it.id ? caseById(it.id).title : it.spec.title+" (community case)") : `Worksheet · ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"} · ${it.count} problems`)}</span>
+        <span class="cs-status">${status(it,i)}</span> <button class="abtn" type="button" data-open="${i}">Open</button></li>`).join("")}</ol>
+      <div id="bdWs"></div>
+      <section class="cs-code"><p class="cs-sub">Completion code</p>
+        <p>When you've finished, enter the identifier your teacher gave you (not your name) and the class key, and show the code and the lines above it to your teacher. The code is made in this browser; nothing is sent.</p>
+        <div class="cs-form"><label>Identifier<input id="bdId" maxlength="24" autocomplete="off" pattern="[A-Za-z0-9_-]{1,24}"></label><label>Class key<input id="bdKey" type="password" autocomplete="off"></label></div>
+        <div class="cs-actions"><button class="abtn" type="button" id="bdMake">Make my completion code</button></div>
+        <div id="bdOut" class="cs-result" aria-live="polite"></div></section>`);
+    el.querySelector(".cs-items").addEventListener("click",e=>{
+      const btn=e.target.closest("[data-open]"); if(!btn) return;
+      const i=+btn.dataset.open, it=b.items[i];
+      if(it.kind==="case") open(it.id ? {id:it.id, reg:null, from:from(i)} : {id:"community", case:communityCase(it.spec), reg:null, from:from(i)});
+      else openWorksheetItem(el, b, token, i);
+    });
+    el.querySelector("#bdMake").addEventListener("click",async()=>{
+      const id=el.querySelector("#bdId").value.trim(), key=el.querySelector("#bdKey").value, out=el.querySelector("#bdOut");
+      if(!IDENT.test(id)){ out.innerHTML=`<p class="cs-no">The identifier is 1 to 24 letters, digits, - or _ (no spaces): the one your teacher gave you, not your name.</p>`; return; }
+      if(key.length<4){ out.innerHTML=`<p class="cs-no">Enter the class key your teacher gave you (at least 4 characters).</p>`; return; }
+      const p2=store.get(progressKey(token))||{}, done=[], ids=[]; let score=0, total=0;
+      b.items.forEach((it,i)=>{ const q=p2[i]||{};
+        if(it.kind==="case"){ total++; if(q.ok){ score++; done.push(itemId(it,i)); } }
+        else { total+=it.count; const n=Object.values(q.answers||{}).filter(a=>a.ok).length; score+=n; if(n) done.push(itemId(it,i)+`(${n}/${it.count})`); }
+        ids.push(itemId(it,i)); });
+      const payload=completionPayload({bundle:(await sha256Hex(token)).slice(0,12), identifier:id, items:done.length ? done : ["none"], score, total, date:new Date().toISOString().slice(0,10)});
+      const code=await completionCode(key, payload);
+      out.innerHTML=`<pre class="cs-payload">${h.esc(payload)}</pre><p>Code: <b class="cs-codev">${code}</b></p><p class="cs-sub">Anyone who knows the class key could make a code, so it records work done in the app; it isn't proof.</p>`;
+    });
+  }
+  function openWorksheetItem(el, b, token, i){
+    const it=b.items[i], box=el.querySelector("#bdWs"), h=host;
+    box.innerHTML=`<p class="cs-sub">Loading the problems…</p>`;
+    h.loadPractice().then(()=>{
+      const w=PK.makeWorksheet({topic:it.topic||undefined, count:it.count, seed:it.seed, v:it.v}), pr=(store.get(progressKey(token))||{})[i]||{}, ans=pr.answers||{};
+      box.innerHTML=`<h3 class="cs-h3">Worksheet · ${it.count} problems</h3><ol class="cs-ws">${w.problems.map((p,j)=>`<li><div>${p.q}</div>
+        <div class="cs-form"><label>Answer (${h.esc(p.unit)})<input data-j="${j}" type="number" step="any" value="${ans[j] ? ans[j].v : ""}"></label><button class="abtn" type="button" data-chk="${j}">Check</button></div>
+        <p class="cs-wsr" id="wsr${i}_${j}">${ans[j] ? (ans[j].ok ? "✓ Right" : "✗ Not quite") : ""}</p></li>`).join("")}</ol>`;
+      box.onclick=e=>{
+        const btn=e.target.closest("[data-chk]"); if(!btn) return;
+        const j=+btn.dataset.chk, v=parseFloat(box.querySelector(`input[data-j="${j}"]`).value);
+        if(!isFinite(v)) return;
+        const ok=PK.practiceCorrect(w.problems[j], v), cur=(store.get(progressKey(token))||{})[i]||{}, answers=Object.assign({}, cur.answers, {[j]:{v, ok}});
+        markDone({token}, i, {answers});
+        box.querySelector(`#wsr${i}_${j}`).textContent=ok ? "✓ Right" : "✗ Not quite";
+      };
+      box.scrollIntoView({block:"start"});
+    }).catch(()=>{ box.innerHTML=`<p class="cs-no">The problems couldn't load. Check the connection and open the worksheet again.</p>`; });
+  }
+
+  /* ---------- verify a completion code ---------- */
+  function renderVerify(){
+    const h=host, el=panel(`<h2 class="cs-h">Verify a completion code</h2>
+      <p class="cs-intro-p">Paste the lines a student shows you and their code, and enter your class key. The check runs in this browser.</p>
+      <label class="cs-field">Class key<input id="vcKey" type="password" autocomplete="off"></label>
+      <label class="cs-field">The lines above the code<textarea id="vcPayload" rows="6"></textarea></label>
+      <label class="cs-field">Code<input id="vcCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX"></label>
+      <div class="cs-actions"><button class="abtn" type="button" id="vcGo">Verify</button></div>
+      <div id="vcOut" class="cs-result" aria-live="polite"></div>`);
+    el.querySelector("#vcGo").addEventListener("click",async()=>{
+      const ok=await verifyCode(el.querySelector("#vcKey").value, el.querySelector("#vcPayload").value, el.querySelector("#vcCode").value);
+      el.querySelector("#vcOut").innerHTML=ok ? `<p class="cs-ok">✓ The code matches these lines and this key.</p>` : `<p class="cs-no">✗ It doesn't match: the lines, the key or the code differ.</p>`;
+    });
+  }
+
   function regFromForm(c, box){
     if(c.target.kind==="choice"){ const r=box.querySelector('input[name="csChoice"]:checked'); return r ? {choice:r.value} : null; }
     const D=parseFloat(box.querySelector("#csDose").value), tau=parseInt(box.querySelector("#csTau").value,10);
@@ -604,11 +1004,13 @@
     }
     out.innerHTML=html;
     current.last=reg;
+    if(current.from && g.ok) markDone(current.from, current.from.index, {ok:true});
   }
   function open(link){
-    const c=caseById(link && link.id);
+    if(link && link.bundle){ openBundle(link.bundle); return; }
+    const c=link && link.case ? link.case : caseById(link && link.id);
     if(!c || !rootEl) return;
-    current={c, last:null};
+    current={c, last:null, from:link.from || null};
     const box=rootEl.querySelector("#csCase"), h=host, t=c.target, ch=c.choices, u=c.drug ? PK.unitsOf({unit:drugOf(c.drug).units}) : null;
     const start=link.reg || c.start || null;
     let form;
@@ -621,11 +1023,14 @@
         `<label>Every<select id="csTau">${ch.taus.map(x=>`<option value="${x}"${start && start.tau===x ? " selected" : ""}>${x} h</option>`).join("")}</select></label></div>`;
     }
     const refs=c.refs.map(id=>PK.SOURCES[id]).filter(Boolean).map(s=>`<li>${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${h.esc(s.cite)}</a>` : h.esc(s.cite)}</li>`).join("");
-    box.innerHTML=`<p><button class="abtn" id="csBack">← All cases</button></p>
+    const community=c.community, ov=community && c.over ? Object.entries(c.over) : [], lib=drugOf(c.drug) && PK.drugScenario(drugOf(c.drug));
+    const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
+    box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "← Back to the assignment" : "← All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
+      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
       <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
-        ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})</dd>` : ""}
+        ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
         ${c.bayes ? (b=>`<dt>Levels</dt><dd>On ${nf(c.current.D,0)} mg every ${c.current.tau} h (each infused over ${nf(b.T,2)} h), after dose ${c.bayes.dose}: ${b.lv.map(l=>`<b>${nf(l.c,2)} mg/L</b> at ${nf(l.dt,2)} h`).join(" and ")} after that dose started.</dd>`)(bayesOf(c))
           : c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
@@ -637,12 +1042,15 @@
       <div id="csResult" class="cs-result" aria-live="polite"></div>
       <details class="cs-more"><summary>Walkthrough</summary><ol>${walkthrough(c).map(s=>`<li>${s}</li>`).join("")}</ol></details>
       <details class="cs-more"><summary>What a pharmacist also weighs</summary><p>${h.esc(c.also)}</p></details>
-      <div class="cs-refs"><p class="cs-sub">Sources</p><ol>${refs}</ol></div>`;
-    rootEl.querySelector(".cs-intro").hidden=true; rootEl.querySelector(".cs-list").hidden=true; box.hidden=false;
-    box.querySelector("#csBack").addEventListener("click",()=>{ box.hidden=true; rootEl.querySelector(".cs-intro").hidden=false; rootEl.querySelector(".cs-list").hidden=false;
-      const card=rootEl.querySelector(`.cs-card[data-id="${c.id}"]`); if(card) card.focus(); });
+      <div class="cs-refs"><p class="cs-sub">Sources</p><ol>${refs}${(c.authorRefs||[]).map(r=>`<li>${h.esc(r)} <span class="cs-flag">(author-provided)</span></li>`).join("")}${community && !(c.authorRefs||[]).length ? "<li>The author gave no references.</li>" : ""}</ol></div>`;
+    showOnly(box);
+    box.querySelector("#csBack").addEventListener("click",()=>{
+      if(current.from){ const b=current.from; openBundle(b.bundle, b.token); return; }
+      showList(); const card=rootEl.querySelector(`.cs-card[data-id="${c.id}"]`); if(card) card.focus(); });
     box.querySelector("#csForm").addEventListener("submit",e=>{ e.preventDefault(); renderResult(c, regFromForm(c, box), box); });
-    box.querySelector("#csLink").addEventListener("click",()=> h.copyHash(encodeCaseLink(c.id, regFromForm(c, box))));
+    box.querySelector("#csLink").addEventListener("click",()=>{
+      if(community) encodeCommunityLink(c.spec, regFromForm(c, box)).then(h.copyHash); else h.copyHash(encodeCaseLink(c.id, regFromForm(c, box)));
+    });
     box.querySelector("#csPrint").addEventListener("click",()=> h.print());
     const sim=box.querySelector("#csSim");
     if(sim) sim.addEventListener("click",()=>{
@@ -656,5 +1064,7 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
+    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open,
+    COMMUNITY_VERSION, TEXT_LIMITS, AUTHOR_TAUS, AUTHOR_DRUG_IDS, checkSpec, communityCase, solveCase, packJSON, unpackJSON, encodeCommunityLink, decodeAnyCaseLink,
+    BUNDLE_VERSION, BUNDLE_MAX, checkBundle, encodeBundleLink, decodeBundleLink, itemId, IDENT, sha256Hex, completionPayload, completionCode, verifyCode};
 });

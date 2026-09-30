@@ -213,6 +213,15 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 
 The drug presets use typical textbook values and are not prescribing information.
 
+## Run a class in ten minutes
+
+1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, or an AUC24 range. You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, DoseCurve checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
+2. **Make an assignment.** In **Make an assignment**, add up to 12 items in order: built-in cases, the case you just wrote, and worksheets (a topic and 5, 10 or 15 problems). Copy the one link and post it.
+3. **Choose a class key** and tell your class separately; it isn't in the link. Give each student an identifier that isn't their name (a seat or roster number).
+4. **Students work through the assignment** in the browser: each case is graded as they check a regimen, and worksheet answers are checked as they go. Their progress stays in their own browser.
+5. **Completion codes.** At the end, a student enters the identifier and the class key and gets a few lines (the assignment, their identifier, the items finished, the score and the date) and a code. They show or send you both.
+6. **Verify** in **Verify a completion code** with the same key: it says whether the code matches the lines. Anyone who knows the key can make a code, so a code records work done in the app, not proof of who did it.
+
 ## Privacy
 
-There are no accounts, no server and no tracking. A shared link carries the scenario's settings in the URL. Saved scenarios and progress stay in the browser that made them. Ask students not to enter any patient-identifying information.
+There are no accounts, no server and no tracking. A shared link carries the scenario's settings in the URL, and a case or assignment you write travels in its link the same way. Saved scenarios, progress and assignment answers stay in the browser that made them. Completion codes are computed in the student's browser from the class key, which is never sent anywhere. Ask students not to enter any patient-identifying information, and give them identifiers that aren't their names.
