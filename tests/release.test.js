@@ -63,3 +63,20 @@ test("NEEDS-SAIF lists the steps that need an account", ()=>{
   const n=read("docs/NEEDS-SAIF.md");
   ["Zenodo","GoatCounter","v1.0.0","license"].forEach(w=> assert.ok(n.includes(w), w));
 });
+
+test("every file loaded on demand is named by its content hash in the page and precached under that name", ()=>{
+  const crypto=require("node:crypto"), page=read("index.html"), sw=read("sw.js");
+  ["cases.js","pop-worker.js","pk-glossary.js"].forEach(f=>{
+    const h=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,f))).digest("hex").slice(0,10);
+    assert.ok(page.includes(`${f}?v=${h}`), `index.html loads ${f}?v=${h}`);
+    assert.ok(sw.includes(`./${f}?v=${h}`), `sw.js precaches ${f}?v=${h}`);
+  });
+  assert.equal(PK.GLOSSARY.length, require("../pk-glossary.js").length, "the engine reads the glossary file in Node");
+});
+
+test("the initial script payload stays within the plan's budget: +25% over the Phase 0 baseline of 318,996 bytes", ()=>{
+  const page=read("index.html");
+  const inline=[...page.matchAll(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g)].reduce((s,m)=>s+Buffer.byteLength(m[1]),0);
+  const total=inline+fs.statSync(path.join(root,"pk-engine.js")).size;
+  assert.ok(total<=Math.floor(318996*1.25), `${total} bytes (${(100*total/318996-100).toFixed(1)}% over the baseline)`);
+});
