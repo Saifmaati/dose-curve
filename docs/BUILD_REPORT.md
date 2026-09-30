@@ -186,3 +186,13 @@ Live check after merging (pull request #5, merge 36e3abf): the deployed files ar
 
 A patch. The IV-bolus dose table was off by one dose (since 1.0): each row's peak included the bolus that starts the next interval. The fix reads each interval as [start, end). A standing cross-check now runs in the test suite (40 seeded random scenarios against dense scans of the engine's own curve) and passed 800 more before release. There are 270 tests in 10 files.
 
+Live check after merging (pull request #6, merge fadf6bd): the deployed files are byte-identical, and the live engine gives the corrected dose table (12.50, 15.63, 16.41, 16.60 mg/L for 500 mg every 12 h), Version 1.4.1 and cache dosecurve-v14.
+
+## 14. 1.5.0
+
+- With two compartments, the half-life readout is labelled "t½ terminal".
+- The standing cross-check also covers 24 random custom schedules (mixed routes, missed doses, one or two compartments, saturable).
+- The README shows the two-compartment lesson.
+
+There are 271 tests in 10 files.
+

@@ -38,3 +38,5 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 03:35 | 1.4 | Glossary: three terms (47), formulas tested; version 1.4.0, cache v13, build report section 12 | done | b90c5f5, df44897 |
 | 2026-09-30 03:44 | 1.4.1 | Standing cross-check in the tests; fixed the IV-bolus dose table (off by one dose since 1.0) | done | c77fe4f |
 | 2026-09-30 03:45 | 1.4.1 | Version 1.4.1, cache v14, build report section 13 | done | 352aeaf |
+| 2026-09-30 03:54 | 1.5 | "t½ terminal" label with two compartments; README two-compartment screenshot; custom schedules in the standing cross-check | done | cb6810a, 02d9fdd, c8994e6 |
+| 2026-09-30 03:54 | 1.5 | Version 1.5.0, cache v15, build report section 14 | done | a9727fa |
