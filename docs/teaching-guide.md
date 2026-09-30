@@ -51,11 +51,11 @@ The **glossary** under the lessons defines 30 terms, each with its symbol, unit 
 
 ## Practice and assessment
 
-- **Practice problems.** There are 21 kinds of calculation problem in four topics:
-  - single dose (9 kinds)
-  - repeated dosing (5)
-  - infusions (4)
-  - concentration–effect (3)
+- **Practice problems.** There are 26 kinds of calculation problem in four topics:
+  - single dose (11 kinds)
+  - repeated dosing (6)
+  - infusions (5)
+  - concentration–effect (4)
 
   Each has a worked solution. **Visualize on curve** opens the problem's scenario with the cursor on the moment the question asks about. Answers within 2% count, so working with 0.693 for ln 2 is fine.
 - **One problem for everyone.** **Copy link to this problem** gives a link that rebuilds exactly the same numbers.
