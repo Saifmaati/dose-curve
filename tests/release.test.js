@@ -45,6 +45,7 @@ test("the README's first line positions DoseCurve, and its numbers are the app's
   assert.ok(md.includes(`${PK.DRUGS.length === 9 ? "nine" : PK.DRUGS.length} teaching profiles`), "drugs");
   const REF=require("../validation/reference-results.json");
   assert.ok(md.includes(`runs ${REF.scenarios.length} scenarios`) && md.includes(`All ${4*REF.scenarios.length} comparisons`));
+  assert.ok(read("index.html").includes(`an independent solver on ${REF.scenarios.length} scenarios`), "the page's About text");
   ["docs/img/saturable-lesson.png","docs/img/two-compartments.png","docs/img/case-gentamicin.png","docs/img/validation.png","docs/img/clinical-crcl.png"].forEach(f=>{
     assert.ok(md.includes(f), f); assert.ok(fs.existsSync(path.join(root,f)), f);
   });

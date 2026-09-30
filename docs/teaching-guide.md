@@ -2,7 +2,7 @@
 
 DoseCurve is a free pharmacokinetics lab that runs in the browser: <https://saifmaati.github.io/dose-curve/>.
 
-There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized linear pharmacokinetics in one or two compartments, saturable elimination, and a direct concentration–effect (Emax) relationship, for learning and demonstration only. It is not for dosing real patients.
+There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized linear pharmacokinetics in one or two compartments, saturable elimination, and a concentration–effect (Emax) relationship, direct or through an effect-site delay, for learning and demonstration only. It is not for dosing real patients.
 
 This guide collects ways to use it in a course.
 
@@ -33,13 +33,14 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   - Full vs partial agonist
   - Graded vs steep response
   - Dose vs double dose (effect)
+  - Direct vs delayed effect
   - Evenly spaced vs bunched doses
 
   **Vary only** locks every setting except one, so A and B can differ in exactly one respect.
 - **Show where a number comes from.** Select any readout under the chart (Cmax, tmax, half-life, clearance, AUC, peak, trough, accumulation…). It shows the formula worked through with the scenario's own numbers, and updates as you move the sliders.
 - **Print a handout.** **⎙ Print** (in *Analyze & Export*) prints the current scenario on one page: its settings and a link back, the charts, the readouts and the explanations, in the light palette and without the controls.
 - **Walk through time.** Drag across the chart, or focus it and use the arrow keys, to read the concentration at any moment. **Play** animates the whole window.
-- **Show the effect.** **Effect** turns on the concentration–effect charts. They show the effect over time, where the curve sits on the Emax curve, and how long the effect stays above a target.
+- **Show the effect.** **Effect** turns on the concentration–effect charts. They show the effect over time, where the curve sits on the Emax curve, and how long the effect stays above a target. Set an **effect-site delay** to show hysteresis: the effect lags the level, the effect-site level is drawn dashed under the plasma curve, and the concentration–effect chart traces a counterclockwise loop.
 - **Work from a patient's numbers.** Under **Patient**, switch from *Simple* to *Clinical (CrCl)* and enter age, sex, height, weight and serum creatinine (albumin is used for phenytoin). The panel works out, with the numbers substituted:
   - ideal body weight (Devine) and adjusted body weight
   - creatinine clearance by Cockcroft–Gault, with actual, ideal or adjusted weight
@@ -59,7 +60,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (25)
+## Guided lessons (26)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
@@ -69,11 +70,11 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
-| PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect |
+| PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 48 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 50 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (12)
 
@@ -155,7 +156,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
 | 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Fit the data (two compartments: the method of residuals). Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels. Population mode and probability of target attainment |
 | 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Population mode on phenytoin: how many virtual patients have no steady state as the dose rises. Practice: *Saturable (Michaelis–Menten)* |
-| 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect. Case: Theophylline in a smoker. A mixed worksheet |
+| 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect, Effect delay. Case: Theophylline in a smoker. A mixed worksheet |
 
 ## A possible sequence
 
@@ -176,7 +177,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
    - Fit the data (oral)
    - Hit the window (oral)
 5. **PK/PD:**
-   - lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect
+   - lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect, Effect delay (hysteresis)
    - practice: *Concentration–effect*
 6. **Review:** a mixed worksheet across all topics.
 
@@ -190,12 +191,12 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 - Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
 - A salt factor S for drugs dosed as a salt, and units per drug (mg/L, ng/mL, mEq/L).
 - Saturable (Michaelis–Menten) elimination, integrated numerically (RK4, 0.05 h steps, every dose at its exact time).
-- A direct sigmoid Emax effect that follows the plasma concentration instantly.
+- A sigmoid Emax effect that follows the plasma concentration instantly or, with an effect-site delay (first-order drugs), an effect compartment: dCe/dt = ke0·(C − Ce), in closed form.
 
 **Left out:**
 
 - Three or more compartments, and two compartments with saturable elimination.
-- Delayed or indirect effects, tolerance and active metabolites.
+- Indirect effects, tolerance and active metabolites, and an effect-site delay with saturable elimination.
 - Protein-binding changes.
 - Covariates and correlated variability. Population mode draws clearance and volume independently, with teaching CVs.
 

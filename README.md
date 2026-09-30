@@ -18,34 +18,35 @@
 - First-order elimination, or saturable **Michaelis–Menten** elimination (Vmax, Km) integrated numerically. The readouts give the predicted steady state Km·R / (Vmax − R), the input as a share of Vmax, the level-dependent half-life and the time to 90% of steady state, and they say "No steady state: input rate exceeds Vmax" when that happens.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of 11 teaching profiles (gentamicin, vancomycin, meropenem, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
-- The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect.
+- The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop.
 - A **population**: 50–1,000 virtual patients with log-normal variability on clearance (or Vmax, for a saturable drug) and volume, drawn as a 5th–95th percentile band. With saturable elimination it also reports the share whose input exceeds their own Vmax, so they never reach a steady state. It reports the probability of target attainment at steady state (and for an AUC24 range), is computed in a Web Worker, and reproduces from its seed.
 
 ![One or two compartments: vancomycin with the same clearance, a higher peak and the same AUC24](docs/img/two-compartments.png)
 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
-- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 19 one-click comparisons.
+- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 20 one-click comparisons.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 
 **Teach and practise**
-- **25 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
+- **26 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **12 clinical cases** (gentamicin conventional, once daily and individualized from two levels, vancomycin to an AUC24 target and from two measured levels, meropenem and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **33 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 48-term glossary.
+- **33 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 50-term glossary.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
 ![A clinical case graded by the model](docs/img/case-gentamicin.png)
 
 ## Validation
 
-An independent solver, [`validation/reference.py`](validation/reference.py), integrates the model's equations with SciPy's `solve_ivp`. It runs 126 scenarios:
+An independent solver, [`validation/reference.py`](validation/reference.py), integrates the model's equations with SciPy's `solve_ivp`. It runs 146 scenarios:
 
 - **Routes:** oral, IV bolus, IV infusion, and mixed routes.
 - **Regimens:** single, repeated, loading, missed and custom.
 - **Drugs:** first-order, first-order with a salt factor, saturable, and two-compartment.
 - **Patients:** normal, and reduced creatinine clearance.
+- **Effect site:** 20 first-order scenarios with an effect-site delay, read at the effect site.
 
-The test suite and the [validation page](https://saifmaati.github.io/dose-curve/validation.html) compare DoseCurve's peak, trough, AUC and time in window with it. All 504 comparisons agree within 0.5% for first-order scenarios and 1% for saturable ones. The largest difference is 0.00002% (two parts in ten million), and 0.000001 percentage points in time in window. Analytic identities are tested too:
+The test suite and the [validation page](https://saifmaati.github.io/dose-curve/validation.html) compare DoseCurve's peak, trough, AUC and time in window with it. All 584 comparisons agree within 0.5% for first-order scenarios and 1% for saturable ones. The largest difference is 0.00002% (two parts in ten million), and 0.000001 percentage points in time in window. Analytic identities are tested too:
 
 - the accumulation ratio
 - 3.32 half-lives to 90% of steady state
@@ -54,7 +55,7 @@ The test suite and the [validation page](https://saifmaati.github.io/dose-curve/
 - the Michaelis–Menten steady state and its time to 90%
 - the Cockcroft–Gault and Devine hand values
 
-A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
+A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect (with and without an effect-site delay) are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
 
 - the dose table's peaks off by one dose for IV boluses
 - sampled peaks up to 3.7% low

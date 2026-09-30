@@ -95,7 +95,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 ## 6. Known limitations of the model
 
 - **One or two compartments.** Since 1.1.0 a second (peripheral) compartment can be switched on, with teaching-assumption exchange rates. There are no three-compartment models, and saturable elimination stays one-compartment.
-- **Direct effect only.** The Emax effect follows plasma concentration instantly: no effect-site delay, tolerance or indirect response.
+- **Direct effect, or an effect-site delay.** The Emax effect follows plasma, or since 1.7.0 an effect compartment (ke0) for first-order drugs. There is no tolerance or indirect response, and saturable drugs keep the direct link.
 - **No active metabolites, and no protein-binding dynamics.** fu is informational, and the Sheiner–Tozer tool reads a measured level only.
 - **Renal adjustment by one formula.** Cockcroft–Gault with a reference CrCl of 120 mL/min scales only the renal fraction of clearance; volume scales with actual weight.
 - **Teaching-level variability.** The population mode's CVs (30% on CL, 20% on V) are teaching assumptions, independent log-normals with no covariates.
@@ -213,3 +213,15 @@ Live check after merging (pull request #7, merge d4d0290): the deployed files ar
 
 There are 277 tests in 10 files.
 
+## 16. 1.7.0
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| An effect-site delay (equilibration half-life t½eq = ln 2 / ke0): closed forms for every route, one or two compartments and custom schedules; the effect statistics follow the effect site | Effect → Effect-site delay slider | `effect-site.test.js` (an independent RK4 integration, the bolus closed form, conserved AUC) |
+| The effect-site level drawn dashed under the plasma curve; the hysteresis loop on the concentration–effect chart, with its direction; the cursor, inspector, What changed, print header and CSV follow the effect site | Simulator and Compare with Effect on | `effect-site.test.js`, `a11y.test.js` |
+| Lesson 26, *Effect delay (hysteresis)*, a comparison (20) and two glossary terms (50) | Lessons; Compare | `effect-site.test.js` |
+| Links v6 carry the delay; every older link reads as before | Copy link | `effect-site.test.js` |
+| The independent solver adds 20 effect-site scenarios (146 in all, 584 comparisons); the 126 earlier rows are unchanged. Largest effect-site difference 0.000004% | validation page | `validation.test.js` |
+| The standing cross-check covers effect-site peaks, onset and time above a target | — | `validation.test.js` |
+
+There are 283 tests in 11 files. The initial script is +19.6% over the Phase 0 baseline (limit +25%).

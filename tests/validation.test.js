@@ -14,10 +14,11 @@ const near=(actual, expected, tol, msg)=>
   assert.ok(Math.abs(actual-expected)<=tol, `${msg?msg+": ":""}expected ${expected} ± ${tol}, got ${actual}`);
 const rel=(actual, expected, frac, msg)=> near(actual, expected, Math.abs(expected)*frac, msg);
 
-// the same comparison validation.html runs in the browser
+// the same comparison validation.html runs in the browser; scenarios with an effect-site delay are read at the effect site
 function engineMetrics(s){
-  const {T,mec,mtc}=REF.window, p=PK.normalizeScenario(scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc);
-  return {peak:w.cmax, trough:PK.conc(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin_pct:100*w.tIn/T};
+  const {T,mec,mtc}=REF.window, p=PK.normalizeScenario(scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc,s.site);
+  const level=s.site==="effect" ? PK.ceConc : PK.conc;
+  return {peak:w.cmax, trough:level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin_pct:100*w.tIn/T};
 }
 
 test("the reference covers routes × regimens × drugs (linear, saturable, two-compartment) × patients (normal and reduced CrCl)", ()=>{
@@ -29,6 +30,12 @@ test("the reference covers routes × regimens × drugs (linear, saturable, two-c
   ["normal","reduced"].forEach(p=> assert.ok(by("patient").has(p), p));
   assert.ok(S.some(s=>s.nonlinear) && S.some(s=>!s.nonlinear));
   assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(REF.generated));
+  // the effect site: every route and the mixed schedule, one and two compartments, each with a delay the engine uses
+  const E=S.filter(s=>s.site==="effect");
+  assert.ok(E.length>=20, `${E.length} effect-site scenarios`);
+  ["oral","iv","inf","mixed"].forEach(r=> assert.ok(E.some(s=>s.route===r), r));
+  ["linear","twocmt"].forEach(d=> assert.ok(E.some(s=>s.drug===d), d));
+  E.forEach(s=> assert.ok(PK.keqOf(PK.normalizeScenario(scenario(s.scenario)))>0, s.id));
 });
 
 test("every scenario agrees with the independent solver: peak, trough and AUC within 0.5% (linear) or 1% (saturable)", ()=>{
@@ -214,5 +221,23 @@ test("random scenarios: time in, above and below the window, and time above a ta
     const tol=3*h;   // the reference is good to about a step (1.5.0 was 28 steps off on the effect time)
     near(w.tIn, tin, tol, `in: ${where}`); near(w.tAbove, tab, tol, `above: ${where}`); near(w.tBelow, tbe, tol, `below: ${where}`);
     near(e.tAbove, eff, tol, `effect: ${where}`);
+  }
+});
+
+test("random scenarios with an effect-site delay: peak effect, its time, onset and time above a target match dense sampling of the effect site", ()=>{
+  const rnd=PK.seededRandom(1007), pick=(a,b)=>a+(b-a)*rnd(), one=a=>a[Math.floor(rnd()*a.length)];
+  for(let i=0;i<16;i++){
+    const o={route:one(["oral","iv","inf"]), dosing:one(["single","repeated"]), D:Math.round(pick(50,1500)), F:+pick(0.3,1).toFixed(2), ka:+pick(0.2,3).toFixed(2),
+      thalf:+pick(1,20).toFixed(1), V:Math.round(pick(8,110)), tinf:+pick(0.5,6).toFixed(2), tau:Math.round(pick(4,24)), nDoses:Math.round(pick(2,10)), teq:+pick(0.1,8).toFixed(1)};
+    if(rnd()<0.3) Object.assign(o,{cmt:2, k12:+pick(0.2,1.5).toFixed(2), k21:+pick(0.2,1.5).toFixed(2)});
+    const p=PK.normalizeScenario(scenario(o)), ev=PK.doseEvents(p), T=Math.round(pick(12,96)), M=40000, h=T/M, where=JSON.stringify(o);
+    let top=0; for(let j=0;j<=400;j++){ const c=PK.ceConc(p,T*j/400,ev); if(c>top) top=c; }
+    const q=Object.assign({}, p, {ec50:top*pick(0.2,0.8), emax:100, hill:+pick(0.5,3).toFixed(2), e0:0}), e=PK.effectStats(q,T,50), ct=PK.concForEffect(q,50);
+    let eff=0, first=null, peak=0, tPeak=0;
+    for(let j=0;j<M;j++){ const t=(j+0.5)*h, c=PK.ceConc(p,t,ev); if(c>=ct){ eff+=h; if(first===null) first=t; } if(c>peak){ peak=c; tPeak=t; } }
+    const tol=3*h;
+    near(e.tAbove, eff, tol, `time above: ${where}`); near(e.onset, first, tol, `onset: ${where}`);
+    assert.ok(PK.windowStats(p,T,0,Infinity,"effect").cmax>=peak*(1-1e-12), `effect-site peak: ${where}`);
+    near(e.peak, PK.effectOf(q,peak), 1e-3, `peak effect: ${where}`); near(e.tPeak, tPeak, 0.05, `time of peak: ${where}`);
   }
 });
