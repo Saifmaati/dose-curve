@@ -819,7 +819,8 @@
     vanc:{cite:"Vancomycin hydrochloride for injection (pharmacy bulk package). Prescribing information, Hospira. DailyMed.", url:DM+"b01aaa02-8f1d-4b57-96a5-337503428af1"},
     amox:{cite:"Amoxicillin tablets, oral suspension, chewable tablets and capsules. Prescribing information. DailyMed.", url:DM+"b07b5ac4-253e-4c83-91c3-3fdc46e91a0f"},
     caf:{cite:"Caffeine citrate injection and oral solution. Prescribing information, Sagent. DailyMed.", url:DM+"5f38c395-0093-4afd-89ec-f96e5dc0934a"},
-    ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"}
+    ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
+    idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"}
   };
   const UNVERIFIED="typical textbook value, unverified";
   // A library value and where it comes from: src names a SOURCES entry (and note says what the source states),

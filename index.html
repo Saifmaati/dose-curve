@@ -314,7 +314,9 @@
   details.card .body b{color:var(--text-4)}
 
   /* tabs + practice */
-  .tabbar{display:flex;gap:4px;padding:14px 22px 0}
+  /* five tabs don't fit a phone: the bar scrolls sideways instead of widening the page */
+  .tabbar{display:flex;gap:4px;padding:14px 22px 0;overflow-x:auto;scrollbar-width:none}
+  .tabbar::-webkit-scrollbar{display:none}
   .tabbar button{
     border:1px solid var(--glass-line);background:rgba(var(--well-rgb),.5);color:var(--muted);cursor:pointer;
     font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;
@@ -327,6 +329,44 @@
   .tabbar button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .tabbar .count{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;color:var(--cyan);margin-left:7px}
 
+  .cases{display:none;padding:18px 22px 24px}
+  .cases.show{display:block}
+  .cs-h{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:20px;color:var(--hi);margin:4px 0 6px}
+  .cs-intro p{color:var(--text-3);font-size:13.5px;line-height:1.55;max-width:70ch;margin-bottom:6px}
+  .cs-disc{color:var(--amber-text) !important;font-size:12px !important}
+  .cs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+  .cs-card{display:flex;flex-direction:column;gap:5px;text-align:left;padding:14px;border-radius:12px;border:1px solid var(--glass-line);
+    background:rgba(var(--well-rgb),.55);color:var(--text-2);cursor:pointer;font:inherit}
+  .cs-card:hover,.cs-card:focus-visible{border-color:rgba(var(--cyan-rgb),.5)}
+  .cs-tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .cs-title{font-weight:600;color:var(--hi);font-size:14px}
+  .cs-who{font-size:12px;color:var(--text-3);line-height:1.45}
+  .cs-case{max-width:820px}
+  .cs-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:10px 0;font-size:13.5px;line-height:1.5}
+  .cs-facts dt{color:var(--muted)} .cs-facts dd{color:var(--text-2)} .cs-why{color:var(--text-3)}
+  .cs-task{font-size:13.5px;line-height:1.55;color:var(--text-2);margin:8px 0 12px}
+  .cs-form{display:flex;gap:12px;flex-wrap:wrap}
+  .cs-form label,.cs-choice label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  .cs-choice{border:0;display:flex;gap:16px;flex-wrap:wrap} .cs-choice legend{font-size:12.5px;color:var(--text-2);margin-bottom:6px}
+  .cs-choice label{flex-direction:row;align-items:center;color:var(--text-2);font-size:13px}
+  .cs-form input,.cs-form select{background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;min-width:120px}
+  .cs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .cs-result{margin-top:14px;font-size:13.5px}
+  .cs-ok{color:var(--green-text);font-weight:600;margin:6px 0} .cs-no{color:var(--rose-text);font-weight:600;margin:6px 0}
+  .cs-hint{color:var(--text-2);margin:4px 0 8px} .cs-sub{color:var(--muted);font-size:12px;margin:10px 0 4px}
+  .cs-tbl{border-collapse:collapse;margin:4px 0 10px;font-size:13px}
+  .cs-tbl th{text-align:left;font-weight:500;color:var(--muted);padding:3px 16px 3px 0} .cs-tbl td{color:var(--hi);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace}
+  .cs-more{margin-top:12px;font-size:13.5px;line-height:1.55;color:var(--text-2)} .cs-more summary{cursor:pointer;color:var(--hi)}
+  .cs-more ol{margin:8px 0 0 20px;display:grid;gap:6px}
+  .cs-refs{margin-top:14px;font-size:12px;color:var(--text-3)} .cs-refs ol{margin-left:18px;display:grid;gap:4px} .cs-refs a{color:inherit}
+  @media print{
+    html.print-case body *{visibility:hidden}
+    html.print-case #csView, html.print-case #csView *{visibility:visible}
+    html.print-case #csView{position:absolute;inset:0 auto auto 0;width:100%;display:block !important;background:#fff;color:#000}
+    html.print-case #csView *{color:#000 !important;background:transparent !important;border-color:#999 !important}
+    html.print-case .cs-actions, html.print-case #csBack{display:none !important}
+    html.print-case details.cs-more > *{display:block}
+  }
   .practice{display:none;padding:18px 22px 24px}
   .practice.show{display:block}
   .pr-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -785,7 +825,7 @@
     .plot-head,.legend,.readouts,.budget,.learn-grid,.lsv,.practice,.tabbar{padding-left:14px;padding-right:14px}
     .lesson,.cmp,.cmp-empty,.ssp,.ss-note{margin-left:14px;margin-right:14px}
     .tabbar{gap:3px}
-    .tabbar button{padding:9px 10px;font-size:12.5px}
+    .tabbar button{padding:9px 9px;font-size:12px;flex-shrink:0;white-space:nowrap}
     .cmpbar{padding-left:14px;padding-right:14px}
     .insp{margin-left:14px;margin-right:14px}
     .ib-gap{display:none}
@@ -1078,6 +1118,7 @@
           <button id="tabSim" class="on" role="tab" aria-selected="true" aria-controls="simView">Simulator</button>
           <button id="tabCmp" role="tab" aria-selected="false" aria-controls="simView" tabindex="-1">Compare</button>
           <button id="tabLs" role="tab" aria-selected="false" aria-controls="lsView" tabindex="-1">Lessons</button>
+          <button id="tabCs" role="tab" aria-selected="false" aria-controls="csView" tabindex="-1">Cases</button>
           <button id="tabPr" role="tab" aria-selected="false" aria-controls="prView" tabindex="-1">Practice<span class="count" id="prCount"></span></button>
         </div>
 
@@ -1338,6 +1379,9 @@
           </section>
         </div>
 
+        <div class="cases" id="csView" role="tabpanel" aria-labelledby="tabCs">
+          <div id="csRoot"><p class="lib-note">Loading the cases…</p></div>
+        </div>
         <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
           <div class="pr-top">
             <div class="plot-title" style="font-size:16px">Practice problems<span id="prSub">Generated problems · worked solutions · every answer checked against the model</span></div>
@@ -1480,7 +1524,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=43b6ee048d"></script>
+<script src="pk-engine.js?v=5053fb98f0"></script>
 <script>
 "use strict";
 (function(){
@@ -4547,7 +4591,8 @@
     $("simView").style.display=(which==="sim"||which==="cmp")?"block":"none";
     $("lsView").className="lsv"+(which==="ls"?" show":"");
     $("prView").className="practice"+(which==="pr"?" show":"");
-    [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabPr","pr"]].forEach(([id,w])=>{
+    $("csView").className="cases"+(which==="cs"?" show":"");
+    [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabCs","cs"],["tabPr","pr"]].forEach(([id,w])=>{
       $(id).classList.toggle("on",w===which);
       $(id).setAttribute("aria-selected",w===which);
       $(id).tabIndex=w===which ? 0 : -1;   // one tab stop for the tab list; arrow keys move within it
@@ -4558,6 +4603,32 @@
   $("tabCmp").addEventListener("click",()=>showTab("cmp"));
   $("tabLs").addEventListener("click",()=>showTab("ls"));
   $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
+  $("tabCs").addEventListener("click",()=>openCases(null));
+  // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
+  // the simulator doesn't pay for them.
+  const CASES_SRC="cases.js?v=b88d2d67a5";
+  let casesReady=null, casesMounted=false;
+  function loadCases(){
+    if(!casesReady) casesReady=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=CASES_SRC; sc.onload=()=> window.DCCases ? res(window.DCCases) : rej(new Error("no cases"));
+      sc.onerror=()=>{ casesReady=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return casesReady;
+  }
+  const casesHost={esc, fmt, toast, copyHash,
+    print:()=>{ document.documentElement.classList.add("print-case"); window.print(); document.documentElement.classList.remove("print-case"); },
+    openScenario:(p, view, drugId)=>{
+      applyLink({mode:"sim", s:p, base:null, lesson:"", view:Object.assign({}, PK.VIEW_DEFAULTS, view)}, true);
+      state.drug=drugId; lastDrug=drugId; markDrug();
+      $("app").scrollIntoView({block:"start"}); toast("The case's regimen is open in the simulator");
+    }};
+  function openCases(link){
+    showTab("cs");
+    loadCases().then(C=>{ if(!casesMounted){ C.mount($("csRoot"), casesHost); casesMounted=true; } if(link) C.open(link); })
+      .catch(()=>{ $("csRoot").innerHTML=`<p class="lib-note">The cases couldn't load. Check the connection and open the Cases tab again.</p>`; });
+  }
   $("prLink").addEventListener("click",()=>{ if(prob) copyHash(PK.encodeTaskLink({type:"problem", id:prob.id, seed:prob.seed})); });
   // Arrow keys, Home and End move between tabs and select them, as in the WAI-ARIA tabs pattern.
   document.querySelector(".tabbar").addEventListener("keydown",e=>{
@@ -4578,8 +4649,9 @@
   renderProgress();
   buildCompare();
   syncWindow();
-  const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);
-  if(shared) applyLink(shared);
+  const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash), caseLink=/^#case=/.test(location.hash);
+  if(caseLink){ render(); loadCases().then(C=> openCases(C.decodeCaseLink(location.hash))).catch(()=>openCases(null)); }
+  else if(shared) applyLink(shared);
   else if(task && task.type==="problem"){ render(); showTab("pr"); showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true); }
   else if(task && task.type==="worksheet"){
     render(); showTab("pr");

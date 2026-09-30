@@ -1,13 +1,15 @@
 // DoseCurve service worker: after one visit the app opens without a connection.
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
-// - The engine (pk-engine.js?v=<content hash>), icons, manifest and the Google Fonts files come from the cache
-//   and are refreshed in the background. A page and its engine always match: each page names its engine by
-//   hash, and older engine copies are dropped when a new one is saved.
+// - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), icons, manifest and the Google
+//   Fonts files come from the cache and are refreshed in the background. A page and its scripts always match:
+//   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v4";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
-const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png"];
+const CACHE="dosecurve-v5";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+// cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
+const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
+  "./cases.js?v=b88d2d67a5"];
 const PAGE="./";   // every page in scope is the one app page; its saved copy lives under this key
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];
 
@@ -45,7 +47,7 @@ async function fromCacheThenRefresh(req, event){
   const refresh=fetch(req).then(async res=>{
     if(res.ok || res.type==="opaque"){
       const url=new URL(req.url);
-      if(url.pathname.endsWith("/pk-engine.js")){   // keep only the engine this response is
+      if(url.searchParams.has("v")){   // a file named by version (the engine, the cases): keep only this one
         for(const k of await cache.keys()){
           const u=new URL(k.url);
           if(u.pathname===url.pathname && u.search!==url.search) await cache.delete(k);

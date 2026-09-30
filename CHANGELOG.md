@@ -4,6 +4,12 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## Unreleased: v1.0 (in progress on the `v1.0` branch)
 
+- **Clinical cases** (a new Cases tab), eight of them: gentamicin conventional and once daily (the Hartford approach), vancomycin to an AUC target, phenytoin with low albumin, digoxin in an older adult, theophylline in a smoker, lithium with lower kidney function, and a late-dose question.
+  - The model grades a proposed regimen at steady state and gives rule-based hints.
+  - It re-grades the regimen rounded to the forms available.
+  - A walkthrough uses the patient's own numbers.
+  - Every case has a link and prints.
+  - The cases load only when the tab opens, and nothing numeric is stored that the model could compute.
 - **Saturable (Michaelis–Menten) elimination.** Any scenario can switch from first-order to saturable elimination. The curve is integrated numerically:
   - RK4 in 0.05 h steps, with every dose landing at its exact time.
   - Every chart, readout, comparison, export and link works as before.
