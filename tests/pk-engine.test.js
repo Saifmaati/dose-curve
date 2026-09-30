@@ -1555,10 +1555,14 @@ test("the page loads the engine under its own content hash, so a cached older en
   const root=path.join(__dirname,"..");
   const hash=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,"pk-engine.js"))).digest("hex").slice(0,10);
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
-  const tags=html.match(/<script src="pk-engine\.js[^"]*"><\/script>/g)||[];
+  const tags=html.match(/<script src="pk-engine\.js[^"]*"[^>]*><\/script>/g)||[];
   assert.equal(tags.length, 1, "one engine script tag");
-  assert.equal(tags[0], `<script src="pk-engine.js?v=${hash}"></script>`,
+  assert.equal(tags[0], `<script src="pk-engine.js?v=${hash}" defer></script>`,
     `index.html must load pk-engine.js?v=${hash} (the engine changed: update the ?v= stamp)`);
+  // the page paints before any script runs: the engine is deferred and the app, a module, runs after it
+  const i=html.indexOf(tags[0]), app=html.indexOf('<script type="module">');
+  assert.ok(app>i, "the app script follows the engine, so it runs after it");
+  assert.ok(!/<script>\s*"use strict"/.test(html), "no parser-blocking app script");
 });
 
 /* ---------- show the math ---------- */

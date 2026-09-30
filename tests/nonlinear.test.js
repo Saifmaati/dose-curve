@@ -151,3 +151,19 @@ test("lesson: saturable elimination", ()=>{
   assert.ok(L.text.includes("12.1 mg/L") && L.text.includes("10.5 days") && L.text.includes("3.8"));
   const t=PK.TEMPLATES.find(x=>x.id==="mm"); assert.ok(t && t.lesson==="mm");
 });
+
+test("the saturable steady state is truly periodic: one interval maps its trough back onto itself, even near Vmax", ()=>{
+  // at 75% of Vmax the approach to steady state takes thousands of hours; repeated simulation stops short of
+  // it (an earlier search was 0.12% off here), while the periodic solution is exact
+  [{route:"inf", vmax:4.58, km:3.42, V:47, D:316, tau:24, tinf:1.9}, {route:"oral", vmax:7, km:4, V:49, D:300, tau:24, ka:0.4, S:0.92},
+   {route:"iv", vmax:6, km:2, V:40, D:100, tau:8}].forEach(o=>{
+    const p=PK.normalizeScenario(scenario(Object.assign({kin:"mm", dosing:"repeated", nDoses:10, F:1, wt:70}, o))), m=PK.mmSteady(p), V=PK.vOf(p);
+    const ag=o.route==="oral" ? p.F*PK.saltOf(p)*p.D*Math.exp(-p.ka*p.tau)/(1-Math.exp(-p.ka*p.tau)) : 0;
+    const one=PK.mmIntegrate(p, [{t:0, mg:p.D, route:p.route, dur:p.tinf}], p.tau, {t:0, ag, a:m.trough*V}, 0.005);
+    rel(one[one.length-1].a1/V, m.trough, 1e-9, `${o.route}: the trough after one interval (finer steps)`);
+    assert.ok(m.trough<=m.avg && m.avg<=m.peak);
+  });
+  const t0=process.hrtime.bigint();
+  for(let i=0;i<200;i++) PK.mmSteady(PK.normalizeScenario(scenario({kin:"mm", dosing:"repeated", route:"oral", vmax:5+i/100, km:4, V:49, D:300, tau:24})));
+  const ms=Number(process.hrtime.bigint()-t0)/1e6; assert.ok(ms<1000, `200 steady states in ${ms.toFixed(0)} ms`);
+});

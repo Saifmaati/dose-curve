@@ -11,9 +11,10 @@ const C=require("../cases.js");
 
 const near=(actual, expected, tol, msg)=>
   assert.ok(Math.abs(actual-expected)<=tol, `${msg?msg+": ":""}expected ${expected} ± ${tol}, got ${actual}`);
+const rel=(actual, expected, frac, msg)=> near(actual, expected, Math.abs(expected)*frac, msg);
 
-test("there are 6 to 8 cases, each with its patient, target, task, what else a pharmacist weighs, and sources", ()=>{
-  assert.ok(C.CASES.length>=6 && C.CASES.length<=8);
+test("there are 6 to 12 cases, each with its patient, target, task, what else a pharmacist weighs, and sources", ()=>{
+  assert.ok(C.CASES.length>=6 && C.CASES.length<=12);
   assert.equal(new Set(C.CASES.map(c=>c.id)).size, C.CASES.length);
   const words=/\b(safe|unsafe|best|recommended?)\b/i;
   C.CASES.forEach(c=>{
@@ -25,7 +26,7 @@ test("there are 6 to 8 cases, each with its patient, target, task, what else a p
     assert.ok(c.refs.length && c.refs.every(r=>PK.SOURCES[r]), `${c.id}: sources`);
     if(c.drug) assert.ok(PK.DRUGS.some(d=>d.id===c.drug));
   });
-  ["gent","gent-ext","vanc","phe","dig","theo","li"].forEach(id=> assert.ok(C.caseById(id), id));
+  ["gent","gent-ext","vanc","vanc-lv","phe","dig","theo","li"].forEach(id=> assert.ok(C.caseById(id), id));
 });
 
 test("each case's reference regimen, worked out from the patient, passes its own grader", ()=>{
@@ -136,4 +137,30 @@ test("grading is quick enough to run on every click", ()=>{
     const ms=Number(process.hrtime.bigint()-t0)/1e6;
     assert.ok(ms<100, `${c.id}: ${ms.toFixed(1)} ms`);
   });
+});
+
+test("vancomycin from two levels: the first-order estimate, the dose it leads to, and why the peak waits for distribution", ()=>{
+  const c=C.caseById("vanc-lv"), L=C.levelsOf(c), e=C.twoLevel(L);
+  // the levels are the model's own, reported to 0.1 mg/L, and nothing numeric is stored on the case
+  near(L.peak, PK.ssConc(L.p, L.T+1), 0.05); near(L.trough, PK.ssConc(L.p, 12-1e-9), 0.05);
+  assert.ok(!("levels" in c) && !("peakLevel" in c));
+  // the first-order equations: k from the two levels, Cmax back at the end of the infusion, then the areas
+  near(e.k, Math.log(L.peak/L.trough)/(12-L.T-1), 1e-12);
+  near(e.Cmax*Math.exp(-e.k*(12-L.T)), L.trough, 1e-9, "Cmax decays to the trough by the end of the interval");
+  near(e.auc24, (L.T*(L.trough+e.Cmax)/2+(e.Cmax-L.trough)/e.k)*2, 1e-9);
+  // a one-compartment patient: the estimate is within 1% of the model's exact AUC24 (daily dose / CL)
+  const exact=PK.derived(L.p).auc*2; rel(e.auc24, exact, 0.01);
+  assert.ok(exact<400, "1 g every 12 h is below the target, so the case has something to fix");
+  // with rounding-free levels the only difference left is the straight-line infusion phase, and it is small
+  const ex=C.twoLevel(Object.assign({}, L, {peak:PK.ssConc(L.p, L.T+1), trough:PK.ssConc(L.p, 12-1e-9)}));
+  rel(ex.k, PK.keOf(L.p), 1e-9, "the two levels give the model's own k"); rel(ex.auc24, exact, 0.005);
+  // the plan's dose: proportional to the target, from the estimate, and it passes the grader
+  assert.deepEqual(C.reference(c), {D:1500, tau:12});
+  // a two-compartment version: a peak drawn as the infusion ends overestimates, one drawn an hour later doesn't
+  const q=C.twoCmtOf(L.p), truth=PK.derived(q).auc*2, at=a=> C.twoLevel({peak:PK.ssConc(q, L.T+a), trough:PK.ssConc(q, 12-1e-9), T:L.T, after:a, tau:12}).auc24;
+  assert.ok(at(0)/truth-1>0.10, `drawn during distribution: ${at(0)} vs ${truth}`);
+  assert.ok(Math.abs(at(1)/truth-1)<0.05, `drawn after distribution: ${at(1)} vs ${truth}`);
+  const w=C.walkthrough(c).join(" ");
+  [`${+e.k.toFixed(4)} h⁻¹`, `${+e.auc24.toFixed(0)} mg·h/L`, "1500 mg every 12 h", `${+exact.toFixed(0)} mg·h/L`].forEach(s=> assert.ok(w.includes(s), s));
+  assert.ok(PK.SOURCES.rybakCid.url.endsWith("10.1093/cid/ciaa303"));
 });
