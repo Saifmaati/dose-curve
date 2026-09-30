@@ -136,3 +136,33 @@ test("links: levels travel in a v8 link, are checked on the way in, and older li
   const a=PK.cloneScenario(p); a.lv[0].c=99; assert.equal(p.lv[0].c, 28.3);
   assert.equal(PK.sameSetting("lv", p, PK.cloneScenario(p)), true);
 });
+
+test("lesson: one level and a prior (every number the text states)", ()=>{
+  const L=PK.LESSONS.find(x=>x.id==="bayes"), C=require("../cases.js"), b=C.bayesOf(C.caseById("vanc-bayes"));
+  const base=S(L.base), cur=S(L.cur), pr=B.priorOf(base), e=B.estimate(cur, cur.lv, {mec:L.view.mec});
+  assert.equal(L.group, "tdm");
+  // the lesson's patient is the case's, as the model predicts him, on 750 mg every 12 h
+  assert.equal(PK.encodeScenario(base), PK.encodeScenario(Object.assign(PK.cloneScenario(b.prior), {lv:[]})));
+  assert.deepEqual([base.D, base.tau], [750, 12]);
+  assert.equal(pr.CL.toFixed(2), "2.78"); assert.equal((1500/pr.CL).toFixed(0), "540");
+  assert.equal(b.trueCL.toFixed(2), "1.94"); assert.equal((1500/b.trueCL).toFixed(0), "772");
+  assert.equal(b.sz.auc24.toFixed(0), "583"); assert.equal((100*(b.sz.CL/b.trueCL-1)).toFixed(0), "32");
+  // the trough: 5% above the true level just before the ninth dose, reported to 0.1 mg/L
+  const ev=PK.doseEvents(b.truth); assert.equal((PK.conc(b.truth, ev[7].t+11.9, ev)*1.05).toFixed(1), "24.8");
+  assert.deepEqual(cur.lv, [{n:8, dt:11.9, c:24.8}]);
+  assert.equal(e.CL.toFixed(2), "1.91"); assert.deepEqual(e.ci.CL.map(x=>x.toFixed(2)), ["1.59","2.30"]);
+  assert.equal(Math.abs(100*(e.CL/b.trueCL-1)).toFixed(0), "2"); assert.equal((1500/e.CL).toFixed(0), "785");
+  const checked=["750","12","2.78","540","1.94","772","583","32","24.8","5","1.91","95","1.59","2.30","2","785"];
+  (L.text.match(/(?<![A-Za-z\d.])\d+(\.\d+)?/g)||[]).forEach(n=> assert.ok(checked.includes(n), `the text states ${n}, which no assertion checks`));
+  assert.ok(!/\d/.test(L.tryThis));
+  // the prediction and the challenge
+  assert.equal(L.predict.decide(PK.lessonCheck(L)), L.predict.answer);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L)), false);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L, L.challenge.solution)), true);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L, {lv:[{n:8,dt:10.9,c:26},{n:8,dt:11.9,c:24.8}]})), false, "a second level near the trough says little about volume");
+  // what the glossary says: a trough tells the most about clearance, a level soon after a dose the most about volume
+  const sh=lv=> B.estimate(cur, lv, {mec:10}).shrink, tr=[{n:8,dt:11.9,c:24.8}], early=[{n:8,dt:2.25,c:41.8},{n:8,dt:3.25,c:35.8}];
+  assert.ok(sh(tr).CL<sh(early).CL, "one trough beats two levels an hour apart after the peak, for clearance");
+  assert.ok(sh([{n:8,dt:2.25,c:41.8}].concat(tr)).V<sh([{n:8,dt:10.9,c:26}].concat(tr)).V-0.1, "an early level, for volume");
+  ["Bayesian estimate (MAP)","Prior","Uncertainty left (shrinkage)"].forEach(t=> assert.ok(PK.GLOSSARY.some(g=>g.term===t && g.lesson==="bayes"), t));
+});

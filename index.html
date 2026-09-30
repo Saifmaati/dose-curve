@@ -1626,7 +1626,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=d2db593e31" defer></script>
+<script src="pk-engine.js?v=88174f9b1b" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -4078,7 +4078,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=c7406ab9b9";
+  const GLOSS_SRC="pk-glossary.js?v=8e7a91d3f0";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4121,12 +4121,14 @@
     byId("lsNext").textContent=i<LESSONS.length-1?"Next lesson →":"All lessons";
     byId("lsTag").textContent=L.tag;
     byId("lsTitle").textContent=L.title;
-    // the texts come from pk-lessons.js: filled at once if it's here, else as soon as it loads
-    if(PK.lessonModule) fillLesson(L);
+    // the texts come from pk-lessons.js (and a lesson with levels needs the estimator, pk-bayes.js): filled at once
+    // if they're here, else as soon as they load
+    const needs=[]; if(!PK.lessonModule) needs.push(loadLessons()); if(L.cur.lv && L.cur.lv.length && !PK.bayesModule) needs.push(loadBayes());
+    if(!needs.length) fillLesson(L);
     else {
       ["lsGoal","lsText","lsWhy","lsTry","lsChal","lsQ"].forEach(id=> byId(id).textContent=id==="lsGoal" ? "Loading the lesson…" : "");
       byId("lsChoices").innerHTML="";
-      loadLessons().then(()=>{ if(lesson===L){ fillLesson(L); chalMet=null; render(); } })
+      Promise.all(needs).then(()=>{ if(lesson===L){ fillLesson(L); chalMet=null; render(); } })
         .catch(()=>{ if(lesson===L) byId("lsGoal").textContent="The lesson's text couldn't load. Check the connection and open it again."; });
     }
     chalMet=null;
@@ -4147,7 +4149,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=6117af3ee5";
+  const LESSON_SRC="pk-lessons.js?v=45486c5cf5";
   let lessonLoad=null;
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -5179,15 +5181,16 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=3ffd337354";
+  const CASES_SRC="cases.js?v=03bb397cb9";
   let casesReady=null, casesMounted=false;
+  // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){
-    if(!casesReady) casesReady=new Promise((res,rej)=>{
+    if(!casesReady) casesReady=Promise.all([new Promise((res,rej)=>{
       const sc=document.createElement("script");
       sc.src=CASES_SRC; sc.onload=()=> window.DCCases ? res(window.DCCases) : rej(new Error("no cases"));
-      sc.onerror=()=>{ casesReady=null; rej(new Error("load")); };
+      sc.onerror=()=> rej(new Error("load"));
       document.head.appendChild(sc);
-    });
+    }), loadBayes()]).then(([C])=>C).catch(err=>{ casesReady=null; throw err; });
     return casesReady;
   }
   const casesHost={esc, fmt, toast, copyHash,

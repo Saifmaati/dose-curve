@@ -63,7 +63,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (29)
+## Guided lessons (30)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
@@ -75,18 +75,21 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
 | PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
 | Liver and first pass | Hepatic extraction · First pass and induction · Liver blood flow |
+| Levels and individualization | One level and a prior |
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
-The **glossary** under the lessons defines 55 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 58 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
-## Clinical cases (12)
+## Clinical cases (14)
 
 The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
 
 - It says whether the target is met.
 - It gives a rule-based hint when it isn't, for example "Trough above target and peak in range: lengthen the interval before reducing the dose."
 - It grades the same regimen again, rounded to the tablets, capsules or vial steps available.
+
+**Individualize from levels.** Under the clinical patient in the simulator, measured levels (each entered as hours after a given dose) give a Bayesian estimate of the patient's own clearance, volume and half-life with 95% intervals, weighing each level against the patient model by its uncertainty (Sheiner et al., 1979). It shows how much uncertainty the levels removed, the two-level estimate beside it when two levels follow the same IV dose, and the dose for an AUC24 or trough target; applying it keeps the setup the levels were measured on as the baseline. The two Bayesian cases open with their levels, so students can compare the two methods on the same numbers. The prior's CVs and the error model are teaching assumptions, stated in the panel.
 
 A **Walkthrough** works the textbook route with the patient's own numbers: Cockcroft–Gault, clearance, then the dose and interval, then the check. **What a pharmacist also weighs** lists the qualitative side. **Open in simulator** loads the case's patient and regimen, and every case has its own link (with the proposed regimen) and prints.
 
@@ -97,6 +100,8 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | Gentamicin once daily | The Hartford approach (7 mg/kg, interval from CrCl bands) against conventional every-8-hour dosing |
 | Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L); a two-compartment version of the patient changes the peak but not the AUC24 |
 | Vancomycin: the AUC from two levels | The first-order two-level method (a post-distribution peak and a trough): k, the level at the end of the infusion, the area over one interval, then a proportional dose change; and why the peak waits for distribution |
+| Vancomycin: two levels an hour apart | Two levels too close together make the two-level AUC look on target when it isn't; a Bayesian estimate from the same levels leads to the dose that is |
+| Gentamicin: when the second level comes back higher | Assay error larger than the fall between two close levels breaks the two-level method outright (a negative elimination rate); the Bayesian estimate still gives a regimen on target |
 | Levetiracetam with reduced kidney function | A renal table set by creatinine clearance per 1.73 m² (body surface area, Mosteller); choosing a dose within the label's range by matching exposure to normal kidneys |
 | Meropenem with reduced kidney function | Reading a label's renal table (Cockcroft–Gault rows); why the interval stretches; the unadjusted regimen nearly doubles exposure, the adjusted one stays near normal while keeping most of each interval above the MIC |
 | Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
@@ -159,7 +164,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Time above the MIC (meropenem). Practice: *Infusions* |
 | 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
-| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Fit the data (two compartments: the method of residuals). Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels. Population mode and probability of target attainment |
+| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Fit the data (two compartments: the method of residuals). Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels, Vancomycin: two levels an hour apart, Gentamicin: when the second level comes back higher. Lesson: One level and a prior. Individualize from levels (Bayesian) under the clinical patient. Population mode and probability of target attainment |
 | 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Population mode on phenytoin: how many virtual patients have no steady state as the dose rises. Practice: *Saturable (Michaelis–Menten)* |
 | 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect, Effect delay. Case: Theophylline in a smoker. A mixed worksheet |
 

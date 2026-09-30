@@ -80,6 +80,9 @@
       tryThis:"Switch the route to IV bolus: the same 2000 mg gives an AUC of 23.3 mg·h/L, because nothing is lost to a first pass."},
     hepq:{text:"The same high-extraction drug, given IV, with liver blood flow halved from 90 to 45 L/h, as in low cardiac output. Its clearance follows the flow, 81.8 → 42.9 L/h, so the half-life rises from 1.3 to 2.4 h and the IV AUC almost doubles (6.11 → 11.7 mg·h/L). By mouth its exposure wouldn't change: slower flow also lets the liver extract more of each oral dose on its first pass (F 9.1% → 4.8%), and the two effects cancel, leaving the oral AUC at fabs·D / (fu·CLint).",
       tryThis:"Switch the route to oral in both: the two AUCs are equal."}
+,
+    bayes:{text:"The patient from the case Vancomycin: two levels an hour apart, on 750 mg every 12 h. The patient model predicts a clearance of 2.78 L/h and an AUC24 of 540 mg·h/L. In the case's premise he really clears 1.94 L/h, so his AUC24 is 772. Two levels drawn an hour apart, put through the two-level equations, give an AUC24 of 583 and a clearance 32% too high. One trough level instead, 24.8 mg/L just before the ninth dose (with 5% assay error), weighed against the patient model, gives a clearance of 1.91 L/h (95% 1.59–2.30), within 2% of the truth, and an AUC24 of 785. A single level can't show a slope; the prior supplies the volume and the shape of the curve, and the level moves the clearance to fit its height. The dashed curve is the Bayesian estimate through the level.",
+      tryThis:"Open Individualize from levels under the clinical patient and change the level: the estimate follows it, and the uncertainty left on clearance shows how much the level has taught."}
   };
 
   const GUIDE={
@@ -300,7 +303,16 @@
         decide:m=>{ const r=m.cur.aucInf/m.base.aucInf; return r>1.6 ? 0 : r>0.9 ? 1 : 2; }, show:m=>`IV AUC ${r2(m.base.aucInf)} → ${r2(m.cur.aucInf)} mg·h/L`},
       challenge:{text:"Keep the flow at 45 L/h and bring the IV AUC back to 6.11 mg·h/L or less, changing only the dose.",
         goal:m=>{ const p=m.now.p; return hepOn(p) && p.qh===45 && p.clint===1800 && p.fub===0.5 && p.route==="iv" && m.now.aucInf<=6.115; }, solution:{D:250}},
-      matters:"The clearance of high-extraction drugs follows liver blood flow, which falls in heart failure and shock and raises their IV exposure; their oral exposure is set by the liver's capacity instead."}
+      matters:"The clearance of high-extraction drugs follows liver blood flow, which falls in heart failure and shock and raises their IV exposure; their oral exposure is set by the liver's capacity instead."},
+    bayes:{objective:"Explain how a Bayesian estimate weighs a measured level against the patient model, and why one well-timed level can tell more than two poorly spaced ones.",
+      predict:{q:"His trough comes back at 24.8 mg/L, above what the patient model predicts. Weighed against the model, his estimated clearance is…", choices:HLS, answer:1,
+        why:"A level above the prediction means less drug is leaving than the model assumed, so the estimate lowers his clearance until the curve passes near the level.",
+        decide:m=>{ const p=m.cur.p, B=PK.bayes; return higherLowerSame(B.estimate(p, p.lv, {mec:m.view.mec}).CL, B.priorOf(p).CL); },
+        show:m=>{ const p=m.cur.p, B=PK.bayes; return `Clearance ${r2(B.priorOf(p).CL)} → ${r2(B.estimate(p, p.lv, {mec:m.view.mec}).CL)} L/h`; }},
+      challenge:{text:"The trough says little about his volume. Add a second level after the eighth dose (for example 41.8 mg/L at 2.25 h, an hour after the infusion ends) and bring the uncertainty left on his volume to 85% of the prior's or less.",
+        goal:m=>{ const p=m.now.p; return p.pm==="clinical" && p.D===750 && p.tau===12 && p.lv.length>=2 && !!PK.bayes && Math.round(100*PK.bayes.estimate(p, p.lv, {mec:m.view.mec}).shrink.V)<=85; },
+        solution:{lv:[{n:8,dt:2.25,c:41.8},{n:8,dt:11.9,c:24.8}]}},
+      matters:"Levels are few and often drawn at imperfect times. A Bayesian estimate uses every level, whenever it was drawn, and weighs it against what is already known about the patient: the approach Bayesian dosing programs take."}
   };
 
   const out={};

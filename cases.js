@@ -168,6 +168,51 @@
      also:"Bayesian software (the guideline's preferred approach, which can work from one or two levels before steady state), whether the levels were drawn at the charted times and truly at steady state, the infusion's actual start and stop times, kidney function trends, and other nephrotoxic drugs.",
      refs:["rybakCid","rybak","idsaVanc","vanc","cg"]},
 
+    {id:"vanc-bayes", drug:"vanc", title:"Vancomycin: two levels an hour apart", tag:"Glycopeptide · Bayesian estimate",
+     patient:{age:66, sex:"M", ht:175, wt:82, scr:1.4}, clMult:0.7, vMult:1.1,   // the premise: 0.7× the predicted clearance, 1.1× the volume
+     current:{D:750, tau:12}, bayes:{dose:8, times:[2.25, 3.25], errors:[0.05, -0.05]},   // an hour after the infusion ends, and an hour later
+     indication:"A serious MRSA infection. He has had 750 mg every 12 hours (each infused over 1.25 hours) since admission, the regimen the patient model suggests for his creatinine. After the eighth dose two levels were drawn, meant as a peak and a trough, but the second was drawn only an hour after the first (see Levels).",
+     target:{kind:"auc", auc:[400,600],
+       why:"The 2020 consensus guideline suggests an AUC between 400 and 600 mg·h/L for serious MRSA infections. One approach it describes estimates the AUC from two levels with first-order equations; Bayesian software is its preferred approach."},
+     choices:{step:250, min:250, max:3000, taus:[8,12,24], tinf:"label"},
+     start:{D:750, tau:12},
+     task:"Estimate his AUC24 two ways: with the two-level (first-order) equations, and with a Bayesian estimate (Open in simulator brings his levels; the estimate is under the clinical patient). Then choose a regimen that puts the steady-state AUC24 in 400–600 mg·h/L.",
+     plan(x){ const b=bayesOf(this), e=b.est, sz=b.sz, tau=12, D=500*e.CL*tau/24, Dr=x.round(D), [l1,l2]=b.lv;
+       const drop=100*(1-Math.exp(-(b.trueCL/b.trueV)*(l2.dt-l1.dt)));
+       return {reg:{D, tau}, steps:[
+         `On 750 mg every 12 h that predicts an AUC24 of ${nf(1500/b.pr.CL,0)} mg·h/L (daily dose / CL), inside the target.`,
+         `The levels: ${nf(l1.c,1)} mg/L at ${nf(l1.dt,2)} h after the eighth dose started and ${nf(l2.c,1)} mg/L at ${nf(l2.dt,2)} h, an hour apart.`,
+         `Two-level equations: k = ln(${nf(l1.c,1)} / ${nf(l2.c,1)}) / 1 = <b>${nf(sz.k,4)} h⁻¹</b> (a half-life of ${nf(LN2/sz.k,1)} h); the trough extrapolated to 12 h is ${nf(sz.Cmin,1)} mg/L, and the AUC24 comes to <b>${nf(sz.auc24,0)} mg·h/L</b>: on target, no change.`,
+         `But an hour is too short: over one hour his level really falls about ${nf(drop,0)}%, and each level carries a few percent of assay error (in this case, its premise: +5% and −5%). The slope between them is as much error as fall, and the extrapolated trough inherits it.`,
+         `Bayesian estimate from the same two levels, weighed against the patient model (CVs 30% and 20%): clearance <b>${nf(e.CL,2)} L/h</b> (95% ${nf(e.ci.CL[0],2)}–${nf(e.ci.CL[1],2)}), volume ${nf(e.V,1)} L. The levels are too close together to pin down the slope, so the prior holds it steady, while their height (both well above the prediction) moves clearance down. On 750 mg every 12 h that is an AUC24 of <b>${nf(1500/e.CL,0)} mg·h/L</b>, above the target.`,
+         `For 500 mg·h/L: D = 500 × ${nf(e.CL,2)} × 12 / 24 = ${nf(D,0)} mg every 12 h; rounded to 250 mg, <b>${nf(Dr,0)} mg every 12 h</b>.`,
+         `In this case's premise he clears ${nf(b.trueCL,2)} L/h, so 750 mg every 12 h really gives an AUC24 of ${nf(1500/b.trueCL,0)} mg·h/L: the two-level conclusion would have left him above the target, while the Bayesian estimate is within ${nf(Math.abs(100*(e.CL/b.trueCL-1)),0)}% of his clearance.`]};
+     },
+     wrong:[{reg:{D:750, tau:12}, hint:"aucHigh"}, {reg:{D:250, tau:12}, hint:"aucLow"}],
+     also:"When the levels were really drawn (a charted time can differ from the real one), whether the infusion ran on schedule, kidney function trends, other nephrotoxic drugs, and repeating a level after the change. Bayesian programs used in practice have population models built for the drug; the CVs here are teaching assumptions.",
+     refs:["sheiner1979","rybakCid","vanc","cg"]},
+
+    {id:"gent-bayes", drug:"gent", title:"Gentamicin: when the second level comes back higher", tag:"Aminoglycoside · Bayesian estimate",
+     patient:{age:58, sex:"F", ht:163, wt:70, scr:1.2}, clMult:0.6, vMult:1.2,   // the premise: 0.6× the predicted clearance, 1.2× the volume
+     current:{D:120, tau:8}, bayes:{dose:4, times:[1, 2], errors:[-0.05, 0.05]},   // 30 minutes after the infusion ends, and an hour later
+     indication:"A serious Gram-negative infection. She has had 120 mg every 8 hours as 30-minute infusions. After the fourth dose two levels were drawn an hour apart, the first 30 minutes after the infusion ended (see Levels).",
+     target:{kind:"pt", peak:[5,12], troughMax:2,
+       why:"The label asks for dosing that avoids prolonged peaks above 12 mcg/mL and troughs above 2 mcg/mL. A peak of at least 5 mg/L is a teaching target (unverified)."},
+     choices:{step:10, min:40, max:600, taus:[8,12,24,36,48], tinf:0.5},
+     start:{D:120, tau:8},
+     task:"Try the two-level (Sawchuk–Zaske) equations on her levels, then estimate her elimination rate and volume with the Bayesian estimate (Open in simulator brings her levels). Choose a dose and interval that give a steady-state peak of 5–12 mg/L and a trough at or below 2 mg/L.",
+     plan(x){ const b=bayesOf(this), e=b.est, T=0.5, k=e.CL/e.V, tauIdeal=T+Math.log(8/1)/k, tau=x.upTau(tauIdeal), D=8*k*e.V*T*(1-Math.exp(-k*tau))/(1-Math.exp(-k*T)), [l1,l2]=b.lv;
+       return {reg:{D, tau}, steps:[
+         `The levels: ${nf(l1.c,1)} mg/L at ${nf(l1.dt,2)} h after the fourth dose started and <b>${nf(l2.c,1)} mg/L</b> at ${nf(l2.dt,2)} h. The second is higher than the first.`,
+         `Two-level equations: k = ln(${nf(l1.c,1)} / ${nf(l2.c,1)}) / 1 = ${signed(b.sz.k,4)} h⁻¹, a negative elimination rate. The method has nothing to work with: over one hour her level really falls only about ${nf(100*(1-Math.exp(-b.trueCL/b.trueV)),0)}%, less than the assay error in the two levels (in this case, its premise: −5% and +5%).`,
+         `Bayesian estimate from the same levels, weighed against the patient model: clearance ${nf(e.CL,2)} L/h, volume ${nf(e.V,1)} L, so k = ${nf(k,4)} h⁻¹ and a half-life of <b>${nf(LN2/k,1)} h</b> (95% ${nf(e.ci.thalf[0],1)}–${nf(e.ci.thalf[1],1)} h). The levels' height says she clears it more slowly than predicted; the prior supplies the slope they can't.`,
+         `For a peak of 8 and a trough of 1 mg/L: τ = T + ln(8 / 1) / k = ${T} + ${nf(Math.log(8),3)} / ${nf(k,4)} = ${nf(tauIdeal,1)} h, so every <b>${tau} h</b>; D = C<sub>peak</sub>·k·V·T·(1 − e^(−kτ)) / (1 − e^(−kT)) = <b>${nf(D,0)} mg</b>, or ${nf(x.round(D),0)} mg rounded.`,
+         `In this case's premise her half-life is ${nf(LN2*b.trueV/b.trueCL,1)} h: on 120 mg every 8 hours her trough would climb to ${nf(PK.ssProfile(b.truth).ssTrough,1)} mg/L.`]};
+     },
+     wrong:[{reg:{D:120, tau:8}, hint:"reduceBoth"}, {reg:{D:100, tau:12}, hint:"lengthen"}, {reg:{D:80, tau:24}, hint:"increase"}],
+     also:"Levels drawn close together can't show a slope, which is why two-level methods space them several hours apart; Bayesian programs used in practice have population models built for the drug. Also: kidney function trends, hearing and balance, other nephrotoxic drugs, and repeating a level after the change.",
+     refs:["sheiner1979","gent","cg"]},
+
     {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics · albumin",
      patient:{age:60, sex:"F", ht:163, wt:60, scr:0.8, alb:2.5},
      measured:{C:8, D:300},
@@ -261,14 +306,15 @@
     const t=c.choices.tinf;
     return t==="label" ? Math.max(1, D/600) : t || 1;   // vancomycin: no faster than 10 mg/min
   }
-  function caseScenario(c, reg, drugId){
+  function caseScenario(c, reg, drugId, prior){
     const d=drugOf(drugId||c.drug), base=PK.drugScenario(d), pt=c.patient;
     const over={pm:"clinical", age:pt.age, sex:pt.sex, ht:pt.ht, wt:pt.wt, scr:pt.scr, alb:pt.alb||4, wtm:"actual",
       dosing:"repeated", loadMult:1, missed:1};
     if(reg){ over.D=reg.D; over.tau=reg.tau; if(base.route==="inf") over.tinf=tinfFor(c, reg.D); }
     const p=Object.assign({}, base, over);
-    if(c.clMult) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
-    if(c.vMult){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
+    // the case's premise (what the levels reveal); `prior` leaves it out: the patient as the model predicts him
+    if(c.clMult && !prior) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
+    if(c.vMult && !prior){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
     if(c.id==="phe") p.vmax=pheVmax(c)/(pt.wt*PK.clFactor(p));   // her Vmax, net of the model's renal factor
     // enough doses to show the approach to steady state inside two weeks
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
@@ -284,6 +330,28 @@
     const p=caseScenario(c, c.current), T=p.tinf, rep=v=> v>=1 ? Math.round(v*10)/10 : +v.toPrecision(2), second=c.sample.second;
     return {p, D:c.current.D, tau:c.current.tau, T, after:c.sample.after, second, peak:rep(PK.ssConc(p, T+c.sample.after)),
       trough:rep(PK.ssConc(p, second===undefined ? p.tau-1e-9 : second))};
+  }
+  // The window a case opens the simulator with (and whose lower bound sets the Bayesian estimate's additive error).
+  function caseWindow(c){
+    const t=c.target, d=drugOf(c.drug);
+    return t.kind==="table" ? {mec:t.mic, mtc:d.s.mtc} : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
+      : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
+  }
+  // Bayesian cases: levels drawn on the current regimen from the patient as he really is (the premise), each with the
+  // case's stated assay error, reported as a laboratory would; the prior is the patient the model predicts. The estimate
+  // uses pk-bayes.js (the page loads it with the cases).
+  function bayesOf(c){
+    const b=c.bayes, truth=caseScenario(c, c.current), ev=PK.doseEvents(truth), rep=v=> v>=1 ? Math.round(v*10)/10 : +v.toPrecision(2);
+    const lv=b.times.map((dt,i)=>({n:b.dose, dt, c:rep(PK.conc(truth, ev[b.dose-1].t+dt, ev)*(1+b.errors[i]))}));
+    const prior=Object.assign(caseScenario(c, c.current, null, true), {lv}), opts={mec:caseWindow(c).mec};
+    const est=PK.bayes.estimate(prior, lv, opts), pr=PK.bayes.priorOf(prior, opts);
+    // the two-level (Sawchuk–Zaske) equations at steady state, from the same two levels: k from their fall, the level
+    // back at the end of the infusion and forward to the end of the interval, V from the infusion equation
+    const T=truth.tinf, [a,z]=lv, k=Math.log(a.c/z.c)/(z.dt-a.dt), tau=c.current.tau, D=c.current.D;
+    const Cmax=a.c*Math.exp(k*(a.dt-T)), Cmin=z.c*Math.exp(-k*(tau-z.dt)), V=(D/T)*(1-Math.exp(-k*T))/(k*(Cmax-Cmin*Math.exp(-k*T)));
+    const sz=k>0 ? {k, Cmax, Cmin, V, CL:k*V, auc24:(T*(Cmin+Cmax)/2+(Cmax-Cmin)/k)*24/tau} : {k, broken:true};
+    return {truth, prior, lv, est, pr, sz, opts, T,
+      trueCL:PK.derived(truth).CL, trueV:PK.vOf(truth)};
   }
   // First-order two-level AUC: k from the fall between the levels, the level back at the end of the infusion, then
   // the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
@@ -559,7 +627,8 @@
       <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
-        ${c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
+        ${c.bayes ? (b=>`<dt>Levels</dt><dd>On ${nf(c.current.D,0)} mg every ${c.current.tau} h (each infused over ${nf(b.T,2)} h), after dose ${c.bayes.dose}: ${b.lv.map(l=>`<b>${nf(l.c,2)} mg/L</b> at ${nf(l.dt,2)} h`).join(" and ")} after that dose started.</dd>`)(bayesOf(c))
+          : c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
         <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl>
       <p class="cs-task"><b>Task.</b> ${h.esc(c.task)}</p>
       <form id="csForm" novalidate>${form}<div class="cs-actions"><button class="abtn" type="submit">Check regimen</button>
@@ -577,9 +646,8 @@
     box.querySelector("#csPrint").addEventListener("click",()=> h.print());
     const sim=box.querySelector("#csSim");
     if(sim) sim.addEventListener("click",()=>{
-      const reg=regFromForm(c, box) || c.start, p=caseScenario(c, reg), d=drugOf(c.drug);
-      const win=t.kind==="table" ? {mec:t.mic, mtc:d.s.mtc} : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
-        : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
+      // a Bayesian case opens the patient as the model predicts her, on the regimen the levels were drawn on, with the levels
+      const reg=regFromForm(c, box) || c.start, p=c.bayes ? bayesOf(c).prior : caseScenario(c, reg), win=caseWindow(c);
       h.openScenario(p, Object.assign({duration:Math.min(336, p.nDoses*p.tau)}, win), c.drug);
     });
     if(link.reg) renderResult(c, link.reg, box);
@@ -588,5 +656,5 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
+    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
 });

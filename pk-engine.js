@@ -1005,6 +1005,7 @@
     caf:{cite:"Caffeine citrate injection and oral solution. Prescribing information, Sagent. DailyMed.", url:DM+"5f38c395-0093-4afd-89ec-f96e5dc0934a"},
     ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
     idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"},
+    sheiner1979:{cite:"Sheiner LB, Beal S, Rosenberg B, Marathe VV. Forecasting individual pharmacokinetics. Clin Pharmacol Ther. 1979;26(3):294–305.", url:"https://doi.org/10.1002/cpt1979263294"},
     rybakCid:{cite:"Rybak MJ, Le J, Lodise TP, et al. Executive summary: therapeutic monitoring of vancomycin for serious methicillin-resistant Staphylococcus aureus infections: a revised consensus guideline. Clin Infect Dis. 2020;71(6):1361–1364.", url:"https://doi.org/10.1093/cid/ciaa303"}
   };
   const UNVERIFIED="typical textbook value, unverified";
@@ -1226,7 +1227,11 @@
      base:{hep:1,route:"oral",D:2000,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"oral",D:2000,V:150,fub:0.5,clint:3600}},
     {id:"hepq", tag:"Q", title:"Liver blood flow", sum:"A high-extraction drug's clearance follows the flow.", baseLabel:"Q 90 L/h",
      view:{duration:12,mec:0.5,mtc:5},
-     base:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800,qh:45}}
+     base:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800,qh:45}},
+    {id:"bayes", tag:"MAP", title:"One level and a prior", sum:"A single well-timed level, weighed against the patient model.", baseLabel:"patient model, no levels",
+     view:{duration:108,mec:10,mtc:40},
+     base:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83},
+     cur:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83,lv:[{n:8,dt:11.9,c:24.8}]}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1284,10 +1289,10 @@
   // checks live, and why the idea matters; pk-lessons.js holds them, with each lesson's explanation and tip.
   const LESSON_GROUPS=[{id:"pk",title:"PK fundamentals"},{id:"rep",title:"Repeated dosing and steady state"},
     {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"},
-    {id:"liver",title:"Liver and first pass"}];
+    {id:"liver",title:"Liver and first pass"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","hepx":"liver","hepfp":"liver","hepq":"liver"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
