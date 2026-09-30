@@ -72,7 +72,10 @@
        return {reg:{D, tau}, steps:[
          `At steady state the AUC over 24 h is the daily dose divided by clearance: AUC24 = daily dose / CL.`,
          `For the middle of the range, 500 mg·h/L: daily dose = 500 × ${nf(x.CL,2)} L/h = ${nf(daily,0)} mg, or ${nf(D,0)} mg every ${tau} h; rounded to 250 mg, <b>${nf(Math.round(D/250)*250,0)} mg every ${tau} h</b>.`,
-         `Each dose is infused at no more than 10 mg/min (label), so 1 g takes 100 minutes.`]};
+         `Each dose is infused at no more than 10 mg/min (label), so 1 g takes 100 minutes.`,
+         (()=>{ const one=caseScenario(this, {D:Math.round(D/250)*250, tau}), two=twoCmtOf(one), a=PK.ssProfile(one), b=PK.ssProfile(two);
+           const auc=q=>PK.derived(q).auc*24/q.tau;
+           return `The one-compartment model is a teaching simplification: vancomycin distributes in two phases. With a two-compartment version of this patient (the same clearance and total volume, half of it central, k12 = k21 = 0.545 h⁻¹, a teaching assumption), the same regimen peaks at ${nf(b.ssPeak,1)} instead of ${nf(a.ssPeak,1)} mg/L, but the AUC24 is still ${nf(auc(two),0)} mg·h/L (one compartment: ${nf(auc(one),0)}). That is why AUC-guided dosing holds up when the model is simplified.`; })()]};
      },
      wrong:[{reg:{D:1000, tau:8}, hint:"aucHigh"}, {reg:{D:500, tau:12}, hint:"aucLow"}],
      also:"This one-compartment model is a teaching simplification: vancomycin distributes in two phases, and practice estimates the AUC from two levels or with Bayesian software. Kidney function trends, other nephrotoxins, the infection site, and whether a loading dose is needed all shape the choice.",
@@ -183,6 +186,8 @@
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
     return PK.normalizeScenario(PK.scenario(p));
   }
+  // The same patient with two compartments: half the volume central, the same clearance (k10 doubles).
+  const twoCmtOf=p=> PK.normalizeScenario(Object.assign({}, p, {cmt:2, V:p.V/2, thalf:p.thalf/2, k12:0.545, k21:0.545}));
   // Phenytoin: this patient's Vmax (mg/day) from her albumin-adjusted steady-state level, with Km fixed.
   function pheVmax(c){
     const m=c.measured, st=PK.sheinerTozer(m.C, c.patient.alb, false), R=0.92*m.D, km=drugOf("phe").s.km;

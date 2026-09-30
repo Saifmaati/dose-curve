@@ -93,5 +93,9 @@
      def:"How much clearance and volume differ from one person to the next. DoseCurve's population mode draws them log-normally around the scenario's values (30% and 20% by default, teaching assumptions rather than drug-specific figures)."},
     {term:"Probability of target attainment", sym:"PTA", unit:"%", lesson:"er",
      def:"The share of a simulated population whose levels meet a target, here a steady-state trough at or above MEC with the peak at or below MTC, or an AUC24 within a range."},
+    {term:"Two-compartment model", sym:"α, β", unit:"h⁻¹", lesson:"twocmt",
+     def:"A central volume (plasma and fast tissues) that exchanges drug with a peripheral one at k12 and k21. A bolus falls as A·e^(−αt) + B·e^(−βt): a fast distribution phase, then the slower terminal phase. Clearance and AUC are the same as with one compartment."},
+    {term:"Distribution phase", sym:"t½ α", unit:"h", lesson:"twocmt",
+     def:"The early, fast fall in level while drug moves from the central volume into the tissues. Levels drawn during it run higher than the terminal phase would predict."}
   ];
 });

@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.0.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.1.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -210,7 +210,7 @@
     font-family:'Inter','Inter Fallback',sans-serif;font-size:12px;font-weight:500;padding:9px 10px;border-radius:var(--r-sm);
     display:flex;align-items:center;justify-content:center;gap:7px;transition:all .16s ease;
   }
-  .abtn[hidden]{display:none}
+  .abtn[hidden],.seg[hidden]{display:none}
   .abtn:hover{border-color:rgba(var(--violet-rgb),.6);box-shadow:0 0 16px rgba(var(--violet-rgb),.2)}
   .abtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .abtn.pinned{border-color:rgba(var(--cyan-rgb),.55);color:var(--cyan)}
@@ -1031,7 +1031,7 @@
             <p class="ev-legend" aria-hidden="true"><span>● oral</span><span>◆ IV bolus</span><span>▬ IV infusion, while it runs</span></p>
             <details class="ev-model">
               <summary>How doses of different routes are modelled</summary>
-              <p>Every dose goes into the same one-compartment body, with one volume and one clearance whatever the route. Oral doses are absorbed at the rate kₐ and only the fraction F reaches the blood; IV doses count in full. An infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop, with no delay in the line. Everything adds up: overlapping infusions add their rates, and a bolus given during an infusion adds on top.</p>
+              <p>Every dose goes into the same body (one compartment, or the central one of two), with one volume and one clearance whatever the route. Oral doses are absorbed at the rate kₐ and only the fraction F reaches the blood; IV doses count in full. An infusion delivers its amount at a constant rate (amount ÷ duration) from start to stop, with no delay in the line. Everything adds up: overlapping infusions add their rates, and a bolus given during an infusion adds on top.</p>
             </details>
             <p class="ev-limit" id="evLimit" role="status" hidden>Can’t add another dose: the schedule already reaches the 168-hour limit. Duplicate still adds a dose at the same time.</p>
             <div class="ev-actions">
@@ -1045,6 +1045,10 @@
             <div class="seg" id="kinSeg" role="group" aria-label="Elimination">
               <button data-kin="linear" class="on">First-order</button>
               <button data-kin="mm">Saturable (Vmax, Km)</button>
+            </div>
+            <div class="seg" id="cmtSeg" role="group" aria-label="Compartments" style="margin-top:8px">
+              <button data-cmt="1" class="on">One compartment</button>
+              <button data-cmt="2">Two compartments</button>
             </div>
             <div id="sliders"></div>
           </div>
@@ -1502,7 +1506,7 @@
     <footer class="foot">
       <div class="disc">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment pharmacokinetics (first-order or saturable) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
+        <div><b>Educational simulation.</b> DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
       <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.
         <br><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
@@ -1511,7 +1515,7 @@
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
         Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 94 scenarios: see Validation.</p>
+      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 126 scenarios: see Validation.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
         <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
@@ -1519,7 +1523,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.0.0 · updated 30 September 2026</span>
+        <span>Version 1.1.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1588,7 +1592,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=18484e6d3f"></script>
+<script src="pk-engine.js?v=493ded4bdb"></script>
 <script>
 "use strict";
 (function(){
@@ -1651,6 +1655,9 @@
     // saturable elimination replaces the half-life with Vmax (per kg per day) and Km
     vmax: {name:"Vmax (per kg)",      sym:"Vmax", step:0.5, unit:"mg/kg/day", routes:ALL, fmt:v=>`${trim(v)} ${U().amount}/kg/day`},
     km:   {name:"Km",                 sym:"Km",  step:0.5,  unit:"mg/L", routes:ALL, fmt:v=>`${trim(v)} ${U().conc}`},
+    // two compartments: exchange between the central volume and a peripheral one
+    k12:  {name:"Central → peripheral", sym:"k12", step:0.05, unit:"h⁻¹", routes:ALL},
+    k21:  {name:"Peripheral → central", sym:"k21", step:0.05, unit:"h⁻¹", routes:ALL},
     tau:  {name:"Dosing interval",    sym:"τ",   step:1,    unit:"h",   routes:ALL, dosing:"repeated"},
     nDoses:{name:"Number of doses",   sym:"n",   step:1,    unit:"",    routes:ALL, dosing:"repeated"},
     missed:{name:"Missed dose",       sym:"✕",   step:1,    unit:"",    routes:ALL, dosing:"repeated",
@@ -2064,7 +2071,7 @@
       {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
       {k:"t½ at peak", v:fmt(d.thalfEff,1), u:"h"},
       {k:"CL at peak", v:fmt(d.CL,2), u:"L/h"},
-      {k:"Vd (patient)", v:fmt(d.V,0), u:"L"},
+      {k:d.Vss ? "V1 (central)" : "Vd (patient)", v:fmt(d.V,0), u:"L"},
       {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:u.auc},
       {k:"Dose / wt", v:fmt(d.mgkg,1), u:u.perKg},
       {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}];
@@ -2085,7 +2092,7 @@
       {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
       {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
       {k:"CL", v:fmt(d.CL,2), u:"L/h"},
-      {k:"Vd (patient)", v:fmt(d.V,0), u:"L"},
+      {k:d.Vss ? "V1 (central)" : "Vd (patient)", v:fmt(d.V,0), u:"L"},
       {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc},
       {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
       {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
@@ -2134,11 +2141,23 @@
     const el=byId("roMath");
     el.hidden=!roOpen; byId("roHint").hidden=!!roOpen;
     if(!roOpen) return;
+    if(!PK.metricMath){ el.innerHTML=`<p class="rm-t">Loading the working…</p>`; loadMath(); return; }
     const r=PK.metricMath(p, roOpen, {duration:state.duration, mec:state.mec, mtc:state.mtc, ws});
     el.innerHTML=`<div class="rm-h">${esc(r.title)}<button class="rm-x" aria-label="Close the working">✕</button></div>`+
       r.steps.map(x=> x.m ? `<code class="rm-m">${esc(x.m)}</code>` : `<p class="rm-t">${esc(x.t)}</p>`).join("");
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
+  // The workings come from pk-math.js, loaded the first time a readout is opened.
+  const MATH_SRC="pk-math.js?v=b602994011";
+  let mathLoading=false;
+  function loadMath(){
+    if(mathLoading) return;
+    mathLoading=true;
+    const sc=document.createElement("script");
+    sc.src=MATH_SRC; sc.onload=()=>{ if(PK.metricMath) refreshReadouts(); };
+    sc.onerror=()=>{ mathLoading=false; byId("roMath").innerHTML=`<p class="rm-t">The working couldn't load. Check the connection and select the readout again.</p>`; };
+    document.head.appendChild(sc);
+  }
   byId("readouts").addEventListener("click",e=>{
     const b=e.target.closest(".ro");
     if(!b) return;
@@ -2323,7 +2342,7 @@
     ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],
     pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
     wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
-    kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"]};
+    kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"],cmt:["Compartments",""],k12:["k12","h⁻¹"],k21:["k21","h⁻¹"]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
@@ -2421,6 +2440,27 @@
     if(mmA && mmB){
       if(a.vmax!==b.vmax) out.push(`Vmax ${trim(a.vmax)} → ${trim(b.vmax)} ${PK.unitsOf(b).amount}/kg/day: ${b.vmax<a.vmax ? "less" : "more"} enzyme capacity, so the same input sits ${b.vmax<a.vmax ? "closer to" : "further from"} saturation.`);
       if(a.km!==b.km) out.push(`Km ${trim(a.km)} → ${trim(b.km)} ${PK.unitsOf(b).conc}: elimination reaches half of Vmax at a ${b.km>a.km ? "higher" : "lower"} level, so ${b.km>a.km ? "it stays closer to first-order over a wider range" : "it saturates at lower levels"}.`);
+    }
+
+    // compartments
+    if((a.cmt===2)!==(b.cmt===2) && !mmA && !mmB){
+      // the total AUC follows the clearance alone; a window that ends early counts the two shapes' area differently
+      const sameCL=Math.abs(db.CL/da.CL-1)<1e-6, dW=wa.auc>0 ? wb.auc/wa.auc-1 : 0;
+      const auc=!sameCL ? "The total AUC still follows the clearance alone (F·D / CL): the compartments change the curve's shape, not its area."
+        : Math.abs(dW)<0.01 ? "The clearance is the same, so the AUC is too, while early levels and peaks differ."
+        : `The clearance is the same, so the total AUC (to infinity) is too. Within this ${state.duration} h window it is ${fmt(Math.abs(dW)*100,0)}% ${dW<0 ? "lower, because the slower terminal phase carries part of the area past the window" : "higher, because less of the area falls after the window"}.`;
+      out.push(b.cmt===2
+        ? `<b>Two compartments</b>: the drug goes first into a central ${fmt(PK.vOf(b),0)} L and moves into a peripheral volume and back, so the level falls fast at first, then slowly (terminal half-life ${fmt(db.thalfEff,1)} h). ${auc}`
+        : `<b>One compartment</b>: the drug spreads through its whole volume at once, so there is no separate distribution phase. ${auc}`);
+    }
+    else if(a.cmt===2 && b.cmt===2 && (a.k12!==b.k12 || a.k21!==b.k21)){
+      // the ratio k12/k21 sets how much drug the peripheral compartment holds; with the ratio kept, the sum sets the speed
+      const ra=a.k12/a.k21, rb=b.k12/b.k21, head=`Exchange k12 ${trim(a.k12)} → ${trim(b.k12)}, k21 ${trim(a.k21)} → ${trim(b.k21)} h⁻¹: `;
+      out.push(head+(Math.abs(rb/ra-1)<1e-9
+        ? (b.k12>a.k12
+          ? `the drug moves between the compartments faster both ways, so the model behaves more like one compartment of the steady-state volume, ${fmt(db.Vss,0)} L.`
+          : `the drug moves between the compartments more slowly both ways, so the distribution phase stands out more (steady-state volume still ${fmt(db.Vss,0)} L).`)
+        : `${rb>ra ? "more" : "less"} of the drug sits in the peripheral compartment once the two balance. The steady-state volume goes ${fmt(da.Vss,0)} → ${fmt(db.Vss,0)} L and the terminal half-life ${fmt(da.thalfEff,1)} → ${fmt(db.thalfEff,1)} h.`));
     }
 
     // units and salt factor: what a dose delivers and how levels are measured
@@ -2941,6 +2981,7 @@
 
   let sliderRefs={};
   function makeSlider(container,key,cfg){
+    if(state.cmt===2 && state.kin!=="mm" && (key==="thalf"||key==="V")) cfg=Object.assign({}, cfg, {name:key==="thalf" ? "Half-life of k10" : "Central volume V1 (70 kg)"});
     const wrap=document.createElement("div");
     wrap.className="ctrl";
     const range=rangeOf(key,cfg);
@@ -3007,7 +3048,7 @@
       // F, kₐ and T·inf show only when they shape the curve: in a custom schedule F and kₐ while it has an
       // oral dose, and never T·inf (each infusion has its own duration)
       if(["F","ka","tinf"].includes(key) ? !PK.isRelevant(key, snapshot()) : !cfg.routes.includes(state.route)) return;
-      if(["thalf","vmax","km"].includes(key) && !PK.isRelevant(key, snapshot())) return;
+      if(["thalf","vmax","km","k12","k21"].includes(key) && !PK.isRelevant(key, snapshot())) return;
       if(cfg.dosing && ![].concat(cfg.dosing).includes(state.dosing)) return;
       makeSlider(el,key,cfg);
     });
@@ -3021,6 +3062,7 @@
     if(clinical) Object.entries(CLIN).forEach(([key,cfg])=> makeSlider(cel,key,cfg));
     setSegVal("pmSeg","pm",state.pm); setSegVal("sexSeg","sex",state.sex); setSegVal("wtmSeg","wtm",state.wtm);
     setSegVal("kinSeg","kin",state.kin);
+    setSegVal("cmtSeg","cmt",state.cmt); byId("cmtSeg").hidden=state.kin==="mm";
     const dl=byId("pdSliders");
     dl.innerHTML="";
     Object.entries(PD_SLIDERS).forEach(([key,cfg])=> makeSlider(dl,key,cfg));
@@ -3079,6 +3121,7 @@
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
   seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
   seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
+  seg("cmtSeg","cmt",v=>{ state.cmt=+v; state.drug=null; markDrug(); buildSliders(); changed(["cmt"]); });
   seg("sexSeg","sex",v=>{ state.sex=v; changed(["sex"]); });
   seg("wtmSeg","wtm",v=>{ state.wtm=v; changed(["wtm"]); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
@@ -3782,7 +3825,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=97d24a002b";
+  const GLOSS_SRC="pk-glossary.js?v=3d331c61d4";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4768,7 +4811,7 @@
       `<p class="wp-meta">Open it online: ${esc(url)}</p>`+
       `<ol>${ws.problems.map(pr=>`<li><span class="wp-type">${pr.type}</span><div>${pr.q}</div><div class="wp-ans">Answer: ______________ ${pr.unit}</div></li>`).join("")}</ol>`+
       `<section class="wp-key"><h2>Answer key</h2><ol>${ws.problems.map(pr=>`<li><b>${ansText(pr)}</b> · ${pr.type}<div>${pr.sol.join("")}</div></li>`).join("")}</ol></section>`+
-      `<footer>Generated by DoseCurve, an educational one-compartment simulation. Not for dosing real patients.</footer>`;
+      `<footer>Generated by DoseCurve, an educational pharmacokinetic simulation. Not for dosing real patients.</footer>`;
     document.body.classList.add("ws-printing");
     window.print();
   });
@@ -4826,7 +4869,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=b88d2d67a5";
+  const CASES_SRC="cases.js?v=1278df21cc";
   let casesReady=null, casesMounted=false;
   function loadCases(){
     if(!casesReady) casesReady=new Promise((res,rej)=>{

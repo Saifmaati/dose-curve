@@ -2,7 +2,7 @@
 
 DoseCurve is a free pharmacokinetics lab that runs in the browser: <https://saifmaati.github.io/dose-curve/>.
 
-There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized one-compartment linear pharmacokinetics and a direct concentration–effect (Emax) relationship, for learning and demonstration only. It is not for dosing real patients.
+There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized linear pharmacokinetics in one or two compartments, saturable elimination, and a direct concentration–effect (Emax) relationship, for learning and demonstration only. It is not for dosing real patients.
 
 This guide collects ways to use it in a course.
 
@@ -16,7 +16,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
   3. The panel under the chart explains what moved and why. Its table gives the metrics before and after.
-- **Two regimens side by side.** The **Compare** tab has 17 one-click comparisons:
+- **Two regimens side by side.** The **Compare** tab has 18 one-click comparisons:
   - Once vs twice daily
   - Loading dose
   - Normal vs 50% clearance
@@ -59,13 +59,13 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Nine teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, digoxin, phenytoin and lithium carbonate. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (23)
+## Guided lessons (24)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent |
@@ -73,7 +73,7 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 42 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 44 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (8)
 
@@ -89,7 +89,7 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | --- | --- |
 | Gentamicin with reduced kidney function | Peak and trough targets; lengthening the interval as CrCl falls |
 | Gentamicin once daily | The Hartford approach (7 mg/kg, interval from CrCl bands) against conventional every-8-hour dosing |
-| Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L), and why the one-compartment model is a simplification |
+| Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L); a two-compartment version of the patient changes the peak but not the AUC24 |
 | Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
 | Digoxin in an older adult | ng/mL targets, a long half-life, and the loading dose |
 | Theophylline in a smoker | A cited clearance factor (about +50%) and a narrow window |
@@ -149,7 +149,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent. Practice: *Infusions* |
 | 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
-| 8 | Aminoglycosides, vancomycin, variability | Cases: Gentamicin once daily, Vancomycin to an AUC target. Population mode and probability of target attainment |
+| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Cases: Gentamicin once daily, Vancomycin to an AUC target. Population mode and probability of target attainment |
 | 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Practice: *Saturable (Michaelis–Menten)* |
 | 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect. Case: Theophylline in a smoker. A mixed worksheet |
 
@@ -167,7 +167,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
    - lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Evenly spaced vs bunched doses
    - practice: *Infusions*
 4. **Absorption, saturation and design:**
-   - lessons: Flip-flop kinetics, Saturable elimination, Narrow window
+   - lessons: Flip-flop kinetics, Saturable elimination, One or two compartments, Narrow window
    - practice: *Saturable (Michaelis–Menten)*
    - Fit the data (oral)
    - Hit the window (oral)
@@ -180,7 +180,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 
 **Included:**
 
-- One well-mixed compartment with first-order (linear) elimination.
+- One well-mixed compartment, or two: a central compartment that exchanges with a peripheral one at rates k12 and k21, for every route. Elimination is from the central compartment, first-order (linear).
 - First-order oral absorption with bioavailability F, IV boluses, and zero-order infusions.
 - Superposition of every dose given, whether a regular regimen (with loading and missed doses) or a custom schedule mixing routes.
 - Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
@@ -190,10 +190,10 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 
 **Left out:**
 
-- Multi-compartment distribution.
+- Three or more compartments, and two compartments with saturable elimination.
 - Delayed or indirect effects, tolerance and active metabolites.
 - Protein-binding changes.
-- The variability between people that real dosing has to account for.
+- Covariates and correlated variability. Population mode draws clearance and volume independently, with teaching CVs.
 
 The drug presets use typical textbook values and are not prescribing information.
 

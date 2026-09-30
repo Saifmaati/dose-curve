@@ -20,12 +20,12 @@ function engineMetrics(s){
   return {peak:w.cmax, trough:PK.conc(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin_pct:100*w.tIn/T};
 }
 
-test("the reference covers routes × regimens × drugs (linear and saturable) × patients (normal and reduced CrCl)", ()=>{
+test("the reference covers routes × regimens × drugs (linear, saturable, two-compartment) × patients (normal and reduced CrCl)", ()=>{
   const S=REF.scenarios, by=k=> new Set(S.map(s=>s[k]));
   assert.ok(S.length>=90, `${S.length} scenarios`);
   ["oral","iv","inf","mixed"].forEach(r=> assert.ok(by("route").has(r), r));
   ["single","repeated","loading","missed","custom"].forEach(r=> assert.ok(by("regimen").has(r), r));
-  ["linear","salt","mm"].forEach(d=> assert.ok(by("drug").has(d), d));
+  ["linear","salt","mm","twocmt"].forEach(d=> assert.ok(by("drug").has(d), d));
   ["normal","reduced"].forEach(p=> assert.ok(by("patient").has(p), p));
   assert.ok(S.some(s=>s.nonlinear) && S.some(s=>!s.nonlinear));
   assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(REF.generated));
@@ -44,6 +44,15 @@ test("time in window agrees within 0.5 percentage points (linear) or 1 point (sa
   REF.scenarios.forEach(s=>{
     const m=engineMetrics(s), tol=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
     near(m.tin_pct, s.reference.tin_pct, tol, `${s.id} time in window`);
+  });
+});
+
+test("in practice the agreement is far closer: every difference under 0.001% and 0.001 points (a regression guard)", ()=>{
+  // peaks are refined between grid points, areas use Simpson's rule, and window crossings are found by bisection
+  REF.scenarios.forEach(s=>{
+    const m=engineMetrics(s), r=s.reference;
+    ["peak","trough","auc"].forEach(k=> rel(m[k], r[k], 1e-5, `${s.id} ${k}`));
+    near(m.tin_pct, r.tin_pct, 0.001, `${s.id} time in window`);
   });
 });
 
