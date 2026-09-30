@@ -163,7 +163,7 @@ test("the numbers the library's notes state follow from its own values", ()=>{
   assert.equal(tmax("amox").toFixed(1), "1.2");
   assert.equal(tmax("theo").toFixed(1), "5.8");
   assert.equal(tmax("dig").toFixed(0), "2");
-  assert.equal(tmax("phe").toFixed(0), "7");
+  assert.equal(tmax("phe").toFixed(0), "6", "saturable: found by integration");
   assert.equal(tmax("li").toFixed(1), "2.2");
   assert.equal((Math.LN2*0.45/(0.65*60/1000)).toFixed(1), "8.0", "theophylline: V 0.45 L/kg and CL 0.65 mL/kg/min");
   assert.equal((Math.LN2*0.4/0.058).toFixed(1), "4.8", "vancomycin: V 0.4 L/kg and CL 0.058 L/kg/h");
