@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Validation of the engine
+    url: https://saifmaati.github.io/dose-curve/validation.html
+    about: How DoseCurve's numbers are checked against an independent solver.

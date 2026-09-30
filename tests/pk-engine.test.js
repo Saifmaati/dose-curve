@@ -287,7 +287,9 @@ test("full links round-trip, including names with special characters", ()=>{
 
 test("links reject what they can't trust", ()=>{
   assert.equal(PK.decodeLink(""), null);
-  assert.equal(PK.decodeLink("#s=D:400"), null, "no version");
+  assert.equal(PK.decodeLink("#x=D:400"), null, "no scenario and no version: not a scenario link");
+  // v1.0 rule: a scenario link without a version is read as version 1
+  assert.deepEqual(PK.decodeLink("#s=D:400").s, PK.decodeLink("#v=1&s=D:400").s, "no version reads as v1");
   const st=PK.decodeLink("v=1&m=cmp&lk=evil&ed=zzz&na=%3Cb%3Ehi");
   assert.equal(st.lock, ""); assert.equal(st.edit, "a");
   assert.equal(st.nameA, "<b>hi", "names are plain text; the page escapes them");
@@ -1297,7 +1299,7 @@ test("lesson: short vs long infusion", ()=>{
   const {base,cur,T,mtc}=lesson("infdur"), a=stats(base,T,0,mtc), b=stats(cur,T,0,mtc);
   near(base.D/base.tinf, 2000, 1e-9, "2,000 mg/h"); near(cur.D/cur.tinf, 250, 1e-9, "250 mg/h");
   near(a.cmax, 19.8, 0.05, "short: 19.8 mg/L"); near(a.tmax, 0.5, 1e-9, "at 0.5 h");
-  near(a.tAbove, 0.8, 0.05, "0.8 h above the MTC line");
+  near(a.tAbove, 0.9, 0.05, "0.9 h above the MTC line");   // 0.886 h, exactly
   near(b.cmax, 16.3, 0.05, "long: 16.3 mg/L"); near(b.tmax, 4, 1e-9, "at 4 h"); assert.equal(b.tAbove, 0);
   const reach=(p,level)=>{ for(let t=0;t<=12;t+=0.001) if(PK.conc(p,t)>=level) return t; return null; };
   near(reach(base,10), 0.25, 0.01, "10 mg/L at 0.25 h"); near(reach(cur,10), 2.2, 0.05, "and at 2.2 h");

@@ -11,32 +11,51 @@
   "use strict";
 
   // Share-link format: 1 = single and repeated regimens; 2 adds custom dose schedules; 3 adds a route per
-  // dose and a duration per infusion; 4 adds the concentration–effect (PK/PD) settings. Each link is written
-  // at the lowest version that can hold it, so links that older pages understand stay exactly as they were.
-  const VERSION=4;
+  // dose and a duration per infusion; 4 adds the concentration–effect (PK/PD) settings; 5 adds the clinical
+  // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
+  // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
+  // that can hold it, so links that older pages understand stay exactly as they were.
+  const VERSION=5;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model).
   const PD_KEYS=["e0","emax","ec50","hill"];
+  // The patient (pm = patient mode): "simple" scales clearance by the organ-function slider (clFn); "clinical"
+  // estimates creatinine clearance by Cockcroft–Gault from age, sex, weight and serum creatinine (mg/dL), and
+  // scales the renally cleared fraction fe of clearance by it. ht is height in cm, alb albumin in g/dL, and wtm
+  // the weight Cockcroft–Gault uses (actual, ideal or adjusted body weight). S is the salt factor: the amount
+  // of active drug per unit of dose (lithium carbonate: mEq of lithium per mg). unit names the unit system.
   const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
-    events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1});
-  const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2]};
+    events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
+    pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
+    kin:"linear", vmax:7, km:4});
+  const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
+    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
-  const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,24],V:[5,120],tau:[2,24],
-    nDoses:[2,20],missed:[1,19],wt:[40,120],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5]};
-  const INTEGER_KEYS=["nDoses","missed"];
+  const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
+    nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
+    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30]};
+  const INTEGER_KEYS=["nDoses","missed","age","ht"];
+  // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
+  const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km"];
+  const V4_MAX={thalf:24, V:120, wt:120};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
-  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50};
-  const VIEW_RANGES={duration:[6,168],mec:[0,10000],mtc:[0,10000],etgt:[1,99]};
+  // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
+  // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
+  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50,
+    pop:false,popn:200,pcl:30,pv:20,pseed:1,plo:0,phi:0};
+  const VIEW_RANGES={duration:[6,336],mec:[0,10000],mtc:[0,10000],etgt:[1,99],
+    popn:[50,1000],pcl:[0,100],pv:[0,100],pseed:[1,4294967295],plo:[0,100000],phi:[0,100000]};
+  const POP_KEYS=["popn","pcl","pv","pseed","plo","phi"];
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
-    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"]];
+    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["scr","Serum creatinine"],["age","Age"]];
 
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
@@ -147,13 +166,61 @@
     if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
+    if(k==="clFn") return s.pm!=="clinical";
+    if(k==="thalf") return s.kin!=="mm";
+    if(k==="vmax"||k==="km") return s.kin==="mm";
+    if(["age","sex","ht","scr","alb","wtm","fe"].includes(k)) return s.pm==="clinical";
     return true;
   }
   // Equality that understands schedules (plain === would compare array identity).
   const sameSetting=(k,a,b)=> k==="events" ? eventsKey(a.events)===eventsKey(b.events) : a[k]===b[k];
 
+  /* ================= CLINICAL PATIENT ================= */
+  // Cockcroft–Gault creatinine clearance (mL/min): (140 − age) × weight / (72 × SCr), × 0.85 for women.
+  // Cockcroft DW, Gault MH. Nephron 1976;16(1):31–41.
+  const crclCG=(age, wtKg, scr, sex)=> (140-age)*wtKg/(72*scr)*(sex==="F" ? 0.85 : 1);
+  // Devine ideal body weight (kg): 50 kg (men) or 45.5 kg (women) + 2.3 kg per inch over 5 feet.
+  const cmToIn=cm=> cm/2.54;
+  const ibwDevine=(sex, heightIn)=> (sex==="F" ? 45.5 : 50)+2.3*(heightIn-60);
+  // Adjusted body weight: IBW + 0.4 × (actual − IBW).
+  const adjBW=(ibw, actual)=> ibw+0.4*(actual-ibw);
+  // Clearance relative to the drug's reference (a CrCl of 120 mL/min): the non-renal part (1 − fe) is kept and
+  // the renal part fe scales with creatinine clearance.
+  const CRCL_REF=120;
+  const renalFactor=(fe, crcl)=> (1-fe)+fe*Math.max(0,crcl)/CRCL_REF;
+  // Everything the clinical patient panel shows, for scenario p.
+  function patientOf(p){
+    const heightIn=cmToIn(p.ht), ibw=ibwDevine(p.sex, heightIn), adj=adjBW(ibw, p.wt);
+    const wtUsed=p.wtm==="ibw" ? ibw : p.wtm==="adj" ? adj : p.wt;
+    const crcl=crclCG(p.age, wtUsed, p.scr, p.sex);
+    return {heightIn, ibw, adj, wtUsed, crcl, factor:renalFactor(p.fe, crcl)};
+  }
+  // How much of the drug's reference clearance this patient has (1 = all of it).
+  const clFactor=p=> p.pm==="clinical" ? patientOf(p).factor : p.clFn/100;
+
+  // Unit systems. The engine is unit-free: a dose of D (in the dose unit) times S, over a volume in litres, gives
+  // a concentration in the concentration unit. toMgL converts that unit to mg/L; cdp is extra decimals for
+  // concentrations, since digoxin (ng/mL) and lithium (mEq/L) levels are around 1.
+  const UNITS={
+    mg: {id:"mg",  dose:"mg",  amount:"mg",  conc:"mg/L",  auc:"mg·h/L",  perKg:"mg/kg",  toMgL:1,     cdp:0},
+    mcg:{id:"mcg", dose:"mcg", amount:"mcg", conc:"ng/mL", auc:"ng·h/mL", perKg:"mcg/kg", toMgL:0.001, cdp:1},
+    // 1 mEq of lithium (monovalent) is 1 mmol, 6.94 mg
+    meq:{id:"meq", dose:"mg",  amount:"mEq", conc:"mEq/L", auc:"mEq·h/L", perKg:"mg/kg",  toMgL:6.94,  cdp:1}};
+  const unitsOf=p=> UNITS[p && p.unit] || UNITS.mg;
+  // The same scenario expressed in another unit system (for comparing A and B drawn in different units): every
+  // concentration, and the EC50 (and Vmax and Km), scale by the ratio of the two units; the curves are otherwise identical.
+  function convertUnits(p, unit){
+    const from=unitsOf(p), to=UNITS[unit] || UNITS.mg;
+    if(from.id===to.id) return cloneScenario(p);
+    const r=from.toMgL/to.toMgL;
+    // saturable elimination: Vmax (an amount rate) and Km (a concentration) scale with the amounts and levels
+    return Object.assign(cloneScenario(p), {unit:to.id, S:(p.S==null ? 1 : p.S)*r, ec50:p.ec50*r, vmax:p.vmax*r, km:p.km*r});
+  }
+
   /* ================= PK ENGINE ================= */
-  const keOf = p=> (Math.LN2/p.thalf) * (p.clFn/100);
+  const keOf = p=> (Math.LN2/p.thalf) * clFactor(p);
+  // Active drug per unit of dose (the salt factor); 1 for most drugs.
+  const saltOf = p=> p.S==null ? 1 : p.S;
   const vOf  = p=> p.V * (p.wt/70);
   // The final dose can't be skipped: final-interval peak and trough are defined by it, and skipping it
   // is the same as giving one dose fewer.
@@ -191,6 +258,7 @@
   function singleConc(p, t, mg, e, terms){
     if(t<0) return 0;
     terms=terms||disposition(p);
+    mg*=saltOf(p);
     const route=(e && e.route) || p.route;
     if(route==="iv") return mg*bolusResp(terms,t);
     if(route==="inf") return mg*infResp(terms, t, (e && e.dur) || p.tinf);
@@ -229,8 +297,9 @@
     return {n:ev.length, mg:ev.reduce((s,e)=>s+(e.route==="inf" ? e.mg*Math.min(1,(T-e.t)/e.dur) : e.mg),0)};
   }
 
-  // Superposition of every dose actually given.
+  // Superposition of every dose actually given (or, for saturable elimination, the integrated curve).
   function conc(p, t, ev){
+    if(p.kin==="mm") return t<0 ? 0 : mmConc(p,t);
     ev=ev||doseEvents(p);
     const terms=disposition(p);
     let sum=0;
@@ -239,11 +308,12 @@
   }
 
   function derived(p){
+    if(p.kin==="mm") return mmDerived(p);
     const k=keOf(p), V=vOf(p), terms=disposition(p), perMg=aucPerMg(terms);
     // the effective half-life is the slowest (terminal) one
     const d={thalfEff:Math.LN2/Math.min(...terms.map(x=>x.k)), ke:k, CL:1/perMg, V:V, mgkg:p.D/p.wt};
     const Ffac = p.route==="oral" ? p.F : 1;
-    d.auc=Ffac*p.D*perMg;
+    d.auc=Ffac*saltOf(p)*p.D*perMg;
     if(p.route==="iv"){ d.tmax=0; d.cmax=p.D*bolusResp(terms,0); }
     else if(p.route==="inf"){
       d.tmax=p.tinf;
@@ -258,7 +328,7 @@
       const given=doseEvents(p);
       d.nGiven=given.length; d.nMissed=p.events.length-given.length;
       d.totalMg=given.reduce((s,e)=>s+e.mg,0);
-      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)*perMg;   // each dose by its own route
+      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)*saltOf(p)*perMg;   // each dose by its own route
       d.mgkg=d.totalMg/p.wt;
     }
     if(p.dosing==="repeated"){
@@ -274,26 +344,37 @@
     return d;
   }
 
-  // Numerical exposure summary over [0, T] against a therapeutic window [mec, mtc].
+  // Numerical exposure summary over [0, T] against a therapeutic window [mec, mtc]. The curve is sampled on an
+  // even 600-step grid plus every dose time and infusion end, so an IV bolus's jump and each kink land on a
+  // sample instead of inside a step: the area is summed by trapezoids up to each jump's left limit, and the time
+  // in each band is read from where each straight step crosses MEC and MTC. (validation/ checks it against an
+  // independent solver to 0.5%.)
   function windowStats(p, T, mec, mtc){
-    const ev=doseEvents(p), N=600, dt=T/N;
-    let prev=conc(p,0,ev), cmax=prev, tmax=0, auc=0, tIn=0, tBelow=0, tAbove=0;
-    for(let i=1;i<=N;i++){
-      const t=i*dt, c=conc(p,t,ev), m=(prev+c)/2;
-      auc+=m*dt;
-      if(m>mtc) tAbove+=dt; else if(m>=mec) tIn+=dt; else tBelow+=dt;
-      if(c>cmax){ cmax=c; tmax=t; }
-      prev=c;
-    }
-    // an IV bolus peaks the instant it's given and an infusion at its end: check those exact times too
+    const ev=doseEvents(p), N=600, pts=new Set(), jumps=new Set();
+    for(let i=0;i<=N;i++) pts.add(T*i/N);
     ev.forEach(e=>{
-      [e.route==="iv" ? e.t : null, e.route==="inf" ? e.t+e.dur : null].forEach(x=>{
-        if(x===null || x<0 || x>T) return;
-        const c=conc(p,x,ev);
-        if(c>cmax+1e-12){ cmax=c; tmax=x; }
-      });
+      if(e.t>0 && e.t<T){ pts.add(e.t); if(e.route==="iv") jumps.add(e.t); }
+      if(e.route==="inf" && e.t+e.dur>0 && e.t+e.dur<T) pts.add(e.t+e.dur);
     });
-    return {cmax,tmax,auc,tIn,tBelow,tAbove,T};
+    const ts=[...pts].sort((a,b)=>a-b);
+    // time in [lo, hi] along a straight step from c0 to c1 lasting dt
+    const within=(c0,c1,dt,lo,hi)=>{
+      if(c0===c1) return c0>=lo && c0<=hi ? dt : 0;
+      const a=(lo-c0)/(c1-c0), b=(hi-c0)/(c1-c0);
+      return Math.max(0, Math.min(1,Math.max(a,b))-Math.max(0,Math.min(a,b)))*dt;
+    };
+    let t0=ts[0], c0=conc(p,t0,ev), cmax=c0, tmax=t0, auc=0, tIn=0, tAbove=0;
+    for(let i=1;i<ts.length;i++){
+      const t=ts[i], cR=conc(p,t,ev), cL=jumps.has(t) ? conc(p,t-1e-9,ev) : cR, dt=t-t0;
+      auc+=(c0+cL)/2*dt;
+      tIn+=within(c0,cL,dt,mec,mtc);
+      tAbove+=within(c0,cL,dt,mtc,Infinity)-(c0===cL ? (c0===mtc ? dt : 0) : 0);
+      if(cL>cmax){ cmax=cL; tmax=t; }
+      if(cR>cmax+1e-12){ cmax=cR; tmax=t; }
+      t0=t; c0=cR;
+    }
+    tAbove=Math.max(0, Math.min(tAbove, T-tIn));
+    return {cmax,tmax,auc,tIn,tBelow:Math.max(0,T-tIn-tAbove),tAbove,T};
   }
 
   // Concentration s hours (0 ≤ s < τ) into a dose interval once a regimen of p.D every p.tau hours has run
@@ -301,7 +382,8 @@
   // (once an infusion has stopped), so all but the first few terms form geometric series with exact sums.
   function ssConc(p, s){
     if(p.dosing!=="repeated") return null;   // only a regular periodic regimen has a steady state
-    const terms=disposition(p), tau=p.tau, D=p.D, geo=l=>1/(1-Math.exp(-l*tau));
+    if(p.kin==="mm"){ const m=mmSteady(p); return m.none ? null : m.at(s); }
+    const terms=disposition(p), tau=p.tau, D=p.D*saltOf(p), geo=l=>1/(1-Math.exp(-l*tau));
     let c=0;
     if(p.route==="iv"){
       for(const x of terms) c+=x.c*Math.exp(-x.k*s)*geo(x.k);
@@ -311,7 +393,7 @@
       // doses whose infusion is still running at this moment are added one by one; the rest have stopped,
       // and each term decays from where its infusion ended
       const Ti=p.tinf, J0=Math.max(0, Math.ceil((Ti-s)/tau-1e-12));
-      for(let j=0;j<J0;j++) c+=singleConc(p, s+j*tau, D, null, terms);
+      for(let j=0;j<J0;j++) c+=singleConc(p, s+j*tau, p.D, null, terms);   // singleConc applies S itself
       for(const x of terms) c+=(D/Ti)*x.c*(1-Math.exp(-x.k*Ti))/x.k*Math.exp(-x.k*(s+J0*tau-Ti))*geo(x.k);
       return c;
     }
@@ -329,6 +411,7 @@
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
   function ssProfile(p){
     if(p.dosing!=="repeated") return null;
+    if(p.kin==="mm") return mmProfile(p);
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
     const peakTrough=(q,a,evq)=>{
       let pk=0;
@@ -360,6 +443,191 @@
     let running=0, maxRunning=0, from=null;
     edges.forEach(([t,d])=>{ running+=d; if(running>maxRunning){ maxRunning=running; from=t; } });
     return maxRunning>1 ? {maxRunning, from} : null;
+  }
+
+  /* ================= SATURABLE (MICHAELIS–MENTEN) ELIMINATION ================= */
+  // kin "mm": the body eliminates Vmax·C / (Km + C) per hour instead of kₑ·A. vmax is per kg per day (in the
+  // dose's amount unit, after S) and km is in the concentration unit; organ function (or the clinical renal
+  // factor) scales Vmax. Superposition no longer holds, so the curve is integrated: RK4 on the gut amount
+  // (oral doses, absorbed at kₐ) and the body amount, with every dose landing exactly at its time (a bolus
+  // adds to the body, an oral dose F·S·D to the gut, an infusion a constant rate while it runs). The solution
+  // is kept step by step and read between steps by cubic Hermite interpolation.
+  const MM_STEP=0.05;   // h; the tests hold the error under 0.5% against a ten times finer step
+  const vmaxOf=p=> p.vmax*p.wt/24*clFactor(p);   // amount per hour for this body
+  // Integrates from `state` ({ag, a} at t0) over [t0, T] with the given doses ({t, mg, route, dur}), returning
+  // the steps {t0, t1, g0, g1, a0, a1, f0, f1}: gut and body amounts at each end, and dA/dt there.
+  function mmIntegrate(p, doses, T, state, h0){
+    const V=vOf(p), Vm=vmaxOf(p), Km=p.km, ka=p.ka, S=saltOf(p), F=p.F, t0=state ? state.t : 0;
+    const cuts=new Set([t0, T]);
+    doses.forEach(e=>{ if(e.t>=t0 && e.t<T) cuts.add(e.t); if(e.route==="inf" && e.t+e.dur>t0 && e.t+e.dur<T) cuts.add(e.t+e.dur); });
+    const bps=[...cuts].sort((a,b)=>a-b);
+    let ag=state ? state.ag : 0, a=state ? state.a : 0;
+    const elim=x=>{ const C=Math.max(0,x)/V; return Vm*C/(Km+C); };
+    const steps=[];
+    for(let i=0;i<bps.length-1;i++){
+      const s0=bps[i], s1=bps[i+1];
+      doses.forEach(e=>{ if(e.t===s0){ if(e.route==="iv") a+=S*e.mg; else if(e.route==="oral") ag+=F*S*e.mg; } });
+      let R=0;   // infusion input, constant between cuts
+      doses.forEach(e=>{ if(e.route==="inf" && e.t<=s0 && s0<e.t+e.dur) R+=S*e.mg/e.dur; });
+      const n=Math.max(1,Math.ceil((s1-s0)/(h0||MM_STEP)-1e-9)), h=(s1-s0)/n;
+      const da=(g,x)=> ka*g+R-elim(x);
+      for(let j=0;j<n;j++){
+        const ta=s0+j*h, g0=ag, a0=a, f0=da(g0,a0);
+        const k1g=-ka*g0, k1a=f0;
+        const k2g=-ka*(g0+h/2*k1g), k2a=da(g0+h/2*k1g, a0+h/2*k1a);
+        const k3g=-ka*(g0+h/2*k2g), k3a=da(g0+h/2*k2g, a0+h/2*k2a);
+        const k4g=-ka*(g0+h*k3g),   k4a=da(g0+h*k3g, a0+h*k3a);
+        ag=g0+h/6*(k1g+2*k2g+2*k3g+k4g); a=a0+h/6*(k1a+2*k2a+2*k3a+k4a);
+        steps.push({t0:ta, t1:j===n-1 ? s1 : ta+h, g0, g1:ag, a0, a1:a, f0, f1:da(ag,a)});
+      }
+    }
+    return steps;
+  }
+  // The body amount at t from a step list (cubic Hermite inside the step that starts at or before t).
+  function mmAmount(steps, t){
+    let lo=0, hi=steps.length-1;
+    if(t<=steps[0].t0) return steps[0].a0;
+    while(lo<hi){ const mid=(lo+hi+1)>>1; if(steps[mid].t0<=t) lo=mid; else hi=mid-1; }
+    const st=steps[lo], h=st.t1-st.t0, x=Math.min(1,(t-st.t0)/h), x2=x*x, x3=x2*x;
+    return (2*x3-3*x2+1)*st.a0+(x3-2*x2+x)*h*st.f0+(-2*x3+3*x2)*st.a1+(x3-x2)*h*st.f1;
+  }
+  // Solutions are cached per scenario object, and by content for scenarios rebuilt with the same settings.
+  const mmByObj=new WeakMap(), mmByKey=new Map();
+  function mmSolution(p, t){
+    let sol=mmByObj.get(p);
+    if(!sol){
+      const key=encodeScenario(p);
+      sol=mmByKey.get(key);
+      if(!sol){ sol={T:0, end:0, steps:null}; mmByKey.set(key,sol); if(mmByKey.size>24) mmByKey.delete(mmByKey.keys().next().value); }
+      mmByObj.set(p,sol);
+    }
+    if(t>sol.T || !sol.steps){
+      // extend from where the solution ends (at least doubling it), so reading further never starts over; a
+      // dose exactly at the new end lands in the next extension
+      const end=Math.max(t, sol.T*2, 48)+MM_STEP, ev=doseEvents(p);
+      if(!sol.steps) sol.steps=mmIntegrate(p, ev, end);
+      else { const last=sol.steps[sol.steps.length-1]; sol.steps=sol.steps.concat(mmIntegrate(p, ev, end, {t:last.t1, ag:last.g1, a:last.a1})); }
+      sol.T=end-MM_STEP;
+    }
+    return sol;
+  }
+  const mmConc=(p,t)=> mmAmount(mmSolution(p,t).steps, t)/vOf(p);
+  // The average input rate R of a regular regimen (amount per hour), and what saturation predicts for it.
+  const mmRate=p=> (p.route==="oral" ? p.F : 1)*saltOf(p)*p.D/p.tau;
+  // Css = Km·R / (Vmax − R), defined only while R < Vmax. It is exact for a constant input; with doses the
+  // average level swings around it.
+  function mmCss(p){
+    const R=mmRate(p), Vm=vmaxOf(p);
+    return {R, Vmax:Vm, ratio:R/Vm, css: R<Vm ? p.km*R/(Vm-R) : null};
+  }
+  // Time to reach 90% of Css from zero at a constant input R: integrating dC/dt = (R·Km − (Vmax − R)·C) /
+  // (V·(Km + C)) gives t90 = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)². It grows with the dose, unlike linear PK.
+  function mmT90(p){
+    const {R, Vmax, css}=mmCss(p);
+    return css===null ? null : vOf(p)*p.km*(Math.LN10*Vmax-0.9*R)/((Vmax-R)*(Vmax-R));
+  }
+  // Half-life and clearance at a concentration C: t½ = 0.693·V·(Km + C) / Vmax, CL = Vmax / (Km + C).
+  const mmHalfAt=(p,C)=> Math.LN2*vOf(p)*(p.km+C)/vmaxOf(p);
+  // The regimen given forever: started at the predicted Css (and the gut at its periodic level) and run until
+  // successive troughs agree, then kept as one dosing interval. {none: true} when input exceeds Vmax.
+  const mmSSCache=new Map();
+  function mmSteady(p){
+    const key=encodeScenario(p);
+    if(mmSSCache.has(key)) return mmSSCache.get(key);
+    const m=mmCss(p), out=Object.assign({}, m);
+    if(m.css===null){ out.none=true; }
+    else {
+      const tau=p.tau, V=vOf(p), oral=p.route==="oral", q=Object.assign({},p,{dosing:"repeated", loadMult:1, missed:1});
+      const late=Math.ceil((p.route==="inf" ? p.tinf : 0)/tau)+1;   // earlier infusions still running at the start
+      let state={t:0, ag: oral ? p.F*saltOf(p)*p.D*Math.exp(-p.ka*tau)/(1-Math.exp(-p.ka*tau)) : 0, a:m.css*V};
+      const block=Math.max(8, Math.ceil(6*mmHalfAt(p,m.css)/tau)), dose=i=>({t:i*tau, mg:p.D, route:p.route, dur:p.tinf});
+      let prev=null, steps=null;
+      for(let round=0; round<40; round++){
+        const doses=[];
+        for(let i=-late;i<block;i++) if(i>=0 || (p.route==="inf" && (i*tau)+p.tinf>0)) doses.push(dose(i));
+        steps=mmIntegrate(q, doses, block*tau, state);
+        const last=steps[steps.length-1], tr=last.a1/V;
+        state={t:0, ag:last.g1, a:last.a1};
+        if(prev!==null && Math.abs(tr-prev)<=1e-7*Math.max(tr,1e-12)) break;
+        prev=tr;
+      }
+      // one interval at steady state, starting at its dose
+      const doses=[]; for(let i=-late;i<=0;i++) if(i===0 || (p.route==="inf" && i*tau+p.tinf>0)) doses.push(dose(i));
+      const one=mmIntegrate(q, doses, tau+MM_STEP, state);
+      out.at=s=> mmAmount(one, Math.min(Math.max(s,0), tau))/V;
+      let pk=0, pkT=0; const N=240;
+      for(let i=0;i<=N;i++){ const s=tau*i/N, c=out.at(s); if(c>pk){ pk=c; pkT=s; } }
+      if(p.route==="inf"){ const e=Math.min(p.tinf,tau), c=out.at(e); if(c>pk){ pk=c; pkT=e; } }
+      out.peak=pk; out.tPeak=pkT; out.trough=out.at(tau-1e-9);
+      let sum=0; for(let i=0;i<N;i++) sum+=(out.at(tau*i/N)+out.at(tau*(i+1)/N))/2*tau/N;
+      out.avg=sum/tau;
+    }
+    mmSSCache.set(key,out); if(mmSSCache.size>24) mmSSCache.delete(mmSSCache.keys().next().value);
+    return out;
+  }
+  function mmProfile(p){
+    const ev=doseEvents(p), tau=p.tau, skip=missedOf(p), S=60, rows=[];
+    for(let i=0;i<p.nDoses;i++){
+      let pk=0; for(let j=0;j<=S;j++){ const c=conc(p,i*tau+tau*j/S,ev); if(c>pk) pk=c; }
+      rows.push({n:i+1, peak:pk, trough:conc(p,(i+1)*tau-1e-9,ev), missed:i+1===skip});
+    }
+    const m=mmSteady(p), t90=mmT90(p);
+    return {rows, ssPeak:m.none ? null : m.peak, ssTrough:m.none ? null : m.trough, clears:false,
+      swing:m.none ? null : m.peak/m.trough, Rac:null, t90, dosesTo90:t90===null ? null : Math.ceil(t90/tau), mm:m};
+  }
+  // Exposure over all time for the doses given: the integrated area, run until the level is 0.1% of its peak,
+  // plus the tail (where C ≪ Km, elimination is first-order at Vmax / (Km·V)).
+  function mmAucInf(p){
+    const ev=doseEvents(p);
+    if(!ev.length) return 0;
+    const lastT=Math.max(...ev.map(e=>e.t+(e.route==="inf" ? e.dur : 0)));
+    let T=lastT+24;
+    for(let k=0;k<30;k++){
+      const sol=mmSolution(p,T), steps=sol.steps;
+      let auc=0, cmax=0;
+      for(const st of steps){ if(st.t1>T) break; const h=st.t1-st.t0;
+        auc+=h*(st.a0+st.a1)/2+h*h*(st.f0-st.f1)/12;   // Hermite-exact area of each step
+        cmax=Math.max(cmax,st.a1); }
+      const aT=mmAmount(steps,T);
+      if(aT<=1e-3*cmax) return (auc+aT*p.km*vOf(p)/vmaxOf(p))/vOf(p);   // tail: amount decays at Vmax / (Km·V)
+      T*=2;
+    }
+    return NaN;
+  }
+  function mmDerived(p){
+    const V=vOf(p), Vm=vmaxOf(p), d={V, mgkg:p.D/p.wt, vmaxH:Vm, km:p.km};
+    const peakOf=(t0,t1)=>{ let mx=0, tm=t0; const N=400; for(let i=0;i<=N;i++){ const t=t0+(t1-t0)*i/N, c=conc(p,t); if(c>mx){ mx=c; tm=t; } } return [mx,tm]; };
+    if(p.dosing==="repeated"){
+      const t0=(p.nDoses-1)*p.tau, t1=p.nDoses*p.tau, [mx,tm]=peakOf(t0,t1);
+      d.cmaxSS=mx; d.tmaxSS=tm; d.cminSS=conc(p,t1);
+      const m=mmSteady(p), t90=mmT90(p);
+      d.mm=m; d.css=m.css; d.t90=t90; d.Rac=null;
+      d.fSS=m.none ? null : d.cminSS/m.trough;
+      d.cAt=m.none ? d.cminSS : m.avg;   // the level the half-life and clearance below are read at
+    } else if(p.dosing==="single"){
+      const horizon=Math.max(24, 3*mmHalfAt(p,0)), [mx,tm]=peakOf(0,horizon);
+      d.cmax=mx; d.tmax=tm; d.cAt=mx;
+    }
+    if(p.dosing==="custom"){
+      const given=doseEvents(p);
+      d.nGiven=given.length; d.nMissed=p.events.length-given.length;
+      d.totalMg=given.reduce((s,e)=>s+e.mg,0); d.mgkg=d.totalMg/p.wt;
+      let mx=0; for(let i=0;i<=400;i++){ const c=conc(p, EVENT_LIMITS.t[1]*i/400); if(c>mx) mx=c; }
+      d.cAt=mx;
+    }
+    d.thalfEff=mmHalfAt(p,d.cAt); d.CL=Vm/(p.km+d.cAt); d.ke=d.CL/V;
+    // the all-time exposure needs the curve followed until it has nearly gone: worked out only when asked for
+    let auc;
+    Object.defineProperty(d, "auc", {enumerable:true, get:()=> auc===undefined ? (auc=mmAucInf(p)) : auc});
+    return d;
+  }
+
+  // Sheiner–Tozer: a measured total phenytoin level adjusted to what it would be at normal albumin binding,
+  // C_adj = C_measured / (0.2 × albumin + 0.1); with end-stage kidney disease the albumin coefficient is 0.1.
+  // A tool for reading a measured level, separate from the simulation.
+  function sheinerTozer(measured, alb, renal){
+    const k=renal ? 0.1 : 0.2;
+    return {k, factor:k*alb+0.1, value:measured/(k*alb+0.1)};
   }
 
   /* ================= TIME INSPECTION ================= */
@@ -473,7 +741,8 @@
     return {p,
       get cmax(){ return w().cmax; }, get tmax(){ return w().tmax; }, get tin(){ return 100*w().tIn/T; },
       get aucInf(){ return d().auc; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
-      get avgSS(){ return rep ? d().auc/p.tau : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
+      get avgSS(){ return !rep ? null : p.kin==="mm" ? (d().mm.none ? null : d().mm.avg) : d().auc/p.tau; },
+      get css(){ return rep && p.kin==="mm" ? d().css : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
       effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
       at:t=> conc(p,t),
@@ -499,21 +768,22 @@
   // pct = % change, ratio = % change of a ratio, pp = percentage points, abs = hours, count = doses.
   // A null value means the metric doesn't apply (shown as "—").
   // With pd (a target effect, %), the effect rows are added too.
+  // Both scenarios are read in a's units (the page converts b first when they differ).
   function compareRows(a, b, T, mec, mtc, pd){
-    const wa=windowStats(a,T,mec,mtc), wb=windowStats(b,T,mec,mtc), da=derived(a), db=derived(b);
-    const rows=[{key:"cmax", name:"Peak (Cmax)", unit:"mg/L", a:wa.cmax, b:wb.cmax, kind:"pct", dp:2}];
+    const wa=windowStats(a,T,mec,mtc), wb=windowStats(b,T,mec,mtc), da=derived(a), db=derived(b), U=unitsOf(a);
+    const rows=[{key:"cmax", name:"Peak (Cmax)", unit:U.conc, a:wa.cmax, b:wb.cmax, kind:"pct", dp:2+U.cdp}];
     if(a.dosing==="single" && b.dosing==="single") rows.push({key:"tmax", name:"Time of peak", unit:"h", a:wa.tmax, b:wb.tmax, kind:"abs", dp:1});
-    rows.push({key:"auc", name:`AUC 0–${T} h`, unit:"mg·h/L", a:wa.auc, b:wb.auc, kind:"pct", dp:1});
+    rows.push({key:"auc", name:`AUC 0–${T} h`, unit:U.auc, a:wa.auc, b:wb.auc, kind:"pct", dp:1+U.cdp});
     if(a.dosing==="custom" || b.dosing==="custom"){
       const ta=doseTotals(a,T), tb=doseTotals(b,T);
       rows.push(
         {key:"ngiven", name:`Doses given 0–${T} h`, unit:"doses", a:ta.n, b:tb.n, kind:"count", dp:0},
-        {key:"mg", name:`Total dose 0–${T} h`, unit:"mg", a:ta.mg, b:tb.mg, kind:"pct", dp:0});
+        {key:"mg", name:`Total dose 0–${T} h`, unit:U.dose, a:ta.mg, b:tb.mg, kind:"pct", dp:0});
     }
     if(a.dosing==="repeated" && b.dosing==="repeated"){
       const sa=ssProfile(a), sb=ssProfile(b);
       rows.push(
-        {key:"trough", name:"Final trough", unit:"mg/L", a:da.cminSS, b:db.cminSS, kind:"pct", dp:2},
+        {key:"trough", name:"Final trough", unit:U.conc, a:da.cminSS, b:db.cminSS, kind:"pct", dp:2+U.cdp},
         {key:"rac", name:"Accumulation", unit:"×", a:sa.Rac, b:sb.Rac, kind:"ratio", dp:2},
         {key:"swing", name:"Peak ÷ trough at SS", unit:"×", a:sa.swing, b:sb.swing, kind:"ratio", dp:1},
         // in hours: it depends only on the half-life, while the dose count also moves with the interval
@@ -548,20 +818,123 @@
   }
 
   /* ================= PRESETS ================= */
+  // Where library values come from. Labels are FDA prescribing information on DailyMed, read on 2026-09-29
+  // (Clinical Pharmacology unless a note says otherwise). Papers are cited by DOI where one exists.
+  const DM="https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=";
+  const SOURCES={
+    cg:{cite:"Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron. 1976;16(1):31–41.", url:"https://doi.org/10.1159/000180580"},
+    devine:{cite:"Devine BJ. Gentamicin therapy. Drug Intell Clin Pharm. 1974;8(11):650–655 (in its “Clinical Pharmacy: Case Studies” section).", url:"https://doi.org/10.1177/106002807400801104"},
+    rybak:{cite:"Rybak MJ, Le J, Lodise TP, et al. Therapeutic monitoring of vancomycin for serious methicillin-resistant Staphylococcus aureus infections: a revised consensus guideline and review by ASHP, IDSA, PIDS and SIDP. Am J Health Syst Pharm. 2020;77(11):835–864.", url:"https://doi.org/10.1093/ajhp/zxaa036"},
+    nicolau:{cite:"Nicolau DP, Freeman CD, Belliveau PP, Nightingale CH, Ross JW, Quintiliani R. Experience with a once-daily aminoglycoside program administered to 2,184 adult patients. Antimicrob Agents Chemother. 1995;39(3):650–655.", url:"https://doi.org/10.1128/AAC.39.3.650"},
+    sheinerTozer:{cite:"Sheiner LB, Tozer TN. Clinical pharmacokinetics: the use of plasma concentrations of drugs. In: Melmon KL, Morrelli HF, eds. Clinical Pharmacology: Basic Principles in Therapeutics. 2nd ed. Macmillan; 1978.", url:null},
+    lanoxin:{cite:"LANOXIN (digoxin) tablets. Prescribing information, ADVANZ PHARMA. DailyMed.", url:DM+"d91e3646-4c63-4512-ab22-db39c085c4dc"},
+    dilantin:{cite:"DILANTIN (extended phenytoin sodium capsules). Prescribing information, Viatris. DailyMed.", url:DM+"86dd27d1-9cee-48ae-b55d-e2d2f7dbc593"},
+    lithium:{cite:"Lithium carbonate tablets and capsules. Prescribing information, Hikma. DailyMed.", url:DM+"b839ff4b-f62d-41ab-a823-550a756d58ec"},
+    theo:{cite:"Theophylline extended-release tablets. Prescribing information, Teva. DailyMed.", url:DM+"25eabefa-518b-4030-9b72-01ac8b3deba9"},
+    gent:{cite:"Gentamicin sulfate injection. Prescribing information, Hospira. DailyMed.", url:DM+"977180b3-a222-4282-d485-4a3217674305"},
+    vanc:{cite:"Vancomycin hydrochloride for injection (pharmacy bulk package). Prescribing information, Hospira. DailyMed.", url:DM+"b01aaa02-8f1d-4b57-96a5-337503428af1"},
+    amox:{cite:"Amoxicillin tablets, oral suspension, chewable tablets and capsules. Prescribing information. DailyMed.", url:DM+"b07b5ac4-253e-4c83-91c3-3fdc46e91a0f"},
+    caf:{cite:"Caffeine citrate injection and oral solution. Prescribing information, Sagent. DailyMed.", url:DM+"5f38c395-0093-4afd-89ec-f96e5dc0934a"},
+    ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
+    idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"}
+  };
+  const UNVERIFIED="typical textbook value, unverified";
+  // A library value and where it comes from: src names a SOURCES entry (and note says what the source states),
+  // or is null for a typical textbook value that wasn't verified against a source.
+  const ref=(k,v,src,note)=>({k, v, src:src||null, note:src ? note : (note ? note+"; " : "")+UNVERIFIED});
+  // The teaching drug library. kinetics is "linear" (Phase 2 adds "michaelis-menten"); fe is the fraction
+  // excreted unchanged in urine, fu the unbound fraction (for information), S the salt factor, units the unit
+  // system, strengths the forms available (round: the step IV doses are rounded to). s is what loading the drug
+  // sets, including the window and time span; drugScenario fills in the rest.
   const DRUGS = [
-    {id:"ibu", name:"Ibuprofen", sub:"400 mg PO",
-     s:{route:"oral",dosing:"single",D:400,F:0.9,ka:1.5,thalf:2,V:10,mec:10,mtc:50,duration:12}},
-    {id:"amox", name:"Amoxicillin", sub:"500 mg PO q8h",
-     s:{route:"oral",dosing:"repeated",D:500,F:0.9,ka:1.0,thalf:1.2,V:27,tau:8,nDoses:6,loadMult:1,mec:2,mtc:25,duration:48}},
-    {id:"caf", name:"Caffeine", sub:"100 mg PO",
-     s:{route:"oral",dosing:"single",D:100,F:1,ka:3,thalf:5,V:36,mec:1,mtc:15,duration:24}},
-    {id:"theo", name:"Theophylline ER", sub:"narrow window",
-     s:{route:"oral",dosing:"repeated",D:300,F:0.95,ka:0.3,thalf:8,V:35,tau:12,nDoses:6,loadMult:1,mec:10,mtc:20,duration:72}},
-    {id:"gent", name:"Gentamicin", sub:"120 mg IV inf q8h",
-     s:{route:"inf",dosing:"repeated",D:120,tinf:0.5,thalf:2.5,V:18,tau:8,nDoses:6,loadMult:1,mec:4,mtc:12,duration:48}},
-    {id:"vanc", name:"Vancomycin", sub:"1 g IV inf",
-     s:{route:"inf",dosing:"single",D:1000,tinf:1,thalf:6,V:49,mec:10,mtc:40,duration:36}}
+    {id:"ibu", name:"Ibuprofen", sub:"400 mg PO", kinetics:"linear", fe:0.01, fu:0.01, S:1, units:"mg",
+     strengths:{form:"tablets", mg:[200,400,600,800]},
+     s:{route:"oral",dosing:"single",D:400,F:0.9,ka:1.5,thalf:2,V:10,mec:10,mtc:50,duration:12},
+     refs:[ref("thalf","2 h"), ref("V","10 L"), ref("F","0.9"), ref("ka","1.5 h⁻¹"), ref("fe","0.01"), ref("fu","0.01"),
+       ref("window","10–50 mg/L","","an illustrative teaching window"), ref("strengths","200 mg","ibu","Drug Facts: 200 mg tablets"),
+       ref("strengths","400, 600, 800 mg","","prescription strengths")]},
+    {id:"amox", name:"Amoxicillin", sub:"500 mg PO q8h", kinetics:"linear", fe:0.6, fu:0.8, S:1, units:"mg",
+     strengths:{form:"capsules and tablets", mg:[250,500,875]},
+     s:{route:"oral",dosing:"repeated",D:500,F:0.9,ka:1.0,thalf:1,V:27,tau:8,nDoses:6,loadMult:1,mec:2,mtc:25,duration:48},
+     refs:[ref("thalf","1.0 h","amox","half-life 61.3 minutes"), ref("V","27 L"), ref("F","0.9"),
+       ref("ka","1.0 h⁻¹","amox","chosen so the model peaks at 1.2 h; the label gives peaks 1 to 2 hours after a dose"),
+       ref("fe","0.6","amox","about 60% of an oral dose is excreted in the urine within 6 to 8 hours, mostly unchanged"),
+       ref("fu","0.8","amox","about 20% protein-bound"), ref("window","2–25 mg/L","","an illustrative teaching window"),
+       ref("strengths","250, 500 mg capsules; 500, 875 mg tablets","amox","dosage forms and strengths")]},
+    {id:"caf", name:"Caffeine", sub:"100 mg PO", kinetics:"linear", fe:0.01, fu:null, S:1, units:"mg",
+     strengths:{form:"tablets", mg:[100,200]},
+     s:{route:"oral",dosing:"single",D:100,F:1,ka:3,thalf:5,V:42,mec:1,mtc:15,duration:24},
+     refs:[ref("thalf","5 h","caf","adult half-life about 5 hours (the label compares infants with adults)"),
+       ref("V","42 L (0.6 L/kg)","caf","adult volume of distribution 0.6 L/kg"), ref("F","1"), ref("ka","3 h⁻¹"),
+       ref("fe","0.01","caf","in adults about 1% is excreted unchanged in urine"), ref("fu","not set","","not used by the model"),
+       ref("window","1–15 mg/L","","an illustrative teaching window"), ref("strengths","100, 200 mg","","common tablet sizes")]},
+    {id:"theo", name:"Theophylline ER", sub:"450 mg PO q12h", kinetics:"linear", fe:0.1, fu:0.6, S:1, units:"mg",
+     strengths:{form:"extended-release tablets", mg:[300,450]},
+     s:{route:"oral",dosing:"repeated",D:450,F:1,ka:0.3,thalf:8,V:31.5,tau:12,nDoses:8,loadMult:1,mec:10,mtc:20,duration:96},
+     refs:[ref("thalf","8 h","theo","adult non-smokers: mean half-life 8.7 h, clearance 0.65 mL/kg/min (Table I); with V = 0.45 L/kg that clearance gives 8.0 h"),
+       ref("V","31.5 L (0.45 L/kg)","theo","apparent volume about 0.45 L/kg (0.3 to 0.7), based on ideal body weight"),
+       ref("F","1","theo","rapidly and completely absorbed (immediate-release forms)"),
+       ref("ka","0.3 h⁻¹","theo","chosen so the model peaks at 5.8 h; the label's fasting mean Tmax for this tablet is 6.2 h"),
+       ref("fe","0.1","theo","about 10% is excreted unchanged in the urine of adults"), ref("fu","0.6","theo","about 40% bound to plasma protein"),
+       ref("window","10–20 mg/L","theo","improvement usually needs peaks above 10 mcg/mL; above 20 mcg/mL adverse reactions become more frequent"),
+       ref("strengths","300, 450 mg","theo","each tablet contains 300 mg or 450 mg"),
+       ref("smoking","clearance about +50%","theo","tobacco smoking increases clearance by about 50% in young adults")]},
+    {id:"gent", name:"Gentamicin", sub:"120 mg IV inf q8h", kinetics:"linear", fe:1, fu:0.85, S:1, units:"mg", trough:2,
+     strengths:{form:"injection, 40 mg/mL", round:10},
+     s:{route:"inf",dosing:"repeated",D:120,tinf:0.5,thalf:2.5,V:18,tau:8,nDoses:6,loadMult:1,mec:4,mtc:12,duration:48},
+     refs:[ref("thalf","2.5 h"), ref("V","18 L (0.25 L/kg)","","gentamicin distributes in extracellular fluid (the label gives no number)"),
+       ref("fe","1","gent","excreted principally by glomerular filtration, with little if any metabolism"),
+       ref("fu","0.85","gent","binding is low, between 0 and 30%"),
+       ref("window","4–12 mg/L","gent","avoid prolonged peaks above 12 mcg/mL and troughs above 2 mcg/mL; a 1 to 1.5 mg/kg IM dose peaks at about 4 to 6 mcg/mL"),
+       ref("strengths","40 mg/mL","gent","injection, 40 mg/mL"), ref("round","doses rounded to 10 mg","","a common convention")]},
+    {id:"vanc", name:"Vancomycin", sub:"1 g IV inf q12h", kinetics:"linear", fe:0.83, fu:0.45, S:1, units:"mg",
+     strengths:{form:"injection", round:250},
+     s:{route:"inf",dosing:"repeated",D:1000,tinf:1,thalf:4.8,V:28,tau:12,nDoses:6,loadMult:1,mec:10,mtc:40,duration:72},
+     refs:[ref("thalf","4.8 h","vanc","mean half-life 4 to 6 h; 4.8 h follows from the label's clearance, 0.058 L/kg/h, and a volume of 0.4 L/kg"),
+       ref("V","28 L (0.4 L/kg)","vanc","distribution coefficient 0.3 to 0.43 L/kg"),
+       ref("fe","0.83","vanc","renal clearance 0.048 of a total 0.058 L/kg/h"), ref("fu","0.45","vanc","about 55% protein-bound"),
+       ref("dose","1 g every 12 hours","vanc","usual daily dose 2 g, as 500 mg every 6 hours or 1 g every 12 hours"),
+       ref("window","10–40 mg/L","","an illustrative window; the 2020 guideline targets an AUC24 of 400–600 mg·h/L instead (see the vancomycin case)"),
+       ref("target","AUC24 400–600 mg·h/L (MIC 1 mg/L)","rybak","AUC-guided dosing for serious MRSA infections"),
+       ref("strengths","5 g and 10 g bulk packages","vanc","pharmacy bulk package bottles containing the equivalent of 5 g or 10 g of vancomycin"),
+       ref("round","doses rounded to 250 mg","","a common convention")]},
+    {id:"dig", name:"Digoxin", sub:"250 mcg PO daily", kinetics:"linear", fe:0.6, fu:0.75, S:1, units:"mcg",
+     strengths:{form:"tablets", mg:[62.5,125,250]},
+     s:{route:"oral",dosing:"repeated",D:250,F:0.7,ka:2.5,thalf:42,V:490,tau:24,nDoses:14,loadMult:1,mec:0.5,mtc:2,duration:336},
+     refs:[ref("thalf","42 h","lanoxin","half-life 1.5 to 2 days with normal renal function (3.5 to 5 days in anuric patients)"),
+       ref("V","490 L","lanoxin","large apparent volume, about 475 to 500 L; it correlates with lean (ideal) body weight"),
+       ref("F","0.7","lanoxin","tablets are 60 to 80% absorbed compared with IV"),
+       ref("ka","2.5 h⁻¹","lanoxin","chosen so the model peaks at 2 h; the label gives peaks at 1 to 3 hours"),
+       ref("fe","0.6","lanoxin","50 to 70% of an IV dose is excreted unchanged in the urine"), ref("fu","0.75","lanoxin","about 25% bound to protein"),
+       ref("window","0.5–2 ng/mL","lanoxin","below 0.5 ng/mL efficacy is diminished; above 2 ng/mL toxicity increases without more benefit"),
+       ref("strengths","62.5, 125, 250 mcg","lanoxin","tablets of 62.5 mcg, 125 mcg and 250 mcg"),
+       ref("model","one compartment","lanoxin","the label describes a 6 to 8 h tissue distribution phase, which one compartment doesn't show; levels are drawn 6 h or more after a dose")]},
+    {id:"phe", name:"Phenytoin", sub:"300 mg PO daily", kinetics:"michaelis-menten", fe:0.05, fu:0.1, S:0.92, units:"mg",
+     strengths:{form:"extended capsules (phenytoin sodium)", mg:[30,100]},
+     s:{route:"oral",dosing:"repeated",D:300,F:1,ka:0.4,thalf:22,V:49,vmax:7,km:4,tau:24,nDoses:14,loadMult:1,mec:10,mtc:20,duration:336},
+     refs:[ref("kinetics","saturable","dilantin","hydroxylated in the liver by an enzyme system that is saturable at high serum levels; small dose increments may produce very substantial increases in levels"),
+       ref("vmax","7 mg/kg/day"), ref("km","4 mg/L"),
+       ref("thalf","22 h (label average)","dilantin","plasma half-life averages 22 h (range 7 to 42 h); in this model it follows from Vmax, Km and the level"),
+       ref("V","49 L (0.7 L/kg)"), ref("F","1"),
+       ref("ka","0.4 h⁻¹","dilantin","chosen so a single dose peaks at about 6 h in the model; extended capsules peak 4 to 12 hours after a dose"),
+       ref("S","0.92","dilantin","the free acid form carries about 8% more drug than the sodium salt in these capsules"),
+       ref("fe","0.05"), ref("fu","0.1","","the label says “extensively bound” without a number"),
+       ref("window","10–20 mg/L","dilantin","clinically effective total concentration 10 to 20 mcg/mL (unbound 1 to 2 mcg/mL)"),
+       ref("strengths","30, 100 mg","dilantin","30 mg and 100 mg extended phenytoin sodium capsules")]},
+    {id:"li", name:"Lithium carbonate", sub:"600 mg PO q12h", kinetics:"linear", fe:1, fu:1, S:0.027067, units:"meq",
+     strengths:{form:"capsules and tablets", mg:[150,300,600]},
+     s:{route:"oral",dosing:"repeated",D:600,F:1,ka:2,thalf:27,V:60,tau:12,nDoses:14,loadMult:1,mec:0.8,mtc:1.2,duration:168},
+     refs:[ref("thalf","27 h","lithium","elimination half-life about 18 to 36 hours (27 h is the middle)"),
+       ref("V","60 L (0.85 L/kg)","lithium","apparent volume 0.7 to 1 L/kg"), ref("F","1","lithium","completely absorbed"),
+       ref("ka","2 h⁻¹","lithium","chosen so the model peaks at 2.2 h; immediate-release forms peak 0.25 to 3 hours after a dose"),
+       ref("S","0.027067 mEq per mg","lithium","Li₂CO₃, molecular weight 73.89, carries 2 mEq of lithium per 73.89 mg: 300 mg is 8.12 mEq"),
+       ref("fe","1","lithium","primarily excreted in urine; fecal excretion is insignificant"), ref("fu","1","lithium","plasma protein binding is negligible"),
+       ref("window","0.8–1.2 mEq/L","lithium","acute goal 0.8 to 1.2 mEq/L (maintenance 0.8 to 1.0); toxic concentrations from 1.5 mEq/L"),
+       ref("dose","600 mg twice daily","lithium","usual acute dose 600 mg two to three times daily"),
+       ref("strengths","150, 300, 600 mg","lithium","300 mg tablets; 150, 300 and 600 mg capsules")]}
   ];
+  // The settings loading a drug sets, completed with the drug's own fe, S and units.
+  const drugScenario=d=> Object.assign({}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
 
   // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
   // The claims in each text are checked against the model in tests/pk-engine.test.js.
@@ -581,7 +954,7 @@
      view:{duration:36,mec:8,mtc:18},
      base:{route:"iv",D:1000,thalf:6,V:49}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:3}},
     {id:"infdur", tag:"T·inf", title:"Short vs long infusion", sum:"The same dose, a different exposure shape.", baseLabel:"1 g over 30 min",
-     text:"The same 1 g, infused over 30 minutes (2,000 mg/h) or over 4 hours (250 mg/h). The short infusion rises almost as fast as a bolus: it peaks at 19.8 mg/L at 0.5 h and spends 0.8 h above the MTC line. The long infusion rises more slowly (10 mg/L at 2.2 h instead of 0.25 h) and has a lower modeled peak, 16.3 mg/L, when it ends at 4 h. Total exposure is the same, an AUC of 176.7 mg·h/L, because the same amount meets the same clearance; only the shape differs.",
+     text:"The same 1 g, infused over 30 minutes (2,000 mg/h) or over 4 hours (250 mg/h). The short infusion rises almost as fast as a bolus: it peaks at 19.8 mg/L at 0.5 h and spends 0.9 h above the MTC line. The long infusion rises more slowly (10 mg/L at 2.2 h instead of 0.25 h) and has a lower modeled peak, 16.3 mg/L, when it ends at 4 h. Total exposure is the same, an AUC of 176.7 mg·h/L, because the same amount meets the same clearance; only the shape differs.",
      tryThis:"Stretch the long infusion to 8 h: the peak drops further and arrives later, and the AUC still doesn't change.",
      view:{duration:36,mec:8,mtc:18},
      base:{route:"inf",D:1000,thalf:6,V:49,tinf:0.5}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:4}},
@@ -612,6 +985,12 @@
      tryThis:"Lengthen the dosing interval and watch exposure fall back toward the baseline curve.",
      view:{duration:72,mec:3,mtc:15},
      base:{dosing:"repeated",D:400,thalf:4,tau:8,nDoses:9}, cur:{dosing:"repeated",D:400,thalf:4,tau:8,nDoses:9,clFn:50}},
+    {id:"crcl", tag:"CrCl", title:"Kidney function (CrCl)", sum:"Cockcroft–Gault, the renal fraction and a longer half-life.", baseLabel:"SCr 1.0 mg/dL",
+     text:"The same regimen, 120 mg infused over 30 minutes every 8 h, of a drug the kidneys clear 90% of unchanged (like gentamicin), in a 65-year-old man who weighs 70 kg. His serum creatinine rises from 1.0 to 1.8 mg/dL, so Cockcroft–Gault puts his creatinine clearance at 72.9, then 40.5 mL/min. Only the renal 90% of clearance falls with it: clearance drops 38%, from 3.23 to 2.02 L/h, and the half-life lengthens from 3.9 to 6.2 h. Each dose now lingers, so the trough rises from 2.2 to 4.7 mg/L and the peak from 8.4 to 11.0 mg/L.",
+     tryThis:"Set the renal fraction fe to 0, as for a drug the liver clears: the two curves become one, whatever the creatinine.",
+     view:{duration:72,mec:1,mtc:12},
+     base:{route:"inf",tinf:0.5,dosing:"repeated",D:120,tau:8,nDoses:9,thalf:2.5,V:18,pm:"clinical",fe:0.9,age:65,scr:1.0},
+     cur:{route:"inf",tinf:0.5,dosing:"repeated",D:120,tau:8,nDoses:9,thalf:2.5,V:18,pm:"clinical",fe:0.9,age:65,scr:1.8}},
     {id:"vd", tag:"V", title:"Volume of distribution", sum:"Dilution, half-life and why AUC can stay put.", baseLabel:"V = 20 L",
      text:"Clearance is held constant while V triples from 20 to 60 L. The same dose spreads through three times the space, so the starting concentration (D/V) is a third as high. Since CL = kₑ·V, a larger V at the same clearance means slower elimination: the half-life triples and total exposure (AUC) doesn't change.",
      tryThis:"Drag the half-life back to 3 h with V still at 60 L. Clearance triples and the AUC collapses.",
@@ -632,6 +1011,11 @@
      tryThis:"On this log scale both tails are straight lines, and the slow one is far shallower. Raise kₐ and watch the tail swing back to the 2 h slope.",
      view:{duration:36,mec:0.5,mtc:20,scale:"log"},
      base:{D:500,thalf:2,ka:1.5}, cur:{D:500,thalf:2,ka:0.1}},
+    {id:"mm", tag:"Vmax · Km", title:"Saturable elimination", sum:"A third more dose, more than twice the level.", baseLabel:"300 mg/day",
+     text:"Phenytoin's metabolism saturates. The body can remove at most Vmax, here 7 mg/kg/day (490 mg a day at 70 kg), and it works at half that speed when the level equals Km, 4 mg/L. At 300 mg a day (276 mg of phenytoin after the salt factor, 0.92) the input is 56% of Vmax and the level settles near 5.2 mg/L. At 400 mg a day, a third more, the input is 75% of Vmax and the predicted level is 12.1 mg/L, 2.3 times higher. It takes longer to get there too: 90% of steady state in 10.5 days instead of 3.8.",
+     tryThis:"Try 450 mg a day: the input is 84% of Vmax and the predicted level passes 20 mg/L. At 550 mg a day the input exceeds Vmax and there is no steady state at all.",
+     view:{duration:336,mec:10,mtc:20},
+     base:{route:"oral",dosing:"repeated",F:1,ka:0.4,V:49,tau:24,nDoses:14,S:0.92,kin:"mm",vmax:7,km:4,D:300}, cur:{route:"oral",dosing:"repeated",F:1,ka:0.4,V:49,tau:24,nDoses:14,S:0.92,kin:"mm",vmax:7,km:4,D:400}},
     {id:"miss", tag:"✕", title:"Missed dose", sum:"The dip, and how long recovery takes.", baseLabel:"every dose taken",
      text:"Dose 6 is skipped. With nothing coming in, concentration keeps falling through the gap and drops below the effective level. Once regular doses resume, it takes a few intervals to climb back to the usual peak–trough pattern.",
      tryThis:"Move the missed dose, or shorten the half-life for a sharper dip and a faster recovery.",
@@ -688,6 +1072,10 @@
      look:"B is inside the window almost from the start; both settle at the same steady state."},
     {id:"cl", lesson:"cl", title:"Normal vs 50% clearance", nameA:"Organ function 100%", nameB:"Organ function 50%",
      look:"Same regimen. B's half-life doubles, its troughs climb and its peaks cross the toxic line."},
+    {id:"mm", lesson:"mm", title:"Phenytoin 300 vs 400 mg/day", nameA:"300 mg/day", nameB:"400 mg/day",
+     look:"A third more dose. B's predicted steady-state level is 2.3 times A's, and it takes 10.5 days instead of 3.8 to get within 10% of it."},
+    {id:"crcl", lesson:"crcl", title:"CrCl 73 vs 41 mL/min", nameA:"SCr 1.0 mg/dL", nameB:"SCr 1.8 mg/dL",
+     look:"A drug 90% cleared by the kidneys. B's clearance is 38% lower, its half-life 6.2 h instead of 3.9 h, and its trough more than twice A's."},
     {id:"weight", lesson:"weight", title:"50 kg vs 100 kg, same dose", nameA:"50 kg", nameB:"100 kg",
      look:"The same 500 mg. B's volume and clearance are twice A's: half the peak and half the AUC, at the same half-life."},
     {id:"route", lesson:"route", title:"IV bolus vs oral", nameA:"IV bolus", nameB:"Oral, F 0.7",
@@ -748,6 +1136,26 @@
       challenge:{text:"Keep organ function at 50% and bring average steady-state exposure back to the baseline's (within 5%) by changing the dose or the interval.",
         goal:m=> m.now.p.clFn===50 && m.now.avgSS!==null && Math.abs(m.now.avgSS/m.base.avgSS-1)<=0.05, solution:{D:200}},
       matters:"Reduced kidney or liver function lowers clearance for many drugs. This is the mechanism behind adjusting a regimen for organ function."},
+    mm:{group:"pk", objective:"Predict how a saturable drug's steady-state level and time to reach it respond to a dose change.",
+      predict:{q:"The daily dose goes from 300 to 400 mg, a third more. The steady-state level becomes…", choices:["About a third higher","About twice as high","More than twice as high"], answer:2,
+        why:"Each extra milligram meets less spare enzyme capacity. The input rises from 56% to 75% of Vmax, and Css = Km·R / (Vmax − R) grows much faster than R as R nears Vmax.",
+        decide:m=>{ const r=m.cur.css/m.base.css; return r<1.5 ? 0 : r<2.2 ? 1 : 2; },
+        show:m=>`Predicted Css ${r1(m.base.css)} → ${r1(m.cur.css)} mg/L (${r1(m.cur.css/m.base.css)}×)`},
+      challenge:{text:"Changing only the daily dose, in 25 mg steps, find the largest dose whose predicted steady-state level stays at or below 20 mg/L.",
+        goal:m=>{ const p=m.now.p; if(!(p.kin==="mm" && p.vmax===7 && p.km===4 && p.tau===24 && p.S===0.92 && p.wt===70 && p.dosing==="repeated" && p.D%25===0)) return false;
+          const next=mmCss(Object.assign({},p,{D:p.D+25})).css;
+          return m.now.css!==null && m.now.css<=20 && (next===null || next>20); },
+        solution:{D:425}},
+      matters:"Phenytoin is the classic case where a small change in dose causes a large change in level. Near saturation neither the size of the change nor the time it takes to settle follows the linear rules, so changes are made in small steps and levels checked."},
+    crcl:{group:"pk", objective:"Estimate creatinine clearance by Cockcroft–Gault and predict what a fall in it does to a renally cleared drug.",
+      predict:{q:"Serum creatinine rises from 1.0 to 1.8 mg/dL. The trough before each dose becomes…", choices:["About the same","Higher, but under 2×","More than 2×"], answer:2,
+        why:"CrCl falls from 73 to 41 mL/min. With 90% of clearance renal, clearance falls 38% and the half-life lengthens from 3.9 to 6.2 h, so much more of each dose is left when the next one starts.",
+        decide:m=>{ const r=m.cur.trough/m.base.trough; return r<1.1 ? 0 : r<2 ? 1 : 2; },
+        show:m=>`Trough ${r1(m.base.trough)} → ${r1(m.cur.trough)} mg/L (${r1(m.cur.trough/m.base.trough)}×)`},
+      challenge:{text:"Keep the creatinine at 1.8 mg/dL and the dose at 120 mg, and bring the trough back to the baseline's 2.2 mg/L or lower by changing only the dosing interval.",
+        goal:m=> m.now.p.pm==="clinical" && m.now.p.scr===1.8 && m.now.p.fe===0.9 && m.now.p.D===120 && m.now.p.dosing==="repeated" && m.now.trough<=m.base.trough+0.005,
+        solution:{tau:14}},
+      matters:"Many drugs leave the body mainly through the kidneys, so their clearance falls with kidney function. Dosing references adjust for it with creatinine clearance estimated from serum creatinine, age, weight and sex."},
     accum:{group:"rep", objective:"Explain why repeated doses build up and where the peaks level off.",
       predict:{q:"Dosing every half-life, where does the peak settle compared with a single dose?", choices:["About the same","About twice as high","It keeps climbing without limit"], answer:1,
         why:"Half of each dose is still there when the next arrives, so levels rise until the amount eliminated per interval matches the dose.",
@@ -973,7 +1381,7 @@
       const k=pair.slice(0,i), raw=pair.slice(i+1);
       if(k==="ev"){ p.events=decodeEvents(raw); return; }
       if(!PK_KEYS.includes(k) || k==="events") return;
-      if(k==="route" || k==="dosing"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
+      if(typeof DEFAULTS[k]==="string"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
       if(!isFinite(v)) return;
       if(k==="loadMult"){ if(CHOICES.loadMult.includes(v)) p.loadMult=v; return; }
@@ -989,16 +1397,19 @@
     if(v.zoom==="last") out.push("zoom:last");
     if(v.pd) out.push("pd:1");
     if(v.etgt!==undefined && v.etgt!==VIEW_DEFAULTS.etgt) out.push("etgt:"+v.etgt);
+    if(v.pop) out.push("pop:1");
+    POP_KEYS.forEach(k=>{ if(v[k]!==undefined && v[k]!==VIEW_DEFAULTS[k]) out.push(k+":"+v[k]); });
     return out.join(",");
   }
   function decodeView(str){
     const v=Object.assign({},VIEW_DEFAULTS);
     String(str||"").split(",").forEach(pair=>{
       const [k,raw]=pair.split(":");
-      if(VIEW_RANGES[k]){ const n=parseFloat(raw); if(isFinite(n)) v[k]=clamp(n,VIEW_RANGES[k]); }
+      if(VIEW_RANGES[k]){ let n=parseFloat(raw); if(isFinite(n)){ if(k==="popn"||k==="pseed") n=Math.round(n); v[k]=clamp(n,VIEW_RANGES[k]); } }
       else if(k==="scale" && (raw==="lin"||raw==="log")) v.scale=raw;
       else if(k==="zoom" && (raw==="full"||raw==="last")) v.zoom=raw;
       else if(k==="pd") v.pd=raw==="1";
+      else if(k==="pop") v.pop=raw==="1";
     });
     return v;
   }
@@ -1009,8 +1420,9 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1036,11 +1448,12 @@
       const i=kv.indexOf("=");
       if(i>0) q[kv.slice(0,i)]=kv.slice(i+1);
     });
-    if(!q.v) return null;
+    // A scenario link without a version is read as version 1 (the first links had none to give).
+    if(!q.v && !("s" in q) && q.m!=="cmp") return null;
     // Links pasted through chat apps sometimes arrive with ':' and ',' percent-encoded.
     const sc=s=>decodeScenario(safe(s||""));
     const name=s=>s ? cleanName(safe(s),40) : "";
-    const st={version:parseInt(q.v,10)||VERSION, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
+    const st={version:q.v ? parseInt(q.v,10)||VERSION : 1, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
     // a newer version is still read best-effort, but flagged so the page can say settings may be missing
     st.newer=st.version>VERSION;
     if(st.mode==="cmp"){
@@ -1134,7 +1547,7 @@
   // which works the answer out again from that scenario with the simulation itself. The tests hold every
   // generator to its check, over many seeds.
   const PRACTICE_TOPICS=[{id:"single",title:"Single dose"},{id:"rep",title:"Repeated dosing"},
-    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"}];
+    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"},{id:"nl",title:"Saturable (Michaelis–Menten)"}];
   // mulberry32: a small seedable generator of numbers in [0, 1)
   function seededRandom(seed){
     let a=seed>>>0;
@@ -1468,7 +1881,57 @@
           step(`The effect falls more slowly than the concentration while C is well above EC50, then faster.`)],
         viz:{route:"iv", D, V, thalf:th, e0:0, emax:100, ec50, hill}, view:{duration:evenUp(Math.max(t+4, th*4)), pd:true}, at:t,
         check:p=> effectOf(p, conc(p,t))};
-    }}
+    }},
+    /* ----- saturable (Michaelis–Menten) elimination ----- */
+    // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
+    // and the t90 formula assume. Vmax is for 70 kg.
+    {id:"mmcss", topic:"nl", gen(d){
+      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), salt=d(0,1,1)===1, D=d(150,500,25), S=salt ? 0.92 : 1, Vm=vk*70, R=S*D;
+        return {vk,km,salt,D,S,Vm,R,css:km*R/(Vm-R)}; }, x=> x.R>=0.3*x.Vm && x.R<=0.92*x.Vm);
+      const {vk,km,salt,D,S,Vm,R,css}=x;
+      return {type:"Steady state with saturable elimination", unit:"mg/L", dp:2, ans:css,
+        q:`A drug is eliminated by saturable (Michaelis–Menten) metabolism with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>.${salt ? ` It is given as a sodium salt with <b>S = 0.92</b>.` : ""} What steady-state concentration does <b>${D} mg a day</b> reach?`,
+        sol:[step(`The daily input is R = ${salt ? `S·D = 0.92 × ${D}` : `D = ${D}`} = <b>${nf(R,1)} mg/day</b>, below Vmax, so a steady state exists.`),
+          step(`At steady state input equals elimination, R = Vmax·C / (Km + C), so <b>Css = Km·R / (Vmax − R)</b>.`),
+          step(`Css = ${km} × ${nf(R,1)} / (${nf(Vm,0)} − ${nf(R,1)}) = <b>${nf(css,2)} mg/L</b>`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(css*1.5)},
+        check:p=> mmSteady(p).avg};
+    }},
+    {id:"mmdose", topic:"nl", gen(d){
+      const vk=d(5,10,0.5), km=d(2,8,0.5), c=d(8,20,1), Vm=vk*70, R=Vm*c/(km+c), D=R/0.92;
+      return {type:"Dose for a saturable drug", unit:"mg/day", dp:0, ans:D,
+        q:`A drug given as a sodium salt (<b>S = 0.92</b>) is eliminated with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>. Which daily dose of the salt gives a steady-state concentration of <b>${c} mg/L</b>?`,
+        sol:[step(`At steady state the input matches elimination: <b>R = Vmax·Css / (Km + Css)</b>.`),
+          step(`R = ${nf(Vm,0)} × ${c} / (${km} + ${c}) = <b>${nf(R,1)} mg/day</b> of the drug`),
+          step(`Of the salt: D = R / S = ${nf(R,1)} / 0.92 = <b>${nf(D,0)} mg/day</b>`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S:0.92, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(c*1.5)},
+        // the dose that gives c: at the answer dose the simulated steady state is c
+        check:p=> p.D*mmSteady(p).avg/c};
+    }},
+    {id:"mmt90", topic:"nl", gen(d){
+      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), D=d(150,450,25), Vm=vk*70, R=D, t90=V*km*(Math.LN10*Vm-0.9*R)/((Vm-R)*(Vm-R));
+        return {vk,km,V,D,Vm,R,t90}; }, x=> x.R<=0.85*x.Vm && x.R>=0.3*x.Vm && x.t90*24<=300);
+      const {vk,km,V,D,Vm,R,t90}=x;
+      return {type:"Time to steady state, saturable", unit:"days", dp:1, ans:t90,
+        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> is started at a steady <b>${D} mg/day</b>. How many days until it reaches 90% of its steady-state level?`,
+        sol:[step(`With saturable elimination the approach to steady state depends on the dose. Integrating the model at a constant input gives <b>t₉₀ = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)²</b>.`),
+          step(`t₉₀ = ${V} × ${km} × (2.303 × ${nf(Vm,0)} − 0.9 × ${R}) / (${nf(Vm,0)} − ${R})² = <b>${nf(t90,1)} days</b>`),
+          step(`A linear drug's 3.32 half-lives would not change with the dose; here a higher dose means a longer wait.`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, vmax:vk, km, V}, view:{duration:336, mec:0, mtc:0}, at:t90*24,
+        check:p=>{ const css=mmCss(p).css; return solveUp(x=> conc(p,x), 0.9*css, 0, 336)/24; }};
+    }},
+    {id:"mmhalf", topic:"nl", gen(d){
+      const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), C=d(2,25,1), Vm=vk*70, th=Math.LN2*V*(km+C)/(Vm/24);
+      return {type:"Half-life at a concentration", unit:"h", dp:1, ans:th,
+        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> has a level of <b>${C} mg/L</b>. What is its half-life at that level?`,
+        sol:[step(`Elimination is Vmax·C / (Km + C), so the clearance at C is Vmax / (Km + C) and <b>t½ = 0.693·V·(Km + C) / Vmax</b>, with Vmax per hour.`),
+          step(`Vmax = ${nf(Vm,0)} / 24 = ${nf(Vm/24,2)} mg/h`),
+          step(`t½ = ${LN2} × ${V} × (${km} + ${C}) / ${nf(Vm/24,2)} = <b>${nf(th,1)} h</b>`),
+          step(`At a higher level the half-life is longer: the enzymes are closer to saturation.`)],
+        viz:{kin:"mm", route:"iv", dosing:"single", D:C*V, vmax:vk, km, V}, view:{duration:evenUp(3*th), mec:0, mtc:0}, at:0,
+        // the instantaneous half-life at t = 0: 0.693·C / (−dC/dt)
+        check:p=>{ const c0=conc(p,0), h=1e-4; return Math.LN2*c0/((c0-conc(p,h))/h); }};
+    }},
   ];
   // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).
   function makeProblem(o){
@@ -1564,70 +2027,8 @@
   }
 
   /* ================= GLOSSARY ================= */
-  // The terms the app uses, each with its symbol and unit, the relation DoseCurve computes it by, and the lesson
-  // that shows it (lesson ids are checked by the tests).
-  const GLOSSARY=[
-    {term:"Concentration", sym:"C", unit:"mg/L", lesson:"route",
-     def:"How much drug is in each litre of plasma. DoseCurve uses mg/L, which is the same as µg/mL."},
-    {term:"Peak concentration", sym:"Cmax", unit:"mg/L", lesson:"route",
-     def:"The highest concentration after a dose. An IV bolus peaks at once, an oral dose later and lower, and an infusion when it stops."},
-    {term:"Time of the peak", sym:"tmax", unit:"h", lesson:"route",
-     def:"When the peak comes. For an oral dose tmax = ln(kₐ / kₑ) / (kₐ − kₑ), so it depends on the two rate constants, not on the dose."},
-    {term:"Trough", sym:"Cmin", unit:"mg/L", lesson:"accum",
-     def:"The lowest concentration in a dosing interval, just before the next dose."},
-    {term:"Area under the curve", sym:"AUC", unit:"mg·h/L", lesson:"route",
-     def:"Total exposure: the area under the concentration–time curve. For one dose AUC∞ = F·D / CL, however fast the drug is absorbed."},
-    {term:"Bioavailability", sym:"F", unit:"fraction", lesson:"route",
-     def:"The fraction of an oral dose that reaches the circulation, from 0 to 1. An IV dose has F = 1."},
-    {term:"Absorption rate constant", sym:"kₐ", unit:"h⁻¹", lesson:"route",
-     def:"How fast an oral dose moves into the blood. A larger kₐ gives an earlier, higher peak; the AUC stays the same."},
-    {term:"Elimination rate constant", sym:"kₑ", unit:"h⁻¹", lesson:"half",
-     def:"The fraction of the drug in the body removed per hour in first-order elimination: kₑ = ln2 / t½ = CL / V."},
-    {term:"Half-life", sym:"t½", unit:"h", lesson:"half",
-     def:"The time for the concentration to halve once absorption is over: t½ = 0.693 / kₑ = 0.693·V / CL, so it depends on both volume and clearance."},
-    {term:"Volume of distribution", sym:"V", unit:"L", lesson:"vd",
-     def:"The apparent volume the drug spreads into: for an IV bolus, the dose divided by the starting concentration (V = D / C₀). In DoseCurve it scales with body weight."},
-    {term:"Clearance", sym:"CL", unit:"L/h", lesson:"cl",
-     def:"The volume of plasma cleared of drug each hour: CL = kₑ·V. It sets total exposure (AUC = F·D / CL). In DoseCurve, organ function scales it."},
-    {term:"IV bolus", sym:"", unit:"", lesson:"inf",
-     def:"A dose injected into a vein all at once: the concentration starts at D / V and falls from there."},
-    {term:"IV infusion", sym:"R₀", unit:"mg/h", lesson:"infdur",
-     def:"A dose run into a vein at a constant rate R₀ = D / T. The level climbs toward R₀ / CL and falls once the infusion stops."},
-    {term:"Loading dose", sym:"LD", unit:"mg", lesson:"load",
-     def:"A larger first dose, or a bolus given with an infusion, that reaches the target level at once instead of after 4–5 half-lives: LD = C_target·V."},
-    {term:"Maintenance dose", sym:"D", unit:"mg", lesson:"accum",
-     def:"The dose repeated every interval. At steady state it replaces what is cleared, so the average level is F·D / (CL·τ)."},
-    {term:"Dosing interval", sym:"τ", unit:"h", lesson:"split",
-     def:"The time between the doses of a regular regimen."},
-    {term:"Steady state", sym:"SS", unit:"", lesson:"accum",
-     def:"When what each interval adds matches what is cleared, so peaks and troughs stop rising. About 90% of the way after 3.3 half-lives and about 97% after 5, whatever the dose."},
-    {term:"Accumulation ratio", sym:"R", unit:"×", lesson:"accum",
-     def:"How many times higher levels settle than after the first dose: R = 1 / (1 − e^(−kₑτ)). The shorter the interval next to the half-life, the larger it is."},
-    {term:"Swing", sym:"peak / trough", unit:"×", lesson:"split",
-     def:"How far the level falls between doses. For a repeated IV bolus at steady state, peak / trough = e^(kₑτ): the interval sets it, the dose doesn't."},
-    {term:"Superposition", sym:"", unit:"", lesson:"spacing",
-     def:"In a linear model each dose adds its own curve, so the concentration is the sum of what is left of every dose given."},
-    {term:"Minimum effective concentration", sym:"MEC", unit:"mg/L", lesson:"er",
-     def:"The lower edge of the window on DoseCurve's charts: below it, the modeled level is taken as too low to act."},
-    {term:"Minimum toxic concentration", sym:"MTC", unit:"mg/L", lesson:"er",
-     def:"The upper edge of the window on DoseCurve's charts: above it, the modeled level is taken as too high."},
-    {term:"Therapeutic window", sym:"", unit:"", lesson:"er",
-     def:"The range between MEC and MTC. DoseCurve reports the share of the time window the curve spends inside it."},
-    {term:"Missed dose", sym:"", unit:"", lesson:"miss",
-     def:"A scheduled dose that isn't given: its curve is simply left out of the sum, and the level recovers over the following doses."},
-    {term:"Baseline effect", sym:"E₀", unit:"%", lesson:"potency",
-     def:"The effect with no drug present, as a percentage of the largest possible response."},
-    {term:"Maximum effect", sym:"Emax", unit:"%", lesson:"efficacy",
-     def:"The largest effect the drug can add on top of the baseline: a ceiling no concentration can pass."},
-    {term:"Potency", sym:"EC50", unit:"mg/L", lesson:"potency",
-     def:"The concentration that gives half of the maximum effect. A lower EC50 means less drug is needed for the same effect."},
-    {term:"Hill slope", sym:"n", unit:"", lesson:"hill",
-     def:"How steeply the effect rises around EC50. A large n makes the response close to on/off; n = 1 is a gradual curve."},
-    {term:"Emax model", sym:"E", unit:"%", lesson:"pdose",
-     def:"E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ). DoseCurve links the effect directly to the plasma concentration, with no delay."},
-    {term:"One-compartment model", sym:"", unit:"", lesson:"vd",
-     def:"The idealized body DoseCurve simulates: the drug spreads at once through one well-mixed volume and is eliminated in proportion to its concentration (first-order, linear)."}
-  ];
+  // The glossary's terms live in pk-glossary.js, loaded with the Lessons tab (see GLOSSARY in the exports).
+  let glossary=null;
 
   /* ================= HIT THE WINDOW ================= */
   // Regimen design: for a made-up drug, choose a dose and an interval so that at steady state the trough stays at
@@ -1684,13 +2085,64 @@
   const READOUT_KEYS={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
     repeated:["peak","trough","rac","thalf","cl","t90","mgkg","ttr"],
     custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
+  // With saturable elimination there's no single half-life or clearance, and steady state has its own rules.
+  const READOUT_KEYS_MM={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
+    repeated:["peak","trough","css","t90","thalf","ratio","mgkg","ttr"],
+    custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
+  const readoutKeys=p=> (p.kin==="mm" ? READOUT_KEYS_MM : READOUT_KEYS)[p.dosing];
+  function mmMath(p, key, view){
+    const U=unitsOf(p), cu=U.conc, V=vOf(p), Vm=vmaxOf(p), Km=p.km, d=derived(p), m=s=>({m:s}), t=s=>({t:s});
+    const n1=v=>nf(v,1), n2=v=>nf(v,2), perDay=v=>`${nf(v*24,0)} ${U.amount}/day`;
+    const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
+    const vmTxt=`Vmax = ${nf(p.vmax,2)} ${U.amount}/kg/day × ${p.wt} kg${clFactor(p)!==1 ? ` × ${nf(clFactor(p),3)}` : ""} = ${perDay(Vm)}`;
+    const atTxt=p.dosing==="repeated" ? (d.mm.none ? "the final trough" : "the average steady-state level") : p.dosing==="single" ? "the peak" : "the highest level";
+    const sampled=`Saturable elimination has no closed-form curve here: DoseCurve integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
+    switch(key){
+      case "thalf": return {title:"Half-life at this level", value:d.thalfEff, steps:[
+        t(`With saturable elimination the half-life depends on the concentration. At ${atTxt}, C = ${n2(d.cAt)} ${cu}:`), m(vmTxt),
+        m(`t½ = 0.693·V·(Km + C) / Vmax = 0.693 × ${n1(V)} × (${n2(Km)} + ${n2(d.cAt)}) / ${n2(Vm)} = ${n1(d.thalfEff)} h`),
+        t(`At low levels (C ≪ Km) it shortens toward 0.693·V·Km / Vmax = ${n1(mmHalfAt(p,0))} h; as C climbs past Km it lengthens.`)]};
+      case "cl": return {title:"Clearance at this level", value:d.CL, steps:[m(vmTxt),
+        m(`CL = Vmax / (Km + C) = ${n2(Vm)} / (${n2(Km)} + ${n2(d.cAt)}) = ${n2(d.CL)} L/h, at ${atTxt}`),
+        t(`Clearance falls as the level rises: the enzymes are closer to saturation.`)]};
+      case "css": { const c=mmCss(p);
+        if(c.css===null) return {title:"Steady state", value:null, steps:[m(`R = ${p.route==="oral" ? "F·" : ""}${saltOf(p)===1 ? "" : "S·"}D / τ = ${perDay(c.R)}; ${vmTxt}`),
+          t(`No steady state: input rate exceeds Vmax. The level keeps climbing for as long as the dosing continues.`)]};
+        return {title:"Predicted steady state (Css)", value:c.css, steps:[
+          m(`R = ${p.route==="oral" ? "F·" : ""}${saltOf(p)===1 ? "" : "S·"}D / τ = ${perDay(c.R)} (${n2(c.R)} ${U.amount}/h)`), m(vmTxt),
+          m(`Css = Km·R / (Vmax − R) = ${n2(Km)} × ${n2(c.R)} / (${n2(Vm)} − ${n2(c.R)}) = ${n2(c.css)} ${cu}`),
+          t(`That is exact for a constant input. Given in doses, the level swings around it: at steady state this regimen averages ${n2(d.mm.avg)} ${cu}.`)]}; }
+      case "t90": { const c=mmCss(p);
+        return {title:"Time to 90% of steady state", value:d.t90, steps: c.css===null ? [t(`No steady state is reached, so there is no time to reach it.`)] : [
+          m(`t90 = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)² = ${n1(V)} × ${n2(Km)} × (2.303 × ${n2(Vm)} − 0.9 × ${n2(c.R)}) / (${n2(Vm)} − ${n2(c.R)})² = ${n1(d.t90)} h (${n1(d.t90/24)} days)`),
+          t(`It comes from integrating the saturable model at a constant input. Unlike linear kinetics it depends on the dose: the closer R is to Vmax, the longer the wait.`)]}; }
+      case "ratio": { const c=mmCss(p);
+        return {title:"Input rate ÷ Vmax", value:100*c.ratio, steps:[m(`R / Vmax = ${perDay(c.R)} / ${perDay(Vm)} = ${nf(100*c.ratio,0)}%`),
+          t(c.ratio>=1 ? `At or above 100% the enzymes can't keep up: no steady state.` : `The closer this is to 100%, the more a small dose change moves the level.`)]}; }
+      case "auc": return {title:"Total exposure (AUC∞)", value:d.auc, steps:[m(`AUC∞ = ${n1(d.auc)} ${U.auc}`), t(sampled),
+        t(`It isn't F·D / CL here: clearance changes with the level, so doubling the dose more than doubles the AUC.`)]};
+      case "cmax": case "tmax": return {title:key==="cmax" ? "Peak concentration (Cmax)" : "Time of the peak (tmax)", value:key==="cmax" ? d.cmax : d.tmax,
+        steps:[m(`Cmax = ${n2(d.cmax)} ${cu} at ${n2(d.tmax)} h`), t(sampled)]};
+      case "peak": case "trough": return {title:key==="peak" ? "Peak after the last dose" : "Trough after the last dose", value:key==="peak" ? d.cmaxSS : d.cminSS,
+        steps:[m(`${key==="peak" ? "Peak" : "Trough"} = ${n2(key==="peak" ? d.cmaxSS : d.cminSS)} ${cu}`), t(sampled)].concat(key==="trough" && !d.mm.none ? [t(`Given forever, the trough would settle at ${n2(d.mm.trough)} ${cu}.`)] : [])};
+    }
+    return null;
+  }
   function metricMath(p, key, view){
-    const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, D=p.D, oral=p.route==="oral", F=oral ? p.F : 1;
+    if(p.kin==="mm"){ const r=mmMath(p,key,view); if(r) return r; }
+    const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, oral=p.route==="oral", F=oral ? p.F : 1;
+    // units, and the salt factor: the amount of active drug is S·D (S = 1 for most drugs, and then not shown)
+    const U=unitsOf(p), cu=U.conc, Sf=saltOf(p), D=p.D*Sf, Dtxt=Sf===1 ? `${p.D}` : `${nf(Sf,5)} × ${p.D}`, Sd=Sf===1 ? "D" : "S·D";
     const n1=v=>nf(v,1), n2=v=>nf(v,2), n3=v=>nf(v,3), nk=v=>nf(v,4), m=s=>({m:s}), t=s=>({t:s});
     const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
     const tmOral=()=> Math.abs(p.ka-k)<1e-6 ? 1/k : Math.log(p.ka/k)/(p.ka-k);
     switch(key){
-      case "thalf": return {title:"Effective half-life", value:th, steps: p.clFn===100
+      case "thalf": if(p.pm==="clinical"){ const pt=patientOf(p);
+        return {title:"Effective half-life", value:th, steps:[
+          t(`Clearance keeps its non-renal part (1 − fe) and scales its renal part fe by creatinine clearance, against a reference CrCl of ${CRCL_REF} mL/min:`),
+          m(`factor = (1 − fe) + fe × CrCl / ${CRCL_REF} = (1 − ${nf(p.fe,2)}) + ${nf(p.fe,2)} × ${n1(pt.crcl)} / ${CRCL_REF} = ${n3(pt.factor)}`),
+          m(`kₑ = (0.693 / ${nf(p.thalf,2)}) × ${n3(pt.factor)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = 0.693 / ${nk(k)} = ${n1(th)} h`)]}; }
+        return {title:"Effective half-life", value:th, steps: p.clFn===100
         ? [t(`At 100% organ function the half-life is the drug's own, so the elimination rate constant is`), m(`kₑ = 0.693 / t½ = 0.693 / ${n2(th)} = ${nk(k)} h⁻¹`)]
         : [t(`Organ function scales clearance: at ${p.clFn}%, the drug is eliminated at ${p.clFn}% of its usual rate.`),
            m(`kₑ = (0.693 / ${nf(p.thalf,2)}) × ${nf(p.clFn/100,2)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = 0.693 / ${nk(k)} = ${n1(th)} h`)]};
@@ -1699,9 +2151,9 @@
       case "v": return {title:"Volume of distribution", value:V, steps:[m(`V = V(70 kg) × weight / 70 = ${nf(p.V,1)} × ${p.wt} / 70 = ${n1(V)} L`),
         t(`The volume scales with body weight. It sets how high an IV bolus starts (D / V) and, with the half-life, the clearance (CL = kₑ·V).`)]};
       case "auc": return {title:"Total exposure (AUC∞)", value:F*D/CL, steps:[
-        m(oral ? `AUC∞ = F·D / CL = ${F} × ${D} / ${n2(CL)} = ${n1(F*D/CL)} mg·h/L` : `AUC∞ = D / CL = ${D} / ${n2(CL)} = ${n1(D/CL)} mg·h/L`),
+        m(oral ? `AUC∞ = F·${Sd} / CL = ${F} × ${Dtxt} / ${n2(CL)} = ${n1(F*D/CL)} ${U.auc}` : `AUC∞ = ${Sd} / CL = ${Dtxt} / ${n2(CL)} = ${n1(D/CL)} ${U.auc}`),
         t(oral ? `How fast the drug is absorbed changes the curve's shape, not its area.` : `It's the whole area under the curve, out to infinity.`)]};
-      case "mgkg": return {title:"Dose per kilogram", value:D/p.wt, steps:[m(`D / weight = ${D} / ${p.wt} = ${n1(D/p.wt)} mg/kg`)]};
+      case "mgkg": return {title:"Dose per kilogram", value:p.D/p.wt, steps:[m(`D / weight = ${p.D} / ${p.wt} = ${n1(p.D/p.wt)} ${U.perKg}`)]};
       case "tmax":
         if(p.route==="iv") return {title:"Time of the peak (tmax)", value:0, steps:[t(`An IV bolus is highest the moment it's given, at t = 0.`)]};
         if(p.route==="inf") return {title:"Time of the peak (tmax)", value:p.tinf, steps:[t(`An infusion is highest when it stops: tmax = T = ${nf(p.tinf,2)} h.`)]};
@@ -1711,17 +2163,17 @@
              t(`Only the two rate constants set it; the dose doesn't.`)]};
       case "cmax": {
         const title="Peak concentration (Cmax)";
-        if(p.route==="iv") return {title, value:D/V, steps:[t(`An IV bolus is highest the moment it's given:`), m(`Cmax = D / V = ${D} / ${n1(V)} = ${n2(D/V)} mg/L`)]};
+        if(p.route==="iv") return {title, value:D/V, steps:[t(`An IV bolus is highest the moment it's given:`), m(`Cmax = ${Sd} / V = ${Dtxt} / ${n1(V)} = ${n2(D/V)} ${cu}`)]};
         if(p.route==="inf"){
           const T=p.tinf, R=D/T, c=R/CL*(1-Math.exp(-k*T));
-          return {title, value:c, steps:[t(`An infusion is highest when it stops, at T = ${nf(T,2)} h. It runs at R₀ = D / T = ${D} / ${nf(T,2)} = ${n2(R)} mg/h.`),
-            m(`Cmax = (R₀ / CL)·(1 − e^(−kₑT)) = (${n2(R)} / ${n2(CL)}) × (1 − e^(−${nk(k)} × ${nf(T,2)})) = ${n2(c)} mg/L`)]};
+          return {title, value:c, steps:[t(`An infusion is highest when it stops, at T = ${nf(T,2)} h. It runs at R₀ = ${Sd} / T = ${Dtxt} / ${nf(T,2)} = ${n2(R)} ${U.amount}/h.`),
+            m(`Cmax = (R₀ / CL)·(1 − e^(−kₑT)) = (${n2(R)} / ${n2(CL)}) × (1 − e^(−${nk(k)} × ${nf(T,2)})) = ${n2(c)} ${cu}`)]};
         }
         const tm=tmOral(), ka=p.ka;
         const c=Math.abs(ka-k)<1e-6 ? F*D*k*tm*Math.exp(-k*tm)/V : F*D*ka/(V*(ka-k))*(Math.exp(-k*tm)-Math.exp(-ka*tm));
         return {title, value:c, steps:[t(`The peak comes at tmax = ${n2(tm)} h (see Tmax). The oral curve is`),
-          m(`C(t) = F·D·kₐ / (V·(kₐ − kₑ)) · (e^(−kₑt) − e^(−kₐt))`),
-          m(`Cmax = ${F} × ${D} × ${ka} / (${n1(V)} × (${ka} − ${nk(k)})) × (e^(−${nk(k)} × ${n2(tm)}) − e^(−${ka} × ${n2(tm)})) = ${n2(c)} mg/L`)]};
+          m(`C(t) = F·${Sd}·kₐ / (V·(kₐ − kₑ)) · (e^(−kₑt) − e^(−kₐt))`),
+          m(`Cmax = ${F} × ${Dtxt} × ${ka} / (${n1(V)} × (${ka} − ${nk(k)})) × (e^(−${nk(k)} × ${n2(tm)}) − e^(−${ka} × ${n2(tm)})) = ${n2(c)} ${cu}`)]};
       }
       case "rac": { const x=Math.exp(-k*p.tau), r=1/(1-x);
         return {title:"Accumulation ratio", value:r, steps:[m(`R = 1 / (1 − e^(−kₑτ)) = 1 / (1 − e^(−${nk(k)} × ${p.tau})) = 1 / (1 − ${n3(x)}) = ${n2(r)}`),
@@ -1737,31 +2189,31 @@
         if(simple){
           value=(D/V)*(trough ? x : 1)*(1-Math.pow(x,n))/(1-x);
           steps.push(m(`e^(−kₑτ) = e^(−${nk(k)} × ${p.tau}) = ${n3(x)}`),
-            m(trough ? `Trough = (D/V)·e^(−kₑτ)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × ${n3(x)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} mg/L`
-                     : `Peak = (D/V)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} mg/L`));
+            m(trough ? `Trough = (${Sd}/V)·e^(−kₑτ)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × ${n3(x)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} ${cu}`
+                     : `Peak = (${Sd}/V)·(1 − e^(−n·kₑτ)) / (1 − e^(−kₑτ)) = ${n2(D/V)} × (1 − ${n3(x)}^${n}) / (1 − ${n3(x)}) = ${n2(value)} ${cu}`));
         } else {
           const ev=doseEvents(p), t0=(n-1)*p.tau;
           if(trough) value=conc(p, n*p.tau, ev);
           else { value=0; for(let i=0;i<=400;i++){ const c=conc(p, t0+p.tau*i/400, ev); if(c>value) value=c; } }
-          steps.push(t(`${p.route==="iv" ? "With a loading or missed dose" : oral ? "For oral doses" : "For infusions"} the sum has no short closed form, so it's added up dose by dose${trough ? "" : " and the last interval searched for its highest point"}: ${n2(value)} mg/L.`));
+          steps.push(t(`${p.route==="iv" ? "With a loading or missed dose" : oral ? "For oral doses" : "For infusions"} the sum has no short closed form, so it's added up dose by dose${trough ? "" : " and the last interval searched for its highest point"}: ${n2(value)} ${cu}.`));
         }
-        if(trough) steps.push(t(`Given forever, the trough would settle at ${n2(ss)} mg/L; this regimen has reached ${nf(Math.min(100,100*value/ss),0)}% of it.`));
+        if(trough) steps.push(t(`Given forever, the trough would settle at ${n2(ss)} ${cu}; this regimen has reached ${nf(Math.min(100,100*value/ss),0)}% of it.`));
         return {title, value, steps};
       }
       case "ttr": return {title:"Time in window", value:100*ws.tIn/ws.T, steps:[
-        m(`${n1(ws.tIn)} h of ${nf(ws.T,2)} h between MEC (${nf(view.mec,2)}) and MTC (${nf(view.mtc,2)} mg/L) = ${nf(100*ws.tIn/ws.T,0)}%`),
+        m(`${n1(ws.tIn)} h of ${nf(ws.T,2)} h between MEC (${nf(view.mec,2)}) and MTC (${nf(view.mtc,2)} ${cu}) = ${nf(100*ws.tIn/ws.T,0)}%`),
         t(`It's measured by sampling the curve 600 times across the window: once doses overlap, the crossing times have no simple formula.`)]};
       case "peakWin": case "tpeakWin": return {title:key==="peakWin" ? "Peak in the window" : "Time of the peak", value:key==="peakWin" ? ws.cmax : ws.tmax, steps:[
-        m(`Highest point in 0–${nf(ws.T,2)} h: ${n2(ws.cmax)} mg/L at ${n1(ws.tmax)} h`),
+        m(`Highest point in 0–${nf(ws.T,2)} h: ${n2(ws.cmax)} ${cu} at ${n1(ws.tmax)} h`),
         t(`Doses at their own times, amounts and routes have no single formula: the curves of all the doses are added up and the total searched for its highest point.`)]};
       case "given": { const g=p.events.filter(e=>e.status==="given").length;
         return {title:"Doses given", value:g, steps:[t(`${g} of the ${p.events.length} doses in the schedule are marked given. A missed dose adds nothing to the curve.`)]}; }
       case "total": { const g=p.events.filter(e=>e.status==="given"), tot=g.reduce((s,e)=>s+e.mg,0), shown=g.slice(0,8).map(e=>nf(e.mg,1));
-        return {title:"Total given", value:tot, steps:[m(`${shown.join(" + ")}${g.length>8 ? ` + … (${g.length} doses)` : ""} = ${nf(tot,1)} mg`)]}; }
-      case "aucWin": { const g=p.events.filter(e=>e.status==="given"), inf=g.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/CL;
+        return {title:"Total given", value:tot, steps:[m(`${shown.join(" + ")}${g.length>8 ? ` + … (${g.length} doses)` : ""} = ${nf(tot,1)} ${U.dose}`)]}; }
+      case "aucWin": { const g=p.events.filter(e=>e.status==="given"), inf=Sf*g.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/CL;
         return {title:`Exposure in the window (AUC 0–${nf(ws.T,2)} h)`, value:ws.auc, steps:[
-          m(`Area under the curve from 0 to ${nf(ws.T,2)} h = ${n1(ws.auc)} mg·h/L`),
-          t(`It's added up in 600 slices (trapezoids). Out to infinity it would be Σ(F·dose) / CL = ${n1(inf)} mg·h/L, with F for oral doses and 1 for IV doses.`)]}; }
+          m(`Area under the curve from 0 to ${nf(ws.T,2)} h = ${n1(ws.auc)} ${U.auc}`),
+          t(`It's added up in 600 slices (trapezoids). Out to infinity it would be Σ(F·${Sf===1 ? "" : "S·"}dose) / CL = ${n1(inf)} ${U.auc}, with F for oral doses and 1 for IV doses.`)]}; }
     }
     return null;
   }
@@ -1865,6 +2317,10 @@
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
-    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY,
-    PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary};
+    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough,
+    get GLOSSARY(){ if(!glossary && typeof require==='function') glossary=require('./pk-glossary.js'); return glossary; },
+    set GLOSSARY(v){ glossary=v; },
+    PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
+    crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, clFactor, UNITS, unitsOf, convertUnits, saltOf,
+    SOURCES, UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, sheinerTozer};
 });

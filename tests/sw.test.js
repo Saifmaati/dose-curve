@@ -9,6 +9,8 @@ const vm=require("node:vm");
 
 const SCOPE="https://example.github.io/dose-curve/";
 const SRC=fs.readFileSync(path.join(__dirname,"..","sw.js"),"utf8");
+// The cache name carries a version that each release phase bumps; the tests follow whatever sw.js says.
+const CACHE=SRC.match(/const CACHE="(dosecurve-v\d+)"/)[1];
 
 function makeWorker(){
   const handlers={}, store=new Map(), log=[];
@@ -50,15 +52,16 @@ function makeWorker(){
     if(later) await later;
     return {handled:true, res};
   };
-  return {lifecycle, request, store, log, cache:()=>store.get("dosecurve-v1"),
+  return {lifecycle, request, store, log, cache:()=>store.get(CACHE),
     goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }};
 }
 
 test("installing saves the app's icons and manifest; activating clears only older DoseCurve caches", async()=>{
   const w=makeWorker();
-  w.store.set("dosecurve-v0", new Map()); w.store.set("someone-else", new Map());
+  w.store.set("dosecurve-v0", new Map()); w.store.set("dosecurve-v1", new Map()); w.store.set("someone-else", new Map());
   await w.lifecycle("install"); await w.lifecycle("activate");
-  assert.deepEqual([...w.store.keys()].sort(), ["dosecurve-v1","someone-else"]);
+  assert.deepEqual([...w.store.keys()].sort(), [CACHE,"someone-else"]);
+  assert.notEqual(CACHE, "dosecurve-v1", "bumped since the first release");
   ["", "site.webmanifest", "favicon.svg", "icon-192.png"].forEach(f=> assert.ok(w.cache().has(SCOPE+f), f));
 });
 
@@ -127,4 +130,17 @@ test("other sites, other paths and anything but GET pass straight through", asyn
   assert.equal((await w.request("https://example.github.io/another-site/", {mode:"navigate"})).handled, false);
   assert.equal((await w.request(SCOPE+"pk-engine.js?v=a", {method:"POST"})).handled, false);
   assert.equal((await w.request("https://api.github.com/repos/x", {mode:"cors"})).handled, false);
+});
+
+test("the validation page and its results are kept for offline use, and never stand in for the app", async()=>{
+  const w=makeWorker();
+  await w.lifecycle("install");
+  assert.ok(w.cache().has(SCOPE+"validation.html") && w.cache().has(SCOPE+"validation/reference-results.json"), "precached");
+  await w.request(SCOPE, {mode:"navigate"});
+  w.release();
+  await w.request(SCOPE+"validation.html", {mode:"navigate"});
+  w.goOffline();
+  assert.equal((await w.request(SCOPE+"validation.html", {mode:"navigate"})).res.body, "/dose-curve/validation.html v2", "its own saved copy");
+  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/dose-curve/ v1", "the app page is still the app page");
+  assert.equal((await w.request(SCOPE+"validation/reference-results.json", {mode:"cors"})).res.body, "/dose-curve/validation/reference-results.json v1");
 });

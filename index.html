@@ -8,9 +8,13 @@
 <script>(function(){ var d=document.documentElement, q=location.search, t=(q.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
   if(/[?&]embed(?:[=&]|$)/.test(q)) d.classList.add("embed");
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
-  if(t==="light") d.classList.add("light"); })();</script>
+  // no choice made yet: follow the system's light or dark setting
+  if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
+  if(t==="light") d.classList.add("light");
+  // decided before the first paint, so the quick-start strip never pops in and pushes the chart down
+  try{ if(localStorage.getItem("dosecurve.quickstart.dismissed")==="1") d.classList.add("qs-off"); }catch(e){} })();</script>
 <title>DoseCurve — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 21 guided lessons plus practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics and PK/PD simulator for pharmacy education: compare regimens, model loading, missed and custom doses, estimate creatinine clearance (Cockcroft–Gault), explore saturable (Michaelis–Menten) kinetics and population variability, and work graded clinical cases. Validated against an independent solver. Free, educational, not for clinical dosing.">
 <link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
 <meta name="color-scheme" content="dark">
@@ -22,7 +26,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 21 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 23 guided lessons and 8 graded clinical cases. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -34,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive one-compartment pharmacokinetics and pharmacodynamics simulator for learning: regimens, custom dose schedules, side-by-side comparisons, lessons and practice problems.",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.0.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -42,6 +46,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Metric-matched stand-ins, used only until the web fonts arrive: the same widths and line metrics, so
+     nothing reflows (no layout shift) when the real fonts swap in. */
+  @font-face{font-family:"Inter Fallback";src:local("Arial"),local("ArialMT");font-weight:100 500;size-adjust:107%;ascent-override:90.5%;descent-override:22.6%;line-gap-override:0%}
+  @font-face{font-family:"Inter Fallback";src:local("Arial Bold"),local("Arial-BoldMT");font-weight:600 900;size-adjust:102.4%;ascent-override:94.6%;descent-override:23.7%;line-gap-override:0%}
+  @font-face{font-family:"Space Grotesk Fallback";src:local("Arial"),local("ArialMT");font-weight:100 500;size-adjust:107.1%;ascent-override:91.5%;descent-override:27.1%;line-gap-override:0%}
+  @font-face{font-family:"Space Grotesk Fallback";src:local("Arial Bold"),local("Arial-BoldMT");font-weight:600 900;size-adjust:101%;ascent-override:97.1%;descent-override:28.7%;line-gap-override:0%}
+  @font-face{font-family:"JetBrains Mono Fallback";src:local("Courier New"),local("CourierNewPSMT");font-weight:100 500;size-adjust:100%;ascent-override:102%;descent-override:30%;line-gap-override:0%}
+  @font-face{font-family:"JetBrains Mono Fallback";src:local("Courier New Bold"),local("CourierNewPS-BoldMT");font-weight:600 900;size-adjust:100%;ascent-override:102%;descent-override:30%;line-gap-override:0%}
   :root{
     --bg:#05070E;
     --panel:rgba(13,18,32,0.72);
@@ -73,7 +85,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
-    font-family:'Inter',system-ui,sans-serif;
+    font-family:'Inter','Inter Fallback',system-ui,sans-serif;
     background:var(--bg);color:var(--text);line-height:1.5;
     -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
@@ -95,39 +107,39 @@
   .brand-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#101731,#0B0F1E);
     border:1px solid var(--glass-line-2);box-shadow:0 0 24px rgba(var(--violet-rgb),.25), inset 0 0 18px rgba(var(--cyan-rgb),.06);
     display:grid;place-items:center}
-  .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.01em}
+  .brand-name{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.01em}
   .brand-name em{font-style:normal;background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
 
   .skip{position:absolute;left:16px;top:-60px;z-index:50;padding:10px 14px;border-radius:10px;background:var(--text);color:var(--bg);font-weight:600;text-decoration:none}
   .skip:focus{top:12px}
   #app:focus{outline:none}
-  .top-link{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);text-decoration:none;
-    border:1px solid var(--glass-line);border-radius:999px;padding:7px 14px;background:rgba(var(--panel-rgb),.5);backdrop-filter:blur(8px)}
+  .top-link{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);text-decoration:none;
+    border:1px solid var(--glass-line);border-radius:999px;padding:7px 14px;background:rgba(var(--panel-rgb),.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .top-link:hover{color:var(--hi);border-color:var(--glass-line-2)}
   .top-link:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .noscript{margin:18px 0 0;padding:14px 16px;border:1px solid rgba(var(--amber-rgb),.4);border-radius:12px;color:#FFD89A;background:rgba(var(--amber-rgb),.08)}
 
   /* hero */
   .hero{padding:38px 0 26px}
-  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--cyan);display:flex;align-items:center;gap:12px}
+  .eyebrow{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--cyan);display:flex;align-items:center;gap:12px}
   .eyebrow::before{content:"";width:26px;height:1px;background:linear-gradient(90deg,var(--cyan),transparent)}
-  .hero h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(36px,6vw,64px);line-height:1.02;letter-spacing:-.032em;margin:16px 0 0;max-width:18ch}
+  .hero h1{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-weight:700;font-size:clamp(36px,6vw,64px);line-height:1.02;letter-spacing:-.032em;margin:16px 0 0;max-width:18ch}
   .hero h1 .grad{background:linear-gradient(92deg,var(--text) 10%,var(--cyan) 55%,var(--violet) 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
   .hero-sub{color:var(--muted);font-size:clamp(14.5px,2vw,17px);max-width:56ch;margin:16px 0 0}
-  .hero-chip{display:inline-flex;align-items:center;gap:9px;margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+  .hero-chip{display:inline-flex;align-items:center;gap:9px;margin-top:20px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--glass-line);border-radius:999px;padding:8px 14px;background:rgba(var(--panel-rgb),.55)}
   .hero-chip b{color:var(--text-4);font-weight:500}
   .hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
   .cta{border:1px solid var(--glass-line-2);background:rgba(var(--panel-rgb),.6);color:var(--text);border-radius:12px;padding:11px 18px;
-    font-family:Inter,sans-serif;font-size:14.5px;font-weight:600;cursor:pointer}
+    font-family:Inter,'Inter Fallback',sans-serif;font-size:14.5px;font-weight:600;cursor:pointer}
   .cta:hover{border-color:rgba(var(--cyan-rgb),.5)}
   .cta.primary{border:0;color:#05070E;background:linear-gradient(90deg,var(--cyan),var(--violet))}
   .cta:focus-visible{outline:2px solid var(--text);outline-offset:3px}
   .qs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px 14px;align-items:start;margin:16px 22px 0;padding:12px 14px;
     border:1px solid rgba(var(--cyan-rgb),.22);border-radius:var(--r-sm);background:linear-gradient(180deg,rgba(var(--cyan-rgb),.07),rgba(var(--cyan-rgb),.02))}
-  .qs[hidden]{display:none}
+  .qs[hidden],html.qs-off .qs{display:none}
   .qs-step{display:flex;gap:9px;font-size:12.5px;line-height:1.5;color:var(--text-2)}
-  .qs-step b{flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;
+  .qs-step b{flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;
     color:#05070E;background:var(--cyan)}
   .qs-x{border:1px solid var(--glass-line-2);background:transparent;color:var(--muted);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;white-space:nowrap}
   .qs-x:hover{color:var(--hi)}
@@ -144,12 +156,12 @@
   .panel-pad{padding:22px}
   .controls{position:sticky;top:18px;max-height:calc(100vh - 36px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(var(--violet-rgb),.35) transparent}
 
-  .sec-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2);margin:0 0 13px;display:flex;align-items:center;gap:10px}
+  .sec-label{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2);margin:0 0 13px;display:flex;align-items:center;gap:10px}
   .sec-label::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--glass-line),transparent)}
   .sec + .sec{margin-top:24px}
 
   .seg{display:flex;background:rgba(var(--well-rgb),.7);border:1px solid var(--glass-line);border-radius:var(--r-sm);padding:3px;gap:3px}
-  .seg button{flex:1;border:0;background:transparent;cursor:pointer;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);
+  .seg button{flex:1;border:0;background:transparent;cursor:pointer;font-family:'Inter','Inter Fallback',sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);
     padding:8px 5px;border-radius:8px;transition:all .16s ease}
   .seg button.on{background:linear-gradient(180deg,rgba(var(--violet-rgb),.28),rgba(var(--violet-rgb),.14));color:var(--hi);font-weight:600;
     box-shadow:0 0 0 1px rgba(var(--violet-rgb),.45), 0 0 16px rgba(var(--violet-rgb),.22)}
@@ -159,8 +171,8 @@
   .ctrl:first-child{margin-top:0}
   .ctrl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
   .ctrl-name{font-size:12.5px;font-weight:500;color:var(--text-6);display:flex;align-items:center;gap:7px}
-  .ctrl-name .sym{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2)}
-  .ctrl-val{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:500;color:var(--cyan);
+  .ctrl-name .sym{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted-2)}
+  .ctrl-val{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:12.5px;font-weight:500;color:var(--cyan);
     background:rgba(var(--cyan-rgb),.07);border:1px solid rgba(var(--cyan-rgb),.18);padding:2px 9px;border-radius:6px;text-shadow:0 0 12px rgba(var(--cyan-rgb),.5)}
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:4px;
     background:linear-gradient(90deg,rgba(var(--violet-rgb),.5),rgba(var(--cyan-rgb),.5));outline:none;cursor:pointer}
@@ -173,7 +185,7 @@
   .window-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .num-field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px}
   .num-field .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
-  .num-field input{width:100%;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);
+  .num-field input{width:100%;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:13px;color:var(--text);
     border:1px solid var(--glass-line-2);border-radius:8px;padding:8px 10px;background:rgba(var(--well-rgb),.7)}
   .num-field input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(var(--cyan-rgb),.12), 0 0 14px rgba(var(--cyan-rgb),.15)}
 
@@ -187,7 +199,7 @@
   .drug.on{border-color:rgba(var(--cyan-rgb),.65);box-shadow:0 0 0 1px rgba(var(--cyan-rgb),.4), 0 0 18px rgba(var(--cyan-rgb),.16);background:rgba(var(--panel-rgb),.75)}
   .drug:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .drug .dname{font-size:12px;font-weight:600;color:var(--text-3)}
-  .drug .dsub{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted-2);margin-top:2px;letter-spacing:.03em}
+  .drug .dsub{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9.5px;color:var(--muted-2);margin-top:2px;letter-spacing:.03em}
   .win-warn{font-size:11.5px;color:var(--amber);margin-top:9px;line-height:1.5}
   .lib-note{font-size:10.5px;color:var(--muted-2);margin-top:9px;line-height:1.5}
 
@@ -195,7 +207,7 @@
   .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .abtn{
     border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.55);color:var(--text-3);cursor:pointer;
-    font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:9px 10px;border-radius:var(--r-sm);
+    font-family:'Inter','Inter Fallback',sans-serif;font-size:12px;font-weight:500;padding:9px 10px;border-radius:var(--r-sm);
     display:flex;align-items:center;justify-content:center;gap:7px;transition:all .16s ease;
   }
   .abtn[hidden]{display:none}
@@ -205,11 +217,11 @@
 
   /* plot */
   .plot-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 22px 0;gap:16px;flex-wrap:wrap}
-  .plot-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em}
-  .plot-title span{color:var(--muted);font-weight:400;font-size:12px;font-family:'JetBrains Mono',monospace;display:block;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+  .plot-title{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em}
+  .plot-title span{color:var(--muted);font-weight:400;font-size:12px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;display:block;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
   .plot-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .pd-btn{border:1px solid var(--glass-line);background:rgba(var(--well-rgb),.7);color:var(--muted);border-radius:9px;padding:6px 10px;cursor:pointer;
-    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em}
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;letter-spacing:.04em}
   .pd-btn:hover{color:var(--hi)}
   .pd-btn[aria-pressed="true"]{background:rgba(var(--green-rgb),.16);color:var(--hi);box-shadow:0 0 0 1px rgba(var(--green-rgb),.45)}
   .pd-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
@@ -217,30 +229,55 @@
   .pd-box[hidden],.pd-row[hidden],.sec[hidden]{display:none}
   .pd-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:0 8px 4px}
   .pd-title{font-size:12.5px;font-weight:600;color:var(--text-3)}
-  .pd-sub{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2)}
+  .pd-sub{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted-2)}
   #effPlot,#ecPlot{display:block;width:100%;height:auto;touch-action:pan-y}
   .pd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:14px 22px 0;align-items:start}
   .ro-grid.pd-stats{grid-template-columns:repeat(2,1fr);align-content:start}
   .pd-target{margin-top:4px}
   .mini-seg{display:flex;background:rgba(var(--well-rgb),.7);border:1px solid var(--glass-line);border-radius:9px;padding:2px;gap:2px}
-  .mini-seg button{border:0;background:transparent;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
+  .mini-seg button{border:0;background:transparent;cursor:pointer;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted);
     padding:5px 11px;border-radius:7px;letter-spacing:.05em}
   .mini-seg button.on{background:rgba(var(--violet-rgb),.25);color:var(--hi);box-shadow:0 0 0 1px rgba(var(--violet-rgb),.4)}
   .mini-seg button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 22px 0}
+  .clin-label{font-size:11px;color:var(--muted);margin:12px 0 6px}
+  .clin-math{margin-top:10px;padding:10px 12px;border:1px solid var(--glass-line);border-radius:10px;background:rgba(var(--well-rgb),.5);
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;line-height:1.6;color:var(--text-3);overflow-wrap:anywhere}
+  .clin-math b{color:var(--hi);font-weight:600}
+  .clin-math .cm-h{font-family:'Inter','Inter Fallback',sans-serif;color:var(--muted);font-size:10.5px;margin-top:6px}
+  .clin-note,.drug-info .di-note{font-size:11px;color:var(--amber-text);margin-top:8px}
+  .drug-info{margin-top:10px;padding:10px 12px;border:1px solid var(--glass-line);border-radius:10px;background:rgba(var(--well-rgb),.5);font-size:12px;color:var(--text-3)}
+  .drug-info .di-h{font-size:12.5px;color:var(--hi);font-weight:600;margin-bottom:4px}
+  .drug-info dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0}
+  .drug-info dt{color:var(--muted)} .drug-info dd{color:var(--text-2)}
+  .drug-info details{margin-top:6px} .drug-info summary{cursor:pointer;color:var(--cyan-text, var(--hi))}
+  .drug-info ol{margin:6px 0 0 16px;display:grid;gap:5px}
+  .drug-info li{line-height:1.45} .drug-info .unv{color:var(--amber-text)} .drug-info a{color:inherit}
+  .st-check{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--text-2)}
+  .pop-panel{margin:12px 22px 0;padding:12px 14px;border:1px solid var(--glass-line);border-radius:12px;background:rgba(var(--well-rgb),.45);font-size:12.5px;color:var(--text-3)}
+  .pop-h{color:var(--hi);font-weight:600;font-size:13px;margin-bottom:8px}
+  .pop-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-bottom:8px}
+  .pop-row label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+  .pop-row input,.pop-row select{width:96px;background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:7px;padding:6px 8px;font:inherit;font-size:13px}
+  .pop-out{color:var(--text-2);line-height:1.55;margin:4px 0} .pop-out b{color:var(--hi)}
+  .pop-aucu{font-size:12px;color:var(--muted);padding-bottom:8px}
+  .pop-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
+  @media (max-width:480px){ .pop-panel{margin-left:14px;margin-right:14px} }
+  .keys-switch{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:12px;color:var(--text-3);line-height:1.5}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 22px 0;min-height:27px}   /* one row reserved before the script fills it: no layout shift */
   .legend .li{display:flex;align-items:center;gap:6px}
   .legend .lk{width:14px;height:3px;border-radius:2px}
   .legend .lk.c{background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 8px var(--violet-glow)}
   .legend .lk.g{background:var(--ghost);opacity:.7}
   .legend .lk.band{height:10px;width:10px;border-radius:2px;background:var(--green-band);border:1px solid rgba(var(--green-rgb),.5)}
   .legend .lk.tox{background:var(--rose)}
+  .legend .lk.popb{height:10px;width:14px;border-radius:2px;background:rgba(var(--cyan-rgb),.22)}
 
   .plot-box{position:relative;padding:8px 14px 4px}
   #plot{display:block;width:100%;height:auto;touch-action:none}
   #tooltip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;background:rgba(var(--deep-rgb),.92);border:1px solid var(--glass-line-2);
-    color:var(--hi);border-radius:9px;padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;
-    box-shadow:0 0 24px rgba(var(--violet-rgb),.25), 0 12px 32px rgba(0,0,0,.5);white-space:nowrap;z-index:5;transform:translate(-50%,-118%);backdrop-filter:blur(8px)}
+    color:var(--hi);border-radius:9px;padding:9px 12px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;line-height:1.6;
+    box-shadow:0 0 24px rgba(var(--violet-rgb),.25), 0 12px 32px rgba(0,0,0,.5);white-space:nowrap;z-index:5;transform:translate(-50%,-118%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   #tooltip .tt-t{color:var(--cyan)}
   #tooltip b{color:var(--hi);font-weight:600}
 
@@ -249,8 +286,8 @@
   .ro{background:rgba(var(--well-rgb),.55);border:1px solid var(--glass-line);border-radius:var(--r-sm);padding:12px 14px;position:relative;overflow:hidden}
   .ro::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--violet),transparent);opacity:.6}
   .ro.hot::after{background:linear-gradient(180deg,var(--cyan),transparent)}
-  .ro-k{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;color:var(--muted-2);text-transform:uppercase}
-  .ro-v{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--text);margin-top:5px;letter-spacing:-.01em}
+  .ro-k{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9.5px;letter-spacing:.1em;color:var(--muted-2);text-transform:uppercase}
+  .ro-v{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:18px;font-weight:600;color:var(--text);margin-top:5px;letter-spacing:-.01em}
   .ro.hot .ro-v{color:var(--cyan);text-shadow:0 0 16px rgba(var(--cyan-rgb),.45)}
   .ro-v small{font-size:10.5px;color:var(--muted-2);font-weight:400;margin-left:3px}
   button.ro{font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;transition:border-color .16s ease,box-shadow .16s ease}
@@ -261,18 +298,18 @@
   .ro-hint{margin:8px 0 0;font-size:11.5px;color:var(--muted-2)}
   .ro-hint[hidden],.ro-math[hidden]{display:none}
   .ro-math{margin-top:9px;padding:12px 14px;border:1px solid rgba(var(--cyan-rgb),.35);border-radius:var(--r-sm);background:rgba(var(--cyan-rgb),.04)}
-  .rm-h{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;margin-bottom:4px}
+  .rm-h{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-weight:600;font-size:14px;margin-bottom:4px}
   .rm-x{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:6px}
   .rm-x:hover{color:var(--hi)}
   .rm-x:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .rm-m{display:block;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);line-height:1.65;margin:5px 0;overflow-wrap:anywhere;white-space:normal}
+  .rm-m{display:block;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:12px;color:var(--text);line-height:1.65;margin:5px 0;overflow-wrap:anywhere;white-space:normal}
   .rm-t{margin:5px 0;font-size:12.5px;line-height:1.6;color:var(--text-2);max-width:78ch}
 
   .ss-note{margin:14px 22px 2px;padding:13px 15px;border-radius:var(--r-sm);
     background:linear-gradient(180deg,rgba(var(--violet-rgb),.10),rgba(var(--violet-rgb),.04));border:1px solid rgba(var(--violet-rgb),.28);
     font-size:12.5px;color:var(--text-2);display:none}
   .ss-note.show{display:block}
-  .ss-note b{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-weight:500}
+  .ss-note b{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;color:var(--cyan);font-weight:500}
 
   /* learn */
   .learn{margin-top:20px}
@@ -282,7 +319,7 @@
     font-size:12.5px;font-weight:600;color:var(--text-3);transition:background .15s}
   details.card summary::-webkit-details-marker{display:none}
   details.card summary:hover{background:rgba(var(--violet-rgb),.06)}
-  details.card summary .tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);background:rgba(var(--cyan-rgb),.08);
+  details.card summary .tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;color:var(--cyan);background:rgba(var(--cyan-rgb),.08);
     border:1px solid rgba(var(--cyan-rgb),.2);border-radius:5px;padding:1px 7px}
   details.card summary .chev{margin-left:auto;transition:transform .2s;color:var(--muted-2)}
   details.card[open] summary .chev{transform:rotate(90deg)}
@@ -290,10 +327,12 @@
   details.card .body b{color:var(--text-4)}
 
   /* tabs + practice */
-  .tabbar{display:flex;gap:4px;padding:14px 22px 0}
+  /* five tabs don't fit a phone: the bar scrolls sideways instead of widening the page */
+  .tabbar{display:flex;gap:4px;padding:14px 22px 0;overflow-x:auto;scrollbar-width:none}
+  .tabbar::-webkit-scrollbar{display:none}
   .tabbar button{
     border:1px solid var(--glass-line);background:rgba(var(--well-rgb),.5);color:var(--muted);cursor:pointer;
-    font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;
+    font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;
     padding:9px 18px;border-radius:10px 10px 0 0;border-bottom:none;transition:all .16s ease;
   }
   .tabbar button.on{
@@ -301,14 +340,53 @@
     box-shadow:0 0 18px rgba(var(--violet-rgb),.18);border-color:rgba(var(--violet-rgb),.45);
   }
   .tabbar button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .tabbar .count{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);margin-left:7px}
+  .tabbar .count{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;color:var(--cyan);margin-left:7px}
 
+  .cases{display:none;padding:18px 22px 24px}
+  .cases.show{display:block}
+  .cs-h{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:20px;color:var(--hi);margin:4px 0 6px}
+  .cs-intro p{color:var(--text-3);font-size:13.5px;line-height:1.55;max-width:70ch;margin-bottom:6px}
+  .cs-disc{color:var(--amber-text) !important;font-size:12px !important}
+  .cs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+  .cs-card{display:flex;flex-direction:column;gap:5px;text-align:left;padding:14px;border-radius:12px;border:1px solid var(--glass-line);
+    background:rgba(var(--well-rgb),.55);color:var(--text-2);cursor:pointer;font:inherit}
+  .cs-card:hover,.cs-card:focus-visible{border-color:rgba(var(--cyan-rgb),.5)}
+  .cs-tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .cs-title{font-weight:600;color:var(--hi);font-size:14px}
+  .cs-who{font-size:12px;color:var(--text-3);line-height:1.45}
+  .cs-case{max-width:820px} .cs-case:focus{outline:none}
+  .cs-list[hidden],.cs-intro[hidden],.cs-case[hidden]{display:none}
+  .cs-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:10px 0;font-size:13.5px;line-height:1.5}
+  .cs-facts dt{color:var(--muted)} .cs-facts dd{color:var(--text-2)} .cs-why{color:var(--text-3)}
+  .cs-task{font-size:13.5px;line-height:1.55;color:var(--text-2);margin:8px 0 12px}
+  .cs-form{display:flex;gap:12px;flex-wrap:wrap}
+  .cs-form label,.cs-choice label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  .cs-choice{border:0;display:flex;gap:16px;flex-wrap:wrap} .cs-choice legend{font-size:12.5px;color:var(--text-2);margin-bottom:6px}
+  .cs-choice label{flex-direction:row;align-items:center;color:var(--text-2);font-size:13px}
+  .cs-form input,.cs-form select{background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;min-width:120px}
+  .cs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .cs-result{margin-top:14px;font-size:13.5px}
+  .cs-ok{color:var(--green-text);font-weight:600;margin:6px 0} .cs-no{color:var(--rose-text);font-weight:600;margin:6px 0}
+  .cs-hint{color:var(--text-2);margin:4px 0 8px} .cs-sub{color:var(--muted);font-size:12px;margin:10px 0 4px}
+  .cs-tbl{border-collapse:collapse;margin:4px 0 10px;font-size:13px}
+  .cs-tbl th{text-align:left;font-weight:500;color:var(--muted);padding:3px 16px 3px 0} .cs-tbl td{color:var(--hi);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace}
+  .cs-more{margin-top:12px;font-size:13.5px;line-height:1.55;color:var(--text-2)} .cs-more summary{cursor:pointer;color:var(--hi)}
+  .cs-more ol{margin:8px 0 0 20px;display:grid;gap:6px}
+  .cs-refs{margin-top:14px;font-size:12px;color:var(--text-3)} .cs-refs ol{margin-left:18px;display:grid;gap:4px} .cs-refs a{color:inherit}
+  @media print{
+    html.print-case body *{visibility:hidden}
+    html.print-case #csView, html.print-case #csView *{visibility:visible}
+    html.print-case #csView{position:absolute;inset:0 auto auto 0;width:100%;display:block !important;background:#fff;color:#000}
+    html.print-case #csView *{color:#000 !important;background:transparent !important;border-color:#999 !important}
+    html.print-case .cs-actions, html.print-case #csBack{display:none !important}
+    html.print-case details.cs-more > *{display:block}
+  }
   .practice{display:none;padding:18px 22px 24px}
   .practice.show{display:block}
   .pr-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .pr-stats{display:flex;gap:9px}
   .pr-stat{
-    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--glass-line);border-radius:8px;padding:6px 12px;background:rgba(var(--well-rgb),.55);
   }
   .pr-stat b{color:var(--cyan);font-weight:600}
@@ -318,18 +396,18 @@
   }
   .pr-card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,rgba(var(--cyan-rgb),.5),transparent)}
-  .pr-type{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:9px}
+  .pr-type{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:9px}
   .pr-q{font-size:14.5px;color:var(--text-5);line-height:1.65}
-  .pr-q b{color:var(--hi);font-family:'JetBrains Mono',monospace;font-weight:600}
+  .pr-q b{color:var(--hi);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-weight:600}
   .pr-answer{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap}
   .pr-answer input{
-    flex:1;min-width:140px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text);
+    flex:1;min-width:140px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:14px;color:var(--text);
     border:1px solid var(--glass-line-2);border-radius:9px;padding:10px 13px;background:rgba(var(--well-rgb),.75);
   }
   .pr-answer input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(var(--cyan-rgb),.12)}
-  .pr-answer .unit{align-self:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)}
+  .pr-answer .unit{align-self:center;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:12px;color:var(--muted)}
   .pr-btn{
-    border:1px solid rgba(var(--violet-rgb),.5);cursor:pointer;color:var(--hi);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    border:1px solid rgba(var(--violet-rgb),.5);cursor:pointer;color:var(--hi);font-family:'Inter','Inter Fallback',sans-serif;font-size:13px;font-weight:600;
     padding:10px 18px;border-radius:9px;background:linear-gradient(180deg,rgba(var(--violet-rgb),.35),rgba(var(--violet-rgb),.18));
     transition:all .15s ease;
   }
@@ -343,14 +421,14 @@
   .ws-view{margin-top:14px;padding:18px 20px;border:1px solid rgba(var(--cyan-rgb),.35);border-radius:var(--r-md,14px);background:rgba(var(--well-rgb),.55)}
   .ws-view[hidden]{display:none}
   .ws-head{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
-  .ws-head h2{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0}
+  .ws-head h2{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:17px;margin:0}
   .ws-head h2:focus{outline:none}
-  .ws-code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2)}
+  .ws-code{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;color:var(--muted-2)}
   .ws-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 4px}
   .ws-list{margin:10px 0 0;padding-left:22px;color:var(--text-5)}
   .ws-list>li{margin:0 0 14px;padding-left:4px;line-height:1.6;font-size:14px}
-  .ws-list b{color:var(--hi);font-family:'JetBrains Mono',monospace;font-weight:600}
-  .ws-type{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:2px}
+  .ws-list b{color:var(--hi);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-weight:600}
+  .ws-type{display:block;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:2px}
   .ws-a{margin-top:6px;padding:9px 12px;border-left:2px solid rgba(var(--green-rgb),.6);background:rgba(var(--green-rgb),.05);font-size:13px;color:var(--text-2)}
   .ws-a[hidden]{display:none}
   .ws-a .step{display:block}
@@ -359,7 +437,7 @@
     @page{margin:16mm}
     body.ws-printing{background:#fff !important;color:#000}
     body.ws-printing>:not(#wsPrint){display:none !important}
-    body.ws-printing #wsPrint{display:block;font-family:Inter,system-ui,sans-serif;font-size:11pt;color:#000;line-height:1.5}
+    body.ws-printing #wsPrint{display:block;font-family:Inter,'Inter Fallback',system-ui,sans-serif;font-size:11pt;color:#000;line-height:1.5}
     #wsPrint h1{font-size:16pt;margin:0 0 4pt}
     #wsPrint .wp-meta{margin:0 0 2pt;font-size:9.5pt;color:#333}
     #wsPrint ol{padding-left:18pt}
@@ -377,7 +455,7 @@
   .fit-sliders .ctrl{margin-top:0}
   @media (max-width:560px){ .fit-sliders{grid-template-columns:1fr} }
   .fit-meter{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:11px;font-size:12.5px;color:var(--muted)}
-  .fit-meter b{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--rose-text);font-weight:600}
+  .fit-meter b{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:15px;color:var(--rose-text);font-weight:600}
   .fit-meter b.ok{color:var(--green)}
   .fit-status{font-size:12.5px;line-height:1.6;color:var(--text-2);margin-top:6px;max-width:78ch}
   .fit-status:empty{display:none}
@@ -385,7 +463,7 @@
   .fit-data{margin-top:10px;font-size:12.5px;color:var(--muted)}
   .fit-data summary{cursor:pointer;width:max-content}
   .fit-data summary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
-  .fit-data table{margin-top:7px;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-3)}
+  .fit-data table{margin-top:7px;border-collapse:collapse;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--text-3)}
   .fit-data th,.fit-data td{padding:3px 12px 3px 0;text-align:right;font-weight:500}
   .fit-data th{color:var(--muted-2);font-weight:500}
   .lk.obs{width:9px;height:9px;border-radius:50%;background:#05070E;border:1.7px solid var(--hi)}
@@ -400,7 +478,7 @@
     font-size:12.5px;color:var(--text-2);line-height:1.75;
   }
   .pr-sol.show{display:block}
-  .pr-sol b{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-weight:500}
+  .pr-sol b{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;color:var(--cyan);font-weight:500}
   .pr-sol .step{display:block}
   .pr-foot{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
 
@@ -414,25 +492,25 @@
   .bud-k{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
   .bud-k i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
   .bud-k i.lo{background:var(--amber)} .bud-k i.in{background:var(--green)} .bud-k i.hi{background:var(--rose)}
-  .bud-k b{font-family:'JetBrains Mono',monospace;color:var(--text-4);font-weight:500;margin-left:3px}
-  .bud-k .of{margin-left:auto;color:var(--muted-2);font-family:'JetBrains Mono',monospace}
+  .bud-k b{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;color:var(--text-4);font-weight:500;margin-left:3px}
+  .bud-k .of{margin-left:auto;color:var(--muted-2);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace}
 
   /* lesson banner */
   .lesson{margin:16px 22px 0;padding:15px 17px;border-radius:var(--r-sm);
     background:linear-gradient(180deg,rgba(var(--cyan-rgb),.08),rgba(var(--cyan-rgb),.02));border:1px solid rgba(var(--cyan-rgb),.28)}
   .lesson[hidden]{display:none}
   .lesson-top{display:flex;align-items:center;gap:10px}
-  .ltag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);background:rgba(var(--cyan-rgb),.08);
+  .ltag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;color:var(--cyan);background:rgba(var(--cyan-rgb),.08);
     border:1px solid rgba(var(--cyan-rgb),.2);border-radius:5px;padding:1px 7px}
-  .lesson-k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2)}
+  .lesson-k{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2)}
   .lesson-x{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:6px}
   .lesson-x:hover{color:var(--hi)}
   .lesson-x:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .lesson-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;margin-top:8px}
+  .lesson-t{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-weight:600;font-size:16px;margin-top:8px}
   .lesson-p{font-size:12.5px;color:var(--text-2);line-height:1.65;margin-top:6px;max-width:78ch}
   .lesson-foot{display:flex;gap:12px;align-items:center;margin-top:11px;flex-wrap:wrap}
   .lesson-try{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:10px;max-width:78ch}
-  .lesson-try b,.lesson-goal b,.lesson-why b,.lesson-chal b,.lp-k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;
+  .lesson-try b,.lesson-goal b,.lesson-why b,.lesson-chal b,.lp-k{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--cyan);font-weight:600;margin-right:8px}
   .lesson-goal{font-size:12.5px;color:var(--text-2);line-height:1.6;margin-top:6px;max-width:78ch}
   .lesson-predict{margin-top:11px;padding:11px 13px;border:1px solid rgba(var(--violet-rgb),.35);border-radius:10px;background:rgba(var(--violet-rgb),.06)}
@@ -440,7 +518,7 @@
   .lp-q{font-size:13px;color:var(--text);margin:5px 0 9px;line-height:1.5}
   .lp-choices{display:flex;flex-wrap:wrap;gap:8px}
   .lp-choice{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.6);color:var(--text-3);border-radius:9px;padding:7px 12px;
-    font-family:Inter,sans-serif;font-size:12.5px;cursor:pointer}
+    font-family:Inter,'Inter Fallback',sans-serif;font-size:12.5px;cursor:pointer}
   .lp-choice:hover:not(:disabled){border-color:rgba(var(--cyan-rgb),.5);color:var(--hi)}
   .lp-choice:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .lp-choice:disabled{cursor:default}
@@ -451,22 +529,22 @@
   .lp-feedback:focus{outline:none}
   .lp-feedback .ok{color:var(--green)}
   .lp-feedback .no{color:var(--rose-text)}
-  .lp-feedback .num{display:block;margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .lp-feedback .num{display:block;margin-top:3px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--muted)}
   .lp-skip{border:0;background:none;padding:0;margin-top:9px;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
   .lp-skip:hover{color:var(--hi)}
   .lp-skip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
   .lp-skip[hidden]{display:none}
   #lsText:focus,#lsTitle:focus,#fitTitle:focus,#fitHow:focus,#winTitle:focus,#winHow:focus{outline:none}
   .win-meter{margin:11px 0 0;font-size:12.5px;color:var(--muted);line-height:1.7}
-  .win-meter b{font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:600}
+  .win-meter b{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:13.5px;font-weight:600}
   .win-meter .ok{color:var(--green)}
   .win-meter .no{color:var(--rose-text)}
   .lesson-why{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;max-width:78ch}
   .lesson-chal{font-size:12.5px;color:var(--text-2);line-height:1.7;flex:1;min-width:220px;margin:0}
-  .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
+  .lc-status{display:inline-block;margin-left:8px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;padding:1px 9px;border-radius:999px;
     border:1px solid var(--glass-line-2);color:var(--muted);white-space:nowrap}
   .lc-status.met{border-color:rgba(var(--green-rgb),.6);color:var(--green);background:rgba(var(--green-rgb),.1)}
-  .ls-group{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  .ls-group{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
     font-weight:600;margin:20px 0 9px}
   .ls-group:first-child{margin-top:0}
   .lesson-btns{display:flex;gap:8px}
@@ -475,7 +553,7 @@
   .lsv{display:none;padding:18px 22px 24px}
   .gloss{margin-top:26px}
   .ls-badge{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;border:1px solid rgba(var(--green-rgb),.45);
-    font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:.04em;color:var(--green);vertical-align:2px}
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9.5px;font-weight:500;letter-spacing:.04em;color:var(--green);vertical-align:2px}
   .ls-badge.soft{border-color:rgba(var(--violet-rgb),.45);color:var(--violet-text-2)}
   .ls-badge[hidden]{display:none}
   .ls-card.done{border-color:rgba(var(--green-rgb),.35)}
@@ -495,7 +573,7 @@
   .g-item{padding:10px 12px;border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(var(--well-rgb),.45)}
   .g-item[hidden]{display:none}
   .g-item dt{font-weight:600;font-size:13.5px;color:var(--text)}
-  .g-sym{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--cyan);margin-left:4px}
+  .g-sym{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;font-weight:500;color:var(--cyan);margin-left:4px}
   .g-item dd{margin:4px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-2)}
   .g-ls{border:0;background:none;padding:0;margin-left:2px;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
   .g-ls:hover{color:var(--hi)}
@@ -519,8 +597,8 @@
   .ss-key i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
   #ssPlot{display:block;width:100%;height:auto;margin-top:6px}
   .ss-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;padding:0 6px}
-  .ss-stat .k{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
-  .ss-stat .v{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;color:var(--text)}
+  .ss-stat .k{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+  .ss-stat .v{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:15px;font-weight:600;margin-top:3px;color:var(--text)}
   .ss-stat .s{font-size:10.5px;color:var(--muted-2)}
 
   /* compare */
@@ -529,7 +607,7 @@
   .cmp-empty b{color:var(--text-4)}
   .cmp{margin:14px 22px 2px;padding:15px 17px;border-radius:var(--r-sm);background:rgba(var(--well-rgb),.55);border:1px solid var(--glass-line-2)}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .chip{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-3);border:1px solid var(--glass-line-2);border-radius:999px;
+  .chip{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--text-3);border:1px solid var(--glass-line-2);border-radius:999px;
     padding:4px 10px;background:rgba(var(--panel-rgb),.7)}
   .chip b{color:var(--cyan);font-weight:500}
   .chip.eff{border-color:rgba(var(--violet-rgb),.4);color:var(--text-2)}
@@ -539,23 +617,23 @@
   .why li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--violet)}
   .why b{color:var(--hi);font-weight:600}
   .tbl-wrap{overflow-x:auto;margin-top:14px}
-  .cmp-tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+  .cmp-tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px}
   .cmp-tbl th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:500;text-align:right;
     padding:6px 8px;border-bottom:1px solid var(--glass-line)}
-  .cmp-tbl th:first-child,.cmp-tbl td:first-child{text-align:left;font-family:'Inter',sans-serif;color:var(--text-6);padding-left:0}
+  .cmp-tbl th:first-child,.cmp-tbl td:first-child{text-align:left;font-family:'Inter','Inter Fallback',sans-serif;color:var(--text-6);padding-left:0}
   .cmp-tbl td{padding:7px 8px;text-align:right;color:var(--text);border-bottom:1px solid rgba(var(--line-rgb),.07);white-space:nowrap}
   .cmp-tbl td.base{color:var(--ghost)}
   .cmp-tbl td.up{color:var(--cyan)}
   .cmp-tbl td.down{color:var(--violet-text)}
   .cmp-tbl td.flat{color:var(--muted-2)}
-  .cmp-tbl small{color:var(--muted-2);font-size:10px;margin-left:5px;font-family:'JetBrains Mono',monospace}
+  .cmp-tbl small{color:var(--muted-2);font-size:10px;margin-left:5px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace}
 
   /* custom dose schedule */
   .ev-list{display:grid;gap:6px}
   .ev-row{border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(var(--well-rgb),.5);overflow:hidden}
   .ev-row.open{border-color:rgba(var(--cyan-rgb),.45)}
   .ev-head{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--text-3);cursor:pointer;
-    font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 11px;text-align:left}
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:12px;padding:8px 11px;text-align:left}
   .ev-head:hover{background:rgba(var(--violet-rgb),.06)}
   .ev-head:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
   .ev-head.missed .ev-t,.ev-head.missed .ev-mg{text-decoration:line-through;color:var(--muted-2)}
@@ -564,13 +642,13 @@
   .ev-tag.miss{border-color:rgba(var(--rose-rgb),.5);color:var(--rose-text)}
   .ev-edit{padding:4px 11px 11px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .ev-edit label{font-size:11px;color:var(--muted);display:grid;gap:4px}
-  .ev-edit input{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);border:1px solid var(--glass-line-2);border-radius:8px;
+  .ev-edit input{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:13px;color:var(--text);border:1px solid var(--glass-line-2);border-radius:8px;
     padding:7px 9px;background:rgba(var(--well-rgb),.7);width:100%}
   .ev-edit input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(var(--cyan-rgb),.12)}
   .ev-edit .seg{grid-column:1 / -1}
   .ev-btns{grid-column:1 / -1;display:flex;gap:8px}
   .ev-btns .abtn{flex:1;padding:7px 10px}
-  .ev-sum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:9px}
+  .ev-sum{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;color:var(--muted);margin-top:9px}
   .ev-limit{font-size:11.5px;color:var(--amber-text);margin-top:6px;line-height:1.5}
   .ev-limit[hidden]{display:none}
   .ev-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
@@ -584,8 +662,8 @@
   .ev-nudge{grid-column:1 / -1;display:flex;gap:8px}
   .ev-tag.inf{border-color:rgba(var(--cyan-rgb),.45);color:#7FF5EA}
   .ev-tag.rt{border-color:var(--glass-line-2);color:var(--muted)}
-  .ev-rate{align-self:end;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);margin:0 0 8px;line-height:1.4}
-  .ev-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2);margin-top:8px}
+  .ev-rate{align-self:end;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--muted);margin:0 0 8px;line-height:1.4}
+  .ev-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted-2);margin-top:8px}
   .ev-model{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6}
   .ev-model summary{cursor:pointer;color:var(--text-2)}
   .ev-model p{margin:6px 0 0}
@@ -597,7 +675,8 @@
   .insp{margin:10px 22px 0;border:1px solid var(--glass-line);border-radius:var(--r-sm);background:rgba(var(--well-rgb),.5);padding:10px 12px}
   .insp-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .ib-group{display:flex;gap:3px}
-  .ib{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.6);color:var(--text-3);cursor:pointer;font-family:'JetBrains Mono',monospace;
+  .nav-prev::before{content:"⟨\00a0"} .nav-next::after{content:"\00a0⟩"}
+  .ib{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.6);color:var(--text-3);cursor:pointer;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;
     font-size:11px;padding:6px 9px;border-radius:7px}
   .ib:hover:not(:disabled){border-color:rgba(var(--cyan-rgb),.5);color:var(--hi)}
   .ib:disabled{opacity:.38;cursor:default}
@@ -606,11 +685,11 @@
   .ib.play{color:var(--cyan);border-color:rgba(var(--cyan-rgb),.45);min-width:72px}
   .ib-gap{flex:1}
   .insp-read{margin-top:10px;font-size:12.5px;color:var(--text-2);line-height:1.7;min-height:44px}
-  .insp-read b{color:var(--hi);font-family:'JetBrains Mono',monospace;font-weight:600}
-  .ir-t{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:12px}
+  .insp-read b{color:var(--hi);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-weight:600}
+  .ir-t{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;color:var(--muted);font-size:12px}
   .ir-line{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center}
   .ir-meta{font-size:11.5px;color:var(--muted)}
-  .ir-tag{font-family:'JetBrains Mono',monospace;font-weight:600;width:12px}
+  .ir-tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-weight:600;width:12px}
   .st{font-size:11px;border-radius:5px;padding:0 7px;border:1px solid}
   .st.below{color:var(--amber-text);border-color:rgba(var(--amber-rgb),.45)}
   .st.in{color:var(--green-text);border-color:rgba(var(--green-rgb),.45)}
@@ -619,14 +698,14 @@
   /* scenario library */
   dialog.lib{border:1px solid var(--glass-line-2);border-radius:var(--r);background:#0B1020;color:var(--text);padding:0;
     width:min(660px,calc(100vw - 32px));max-height:min(82vh,760px);box-shadow:0 30px 80px rgba(0,0,0,.6)}
-  dialog.lib::backdrop{background:rgba(3,5,12,.72);backdrop-filter:blur(3px)}
+  dialog.lib::backdrop{background:rgba(3,5,12,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
   .lib-inner{padding:18px 20px;display:flex;flex-direction:column;gap:12px;max-height:inherit;overflow:auto}
   .lib-head{display:flex;align-items:center;gap:10px}
-  .lib-head h2{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;flex:1}
+  .lib-head h2{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:18px;font-weight:600;flex:1}
   .lib-privacy{font-size:12px;color:var(--muted);line-height:1.55}
   .lib-save label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px}
   .lib-save-row{display:flex;gap:8px;flex-wrap:wrap}
-  .lib-save-row input,.lib-rename input{flex:1;min-width:150px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);
+  .lib-save-row input,.lib-rename input{flex:1;min-width:150px;font-family:'Inter','Inter Fallback',sans-serif;font-size:13px;color:var(--text);
     border:1px solid var(--glass-line-2);border-radius:8px;padding:8px 10px;background:rgba(var(--well-rgb),.7)}
   .lib-save-row input:focus,.lib-rename input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(var(--cyan-rgb),.12)}
   .lib-current{font-size:12px;color:var(--text-2);margin-bottom:8px}
@@ -638,11 +717,11 @@
   .lib-item{border:1px solid var(--glass-line);border-radius:var(--r-sm);padding:10px 12px;background:rgba(var(--well-rgb),.5)}
   .lib-item.current{border-color:rgba(var(--cyan-rgb),.45)}
   .lib-main{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .lib-kind{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  .lib-kind{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
     border:1px solid var(--glass-line-2);border-radius:5px;padding:1px 6px;color:var(--muted)}
   .lib-kind.cmp{color:#F383E3;border-color:rgba(var(--pink-rgb),.4)}
   .lib-name{font-weight:600;font-size:13.5px;color:var(--text);flex:1;min-width:120px;overflow-wrap:anywhere}
-  .lib-date{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted-2)}
+  .lib-date{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted-2)}
   .lib-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .lib-rename{display:flex;gap:6px;flex:1;min-width:200px;flex-wrap:wrap}
   .lib-empty{font-size:12.5px;color:var(--muted);padding:8px 2px;line-height:1.6}
@@ -651,8 +730,8 @@
   .abtn.danger,.ib.danger{color:var(--rose-text);border-color:rgba(var(--rose-rgb),.45)}
   .abtn.armed,.ib.armed{background:rgba(var(--rose-rgb),.16);color:var(--hi)}
   @media (max-width:600px){
-    dialog.lib{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0;border:0}
-    .lib-inner{max-height:100dvh;padding:16px}
+    dialog.lib{width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0;margin:0;border:0}
+    .lib-inner{max-height:100vh;max-height:100dvh;padding:16px}
     .lib-actions .ib{padding:8px 10px}
   }
 
@@ -669,9 +748,9 @@
   /* compare bar */
   .cmpbar{padding:16px 22px 0}
   .tpl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .tpl-k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2)}
+  .tpl-k{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2)}
   .tpls{display:flex;gap:6px;flex-wrap:wrap}
-  .tpl{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.55);color:var(--text-3);cursor:pointer;font-family:'Inter',sans-serif;
+  .tpl{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.55);color:var(--text-3);cursor:pointer;font-family:'Inter','Inter Fallback',sans-serif;
     font-size:11.5px;padding:5px 11px;border-radius:999px;transition:all .15s ease}
   .tpl:hover{border-color:rgba(var(--cyan-rgb),.5);color:var(--hi)}
   .tpl.on{border-color:rgba(var(--cyan-rgb),.6);color:var(--cyan);background:rgba(var(--cyan-rgb),.07)}
@@ -686,22 +765,22 @@
   .sc-card.on.a{border-color:rgba(var(--cyan-rgb),.6);box-shadow:0 0 0 1px rgba(var(--cyan-rgb),.25), 0 0 18px rgba(var(--cyan-rgb),.12)}
   .sc-card.on.b{border-color:rgba(var(--pink-rgb),.6);box-shadow:0 0 0 1px rgba(var(--pink-rgb),.25), 0 0 18px rgba(var(--pink-rgb),.12)}
   .sc-top{display:flex;align-items:center;gap:8px}
-  .sc-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;
+  .sc-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-family:'Inter','Inter Fallback',sans-serif;
     font-size:13px;font-weight:600;padding:3px 6px;margin-left:-6px}
   .sc-name:hover{border-color:var(--glass-line)}
   .sc-name:focus{outline:none;border-color:var(--cyan);background:rgba(var(--well-rgb),.7);box-shadow:0 0 0 3px rgba(var(--cyan-rgb),.12)}
-  .sc-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
+  .sc-badge{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);
     border:1px solid var(--glass-line);border-radius:5px;padding:1px 6px;display:none}
   .sc-card.on .sc-badge{display:inline-block;color:var(--text-3)}
-  .sc-reset{border:1px solid var(--glass-line);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
+  .sc-reset{border:1px solid var(--glass-line);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter','Inter Fallback',sans-serif;
     font-size:11px;padding:2px 8px;border-radius:6px;flex-shrink:0}
   .sc-reset:hover{color:var(--hi);border-color:var(--glass-line-2)}
   .sc-reset:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .sc-sum{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.55}
+  .sc-sum{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.55}
   .sc-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
   .sc-actions .abtn{padding:7px 11px}
   .lock{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-  .lock select{font-family:'Inter',sans-serif;font-size:12px;color:var(--text);background:rgba(var(--well-rgb),.8);border:1px solid var(--glass-line-2);
+  .lock select{font-family:'Inter','Inter Fallback',sans-serif;font-size:12px;color:var(--text);background:rgba(var(--well-rgb),.8);border:1px solid var(--glass-line-2);
     border-radius:8px;padding:6px 8px}
   .lock select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
@@ -710,7 +789,7 @@
     border:1px solid rgba(var(--violet-rgb),.35);background:rgba(var(--violet-rgb),.08);font-size:12.5px;color:var(--text-3)}
   .shared[hidden]{display:none}
   .shared span{flex:1}
-  .shared-btn{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.6);color:var(--text-3);cursor:pointer;font-family:'Inter',sans-serif;
+  .shared-btn{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.6);color:var(--text-3);cursor:pointer;font-family:'Inter','Inter Fallback',sans-serif;
     font-size:12px;padding:5px 11px;border-radius:8px}
   .shared-btn:hover{border-color:rgba(var(--violet-rgb),.6)}
   .shared-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
@@ -723,13 +802,13 @@
   .bud-row{display:flex;align-items:center;gap:9px}
   .bud-row + .bud-row{margin-top:6px}
   .bud-row .bud-bar{flex:1}
-  .bud-tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;width:10px}
+  .bud-tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;font-weight:600;width:10px}
 
   .foot{padding:26px 0 46px;color:var(--muted-2);font-size:12.5px;max-width:80ch;position:relative;z-index:1}
   .foot .disc{display:flex;gap:11px;align-items:flex-start;padding:14px 16px;border:1px solid var(--glass-line);border-radius:var(--r-sm);
-    background:rgba(var(--panel-rgb),.55);backdrop-filter:blur(8px);color:var(--muted)}
+    background:rgba(var(--panel-rgb),.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--muted)}
   .foot .disc b{color:var(--text-4)}
-  .foot .eq{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.8}
+  .foot .eq{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.8}
   .foot .privacy{margin:14px 0 0;line-height:1.6;color:var(--muted)}
   .foot .privacy b{color:var(--text-3)}
   .foot-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:16px;font-size:12.5px}
@@ -760,7 +839,7 @@
     .plot-head,.legend,.readouts,.budget,.learn-grid,.lsv,.practice,.tabbar{padding-left:14px;padding-right:14px}
     .lesson,.cmp,.cmp-empty,.ssp,.ss-note{margin-left:14px;margin-right:14px}
     .tabbar{gap:3px}
-    .tabbar button{padding:9px 10px;font-size:12.5px}
+    .tabbar button{padding:9px 9px;font-size:12px;flex-shrink:0;white-space:nowrap}
     .cmpbar{padding-left:14px;padding-right:14px}
     .insp{margin-left:14px;margin-right:14px}
     .ib-gap{display:none}
@@ -798,8 +877,23 @@
   html.light .lib-kind.cmp{color:var(--pink)}
   html.light .lk.obs{background:#fff}
   html.light .foot-links a{text-decoration-color:rgba(40,60,130,.4)}
+  /* present mode: for a projector. The chart takes the width, the controls fold away, the type grows */
+  .present-exit{display:none}
+  html.present .top,html.present aside.controls,html.present .foot,html.present #quickStart,html.present .learn{display:none !important}
+  html.present .hero{position:absolute !important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0}   /* its heading stays for screen readers */
+  html.present .grid{grid-template-columns:1fr !important}
+  html.present body{font-size:17px}
+  html.present .plot-title{font-size:22px} html.present .legend{font-size:14px}
+  html.present .ro-v{font-size:30px} html.present .ro-k{font-size:12px}
+  html.present .ss-note,html.present .cmp-why,html.present .pop-out,html.present .lesson{font-size:16px}
+  html.present .present-exit{display:block;position:fixed;right:16px;bottom:16px;z-index:40;border:1px solid var(--glass-line-2);
+    background:rgba(var(--panel-rgb),.92);color:var(--hi);border-radius:999px;padding:10px 16px;font:inherit;font-size:14px;cursor:pointer}
+  @media print{ .present-exit{display:none !important} }
+  /* for readers that can't see the chart: its numbers as text */
+  .sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition-duration:0s !important;animation-duration:0s !important;scroll-behavior:auto !important} }
   .theme-btn{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.5);color:var(--muted);border-radius:999px;padding:5px 11px;
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;cursor:pointer}
+    font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;letter-spacing:.06em;cursor:pointer}
   .theme-btn:hover{color:var(--hi)}
   .theme-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .top-right{display:flex;align-items:center;gap:12px}
@@ -828,7 +922,7 @@
     .grid{display:block}
     .panel{background:#fff !important;box-shadow:none !important;border:0 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
     .print-head{display:block;margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid #c9cfdf;font-size:10.5pt;color:#121829;line-height:1.5}
-    .print-head b{font-family:'Space Grotesk',sans-serif;font-size:13pt}
+    .print-head b{font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:13pt}
     .print-head .ph-meta{font-size:8.5pt;color:#454d68;word-break:break-all}
     svg{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .plot-box,.pd-box,.pd-row,.ssp,.cmp,button.ro{break-inside:avoid}
@@ -838,17 +932,17 @@
   .keys-dlg{width:min(560px,calc(100vw - 32px))}
   .keys{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
   .keys th,.keys td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--glass-line);vertical-align:top;color:var(--text-3)}
-  .keys thead th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:500}
+  .keys thead th{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:500}
   .keys tbody th{font-weight:600;color:var(--text);padding-top:12px}
   .keys td:first-child{white-space:nowrap}
   kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--glass-line-2);border-bottom-width:2px;border-radius:5px;
-    background:rgba(var(--well-rgb),.6);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--hi);text-align:center}
+    background:rgba(var(--well-rgb),.6);font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--hi);text-align:center}
   .embed-bar{display:none}
   html.embed .top,html.embed .hero,html.embed .foot,html.embed #quickStart,html.embed #sharedPill{display:none !important}
   html.embed .wrap{padding-top:10px}
   html.embed .embed-bar{display:flex;align-items:center;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;margin:0 0 10px;
     font-size:12px;color:var(--muted)}
-  .embed-title{display:inline;margin:0;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:700}
+  .embed-title{display:inline;margin:0;color:var(--text);font-family:'Space Grotesk','Space Grotesk Fallback',sans-serif;font-size:13.5px;font-weight:700}
   .embed-bar a{color:var(--cyan);text-underline-offset:3px}
   /* in a narrow frame the layout stacks: put the chart first, the controls under it */
   @media (max-width:960px){ html.embed .grid>.panel:not(.controls){order:-1} }
@@ -873,6 +967,7 @@
     </div>
     <div class="top-right">
       <button class="theme-btn" id="themeBtn" aria-pressed="false">◐ Light</button>
+      <button class="theme-btn" id="presentBtn" aria-pressed="false" title="Present: a large chart and text for a projector (Esc to leave)">▣ Present</button>
       <a class="top-link" href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">OPEN SOURCE · GITHUB ↗</a>
     </div>
   </header>
@@ -882,7 +977,7 @@
   <section class="hero">
     <div class="eyebrow">Interactive PK/PD Lab</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons and practice problems.</p>
+    <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons, practice problems and graded clinical cases.</p>
     <div class="hero-cta">
       <button class="cta primary" data-go="pd">Try the PK/PD Lab</button>
       <button class="cta" data-go="ls">Start a lesson</button>
@@ -947,12 +1042,39 @@
 
           <div class="sec">
             <p class="sec-label">Drug Parameters</p>
+            <div class="seg" id="kinSeg" role="group" aria-label="Elimination">
+              <button data-kin="linear" class="on">First-order</button>
+              <button data-kin="mm">Saturable (Vmax, Km)</button>
+            </div>
             <div id="sliders"></div>
           </div>
 
-          <div class="sec">
+          <div class="sec" id="patientSec">
             <p class="sec-label">Patient</p>
+            <div class="seg" id="pmSeg" role="group" aria-label="Patient model">
+              <button data-pm="simple" class="on">Simple</button>
+              <button data-pm="clinical">Clinical (CrCl)</button>
+            </div>
             <div id="patientSliders"></div>
+            <div id="clinPanel" hidden>
+              <div class="seg" id="sexSeg" role="group" aria-label="Sex" style="margin-top:8px">
+                <button data-sex="M" class="on">Male</button>
+                <button data-sex="F">Female</button>
+              </div>
+              <div id="clinSliders"></div>
+              <p class="clin-label" id="wtmLabel">Weight for Cockcroft–Gault</p>
+              <div class="seg" id="wtmSeg" role="group" aria-labelledby="wtmLabel">
+                <button data-wtm="actual" class="on">Actual</button>
+                <button data-wtm="ibw">Ideal (IBW)</button>
+                <button data-wtm="adj">Adjusted</button>
+              </div>
+              <details class="ev-model">
+                <summary>Which weight?</summary>
+                <p>Cockcroft and Gault derived their equation with actual body weight. For patients well above their ideal weight, many references use ideal body weight (IBW, Devine: 50 kg for men or 45.5 kg for women, plus 2.3 kg per inch over 5 feet), or an adjusted weight, IBW + 0.4 × (actual − IBW). Some use actual weight when it is below IBW. Conventions differ between references and institutions, so the choice is left to you here.</p>
+              </details>
+              <div class="clin-math" id="clinMath" aria-live="polite"></div>
+              <p class="clin-note">Educational model, not for clinical dosing.</p>
+            </div>
           </div>
 
           <div class="sec" id="pdSec" hidden>
@@ -986,7 +1108,19 @@
           <div class="sec">
             <p class="sec-label">Drug Library</p>
             <div class="drugs" id="drugs"></div>
-            <p class="lib-note">Teaching profiles with typical literature values for a 70 kg adult — starting points for exploration, not prescribing references.</p>
+            <div class="drug-info" id="drugInfo" hidden></div>
+            <div class="drug-info" id="stTool" hidden>
+              <p class="di-h">Reading a measured phenytoin level</p>
+              <p>A tool for interpreting a measured total level, separate from the simulation.</p>
+              <div class="window-row" style="margin-top:8px">
+                <div class="num-field"><label for="stLevel">Measured total (mg/L)</label><input type="number" id="stLevel" min="0" max="100" step="0.5" value="8"></div>
+                <div class="num-field"><label for="stAlb">Albumin (g/dL)</label><input type="number" id="stAlb" min="1" max="6" step="0.1" value="4"></div>
+              </div>
+              <label class="st-check"><input type="checkbox" id="stRenal"> End-stage kidney disease</label>
+              <div class="clin-math" id="stOut" aria-live="polite"></div>
+              <p class="di-note">Sheiner and Tozer's adjustment (1978). References differ on the kidney threshold for the 0.1 coefficient (a CrCl under 10 or under 20 mL/min), so it is left to you here. Educational model, not for clinical dosing.</p>
+            </div>
+            <p class="lib-note">Teaching profiles for a 70 kg adult. Each value names its source (FDA labels on DailyMed, or a paper) or is marked unverified. Educational model, not for clinical dosing.</p>
           </div>
 
           <div class="sec">
@@ -1014,6 +1148,7 @@
           <button id="tabSim" class="on" role="tab" aria-selected="true" aria-controls="simView">Simulator</button>
           <button id="tabCmp" role="tab" aria-selected="false" aria-controls="simView" tabindex="-1">Compare</button>
           <button id="tabLs" role="tab" aria-selected="false" aria-controls="lsView" tabindex="-1">Lessons</button>
+          <button id="tabCs" role="tab" aria-selected="false" aria-controls="csView" tabindex="-1">Cases</button>
           <button id="tabPr" role="tab" aria-selected="false" aria-controls="prView" tabindex="-1">Practice<span class="count" id="prCount"></span></button>
         </div>
 
@@ -1129,7 +1264,7 @@
           </div>
         </div>
 
-        <div class="qs" id="quickStart" role="region" aria-label="Quick start" hidden>
+        <div class="qs" id="quickStart" role="region" aria-label="Quick start">
           <div class="qs-step"><b>1</b><span>Change any setting on the left. The curve updates instantly.</span></div>
           <div class="qs-step"><b>2</b><span>Set a baseline, then change something. The panel below explains what moved and why.</span></div>
           <div class="qs-step"><b>3</b><span>Drag across the chart, or press Play, to read the concentration at any moment.</span></div>
@@ -1148,17 +1283,19 @@
               <button data-scale="log">LOG</button>
             </div>
             <button class="pd-btn" id="pdBtn" aria-pressed="false">◐ EFFECT</button>
+            <button class="pd-btn" id="popBtn" aria-pressed="false" aria-controls="popPanel">◍ POPULATION</button>
           </div>
         </div>
 
         <div class="legend" id="legend"></div>
 
         <div class="plot-box">
-          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
+          <p class="sr-only" id="plotSummary" aria-live="off"></p>
+          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-describedby="plotSummary" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
           <div id="tooltip"></div>
         </div>
         <div class="ev-strip" id="evStripWrap" hidden>
-          <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Drag a dose sideways to move it in half-hour steps, or select it to edit it in the schedule list."></svg>
+          <svg id="evStrip" viewBox="0 0 760 56" tabindex="0" role="group" aria-roledescription="dose timeline" aria-label="Dose schedule timeline. Up and down arrows pick a dose, left and right arrows move it half an hour (Shift: 2 hours); or drag a dose sideways, or select it to edit it in the schedule list."></svg>
           <div class="ev-move"><span id="evMoveMsg" role="status" aria-live="polite"></span><button class="ib" id="evUndo" hidden>↶ Undo</button></div>
         </div>
         <div class="pd-box" id="pdBox" hidden>
@@ -1166,19 +1303,37 @@
           <svg id="effPlot" viewBox="0 0 760 220" role="img" aria-label="Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor."></svg>
         </div>
 
+        <section class="pop-panel" id="popPanel" hidden aria-label="Population">
+          <p class="pop-h">Population: <span id="popHead">200 virtual patients</span></p>
+          <div class="pop-row">
+            <label>Patients<select id="popN"><option>50</option><option>100</option><option selected>200</option><option>500</option><option>1000</option></select></label>
+            <label>CV of clearance (%)<input id="popCL" type="number" min="0" max="100" step="5" value="30"></label>
+            <label>CV of volume (%)<input id="popV" type="number" min="0" max="100" step="5" value="20"></label>
+            <label>Seed<input id="popSeed" type="number" min="1" step="1" value="1"></label>
+            <button class="abtn" id="popNew" type="button">New patients</button>
+          </div>
+          <div class="pop-row">
+            <label>AUC24 target from<input id="popLo" type="number" min="0" step="50" placeholder="off"></label>
+            <label>to<input id="popHi" type="number" min="0" step="50" placeholder="off"></label>
+            <span class="pop-aucu">mg·h/L</span>
+          </div>
+          <div class="pop-out" id="popOut" aria-live="polite"></div>
+          <p class="pop-note">Clearance and volume vary log-normally around the scenario's values (their medians); the CVs are typical teaching assumptions, not drug-specific claims. The shaded band holds the middle 90% of levels (5th–95th percentile) and the dotted line is the median. Educational model, not for clinical dosing.</p>
+        </section>
+
         <div class="insp" id="insp">
           <div class="insp-bar" role="toolbar" aria-label="Time cursor controls">
             <div class="ib-group">
-              <button class="ib" id="navDosePrev" aria-label="Previous dose">⟨ dose</button>
-              <button class="ib" id="navDoseNext" aria-label="Next dose">dose ⟩</button>
+              <button class="ib nav-prev" id="navDosePrev" aria-label="Previous dose">dose</button>
+              <button class="ib nav-next" id="navDoseNext" aria-label="Next dose">dose</button>
             </div>
             <div class="ib-group">
-              <button class="ib" id="navPeakPrev" aria-label="Previous peak">⟨ peak</button>
-              <button class="ib" id="navPeakNext" aria-label="Next peak">peak ⟩</button>
+              <button class="ib nav-prev" id="navPeakPrev" aria-label="Previous peak">peak</button>
+              <button class="ib nav-next" id="navPeakNext" aria-label="Next peak">peak</button>
             </div>
             <div class="ib-group">
-              <button class="ib" id="navTroughPrev" aria-label="Previous trough">⟨ trough</button>
-              <button class="ib" id="navTroughNext" aria-label="Next trough">trough ⟩</button>
+              <button class="ib nav-prev" id="navTroughPrev" aria-label="Previous trough">trough</button>
+              <button class="ib nav-next" id="navTroughNext" aria-label="Next trough">trough</button>
             </div>
             <button class="ib" id="navFinal" aria-label="Final dosing interval">Final τ</button>
             <span class="ib-gap"></span>
@@ -1274,6 +1429,9 @@
           </section>
         </div>
 
+        <div class="cases" id="csView" role="tabpanel" aria-labelledby="tabCs">
+          <div id="csRoot"><p class="lib-note">Loading the cases…</p></div>
+        </div>
         <div class="practice" id="prView" role="tabpanel" aria-labelledby="tabPr">
           <div class="pr-top">
             <div class="plot-title" style="font-size:16px">Practice problems<span id="prSub">Generated problems · worked solutions · every answer checked against the model</span></div>
@@ -1344,26 +1502,30 @@
     <footer class="foot">
       <div class="disc">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
+        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment pharmacokinetics (first-order or saturable) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
+      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.
+        <br><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
         Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, every quantitative claim the lessons make, and every practice answer.</p>
+      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 94 scenarios: see Validation.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
         <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <a href="validation.html">Validation</a>
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
-        <span>Updated 30 September 2026</span>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
+        <span>Version 1.0.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <button class="present-exit" id="presentExit" type="button">✕ Leave present mode</button>
 
   <dialog class="lib keys-dlg" id="keysDlg" aria-labelledby="keysTitle">
     <div class="lib-in">
@@ -1377,6 +1539,15 @@
           <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>Jump to the start or the end of the window</td></tr>
           <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Clear the cursor (or cancel a dose you're dragging)</td></tr>
+          <tr><th scope="row" colspan="2">On the dose timeline (a custom schedule)</th></tr>
+          <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Pick the previous or next dose</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the picked dose 0.5 h (<kbd>Shift</kbd>: 2 h)</td></tr>
+          <tr><th scope="row" colspan="2">Anywhere, unless you're typing (single-key shortcuts)</th></tr>
+          <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the time cursor, when nothing else has focus</td></tr>
+          <tr><td><kbd>L</kbd></td><td>Switch between linear and log scale</td></tr>
+          <tr><td><kbd>B</kbd></td><td>Set the baseline</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Open this list</td></tr>
           <tr><th scope="row" colspan="2">Everywhere else</th></tr>
           <tr><td><kbd>Tab</kbd> <kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>Move between controls</td></tr>
           <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Change a slider by one step; in the tab bar, move between tabs (<kbd>Home</kbd> <kbd>End</kbd> for the first and last)</td></tr>
@@ -1386,6 +1557,7 @@
         </tbody>
       </table>
       <p class="lib-note">The ⟨ dose ⟩, ⟨ peak ⟩ and ⟨ trough ⟩ buttons under the chart move the cursor to the previous or next dose, peak or trough.</p>
+      <label class="keys-switch"><input type="checkbox" id="keysOn" checked> Single-key shortcuts (Space, ←/→, L, B, ?). Turn them off if they get in the way of a screen reader or voice control; the choice is kept in this browser.</label>
     </div>
   </dialog>
 
@@ -1416,7 +1588,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=c1f78c4349"></script>
+<script src="pk-engine.js?v=18484e6d3f"></script>
 <script>
 "use strict";
 (function(){
@@ -1433,6 +1605,8 @@
   // `state` holds the scenario the controls are editing plus the view settings (window, thresholds, scale, zoom).
   const state = Object.assign({}, DEFAULTS, {events:[], scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null,
     pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt});
+  const POP_VIEW=["pop","popn","pcl","pv","pseed","plo","phi"];
+  POP_VIEW.forEach(k=> state[k]=PK.VIEW_DEFAULTS[k]);
   const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); return o; };
   const loadScenario=p=>{ const q=PK.normalizeScenario(p); PK_KEYS.forEach(k=>state[k]=q[k]); };
   const windowStats=p=>PK.windowStats(p,state.duration,state.mec,state.mtc);
@@ -1454,15 +1628,29 @@
     const live=snapshot();
     return {a:cmp.edit==="a"?live:cmp.a, b:cmp.edit==="b"?live:cmp.b};
   }
+  // Units: charts and numbers use the live scenario's unit system (A's in Compare). A scenario measured in other
+  // units (B, or a baseline set before a drug with other units was loaded) is converted into it for display, so
+  // the two curves share one axis; links and saved scenarios keep each scenario in its own units.
+  const shownUnit=()=> mode==="cmp" ? pair().a.unit : state.unit;
+  const U=()=> PK.unitsOf({unit:shownUnit()});
+  const inShown=p=> !p || p.unit===shownUnit() ? p : PK.convertUnits(p, shownUnit());
+  function shownPair(){ const {a,b}=pair(); return {a, b:inShown(b)}; }
+  const cdp=dp=> dp+U().cdp;   // decimals for a concentration: one more for ng/mL and mEq/L
+  const AXIS_UNIT={mg:"mg/L ≡ µg/mL", mcg:"ng/mL ≡ µg/L", meq:"mEq/L"};
+  const CSV_UNIT={mg:"mg_L", mcg:"ng_mL", meq:"mEq_L"};
 
   const ALL=["oral","iv","inf"];
   const SLIDERS = {
-    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"]},
+    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"], fmt:v=>`${trim(v)} ${U().dose}`},
     F:    {name:"Bioavailability",    sym:"F",   step:0.05, unit:"",    routes:["oral"]},
     ka:   {name:"Absorption rate",    sym:"kₐ",  step:0.05, unit:"h⁻¹", routes:["oral"]},
     tinf: {name:"Infusion duration",  sym:"T·inf", step:0.25, unit:"h", routes:["inf"]},
-    thalf:{name:"Half-life (base)",   sym:"t½",  step:0.5,  unit:"h",   routes:ALL},
-    V:    {name:"Volume of dist. (70 kg)", sym:"V", step:1, unit:"L",   routes:ALL},
+    // the usual ranges widen when a value needs them (digoxin's volume and half-life)
+    thalf:{name:"Half-life (base)",   sym:"t½",  step:0.5,  unit:"h",   routes:ALL, range:()=> state.thalf>24 ? PK.RANGES.thalf : [0.5,24]},
+    V:    {name:"Volume of dist. (70 kg)", sym:"V", step:1, unit:"L",   routes:ALL, range:()=> state.V>120 ? PK.RANGES.V : [5,120]},
+    // saturable elimination replaces the half-life with Vmax (per kg per day) and Km
+    vmax: {name:"Vmax (per kg)",      sym:"Vmax", step:0.5, unit:"mg/kg/day", routes:ALL, fmt:v=>`${trim(v)} ${U().amount}/kg/day`},
+    km:   {name:"Km",                 sym:"Km",  step:0.5,  unit:"mg/L", routes:ALL, fmt:v=>`${trim(v)} ${U().conc}`},
     tau:  {name:"Dosing interval",    sym:"τ",   step:1,    unit:"h",   routes:ALL, dosing:"repeated"},
     nDoses:{name:"Number of doses",   sym:"n",   step:1,    unit:"",    routes:ALL, dosing:"repeated"},
     missed:{name:"Missed dose",       sym:"✕",   step:1,    unit:"",    routes:ALL, dosing:"repeated",
@@ -1473,9 +1661,21 @@
     wt:  {name:"Body weight", sym:"kg", step:1, unit:"kg"},
     clFn:{name:"Organ function (CL)", sym:"%", step:5, unit:"%"}
   };
+  // The clinical patient: Cockcroft–Gault inputs, albumin (used for phenytoin) and the drug's renal fraction.
+  const CLIN = {
+    age:{name:"Age", sym:"y", step:1, unit:"years"},
+    ht: {name:"Height", sym:"ht", step:1, unit:"cm", fmt:v=>`${v} cm (${trim(+(v/2.54).toFixed(1))} in)`},
+    scr:{name:"Serum creatinine", sym:"SCr", step:0.1, unit:"mg/dL"},
+    alb:{name:"Albumin (for phenytoin)", sym:"Alb", step:0.1, unit:"g/dL"},
+    fe: {name:"Renal fraction", sym:"fe", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% excreted unchanged`}
+  };
+  // Settings of the patient, not the drug: changing them keeps the drug selected.
+  const PATIENT_KEYS=["wt","clFn","age","ht","scr","alb"];
+  const WTM_NAME={actual:"actual weight", ibw:"ideal body weight", adj:"adjusted body weight"};
+  const rangeOf=(k,cfg)=>{ const r=(cfg||SLIDERS[k]||{}).range; return typeof r==="function" ? r() : r || PK.RANGES[k]; };
   // EC50 spans three decades, so its slider moves on a log scale.
   const PD_SLIDERS = {
-    ec50:{name:"Potency (EC50)",  sym:"EC₅₀", log:true, unit:"mg/L", fmt:v=>`${trim(v)} mg/L`},
+    ec50:{name:"Potency (EC50)",  sym:"EC₅₀", log:true, unit:"mg/L", fmt:v=>`${trim(v)} ${U().conc}`},
     emax:{name:"Maximum effect",  sym:"Emax", step:1,   unit:"%", max:()=>100-state.e0},
     hill:{name:"Hill slope",      sym:"n",    step:0.1, unit:""},
     e0:  {name:"Baseline effect", sym:"E₀",   step:1,   unit:"%"}
@@ -1490,11 +1690,11 @@
   // What the main chart draws: the live scenario (plus baseline), or scenarios A and B.
   function chartCurves(){
     if(mode==="cmp"){
-      const {a,b}=pair();
+      const {a,b}=shownPair();
       return [{id:"a", p:a, col:COL.a, tag:"A"}, {id:"b", p:b, col:COL.b, tag:"B"}];
     }
     const list=[{id:"cur", p:snapshot(), primary:true}];
-    if(baseline) list.push({id:"base", p:baseline.p, ghost:true});
+    if(baseline) list.push({id:"base", p:inShown(baseline.p), ghost:true});
     return list;
   }
   const finalInterval=p=>{ const t0=(p.nDoses-1)*p.tau; return [t0, t0+p.tau]; };
@@ -1522,8 +1722,25 @@
       `<text x="${tx}" y="${y-8}" text-anchor="${anchor||"start"}" font-family="JetBrains Mono" font-size="10" fill="${color}">${label}</text>`;
   }
 
+  // The clinical patient panel's working: IBW, AdjBW, Cockcroft–Gault CrCl and the clearance it gives.
+  function renderClin(){
+    if(state.pm!=="clinical") return;
+    const p=snapshot(), pt=PK.patientOf(p), f=p.sex==="F", V=PK.vOf(p), ref=Math.LN2/p.thalf*V, n1=v=>fmt(v,1);
+    byId("clinMath").innerHTML=
+      `<div class="cm-h">Ideal and adjusted body weight (height ${n1(pt.heightIn)} in)</div>`+
+      `IBW = ${f?"45.5":"50"} + 2.3 × (${n1(pt.heightIn)} − 60) = <b>${n1(pt.ibw)} kg</b><br>`+
+      `AdjBW = ${n1(pt.ibw)} + 0.4 × (${p.wt} − ${n1(pt.ibw)}) = <b>${n1(pt.adj)} kg</b>`+
+      `<div class="cm-h">Creatinine clearance (Cockcroft–Gault, ${WTM_NAME[p.wtm]})</div>`+
+      `CrCl = (140 − ${p.age}) × ${n1(pt.wtUsed)} / (72 × ${trim(p.scr)})${f?" × 0.85":""} = <b>${n1(pt.crcl)} mL/min</b>`+
+      `<div class="cm-h">Clearance, against a reference CrCl of ${PK.CRCL_REF} mL/min</div>`+
+      `CL<sub>ref</sub> = 0.693 / ${trim(p.thalf)} h × ${n1(V)} L = ${fmt(ref,2)} L/h<br>`+
+      `CL = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / ${PK.CRCL_REF}] = ${fmt(ref,2)} × [(1 − ${trim(p.fe)}) + ${trim(p.fe)} × ${n1(pt.crcl)} / ${PK.CRCL_REF}] = <b>${fmt(ref*pt.factor,2)} L/h</b>`;
+  }
+
   function render(){
     checkWindow();
+    renderClin();
+    if(state.pop) queueMicrotask(renderPop); else byId("popPanel").hidden=true;
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
     let yMax=0;
@@ -1538,6 +1755,8 @@
     });
     const fitting=fit && mode==="sim";
     if(fitting) fit.obs.forEach(o=>{ if(o.c>yMax) yMax=o.c; });
+    const bands=popBands(curves);
+    bands.forEach(({r})=> r.t.forEach((t,i)=>{ if(t>=T0 && t<=T1 && r.q95[i]>yMax) yMax=r.q95[i]; }));
     const yTop=Math.max(yMax, state.mtc)*1.14 || 1;
     const iw=PW-M.l-M.r, ih=PH-M.t-M.b;
     const isLog=state.scale==="log";
@@ -1570,6 +1789,16 @@
         const a=Math.max(e.t,T0), b=Math.min(e.t+e.dur,T1);
         if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${cv.col?cv.col.fill:"rgba(61,242,224,0.045)"}"/>`;
       });
+    });
+
+    // population mode: each scenario's 5th–95th percentile band, shaded, with its median dotted
+    bands.forEach(({cv,r})=>{
+      const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9);
+      if(idx.length<2) return;
+      const up=idx.map(i=>`${sx(r.t[i])},${sy(r.q95[i])}`), dn=idx.slice().reverse().map(i=>`${sx(r.t[i])},${sy(r.q05[i])}`);
+      const col=cv.col ? cv.col.line : "#3DF2E0";
+      g+=`<polygon points="${up.concat(dn).join(" ")}" fill="${col}" fill-opacity="0.13" stroke="none"/>`;
+      g+=`<path d="${polyline(idx.map(i=>({x:sx(r.t[i]), y:sy(r.q50[i])})))}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/>`;
     });
 
     // with the effect charts on: the concentration that gives the target effect, for each scenario shown. The
@@ -1724,7 +1953,7 @@
 
     // axis titles
     g+=`<text x="${M.l+iw/2}" y="${PH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Time (h)</text>`;
-    g+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Concentration (mg/L ≡ µg/mL)${isLog?" · log":""}</text>`;
+    g+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Concentration (${AXIS_UNIT[U().id]})${isLog?" · log":""}</text>`;
 
     const dots=curves.filter(cv=>!cv.ghost).map((cv,i)=>
       `<circle id="chDot${i}" r="4.5" fill="${cv.col?cv.col.line:"#3DF2E0"}" stroke="#05070E" stroke-width="2"/>`).join("");
@@ -1818,47 +2047,80 @@
   const cap=s=> s.charAt(0).toUpperCase()+s.slice(1);
 
   /* ================= READOUTS ================= */
+  // With saturable elimination: the half-life and clearance at a stated level, and the steady state it predicts.
+  function mmCards(p, d, ws, ttr){
+    const u=U(), at=p.dosing==="single" ? "peak" : p.dosing==="custom" ? "peak" : d.mm.none ? "trough" : "Css";
+    if(p.dosing==="repeated") return [
+      {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:u.conc},
+      {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:u.conc},
+      d.mm.none ? {k:"Steady state", hot:1, v:"none", u:"input > Vmax"} : {k:"Css (predicted)", hot:1, v:fmt(d.css,cdp(1)), u:u.conc},
+      {k:"→90% SS", v:d.t90===null ? "—" : fmt(d.t90/24,1), u:d.t90===null ? "" : "days"},
+      {k:`t½ at ${at}`, v:fmt(d.thalfEff,1), u:"h"},
+      {k:"Input ÷ Vmax", v:fmt(100*d.mm.ratio,0), u:"%"},
+      {k:"Dose / wt", v:fmt(d.mgkg,1), u:u.perKg},
+      {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}];
+    if(p.dosing==="single") return [
+      {k:"Cmax", hot:1, v:fmt(d.cmax,cdp(1)), u:u.conc},
+      {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
+      {k:"t½ at peak", v:fmt(d.thalfEff,1), u:"h"},
+      {k:"CL at peak", v:fmt(d.CL,2), u:"L/h"},
+      {k:"Vd (patient)", v:fmt(d.V,0), u:"L"},
+      {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:u.auc},
+      {k:"Dose / wt", v:fmt(d.mgkg,1), u:u.perKg},
+      {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}];
+    return [
+      {k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:u.conc},
+      {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
+      {k:"Doses given", v:d.nMissed ? `${d.nGiven}/${d.nGiven+d.nMissed}` : String(d.nGiven), u:""},
+      {k:"Total given", v:fmt(d.totalMg,0), u:u.dose},
+      {k:"t½ at peak", v:fmt(d.thalfEff,1), u:"h"},
+      {k:"CL at peak", v:fmt(d.CL,2), u:"L/h"},
+      {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:u.auc},
+      {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}];
+  }
   function renderReadouts(p, d, ws){
-    const ttr=100*ws.tIn/ws.T;
-    let cards=[
-      {k:"Cmax", hot:1, v:fmt(d.cmax,1), u:"mg/L"},
+    const ttr=100*ws.tIn/ws.T, lin=p.kin!=="mm";
+    let cards=!lin ? null : [
+      {k:"Cmax", hot:1, v:fmt(d.cmax,cdp(1)), u:U().conc},
       {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
       {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
       {k:"CL", v:fmt(d.CL,2), u:"L/h"},
       {k:"Vd (patient)", v:fmt(d.V,0), u:"L"},
-      {k:"AUC∞", v:fmt(d.auc,1), u:"mg·h/L"},
-      {k:"Dose / wt", v:fmt(d.mgkg,1), u:"mg/kg"},
+      {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc},
+      {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
       {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
     ];
-    if(p.dosing==="repeated"){
+    if(lin && p.dosing==="repeated"){
       cards=[
-        {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,1), u:"mg/L"},
-        {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,1), u:"mg/L"},
+        {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:U().conc},
+        {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:U().conc},
         {k:"Accum. ratio", v:fmt(d.Rac,2), u:"×"},
         {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
         {k:"→90% SS", v:fmt(d.t90,1), u:"h"},
-        {k:"Dose / wt", v:fmt(d.mgkg,1), u:"mg/kg"},
+        {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
-    if(p.dosing==="custom"){
+    if(lin && p.dosing==="custom"){
       cards=[
-        {k:"Peak (window)", hot:1, v:fmt(ws.cmax,1), u:"mg/L"},
+        {k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:U().conc},
         {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
         {k:"Doses given", v:d.nMissed ? `${d.nGiven}/${d.nGiven+d.nMissed}` : String(d.nGiven), u:""},
-        {k:"Total given", v:fmt(d.totalMg,0), u:"mg"},
+        {k:"Total given", v:fmt(d.totalMg,0), u:U().dose},
         {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
-        {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,1), u:"mg·h/L"},
+        {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:U().auc},
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
+    if(p.kin==="mm") cards=mmCards(p, d, ws, ttr);
     // each card opens its working (PK.metricMath); the keys follow the cards' order
-    const keys=PK.READOUT_KEYS[p.dosing];
+    const keys=PK.readoutKeys(p);
     cards.forEach((c,i)=> c.key=keys[i]);
     if(roOpen && !keys.includes(roOpen)) roOpen=null;
     const had=document.activeElement && document.activeElement.closest ? document.activeElement.closest("#readouts .ro") : null;
+    byId("plotSummary").textContent=`Chart: ${scenarioSummary(p)}, over 0–${state.duration} h. `+cards.map(c=>`${c.k} ${c.v} ${c.u}`.trim()).join("; ")+".";
     byId("readouts").innerHTML=cards.map(c=>`
       <button class="ro${c.hot?" hot":""}${c.key===roOpen?" open":""}" data-key="${c.key}" aria-expanded="${c.key===roOpen}" aria-controls="roMath">
         <span class="ro-k">${c.k}</span>
@@ -1925,16 +2187,22 @@
     const tox=100*ws.tAbove/ws.T;
     let msg=overlapNote(p);
     if(tox>0.5) msg+=`⚠ This scenario spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold. See how a smaller dose, slower input or longer interval changes that. `;
-    if(p.dosing==="repeated"){
+    if(p.dosing==="repeated" && p.kin==="mm"){
+      const u=U(), m=d.mm;
+      msg+= m.none
+        ? `<b>No steady state:</b> the input rate, ${fmt(24*m.R,0)} ${u.amount}/day, is ${fmt(100*m.ratio,0)}% of Vmax (${fmt(24*m.Vmax,0)} ${u.amount}/day), so the enzymes can't keep up and the level climbs for as long as dosing continues. After dose ${p.nDoses} the trough is <b>${fmt(d.cminSS,cdp(1))} ${u.conc}</b>.`
+        : `Saturable elimination: the input is <b>${fmt(100*m.ratio,0)}%</b> of Vmax, and the level heads for a predicted Css of <b>${fmt(d.css,cdp(1))} ${u.conc}</b> (Km·R / (Vmax − R)); at steady state it swings between ${fmt(m.trough,cdp(1))} and ${fmt(m.peak,cdp(1))}. After dose ${p.nDoses} the trough is at <b>${fmt(Math.min(100,100*d.fSS),0)}%</b> of its steady-state value. Reaching 90% of steady state takes <b>${fmt(d.t90/24,1)} days</b> at this dose; unlike linear kinetics, it gets longer as the dose rises.`;
+      if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
+    } else if(p.dosing==="repeated"){
       // same 1% rule as the steady-state panel: below it, a peak-to-trough ratio is meaningless
       const swing = d.cminSS < 0.01*d.cmaxSS ? "the drug clears almost completely between doses" : `peak-to-trough <b>${fmt(d.cmaxSS/d.cminSS,1)}×</b>`;
       const ssTag = d.fSS>=0.97 ? "effectively at steady state" : `at <b>${fmt(d.fSS*100,0)}%</b> of steady state — not there yet`;
-      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,1)}</b>, trough <b>${fmt(d.cminSS,1)} mg/L</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
+      msg+=`After dose ${p.nDoses}, the final cycle is ${ssTag}: peak <b>${fmt(d.cmaxSS,cdp(1))}</b>, trough <b>${fmt(d.cminSS,cdp(1))} ${U().conc}</b> (${swing}). Accumulation at SS is <b>${fmt(d.Rac,2)}×</b> a single dose; ~90% of steady state takes <b>${fmt(d.t90,1)} h</b> (≈3.3 half-lives), independent of the interval.`;
       if(p.loadMult>1) msg+=` Loading dose (${p.loadMult}×) lifts the first cycle toward steady state immediately.`;
       if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed, so the curve dips through that gap before regular dosing pulls it back.`;
     }
     if(p.dosing==="custom"){
-      msg+=`Custom schedule: <b>${d.nGiven}</b> dose${d.nGiven===1?"":"s"} given${d.nMissed?`, <b>${d.nMissed}</b> missed`:""}, <b>${fmt(d.totalMg,0)} mg</b> in total. Steady-state figures aren't shown because the doses don't follow a fixed interval.`;
+      msg+=`Custom schedule: <b>${d.nGiven}</b> dose${d.nGiven===1?"":"s"} given${d.nMissed?`, <b>${d.nMissed}</b> missed`:""}, <b>${fmt(d.totalMg,0)} ${U().dose}</b> in total. Steady-state figures aren't shown because the doses don't follow a fixed interval.`;
     }
     if(msg){ note.classList.add("show"); note.innerHTML=msg; }
     else note.classList.remove("show");
@@ -1945,12 +2213,12 @@
     const panel=byId("ssPanel");
     let series;
     if(mode==="cmp"){
-      const {a,b}=pair();
+      const {a,b}=shownPair();
       series=[{p:a, col:COL.a, tag:"A"}, {p:b, col:COL.b, tag:"B"}].filter(s=>s.p.dosing==="repeated");
     } else {
       const p=snapshot();
       series=p.dosing==="repeated" ? [{p, main:true}] : [];
-      if(series.length && baseline && baseline.p.dosing==="repeated") series.push({p:baseline.p, ghost:true});
+      if(series.length && baseline && baseline.p.dosing==="repeated") series.push({p:inShown(baseline.p), ghost:true});
     }
     if(!series.length){ panel.style.display="none"; return; }
     panel.style.display="block";
@@ -1958,7 +2226,7 @@
 
     const W=760, H=240, m={l:56,r:20,t:14,b:34}, iw=W-m.l-m.r, ih=H-m.t-m.b;
     const n=Math.max(...series.map(s=>s.S.rows.length));
-    const top=Math.max(...series.flatMap(s=>s.S.rows.map(r=>r.peak).concat(s.S.ssPeak)))*1.15 || 1;
+    const top=Math.max(...series.flatMap(s=>s.S.rows.map(r=>r.peak).concat(s.S.ssPeak==null ? [] : [s.S.ssPeak])))*1.15 || 1;
     const x=i=> m.l + (n===1 ? iw/2 : (i-1)/(n-1)*iw);
     const y=c=> m.t+ih-(Math.min(c,top)/top)*ih;
     let g="";
@@ -1977,7 +2245,7 @@
     g+=`<text x="${m.l+iw/2}" y="${H-3}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Dose number</text>`;
 
     // where each uninterrupted regimen (no load, no missed dose) settles
-    series.filter(s=>!s.ghost).forEach(s=>{
+    series.filter(s=>!s.ghost && s.S.ssPeak!=null).forEach(s=>{   // no lines when there is no steady state
       const S=s.S, pc=s.col?s.col.line:"#3DF2E0", tc=s.col?s.col.line:"#7C6BFF", op=s.col?0.35:0.5;
       g+=`<line x1="${m.l}" y1="${y(S.ssPeak)}" x2="${W-m.r}" y2="${y(S.ssPeak)}" stroke="${pc}" stroke-dasharray="4 4" opacity="${op}"/>`;
       g+=`<line x1="${m.l}" y1="${y(S.ssTrough)}" x2="${W-m.r}" y2="${y(S.ssTrough)}" stroke="${tc}" stroke-dasharray="4 4" opacity="${op+0.1}"/>`;
@@ -2026,8 +2294,16 @@
     const stats=byId("ssStats");
     if(mode==="cmp"){ stats.style.display="none"; return; }
     stats.style.display="";
-    const S=series[0].S, p=series[0].p, last=S.rows[S.rows.length-1];
-    const items=[
+    const S=series[0].S, p=series[0].p, last=S.rows[S.rows.length-1], u=U();
+    const items=S.mm ? (S.mm.none ? [
+      ["Steady state", "none", "input exceeds Vmax"],
+      ["Input ÷ Vmax", `${fmt(100*S.mm.ratio,0)}%`, `${fmt(24*S.mm.R,0)} of ${fmt(24*S.mm.Vmax,0)} ${u.amount}/day`],
+      ["Final trough", `${fmt(last.trough,cdp(1))} ${u.conc}`, "still climbing"],
+      ["90% of SS", "—", "never reached"]] : [
+      ["Final trough", `${fmt(100*last.trough/S.ssTrough,0)}%`, "of steady-state trough"],
+      ["Css (predicted)", `${fmt(S.mm.css,cdp(1))} ${u.conc}`, "Km·R / (Vmax − R)"],
+      ["Swing at SS", `${fmt(S.swing,1)}×`, "peak ÷ trough"],
+      ["90% of SS", `${fmt(S.t90/24,1)} days`, "depends on the dose"]]) : [
       S.clears ? ["Final trough", "≈ 0", "drug clears between doses"]
                : ["Final trough", `${fmt(100*last.trough/S.ssTrough,0)}%`, "of steady-state trough"],
       ["Accumulation", `${fmt(S.Rac,2)}×`, "a single dose, at SS"],
@@ -2044,10 +2320,23 @@
   const PLABEL={route:["Route",""],dosing:["Regimen",""],D:["Dose","mg"],F:["F",""],ka:["kₐ","h⁻¹"],thalf:["t½ base","h"],
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
     missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""],
-    ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"]};
+    ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],
+    pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
+    wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
+    kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
+    if(k==="D") return `${trim(s.D)} ${PK.unitsOf(s).dose}`;
+    if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
+    if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
+    if(k==="sex") return s.sex==="F" ? "female" : "male";
+    if(k==="wtm") return WTM_NAME[s.wtm];
+    if(k==="unit") return PK.unitsOf(s).conc;
+    if(k==="kin") return s.kin==="mm" ? "saturable" : "first-order";
+    if(k==="km") return `${trim(s.km)} ${PK.unitsOf(s).conc}`;
+    if(k==="vmax") return `${trim(s.vmax)} ${PK.unitsOf(s).amount}/kg/day`;
+    if(k==="S") return trim(+s.S.toPrecision(5));
     if(k==="route") return ROUTE_NAME[PK.routeOf(s)];
     if(k==="dosing") return s.dosing;
     if(k==="missed") return missedOf(s)?"dose "+missedOf(s):"none";
@@ -2068,10 +2357,11 @@
     return d.value===Infinity ? "new" : (d.dir>0?"▲ ":"▼ ")+fmt(d.value,0)+"%";
   }
 
+  const C_auc=(a,b)=> derived(inShown(b)).auc/derived(inShown(a)).auc;
   // Deterministic explanations: one sentence per changed input, each tied to numbers the model computed.
   // `ref` names the reference side in the text ("the baseline" or "A").
   function explain(a,b,da,db,wa,wb,diffs,ref){
-    const out=[];
+    const out=[], mmA=a.kin==="mm", mmB=b.kin==="mm", perDay=(v,p)=>`${fmt(24*v,0)} ${PK.unitsOf(p).amount}/day`;
     if(!diffs.length){
       return [mode==="cmp"
         ? "B is identical to A. Change B’s settings, or pick a setting under “Vary only” to change one thing at a time."
@@ -2087,7 +2377,7 @@
     if(a.dosing!==b.dosing){
       const tb=PK.doseTotals(b,state.duration);
       out.push(b.dosing==="custom"
-        ? `<b>Custom schedule</b>: doses follow their own times and amounts instead of a fixed interval (${tb.n} given, ${fmt(tb.mg,0)} mg within the window).`
+        ? `<b>Custom schedule</b>: doses follow their own times and amounts instead of a fixed interval (${tb.n} given, ${fmt(tb.mg,0)} ${U().dose} within the window).`
         : b.dosing==="repeated"
         ? "<b>Repeated dosing</b>: each dose adds to what's left of the earlier ones, so levels build up until the amount eliminated per interval matches the dose."
         : "<b>Single dose</b>: no accumulation. The curve rises once and decays back toward zero.");
@@ -2097,11 +2387,20 @@
       const ta=PK.doseTotals(a,state.duration), tb=PK.doseTotals(b,state.duration);
       const [ra,rb]=mode==="cmp" ? ["A","B"] : ["the baseline","the current schedule"];
       out.push(ta.n===tb.n && Math.abs(ta.mg-tb.mg)<1e-9
-        ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} mg) within the window, so exposure differs only through when they are given.`
-        : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} mg) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} mg). Exposure follows the total amount given and how the doses are spread over time.`);
+        ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} ${U().dose}) within the window, so exposure differs only through when they are given.`
+        : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} ${U().dose}) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} ${U().dose}). Exposure follows the total amount given and how the doses are spread over time.`);
     }
-    if(a.D!==b.D && !sameRate && PK.isRelevant("D",a) && PK.isRelevant("D",b)){
-      out.push(`Dose ${a.D} → ${b.D} mg (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
+    if(a.D!==b.D && mmA && mmB && a.dosing==="repeated" && b.dosing==="repeated"){
+      const ca=PK.mmCss(a), cb=PK.mmCss(b), dp=Math.abs(b.D/a.D-1)*100;
+      if(cb.css===null) out.push(`Dose ${a.D} → ${b.D} ${U().dose}: <b>no steady state</b>. The input rate, ${perDay(cb.R,b)}, now exceeds Vmax (${perDay(cb.Vmax,b)}), so the level keeps climbing for as long as dosing continues.`);
+      else if(ca.css!==null){
+        const lp=Math.abs(cb.css/ca.css-1)*100, up=b.D>a.D;
+        out.push(`Dose ${up?"rose":"fell"} ${fmt(dp,0)}% but the predicted steady-state level ${up?"rose":"fell"} <b>${fmt(lp,0)}%</b> (${fmt(ca.css,cdp(1))} → ${fmt(cb.css,cdp(1))} ${PK.unitsOf(b).conc}), because the input rate is ${up?"now":"still"} ${fmt(100*cb.ratio,0)}% of Vmax and each extra milligram has less enzyme capacity left to clear it. Reaching 90% of it takes ${fmt(cb.css===null?0:PK.mmT90(b)/24,1)} days instead of ${fmt(PK.mmT90(a)/24,1)}.`);
+      } else out.push(`Dose ${a.D} → ${b.D} ${U().dose}: the input rate falls below Vmax (${fmt(100*cb.ratio,0)}% of it), so a steady state exists again, predicted at ${fmt(cb.css,cdp(1))} ${PK.unitsOf(b).conc}.`);
+    } else if(a.D!==b.D && (mmA || mmB) && PK.isRelevant("D",a) && PK.isRelevant("D",b)){
+      out.push(`Dose ${a.D} → ${b.D} ${U().dose} (<b>${fmt(b.D/a.D,2)}×</b>). With saturable elimination, levels and exposure change more than in proportion to the dose: total exposure here goes ${fmt(C_auc(a,b),2)}×.`);
+    } else if(a.D!==b.D && !sameRate && PK.isRelevant("D",a) && PK.isRelevant("D",b)){
+      out.push(`Dose ${a.D} → ${b.D} ${U().dose} (<b>${fmt(b.D/a.D,2)}×</b>). In linear PK every concentration (peak, trough and AUC) scales by the same factor; the shape and timing don't change.`);
     }
     if(a.route==="oral" && b.route==="oral"){
       if(a.F!==b.F) out.push(`Bioavailability ${trim(a.F)} → ${trim(b.F)}. Only that fraction of the oral dose reaches circulation, so exposure changes by <b>${pctTxt(a.F,b.F)}</b> with the same shape.`);
@@ -2115,11 +2414,63 @@
         : `Shorter infusion (${trim(a.tinf)} → ${trim(b.tinf)} h): the same amount goes in faster, so the peak is higher and earlier, with the same AUC.`);
     }
 
-    // physiology and drug properties, explained through what they do to CL, V and t½
+    // saturable elimination
+    if(mmA!==mmB) out.push(mmB
+      ? `<b>Saturable elimination</b>: the body now removes at most Vmax, ${perDay(PK.vmaxOf(b),b)}, and works at half that speed at Km, ${trim(b.km)} ${PK.unitsOf(b).conc}. Levels no longer scale with the dose.`
+      : `<b>First-order elimination</b>: a fixed fraction of the drug leaves each hour again, so levels scale with the dose.`);
+    if(mmA && mmB){
+      if(a.vmax!==b.vmax) out.push(`Vmax ${trim(a.vmax)} → ${trim(b.vmax)} ${PK.unitsOf(b).amount}/kg/day: ${b.vmax<a.vmax ? "less" : "more"} enzyme capacity, so the same input sits ${b.vmax<a.vmax ? "closer to" : "further from"} saturation.`);
+      if(a.km!==b.km) out.push(`Km ${trim(a.km)} → ${trim(b.km)} ${PK.unitsOf(b).conc}: elimination reaches half of Vmax at a ${b.km>a.km ? "higher" : "lower"} level, so ${b.km>a.km ? "it stays closer to first-order over a wider range" : "it saturates at lower levels"}.`);
+    }
+
+    // units and salt factor: what a dose delivers and how levels are measured
+    if(a.unit!==b.unit) out.push(`${mode==="cmp" ? "B" : "The current scenario"} is measured in ${PK.unitsOf(b).conc} and ${ref} in ${PK.unitsOf(a).conc}. Both curves are drawn and compared in ${U().conc}, so each concentration here is converted.`);
+    else if(a.S!==b.S) out.push(`Salt factor S ${trim(+a.S.toPrecision(5))} → ${trim(+b.S.toPrecision(5))}: each ${PK.unitsOf(b).dose} of dose delivers <b>${fmt(b.S/a.S,2)}×</b> as much active drug, so every concentration and the AUC scale by that factor.`);
+
+    // the clinical patient: creatinine clearance and the renal fraction of clearance
     const dCL=moved(da.CL,db.CL), dV=moved(da.V,db.V), dT=moved(da.thalfEff,db.thalfEff);
-    if(dCL||dV||dT){
+    const clinA=a.pm==="clinical", clinB=b.pm==="clinical";
+    let clinSaid=false;
+    if(clinA!==clinB){
+      const pc=PK.patientOf(clinB ? b : a);
+      out.push(clinB
+        ? `<b>Clinical patient model</b>: clearance now follows creatinine clearance. Cockcroft–Gault gives ${fmt(pc.crcl,0)} mL/min, so this drug (fe ${trim(b.fe)}) keeps ${fmt(100*pc.factor,0)}% of its reference clearance.`
+        : `<b>Simple patient model</b>: clearance follows the organ-function setting (${b.clFn}%) instead of creatinine clearance.`);
+    } else if(clinA && clinB){
+      const pa=PK.patientOf(a), pb=PK.patientOf(b), dCr=moved(pa.crcl,pb.crcl);
+      if(dCr || a.fe!==b.fe){
+        const why=[];
+        if(a.age!==b.age) why.push(`age ${a.age} → ${b.age} years`);
+        if(a.scr!==b.scr) why.push(`SCr ${trim(a.scr)} → ${trim(b.scr)} mg/dL`);
+        if(a.sex!==b.sex) why.push(b.sex==="F" ? "female, × 0.85" : "male");
+        if(a.wtm!==b.wtm) why.push(`${WTM_NAME[a.wtm]} → ${WTM_NAME[b.wtm]}`);
+        else if(moved(pa.wtUsed,pb.wtUsed)) why.push(`weight used ${fmt(pa.wtUsed,1)} → ${fmt(pb.wtUsed,1)} kg`);
+        const pc=v=>`${fmt(100*v,0)}%`;
+        let txt=dCr ? `CrCl ${pb.crcl<pa.crcl?"fell":"rose"} from ${fmt(pa.crcl,0)} to ${fmt(pb.crcl,0)} mL/min${why.length?` (${why.join(", ")})`:""}` : "";
+        if(a.fe!==b.fe) txt+=(txt ? ", and " : "")+`the renal fraction changed from ${pc(a.fe)} to ${pc(b.fe)}`;
+        txt=cap(txt);
+        // the clearance change is the renal factor's alone only when the drug and the weight are the same
+        const onlyRenal=a.thalf===b.thalf && a.V===b.V && a.wt===b.wt;
+        if(!onlyRenal) txt+=`: clearance now keeps ${fmt(100*pb.factor,0)}% of the drug's reference value (it was ${fmt(100*pa.factor,0)}%)`;
+        else if(!dCL) txt+=`, but this drug's clearance doesn't move with it${b.fe===0 ? " (fe = 0: none of it goes through the kidneys)" : ""}`;
+        else {
+          txt+=`, so the clearance of ${a.fe===b.fe ? `a drug that is ${pc(b.fe)} renally excreted` : "the drug"} ${db.CL<da.CL?"fell":"rose"} <b>${fmt(Math.abs(db.CL/da.CL-1)*100,0)}%</b>`;
+          if(dT) txt+=`; the half-life ${db.thalfEff>da.thalfEff?"rose":"fell"} from ${fmt(da.thalfEff,1)} h to ${fmt(db.thalfEff,1)} h`;
+          if(a.dosing==="repeated" && b.dosing==="repeated"){
+            const ta=PK.ssProfile(inShown(a)).ssTrough, tb=PK.ssProfile(inShown(b)).ssTrough;
+            if(moved(ta,tb)) txt+=`; the steady-state trough ${tb>ta?"rose":"fell"} from ${fmt(ta,cdp(1))} to ${fmt(tb,cdp(1))} ${U().conc}`;
+          }
+        }
+        out.push(txt+".");
+        clinSaid=onlyRenal && !dV;   // then the clearance sentence below would only repeat this
+      }
+    }
+
+    // physiology and drug properties, explained through what they do to CL, V and t½ (first-order drugs only:
+    // a saturable drug's clearance and half-life depend on the level, which the sentences above cover)
+    if((dCL||dV||dT) && !clinSaid && !mmA && !mmB){
       const causes=[];
-      if(a.clFn!==b.clFn) causes.push(`organ function ${a.clFn} → ${b.clFn}%`);
+      if(a.clFn!==b.clFn && !clinA && !clinB) causes.push(`organ function ${a.clFn} → ${b.clFn}%`);
       if(a.wt!==b.wt) causes.push(`weight ${a.wt} → ${b.wt} kg`);
       const parts=[];
       if(dCL) parts.push(`Clearance ${fmt(da.CL,2)} → ${fmt(db.CL,2)} L/h (<b>${pctTxt(da.CL,db.CL)}</b>), and since AUC = F·D / CL, total exposure moves the opposite way.`);
@@ -2134,7 +2485,7 @@
 
     if(a.dosing==="repeated" && b.dosing==="repeated"){
       if(a.tau!==b.tau){
-        out.push((sameRate?`Dose ${a.D} → ${b.D} mg and interval ${a.tau} → ${b.tau} h. `:`Interval ${a.tau} → ${b.tau} h. `)+(sameRate
+        out.push((sameRate?`Dose ${a.D} → ${b.D} ${U().dose} and interval ${a.tau} → ${b.tau} h. `:`Interval ${a.tau} → ${b.tau} h. `)+(sameRate
           ? `The dose per hour (D/τ) is unchanged, so average exposure is the same. Only the swing changes: ${b.tau<a.tau?"smaller, more frequent doses give lower peaks and higher troughs":"larger, less frequent doses give higher peaks and lower troughs"}.`
           : b.tau>a.tau
             ? "More time to decay between doses: lower troughs, a bigger peak-to-trough swing, less accumulation and less drug per day."
@@ -2149,13 +2500,13 @@
       if(ma!==mb){
         if(mb){
           const tq=mb*b.tau-1e-9;
-          out.push(`Dose ${mb} missed: with nothing coming in, concentration keeps falling through the gap. Just before the next dose it reaches <b>${fmt(conc(b,tq),2)} mg/L</b>, versus ${fmt(conc(a,tq),2)} mg/L in ${ref}, and it takes a few intervals of regular dosing to climb back.`);
+          out.push(`Dose ${mb} missed: with nothing coming in, concentration keeps falling through the gap. Just before the next dose it reaches <b>${fmt(conc(inShown(b),tq),cdp(2))} ${U().conc}</b>, versus ${fmt(conc(inShown(a),tq),cdp(2))} ${U().conc} in ${ref}, and it takes a few intervals of regular dosing to climb back.`);
         } else out.push(`Missed dose ${ma} restored: the regimen is uninterrupted again.`);
       }
     }
 
     // the drug's response to concentration (pharmacodynamics)
-    if(a.ec50!==b.ec50) out.push(`EC50 ${trim(a.ec50)} → ${trim(b.ec50)} mg/L: ${b.ec50>a.ec50
+    if(a.ec50!==b.ec50 && a.unit===b.unit) out.push(`EC50 ${trim(a.ec50)} → ${trim(b.ec50)} ${U().conc}: ${b.ec50>a.ec50
       ? `every effect now needs <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do less. That's lower potency; the maximum possible effect is unchanged.`
       : `every effect now needs only <b>${fmt(b.ec50/a.ec50,2)}×</b> the concentration, so the same levels do more. That's higher potency; the maximum possible effect is unchanged.`}`);
     if(a.emax!==b.emax) out.push(`Emax ${trim(a.emax)} → ${trim(b.emax)}%: the ceiling on the response ${b.emax<a.emax
@@ -2209,7 +2560,8 @@
     }
     panel.style.display="block"; empty.style.display="none";
 
-    const C=PK.compareRows(a,b,state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
+    // numbers in the units shown (either side converted when the two differ); settings compared as they are
+    const C=PK.compareRows(inShown(a),inShown(b),state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
     const diffs=paramDiffs(a,b);
     const chips=diffs.map(k=>`<span class="chip">${PLABEL[k][0]} ${pval(k,a)} → <b>${pval(k,b)}</b></span>`);
     if(moved(C.da.CL,C.db.CL)) chips.push(`<span class="chip eff">CL ${fmt(C.da.CL,2)} → <b>${fmt(C.db.CL,2)} L/h</b></span>`);
@@ -2239,25 +2591,27 @@
       if(fit) items.push(`<div class="li"><span class="lk obs"></span>Measured</div>`);
     }
     items.push(`<div class="li"><span class="lk band"></span>Therapeutic</div>`, `<div class="li"><span class="lk tox"></span>Toxic</div>`);
+    if(state.pop) items.push(`<div class="li"><span class="lk popb"></span>Middle 90% of patients</div>`);
     byId("legend").innerHTML=items.join("");
   }
 
   function scenarioLabel(p){
     if(p.dosing==="custom") return `${ROUTE_NAME[PK.routeOf(p)]} custom ×${derived(p).nGiven}`;
-    return `${ROUTE_NAME[p.route]} ${trim(p.D)} mg${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
+    return `${ROUTE_NAME[p.route]} ${trim(p.D)} ${PK.unitsOf(p).dose}${p.dosing==="repeated"?` q${p.tau}h ×${p.nDoses}`:""}`;
   }
   function customSummary(p){
     const d=derived(p);
-    return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} mg`;
+    return `${d.nGiven} dose${d.nGiven===1?"":"s"}${d.nMissed?` (${d.nMissed} missed)`:""} · ${fmt(d.totalMg,0)} ${PK.unitsOf(p).dose}`;
   }
   function scenarioSummary(p){
     let s=p.dosing==="custom" ? `${cap(ROUTE_NAME[PK.routeOf(p)])} · custom schedule · ${customSummary(p)}`
-      : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} mg · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
+      : `${cap(ROUTE_NAME[p.route])} · ${trim(p.D)} ${PK.unitsOf(p).dose} · ${p.dosing==="repeated"?`q${p.tau}h × ${p.nDoses}`:"single dose"}`;
     if(p.loadMult>1) s+=` · ${p.loadMult}× load`;
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
-    if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
-    if(state.pd) s+=` · EC50 ${trim(p.ec50)} mg/L${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}`;
+    if(p.pm==="clinical") s+=` · CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
+    else if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
+    if(state.pd) s+=` · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}`;
     return s;
   }
   function renderScenarioCards(a,b){
@@ -2375,15 +2729,15 @@
   function lastDoseTxt(i){
     if(!i.last) return "no dose given yet";
     const L=i.last;
-    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} mg${routeWord(L.route,L.dur)}${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
+    return `last dose ${fmt(L.t,1)} h${L.count>1?` (${L.count} doses together)`:""} · ${fmt(L.mg,0)} ${U().dose}${routeWord(L.route,L.dur)}${L.loading?" · loading":""} · ${fmt(i.since,1)} h ago`;
   }
   // What's running now: one infusion in detail, or several as their combined rate.
   function infusingTxt(i){
     const R=i.infusing;
     if(!R.length) return "";
-    if(R.length>1) return ` · ${R.length} infusions running, ${fmt(R.reduce((s,r)=>s+r.rate,0),1)} mg/h in total`;
+    if(R.length>1) return ` · ${R.length} infusions running, ${fmt(R.reduce((s,r)=>s+r.rate,0),1)} ${U().dose}/h in total`;
     const r=R[0];
-    return ` · infusion running at ${fmt(r.rate,1)} mg/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} mg in, ends at ${fmt(r.end,1)} h`;
+    return ` · infusion running at ${fmt(r.rate,1)} ${U().dose}/h: ${fmt(r.delivered,0)} of ${fmt(r.mg,0)} ${U().dose} in, ends at ${fmt(r.end,1)} h`;
   }
   const missedTxt=i=> i.missedSince.length ? ` · missed since then: ${i.missedSince.map(t=>fmt(t,1)+" h").join(", ")}` : "";
   // With the effect charts on: the effect at the cursor, against the target, and where C sits relative to EC50.
@@ -2407,21 +2761,21 @@
     const st=s=>`<span class="st ${s}">${STATUS_TXT[s]}</span>`;
     let h=`<div class="ir-t">t = <b>${fmt(cursorT,1)} h</b></div>`;
     if(mode==="cmp"){
-      const {a,b}=pair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
+      const {a,b}=shownPair(), I={a:PK.inspectAt(a,cursorT,state.mec,state.mtc), b:PK.inspectAt(b,cursorT,state.mec,state.mtc)};
       ["a","b"].forEach(side=>{
         const i=I[side];
-        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].css}">${side.toUpperCase()}</span><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}${effectTxt(side==="a"?a:b,i.c)}</span></div>`;
+        h+=`<div class="ir-line"><span class="ir-tag" style="color:${COL[side].css}">${side.toUpperCase()}</span><b>${fmt(i.c,cdp(2))} ${U().conc}</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span><span class="ir-meta">${lastDoseTxt(i)}${infusingTxt(i)}${missedTxt(i)}${effectTxt(side==="a"?a:b,i.c)}</span></div>`;
       });
       const d=I.b.c-I.a.c, pct=Math.abs(I.a.c)>1e-9 ? ` (${d>=0?"+":"−"}${fmt(Math.abs(d/I.a.c*100),0)}%)` : "";
-      h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</b>${pct}</div>`;
+      h+=`<div class="ir-meta">B − A: <b>${d>=0?"+":"−"}${fmt(Math.abs(d),cdp(2))} ${U().conc}</b>${pct}</div>`;
     } else {
       const i=PK.inspectAt(snapshot(),cursorT,state.mec,state.mtc);
-      h+=`<div class="ir-line"><b>${fmt(i.c,2)} mg/L</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
+      h+=`<div class="ir-line"><b>${fmt(i.c,cdp(2))} ${U().conc}</b>${st(i.status)}<span>${TREND_TXT[i.trend]}</span></div>`;
       if(state.pd) h+=`<div class="ir-meta">${cap(effectTxt(snapshot(),i.c).replace(/^ · /,""))}</div>`;
       h+=`<div class="ir-meta">${cap(lastDoseTxt(i))}${infusingTxt(i)}${missedTxt(i)}${i.next?` · next dose ${fmt(i.next.t,1)} h${routeWord(i.next.route)}${i.next.missed?" (missed)":""}`:""}</div>`;
       if(baseline){
-        const bc=conc(baseline.p,cursorT), d=i.c-bc;
-        h+=`<div class="ir-meta">Baseline <b>${fmt(bc,2)} mg/L</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),2)} mg/L</div>`;
+        const bc=conc(inShown(baseline.p),cursorT), d=i.c-bc;
+        h+=`<div class="ir-meta">Baseline <b>${fmt(bc,cdp(2))} ${U().conc}</b> · current is ${d>=0?"+":"−"}${fmt(Math.abs(d),cdp(2))} ${U().conc}</div>`;
       }
     }
     el.innerHTML=h;
@@ -2551,12 +2905,12 @@
       : c>=state.mec ? '<span style="color:#7BE0A8">therapeutic</span>' : '<span style="color:#F2C46B">sub-therapeutic</span>';
     let html=`<span class="tt-t">t = ${lead[bi].t.toFixed(1)} h</span>`;
     if(mode==="cmp"){
-      live.forEach(cv=>{ const c=cv.pts[bi].c; html+=`<br><span style="color:${cv.col.css}">${cv.tag}</span> <b>${c.toFixed(2)} mg/L</b> · ${status(c)}`; });
+      live.forEach(cv=>{ const c=cv.pts[bi].c; html+=`<br><span style="color:${cv.col.css}">${cv.tag}</span> <b>${c.toFixed(cdp(2))} ${U().conc}</b> · ${status(c)}`; });
     } else {
       const c=live[0].pts[bi].c;
-      html+=`<br><b>${c.toFixed(2)} mg/L</b> · ${status(c)}`;
+      html+=`<br><b>${c.toFixed(cdp(2))} ${U().conc}</b> · ${status(c)}`;
       const base=plotCurves.find(cv=>cv.ghost);
-      if(base) html+=`<br><span style="color:#98A2C8">baseline: ${base.pts[bi].c.toFixed(2)} mg/L</span>`;
+      if(base) html+=`<br><span style="color:#98A2C8">baseline: ${base.pts[bi].c.toFixed(cdp(2))} ${U().conc}</span>`;
     }
     tip.innerHTML=html;
     tip.style.opacity=1;
@@ -2589,7 +2943,7 @@
   function makeSlider(container,key,cfg){
     const wrap=document.createElement("div");
     wrap.className="ctrl";
-    const range=cfg.range||PK.RANGES[key];
+    const range=rangeOf(key,cfg);
     const max=typeof cfg.max==="function"?cfg.max():range[1];
     // a log slider moves in log10 units (1% steps) and keeps two significant figures
     const toS=v=> cfg.log ? Math.round(Math.log10(v)*1000)/1000 : v;
@@ -2627,7 +2981,8 @@
       sl.dispatchEvent(new Event("input",{bubbles:true}));
     });
     sl.addEventListener("input",()=>{
-      state[key]=fromS(parseFloat(sl.value)); state.drug=null; markDrug(); show();
+      state[key]=fromS(parseFloat(sl.value)); show();
+      if(!PATIENT_KEYS.includes(key)){ state.drug=null; markDrug(); }
       if(key==="nDoses"){ syncMissedMax(); changed(["nDoses","missed"]); }
       else if(key==="e0"){ syncEmaxMax(); changed(["e0","emax"]); }
       else changed([key]);
@@ -2652,13 +3007,20 @@
       // F, kₐ and T·inf show only when they shape the curve: in a custom schedule F and kₐ while it has an
       // oral dose, and never T·inf (each infusion has its own duration)
       if(["F","ka","tinf"].includes(key) ? !PK.isRelevant(key, snapshot()) : !cfg.routes.includes(state.route)) return;
+      if(["thalf","vmax","km"].includes(key) && !PK.isRelevant(key, snapshot())) return;
       if(cfg.dosing && ![].concat(cfg.dosing).includes(state.dosing)) return;
       makeSlider(el,key,cfg);
     });
     syncRouteSeg();
-    const pel=byId("patientSliders");
+    const pel=byId("patientSliders"), clinical=state.pm==="clinical";
     pel.innerHTML="";
-    Object.entries(PATIENT).forEach(([key,cfg])=> makeSlider(pel,key,cfg));
+    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(!(clinical && key==="clFn")) makeSlider(pel,key,cfg); });
+    byId("clinPanel").hidden=!clinical;
+    const cel=byId("clinSliders");
+    cel.innerHTML="";
+    if(clinical) Object.entries(CLIN).forEach(([key,cfg])=> makeSlider(cel,key,cfg));
+    setSegVal("pmSeg","pm",state.pm); setSegVal("sexSeg","sex",state.sex); setSegVal("wtmSeg","wtm",state.wtm);
+    setSegVal("kinSeg","kin",state.kin);
     const dl=byId("pdSliders");
     dl.innerHTML="";
     Object.entries(PD_SLIDERS).forEach(([key,cfg])=> makeSlider(dl,key,cfg));
@@ -2715,6 +3077,10 @@
     markDrug(); buildSliders(); changed(["dosing","events"]);
   });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
+  seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
+  seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
+  seg("sexSeg","sex",v=>{ state.sex=v; changed(["sex"]); });
+  seg("wtmSeg","wtm",v=>{ state.wtm=v; changed(["wtm"]); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
   seg("viewSeg","view",v=>{ state.view=v; render(); });
   seg("editSeg","edit",v=>setEdit(v));
@@ -2790,7 +3156,7 @@
 
   function renderEventSummary(){
     const L=state.events, given=L.filter(e=>e.status==="given"), missed=L.length-given.length, full=L.length>=PK.EVENT_LIMITS.max;
-    byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} mg in total`+
+    byId("evSum").textContent=`${given.length} given${missed?` · ${missed} missed`:""} · ${fmt(given.reduce((s,e)=>s+e.mg,0),0)} ${U().dose} in total`+
       (full?` · limit of ${PK.EVENT_LIMITS.max} doses reached`:"");
     const atEnd=!full && PK.nextEventTime(L)===null;
     byId("evAdd").disabled=full || atEnd;
@@ -2813,9 +3179,9 @@
     const mixed=PK.routeOf(state)==="mixed";
     const tags=(e.route==="inf" ? `<span class="ev-tag inf">INF ${trim(e.dur)} h</span>` : mixed ? `<span class="ev-tag rt">${e.route==="iv"?"IV":"PO"}</span>` : "")+
       (e.type==="loading"?'<span class="ev-tag">LD</span>':"")+(e.status==="missed"?'<span class="ev-tag miss">missed</span>':"");
-    return `<span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} mg</span>${tags}`;
+    return `<span class="ev-t">${trim(e.t)} h</span><span class="ev-mg">${trim(e.mg)} ${U().dose}</span>${tags}`;
   }
-  const rateTxt=e=> `${fmt(e.mg/e.dur,1)} mg/h · runs ${trim(e.t)}–${trim(r2(e.t+e.dur))} h`;
+  const rateTxt=e=> `${fmt(e.mg/e.dur,1)} ${U().dose}/h · runs ${trim(e.t)}–${trim(r2(e.t+e.dur))} h`;
   function evRow(e){
     const open=e.id===evSel, missed=e.status==="missed", inf=e.route==="inf";
     let h=`<div class="ev-row${open?" open":""}" data-id="${e.id}">`+
@@ -2825,7 +3191,7 @@
       const full=state.events.length>=PK.EVENT_LIMITS.max, mgMax=(inf ? PK.EVENT_LIMITS.mgInf : PK.EVENT_LIMITS.mg)[1];
       h+=`<div class="ev-edit">
         <label>${inf?"Start":"Time"} (h)<input type="number" data-f="t" min="0" max="${lastStart(e)}" step="0.25" value="${e.t}"></label>
-        <label>${inf?"Total amount":"Amount"} (mg)<input type="number" data-f="mg" min="25" max="${mgMax}" step="25" value="${e.mg}"></label>
+        <label>${inf?"Total amount":"Amount"} (${U().dose})<input type="number" data-f="mg" min="25" max="${mgMax}" step="25" value="${e.mg}"></label>
         <div class="seg" role="group" aria-label="Route"><button data-f="route" data-v="oral"${on("route","oral")}>Oral</button><button data-f="route" data-v="iv"${on("route","iv")}>IV bolus</button><button data-f="route" data-v="inf"${on("route","inf")}>Infusion</button></div>
         ${inf ? `<label>Duration (h)<input type="number" data-f="dur" min="0.25" max="${r2(PK.EVENT_LIMITS.t[1]-e.t)}" step="0.25" value="${e.dur}"></label><p class="ev-rate">= <span class="ev-rate-v">${rateTxt(e)}</span></p>` : ""}
         <div class="ev-nudge" role="group" aria-label="Move this dose"><button class="abtn" data-act="nudge" data-d="-0.5" aria-label="Move this dose 0.5 hours earlier"${e.t<=PK.EVENT_LIMITS.t[0]?" disabled":""}>◀ 0.5 h earlier</button><button class="abtn" data-act="nudge" data-d="0.5" aria-label="Move this dose 0.5 hours later"${e.t>=lastStart(e)?" disabled":""}>0.5 h later ▶</button></div>
@@ -2897,7 +3263,7 @@
   // doesn't move selects it instead. The strip only claims sideways movement (touch-action: pan-y), so a
   // vertical swipe still scrolls the page on touch screens.
   const sameEvents=(a,b)=> JSON.stringify(a)===JSON.stringify(b);
-  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} mg ${e.type==="loading"?"loading ":""}`+
+  const doseDesc=e=> `${e.status==="missed"?"missed ":""}${trim(e.mg)} ${U().dose} ${e.type==="loading"?"loading ":""}`+
     (e.route==="inf" ? `infusion (${trim(e.dur)} h)` : e.route==="iv" ? "IV bolus" : "dose");
   const othersAt=(list,e)=> list.filter(x=>x.id!==e.id && Math.abs(x.t-e.t)<1e-9).length;
 
@@ -2981,6 +3347,22 @@
       : {id, kind, undo:before, after, text:moveText(before, after, id)};
     setEvents(after, id);
   }
+  // The timeline takes the keyboard: ↑ ↓ pick the previous or next dose, ← → move it (Shift: 2 h).
+  strip.addEventListener("keydown",e=>{
+    const L=state.events;
+    if(!L.length || state.dosing!=="custom") return;
+    const i=L.findIndex(v=>v.id===evSel);
+    if(e.key==="ArrowUp" || e.key==="ArrowDown"){
+      e.preventDefault();
+      const j=i<0 ? 0 : Math.min(L.length-1, Math.max(0, i+(e.key==="ArrowDown" ? 1 : -1)));
+      evSel=L[j].id; renderEvents(); strip.focus({preventScroll:true});
+      byId("evMoveMsg").textContent=`Picked the ${doseDesc(L[j])} at ${trim(L[j].t)} h.`;
+    } else if((e.key==="ArrowLeft" || e.key==="ArrowRight") && i>=0){
+      e.preventDefault();
+      nudgeEvent(evSel, (e.key==="ArrowRight" ? 1 : -1)*(e.shiftKey ? 2 : 0.5));
+      strip.focus({preventScroll:true});
+    }
+  });
   function nudgeEvent(id, d){
     const e=state.events.find(v=>v.id===id);
     if(!e) return;
@@ -3072,6 +3454,86 @@
     if(row) row.scrollIntoView({block:"nearest", behavior:reduceMotion()?"auto":"smooth"});
   });
 
+  /* ================= POPULATION ================= */
+  // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
+  // is kept with the key of what it was computed for; the chart uses it only while that still matches.
+  const POP_SRC="pop-worker.js?v=67abc7e031";
+  let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
+  const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
+    auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null});
+  function popWorkerReady(){
+    if(popWorker) return popWorker;
+    if(typeof Worker==="undefined") return null;
+    try{
+      popWorker=new Worker(POP_SRC);
+      const eng=[...document.scripts].map(x=>x.getAttribute("src")||"").find(x=>/^pk-engine\.js\?v=/.test(x));
+      popWorker.postMessage({engine:eng});
+      popWorker.onmessage=e=>{
+        const m=e.data||{};
+        if(!popPending || m.id!==popPending.id) return;   // a newer request superseded it
+        popResult={key:popPending.key, list:m.error ? null : m.result, error:m.error||null};
+        popPending=null; render();
+      };
+      popWorker.onerror=()=>{ popResult={key:null, list:null, error:"worker"}; popPending=null; renderPop(); };
+    }catch(e){ popWorker=null; }
+    return popWorker;
+  }
+  // The bands for the curves shown (not the baseline ghost), or [] while they're being worked out.
+  function popBands(curves){
+    if(!state.pop) return [];
+    const shown=curves.filter(cv=>!cv.ghost), opts=popOpts();
+    const key=JSON.stringify([shown.map(cv=>PK.encodeScenario(cv.p)+"|"+cv.p.unit), opts]);
+    if(popResult && popResult.key===key && popResult.list) return shown.map((cv,i)=>({cv, r:popResult.list[i]})).filter(b=>b.r && b.r.t);
+    if(!popPending || popPending.key!==key){
+      clearTimeout(popTimer);
+      const list=shown.map(cv=>PK.cloneScenario(cv.p));
+      popTimer=setTimeout(()=>{
+        const w=popWorkerReady();
+        if(!w){ popResult={key, list:null, error:"worker"}; renderPop(); return; }
+        popPending={id:++popSeq, key};
+        w.postMessage({job:{id:popSeq, list, opts}});
+        renderPop();
+      }, 120);
+      popPending=popPending && popPending.key===key ? popPending : {id:-1, key};
+    }
+    return [];
+  }
+  function renderPop(){
+    const panel=byId("popPanel");
+    panel.hidden=!state.pop;
+    byId("popBtn").setAttribute("aria-pressed", state.pop ? "true" : "false");
+    if(!state.pop) return;
+    const u=U(), out=byId("popOut");
+    byId("popHead").textContent=`${state.popn} virtual patients`;
+    panel.querySelector(".pop-aucu").textContent=u.auc;
+    const shown=chartCurves().filter(cv=>!cv.ghost);
+    if(shown.some(cv=>cv.p.kin==="mm")){ out.textContent="Population mode covers first-order drugs; a saturable scenario is shown without a band."; return; }
+    if(popResult && popResult.error){ out.textContent="Population mode needs a browser that runs Web Workers."; return; }
+    const ready=popResult && popResult.list && popResult.key===JSON.stringify([shown.map(cv=>PK.encodeScenario(cv.p)+"|"+cv.p.unit), popOpts()]);
+    if(!ready){ out.textContent=`Working out ${state.popn} virtual patients…`; return; }
+    const lines=shown.map((cv,i)=>{
+      const r=popResult.list[i], tag=cv.tag ? `<b style="color:${cv.col.css}">${cv.tag}</b>: ` : "";
+      if(!r || r.pta==null) return `${tag}The band shows how levels spread across ${r ? r.n : state.popn} patients. Probability of target attainment needs a regular regimen (repeated dosing), which has a steady state.`;
+      let s=`${tag}At steady state, <b>${fmt(100*r.pta,0)}%</b> of ${r.n} virtual patients keep the trough at or above MEC (${trim(state.mec)}) and the peak at or below MTC (${trim(state.mtc)} ${u.conc}). `+
+        `Troughs run ${fmt(r.trough[0],cdp(1))}–${fmt(r.trough[2],cdp(1))} and peaks ${fmt(r.peak[0],cdp(1))}–${fmt(r.peak[2],cdp(1))} ${u.conc} (5th–95th percentile).`;
+      if(r.ptaAuc!=null) s+=` <b>${fmt(100*r.ptaAuc,0)}%</b> have an AUC24 of ${trim(state.plo)}–${trim(state.phi)} ${u.auc}.`;
+      return s;
+    });
+    out.innerHTML=lines.map(l=>`<p>${l}</p>`).join("");
+  }
+  function setPop(k, v){ state[k]=v; render(); }
+  byId("popBtn").addEventListener("click",()=>{ state.pop=!state.pop; syncPopInputs(); render(); });
+  function syncPopInputs(){
+    byId("popN").value=String(state.popn); byId("popCL").value=state.pcl; byId("popV").value=state.pv; byId("popSeed").value=state.pseed;
+    byId("popLo").value=state.plo||""; byId("popHi").value=state.phi||"";
+  }
+  const numIn=(id,k,lo,hi,int)=> byId(id).addEventListener("change",()=>{
+    let v=parseFloat(byId(id).value); if(!isFinite(v)) v=k==="plo"||k==="phi" ? 0 : PK.VIEW_DEFAULTS[k];
+    v=Math.min(hi,Math.max(lo,int ? Math.round(v) : v)); byId(id).value=v||(k==="plo"||k==="phi" ? "" : v); setPop(k,v); });
+  byId("popN").addEventListener("change",()=> setPop("popn", parseInt(byId("popN").value,10)));
+  numIn("popCL","pcl",0,100); numIn("popV","pv",0,100); numIn("popSeed","pseed",1,4294967295,true); numIn("popLo","plo",0,100000); numIn("popHi","phi",0,100000);
+  byId("popNew").addEventListener("click",()=>{ state.pseed=1+Math.floor(Math.random()*999999); syncPopInputs(); render(); });
+
   /* ================= EFFECT (PK/PD) ================= */
   // The Effect switch adds two charts: effect over time, on the concentration chart's time axis, and the
   // concentration–effect curve with a dot at the time cursor. Effect is read off the concentration samples
@@ -3116,7 +3578,7 @@
       curves.map((cv,i)=>`<circle class="effDot" data-i="${i}" r="4.5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2"/>`).join("")+`</g>`;
     effEl.innerHTML=g;
     const primary=curves.find(cv=>mode==="cmp" ? cv.id===cmp.edit : cv.primary);
-    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} mg/L · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}`;
+    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} ${U().conc} · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}`;
     renderSigmoid(curves, primary);
     renderPdStats(curves);
   }
@@ -3156,7 +3618,7 @@
       g+=cv.ghost ? `<path d="${d}" fill="none" stroke="#98A2C8" stroke-width="1.6" stroke-dasharray="6 5" opacity="0.75"/>`
         : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.2"/>`;
     });
-    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (mg/L, log scale)</text>`+
+    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (${U().conc}, log scale)</text>`+
       `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Effect (%)</text>`+
       curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2" style="display:none"/>`).join("");
     ecEl.innerHTML=g;
@@ -3217,16 +3679,54 @@
       btn.addEventListener("click",()=>{
         const d=DRUGS.find(x=>x.id===btn.dataset.id);
         state.loadMult=1; state.missed=1; state.view="full";
-        Object.assign(state,d.s);
-        state.drug=d.id;
+        Object.assign(state,PK.drugScenario(d));
+        state.drug=d.id; lastDrug=d.id;
+        if(d.id==="phe") byId("stAlb").value=state.alb;
         if(mode==="sim"){ exitLesson(); exitFit(); exitWindow(); }
         syncControls();
-        changed(Object.keys(d.s).concat("loadMult","missed"));
+        changed(Object.keys(PK.drugScenario(d)).concat("loadMult","missed"));
       });
     });
   }
   function markDrug(){
     document.querySelectorAll(".drug").forEach(b=>b.classList.toggle("on", b.dataset.id===state.drug));
+    renderDrugInfo();
+  }
+  // The selected drug's profile and where each value comes from.
+  const REF_NAME={thalf:"Half-life", V:"Volume (70 kg)", F:"Bioavailability F", ka:"Absorption kₐ", fe:"Renal fraction fe", fu:"Unbound fraction fu",
+    S:"Salt factor S", window:"Window", strengths:"Strengths", round:"Dose rounding", dose:"Usual dose", target:"Target", smoking:"Smoking", model:"Model"};
+  // The measured-level tool shows while the scenario is still phenytoin's (saturable), even after edits.
+  let lastDrug=null;
+  function renderST(){
+    const el=byId("stTool"), on=lastDrug==="phe" && state.kin==="mm";
+    el.hidden=!on;
+    if(!on) return;
+    const C=parseFloat(byId("stLevel").value), alb=parseFloat(byId("stAlb").value), renal=byId("stRenal").checked;
+    if(!(C>=0) || !(alb>=1 && alb<=6)){ byId("stOut").textContent="Enter a level of 0 or more and an albumin between 1 and 6 g/dL."; return; }
+    const r=PK.sheinerTozer(C, alb, renal);
+    byId("stOut").innerHTML=`Adjusted = measured / (${r.k} × albumin + 0.1) = ${trim(C)} / (${r.k} × ${trim(alb)} + 0.1) = ${trim(C)} / ${fmt(r.factor,2)} = <b>${fmt(r.value,1)} mg/L</b>`+
+      `<div class="cm-h">The level this would be with normal albumin binding, to read against the usual 10–20 mg/L total range.</div>`;
+  }
+  ["stLevel","stAlb","stRenal"].forEach(id=> byId(id).addEventListener("input",renderST));
+  function renderDrugInfo(){
+    renderST();
+    const el=byId("drugInfo"), d=DRUGS.find(x=>x.id===state.drug);
+    el.hidden=!d;
+    if(!d) return;
+    const u=PK.unitsOf({unit:d.units}), st=d.strengths;
+    const forms=st.mg ? `${st.mg.join(", ")} ${u.dose} ${st.form}` : `${st.form}${st.round ? `; doses rounded to ${st.round} ${u.dose}` : ""}`;
+    el.innerHTML=`<p class="di-h">${esc(d.name)}</p>`+
+      `<dl><dt>Kinetics</dt><dd>${d.kinetics==="linear" ? "linear (first-order)" : "saturable (Michaelis–Menten)"}</dd>`+
+      `<dt>fe</dt><dd>${trim(d.fe)} excreted unchanged in urine</dd>`+
+      (d.fu!=null ? `<dt>fu</dt><dd>${trim(d.fu)} unbound in plasma</dd>` : "")+
+      (d.S!==1 ? `<dt>S</dt><dd>${trim(+d.S.toPrecision(5))} ${d.units==="meq" ? "mEq of lithium per mg" : "active drug per mg of salt"}</dd>` : "")+
+      `<dt>Units</dt><dd>dose in ${u.dose}, levels in ${u.conc}</dd><dt>Forms</dt><dd>${esc(forms)}</dd></dl>`+
+      `<details><summary>Where these values come from</summary><ol>`+
+      d.refs.map(r=>{ const src=r.src && PK.SOURCES[r.src];
+        return `<li><b>${REF_NAME[r.k]||esc(r.k)}</b> ${esc(r.v)}: `+(src
+          ? `${esc(r.note)}. <a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite)}</a>`
+          : `<span class="unv">${esc(r.note)}</span>`)+`</li>`; }).join("")+
+      `</ol></details><p class="di-note">Educational model, not for clinical dosing.</p>`;
   }
 
   /* ================= LESSONS ================= */
@@ -3281,6 +3781,18 @@
     toast("Progress reset");
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
+  // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
+  const GLOSS_SRC="pk-glossary.js?v=97d24a002b";
+  let glossLoading=null;
+  function loadGlossary(){
+    if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
+    if(glossLoading) return;
+    glossLoading=true;
+    const sc=document.createElement("script");
+    sc.src=GLOSS_SRC; sc.onload=()=>{ if(PK.GLOSSARY) buildGlossary(); };
+    sc.onerror=()=>{ glossLoading=null; byId("glossList").textContent="The glossary couldn't load. Check the connection and open Lessons again."; };
+    document.head.appendChild(sc);
+  }
   function buildGlossary(){
     byId("glossList").innerHTML=PK.GLOSSARY.map(g=>{
       const L=LESSONS.find(x=>x.id===g.lesson), tag=[g.sym,g.unit].filter(Boolean).join(" · ");
@@ -3416,7 +3928,7 @@
   // A task's own settings, repeated in its bar so the chart stays in view while they move (on a phone the
   // controls are far above it). They drive the same settings as the sliders in the controls.
   function buildMirror(id, keys){
-    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=PK.RANGES[k];
+    byId(id).innerHTML=keys.map(k=>{ const cfg=SLIDERS[k], r=rangeOf(k);
       return `<div class="ctrl"><div class="ctrl-top"><span class="ctrl-name">${cfg.name} <span class="sym">${cfg.sym}</span></span><span class="ctrl-val" data-v="${k}"></span></div>`+
         `<input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${cfg.step}" value="${state[k]}" aria-label="${cfg.name}"></div>`;
     }).join("");
@@ -3430,7 +3942,7 @@
     const r=sliderRefs[k];
     state[k]=v; state.drug=null;
     if(r){
-      const st=SLIDERS[k].step, lo=(SLIDERS[k].range||PK.RANGES[k])[0], n=(v-lo)/st;
+      const st=SLIDERS[k].step, lo=rangeOf(k)[0], n=(v-lo)/st;
       r.sl.step=Math.abs(n-Math.round(n))>1e-6 ? "any" : String(st);   // an off-step value sits exactly, as from a link
       r.sl.value=v; r.show();
     }
@@ -3873,6 +4385,7 @@
   /* ================= SHARE LINKS ================= */
   function linkState(){
     const view={duration:state.duration, mec:state.mec, mtc:state.mtc, scale:state.scale, zoom:state.view, pd:state.pd, etgt:state.etgt};
+    POP_VIEW.forEach(k=> view[k]=state[k]);
     if(mode==="cmp"){
       cmp[cmp.edit]=snapshot();
       return {mode:"cmp", a:cmp.a, b:cmp.b, lock:cmp.lock, edit:cmp.edit, view,
@@ -3910,7 +4423,7 @@
     let h=`<b>DoseCurve</b> · educational model, not for clinical dosing<br>`;
     if(mode==="cmp"){ const {a,b}=pair(); h+=`A · ${esc(cmp.names.a)}: ${esc(scenarioSummary(a))}. ${esc(settingsLine(a))}<br>B · ${esc(cmp.names.b)}: ${esc(scenarioSummary(b))}. ${esc(settingsLine(b))}<br>`; }
     else { const p=snapshot(); h+=`${esc(scenarioSummary(p))}. ${esc(settingsLine(p))}<br>`; if(baseline) h+=`Compared with the baseline: ${esc(baseline.label)}<br>`; }
-    h+=`<span class="ph-meta">Window ${trim(state.duration)} h · MEC ${trim(state.mec)} · MTC ${trim(state.mtc)} mg/L · printed ${esc(when)} · ${esc(link)}</span>`;
+    h+=`<span class="ph-meta">Window ${trim(state.duration)} h · MEC ${trim(state.mec)} · MTC ${trim(state.mtc)} ${U().conc} · printed ${esc(when)} · ${esc(link)}</span>`;
     byId("printHead").innerHTML=h;
   }
   window.addEventListener("beforeprint",()=>{ if(!document.body.classList.contains("ws-printing")) fillPrintHead(); });
@@ -3919,6 +4432,34 @@
   let keysOpener=null;
   ["keysBtn","keysFoot"].forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
   byId("keysClose").addEventListener("click",()=> byId("keysDlg").close());
+  // Single-key shortcuts can be switched off (WCAG 2.1.4); they never fire while typing or in a dialog.
+  const KEYS_KEY="dosecurve.keys";
+  let keysOn=true;
+  try{ keysOn=localStorage.getItem(KEYS_KEY)!=="off"; }catch(e){}
+  byId("keysOn").checked=keysOn;
+  byId("keysOn").addEventListener("change",()=>{ keysOn=byId("keysOn").checked; try{ localStorage.setItem(KEYS_KEY, keysOn ? "on" : "off"); }catch(e){} });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape" && document.documentElement.classList.contains("present") && !document.querySelector("dialog[open]")){ setPresent(false); return; }
+    if(!keysOn || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || document.querySelector("dialog[open]")) return;
+    const t=e.target, typing=t.closest && t.closest("input,select,textarea,[contenteditable]");
+    if(typing) return;
+    const onControl=t.closest && t.closest("button,a,summary,[role=tab],[tabindex]:not(body)");
+    if(e.key==="?"){ e.preventDefault(); byId("keysBtn").click(); }
+    else if((e.key==="l"||e.key==="L") && !onControl){ state.scale=state.scale==="log" ? "lin" : "log"; setSegVal("scaleSeg","scale",state.scale); render(); toast(state.scale==="log" ? "Log scale" : "Linear scale"); }
+    else if((e.key==="b"||e.key==="B") && !onControl && mode==="sim"){ setBaseline(); toast("Baseline set"); }
+    else if(e.key===" " && !onControl){ e.preventDefault(); playing ? pause() : play(); }
+    else if((e.key==="ArrowLeft"||e.key==="ArrowRight") && t===document.body){ e.preventDefault(); plotEl.focus({preventScroll:true}); plotEl.dispatchEvent(new KeyboardEvent("keydown",{key:e.key, shiftKey:e.shiftKey})); }
+  });
+  // Present mode: the chart large, for a projector.
+  function setPresent(on){
+    document.documentElement.classList.toggle("present", on);
+    byId("presentBtn").setAttribute("aria-pressed", on ? "true" : "false");
+    if(on){ byId("app").scrollIntoView({block:"start"}); byId("presentExit").focus({preventScroll:true}); }
+    else byId("presentBtn").focus({preventScroll:true});
+    render();
+  }
+  byId("presentBtn").addEventListener("click",()=> setPresent(!document.documentElement.classList.contains("present")));
+  byId("presentExit").addEventListener("click",()=> setPresent(false));
   byId("keysDlg").addEventListener("click",e=>{ if(e.target===byId("keysDlg")) byId("keysDlg").close(); });   // backdrop
   byId("keysDlg").addEventListener("close",()=>{ if(keysOpener) keysOpener.focus(); });
   // An iframe for a course page or website: the compact embed view of this scenario.
@@ -3952,6 +4493,7 @@
   function applyLink(st, fromLibrary){
     pause(); cursorT=null; evSel=null;
     const view={duration:st.view.duration, mec:st.view.mec, mtc:st.view.mtc, scale:st.view.scale, view:st.view.zoom, pd:st.view.pd, etgt:st.view.etgt};
+    POP_VIEW.forEach(k=>{ if(st.view[k]!==undefined) view[k]=st.view[k]; });
     if(st.mode==="cmp"){
       showTab("cmp");                       // enters Compare if needed, keeping the simulator scenario aside
       cmp.a=st.a; cmp.b=st.b;
@@ -3995,12 +4537,13 @@
 
   byId("csvBtn").addEventListener("click",()=>{
     const curves=chartCurves().map(cv=>({...cv, ev:doseEvents(cv.p)}));
-    let head=mode==="cmp" ? ["A_mg_L","B_mg_L"] : curves.map(cv=>cv.ghost?"baseline_mg_L":"concentration_mg_L");
+    const cu=CSV_UNIT[U().id];
+    let head=mode==="cmp" ? [`A_${cu}`,`B_${cu}`] : curves.map(cv=>cv.ghost?`baseline_${cu}`:`concentration_${cu}`);
     if(state.pd) head=head.concat(mode==="cmp" ? ["A_effect_pct","B_effect_pct"] : curves.map(cv=>cv.ghost?"baseline_effect_pct":"effect_pct"));
     const label=cv=> mode==="cmp" ? cv.tag : cv.ghost ? "baseline" : "current";
     // custom schedules go above the table as # comment lines, so the table itself stays a plain grid
     let csv=curves.filter(cv=>cv.p.dosing==="custom").map(cv=>`# ${label(cv)} dose schedule: `+
-      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} mg `+(e.route==="inf" ? `IV infusion over ${e.dur} h (${r2(e.mg/e.dur)} mg/h)` : e.route==="iv" ? "IV bolus" : "oral")+
+      (cv.p.events.length ? cv.p.events.map(e=>`${e.t} h ${e.mg} ${U().dose} `+(e.route==="inf" ? `IV infusion over ${e.dur} h (${r2(e.mg/e.dur)} ${U().dose}/h)` : e.route==="iv" ? "IV bolus" : "oral")+
         `${e.type==="loading"?" loading":""}${e.status==="missed"?" missed":""}`).join("; ") : "no doses")+"\n").join("");
     csv+="time_h,"+head.join(",")+"\n";
     const Tend=state.duration, N=600;
@@ -4267,7 +4810,9 @@
     $("simView").style.display=(which==="sim"||which==="cmp")?"block":"none";
     $("lsView").className="lsv"+(which==="ls"?" show":"");
     $("prView").className="practice"+(which==="pr"?" show":"");
-    [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabPr","pr"]].forEach(([id,w])=>{
+    $("csView").className="cases"+(which==="cs"?" show":"");
+    if(which==="ls") loadGlossary();
+    [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabCs","cs"],["tabPr","pr"]].forEach(([id,w])=>{
       $(id).classList.toggle("on",w===which);
       $(id).setAttribute("aria-selected",w===which);
       $(id).tabIndex=w===which ? 0 : -1;   // one tab stop for the tab list; arrow keys move within it
@@ -4278,6 +4823,32 @@
   $("tabCmp").addEventListener("click",()=>showTab("cmp"));
   $("tabLs").addEventListener("click",()=>showTab("ls"));
   $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
+  $("tabCs").addEventListener("click",()=>openCases(null));
+  // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
+  // the simulator doesn't pay for them.
+  const CASES_SRC="cases.js?v=b88d2d67a5";
+  let casesReady=null, casesMounted=false;
+  function loadCases(){
+    if(!casesReady) casesReady=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=CASES_SRC; sc.onload=()=> window.DCCases ? res(window.DCCases) : rej(new Error("no cases"));
+      sc.onerror=()=>{ casesReady=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return casesReady;
+  }
+  const casesHost={esc, fmt, toast, copyHash,
+    print:()=>{ document.documentElement.classList.add("print-case"); window.print(); document.documentElement.classList.remove("print-case"); },
+    openScenario:(p, view, drugId)=>{
+      applyLink({mode:"sim", s:p, base:null, lesson:"", view:Object.assign({}, PK.VIEW_DEFAULTS, view)}, true);
+      state.drug=drugId; lastDrug=drugId; markDrug();
+      $("app").scrollIntoView({block:"start"}); toast("The case's regimen is open in the simulator");
+    }};
+  function openCases(link){
+    showTab("cs");
+    loadCases().then(C=>{ if(!casesMounted){ C.mount($("csRoot"), casesHost); casesMounted=true; } if(link) C.open(link); })
+      .catch(()=>{ $("csRoot").innerHTML=`<p class="lib-note">The cases couldn't load. Check the connection and open the Cases tab again.</p>`; });
+  }
   $("prLink").addEventListener("click",()=>{ if(prob) copyHash(PK.encodeTaskLink({type:"problem", id:prob.id, seed:prob.seed})); });
   // Arrow keys, Home and End move between tabs and select them, as in the WAI-ARIA tabs pattern.
   document.querySelector(".tabbar").addEventListener("keydown",e=>{
@@ -4294,12 +4865,12 @@
   buildSliders();
   buildDrugs();
   buildLessons();
-  buildGlossary();
   renderProgress();
   buildCompare();
   syncWindow();
-  const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);
-  if(shared) applyLink(shared);
+  const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash), caseLink=/^#case=/.test(location.hash);
+  if(caseLink){ render(); loadCases().then(C=> openCases(C.decodeCaseLink(location.hash))).catch(()=>openCases(null)); }
+  else if(shared) applyLink(shared);
   else if(task && task.type==="problem"){ render(); showTab("pr"); showProblem(PK.makeProblem({id:task.id, seed:task.seed}), false, true); }
   else if(task && task.type==="worksheet"){
     render(); showTab("pr");
@@ -4309,6 +4880,19 @@
   else if(task && task.type==="window") startWindow(PK.makeWindowTask({kind:task.kind, seed:task.seed}), true);
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
   else render();
+
+  // Visit counting, off unless ANALYTICS_SITE_ID is set to a GoatCounter site code (see docs/NEEDS-SAIF.md).
+  // GoatCounter is cookie-free; only the page's path is sent, never the part after # (a scenario's settings)
+  // or anything entered here. The service worker never caches it (another site).
+  const ANALYTICS_SITE_ID="";
+  if(ANALYTICS_SITE_ID && /^[a-z0-9-]{2,50}$/.test(ANALYTICS_SITE_ID) && !document.documentElement.classList.contains("embed")){
+    window.goatcounter={no_onload:true};
+    const gc=document.createElement("script");
+    gc.async=true; gc.src="https://gc.zgo.at/count.js"; gc.dataset.goatcounter=`https://${ANALYTICS_SITE_ID}.goatcounter.com/count`;
+    gc.onload=()=>{ try{ window.goatcounter.count({path:location.pathname}); }catch(e){ /* counting is optional */ } };
+    document.head.appendChild(gc);
+    byId("anaState").textContent="on";
+  }
 
   // Offline use: after one visit a service worker (sw.js) keeps a copy of the app, so it opens without a
   // connection. Only over https or on localhost; opened as a local file, the page simply runs without it.

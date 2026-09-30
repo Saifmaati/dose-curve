@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoseCurve validation</title>
+<meta name="description" content="How DoseCurve's pharmacokinetic engine is checked: an independent solver on a scenario matrix, analytic identities, stated tolerances, and how to rerun it.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#070a14;--panel:#0d1220;--line:rgba(120,150,255,.18);--text:#c9d0e6;--muted:#8b94b0;--hi:#eef1fb;--ok:#3be58a;--no:#ff6b86;--accent:#7c6bff}
+  @media (prefers-color-scheme: light){ :root{--bg:#f6f7fb;--panel:#fff;--line:#d9deea;--text:#2b3350;--muted:#5d6682;--hi:#10152a;--ok:#12803f;--no:#b3203f;--accent:#4b3fd1} }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:980px;margin:0 auto;padding:28px 16px 60px}
+  h1{font-size:28px;color:var(--hi);margin:6px 0 4px} h2{font-size:19px;color:var(--hi);margin:30px 0 8px}
+  a{color:var(--accent)} code,pre{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto}
+  .note{color:#d9a441} .muted{color:var(--muted)}
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:16px 0}
+  .summary b{color:var(--hi)} .big{font-size:20px;color:var(--hi);font-weight:600}
+  .ok{color:var(--ok)} .no{color:var(--no)}
+  table{border-collapse:collapse;width:100%;font-size:12.5px} caption{text-align:left;color:var(--muted);margin-bottom:6px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap} th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--bg)}
+  .scroll:focus-visible,pre:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+  ul{padding-left:20px} li{margin:4px 0}
+  @media print{ :root{--bg:#fff;--panel:#fff;--line:#bbb;--text:#000;--muted:#333;--hi:#000;--ok:#000;--no:#000} .scroll{max-height:none;overflow:visible} thead th{position:static} }
+</style>
+</head>
+<body>
+<main>
+<p><a href="./">← DoseCurve</a></p>
+<h1>Validation</h1>
+<p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients.</p>
+
+<div class="summary" id="summary" aria-live="polite">Running the checks in your browser…</div>
+
+<h2>What is checked</h2>
+<ul>
+  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
+  <li><b>A scenario matrix</b> of <span id="nScen">…</span> scenarios:
+    <ul>
+      <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
+      <li>Regimens: single dose, repeated, with a loading dose, with a missed dose, and a custom schedule with irregular times, amounts and a missed dose.</li>
+      <li>Drugs: a first-order drug, a first-order drug with a salt factor, and a saturable (Michaelis–Menten) drug.</li>
+      <li>Patients: a simple-mode patient at 100% organ function, and a clinical patient (a 75-year-old woman, 60 kg, serum creatinine 1.8 mg/dL) whose clearance follows Cockcroft–Gault.</li>
+    </ul></li>
+  <li><b>Four numbers per scenario</b> over 0–96 h:
+    <ul>
+      <li>the peak</li>
+      <li>the trough (just before the next dose would be due, or at 96 h)</li>
+      <li>the area under the curve</li>
+      <li>the time between MEC 4 and MTC 12 mg/L</li>
+    </ul></li>
+  <li><b>Tolerances:</b>
+    <ul>
+      <li>Peak, trough and AUC within 0.5% for first-order scenarios and 1% for saturable ones.</li>
+      <li>Time in window within 0.5 percentage points for first-order scenarios and 1 point for saturable ones.</li>
+    </ul></li>
+  <li><b>Analytic identities</b>, in the test suite (<code>tests/validation.test.js</code>):
+    <ul>
+      <li>the accumulation ratio 1 / (1 − e^(−kₑτ))</li>
+      <li>90% of steady state at 3.32 half-lives</li>
+      <li>AUC = F·S·D / CL for every route</li>
+      <li>the infusion plateau R₀ / CL</li>
+      <li>the Michaelis–Menten steady state Km·R / (Vmax − R), its time to 90%, and its first-order limit at low levels</li>
+      <li>the Cockcroft–Gault and Devine hand values</li>
+    </ul></li>
+</ul>
+<p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
+
+<h2>Results</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Results table"><table id="tbl"><caption>Each scenario: the reference value, DoseCurve's, and the difference.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Peak (ref)</th><th scope="col">Peak Δ</th><th scope="col">Trough (ref)</th><th scope="col">Trough Δ</th><th scope="col">AUC (ref)</th><th scope="col">AUC Δ</th><th scope="col">In window (ref)</th><th scope="col">Δ pp</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
+<h2>How to reproduce</h2>
+<pre tabindex="0" aria-label="Commands to reproduce">node --test tests/                      # the engine, the cases and this comparison (Node 20, no dependencies)
+python3 -m pip install numpy scipy
+python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
+<p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
+</main>
+<script src="pk-engine.js?v=18484e6d3f"></script>
+<script>
+(function(){
+  "use strict";
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
+  fetch("validation/reference-results.json").then(r=>r.json()).then(REF=>{
+    const {T,mec,mtc}=REF.window, rows=[];
+    let pass=0, total=0, worst={rel:0, pp:0};
+    document.getElementById("nScen").textContent=REF.scenarios.length;
+    REF.scenarios.forEach(s=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc);
+      const m={peak:w.cmax, trough:PK.conc(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
+      const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
+      const d={peak:pct(m.peak,r.peak), trough:pct(m.trough,r.trough), auc:pct(m.auc,r.auc), tin:m.tin-r.tin_pct};
+      const ok=["peak","trough","auc"].every(k=>Math.abs(d[k])<=100*tol) && Math.abs(d.tin)<=tpp;
+      ["peak","trough","auc"].forEach(k=>{ total++; if(Math.abs(d[k])<=100*tol) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
+      total++; if(Math.abs(d.tin)<=tpp) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
+    });
+    document.querySelector("#tbl tbody").innerHTML=rows.join("");
+    const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
+    document.getElementById("summary").innerHTML=
+      `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
+      `<div>${REF.scenarios.length} scenarios × 4 numbers. Largest difference: ${worst.rel.toFixed(3)}% (peak, trough or AUC) and ${worst.pp.toFixed(3)} percentage points (time in window).</div>`+
+      `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
+  }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
+})();
+</script>
+</body>
+</html>

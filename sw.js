@@ -1,14 +1,18 @@
 // DoseCurve service worker: after one visit the app opens without a connection.
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
-// - The engine (pk-engine.js?v=<content hash>), icons, manifest and the Google Fonts files come from the cache
-//   and are refreshed in the background. A page and its engine always match: each page names its engine by
-//   hash, and older engine copies are dropped when a new one is saved.
+// - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), icons, manifest and the Google
+//   Fonts files come from the cache and are refreshed in the background. A page and its scripts always match:
+//   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v1";
-const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png"];
-const PAGE="./";   // every page in scope is the one app page; its saved copy lives under this key
+const CACHE="dosecurve-v9";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+// cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
+const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
+  "./cases.js?v=b88d2d67a5",
+  "./pk-glossary.js?v=97d24a002b","./pop-worker.js?v=67abc7e031","./validation.html","./validation/reference-results.json"];
+const PAGE="./";   // the app page's saved copy lives under this key
+const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];
 
 self.addEventListener("install",e=>{
@@ -23,15 +27,18 @@ self.addEventListener("activate",e=>{
 const scopeUrl=path=> new URL(path, self.registration.scope).href;
 // The app page itself (not 404.html or anything else that happens to load in scope).
 const isAppPage=url=>{ const scope=new URL(self.registration.scope).pathname; return url.pathname===scope || url.pathname===scope+"index.html"; };
+const extraPage=url=>{ const scope=new URL(self.registration.scope).pathname; return PAGES.find(f=>url.pathname===scope+f) || null; };
 
 async function fromNetworkFirst(req){
   const cache=await caches.open(CACHE);
   try{
-    const res=await fetch(req);
-    if(res.ok && isAppPage(new URL(req.url))) await cache.put(scopeUrl(PAGE), res.clone());
+    const res=await fetch(req), url=new URL(req.url), extra=extraPage(url);
+    if(res.ok && isAppPage(url)) await cache.put(scopeUrl(PAGE), res.clone());
+    else if(res.ok && extra) await cache.put(scopeUrl(extra), res.clone());
     return res;
   }catch(err){
-    const saved=await cache.match(scopeUrl(PAGE));
+    const extra=extraPage(new URL(req.url));
+    const saved=await cache.match(scopeUrl(extra ? extra : PAGE));   // the validation page offline, else the app
     if(saved) return saved;
     throw err;
   }
@@ -45,7 +52,7 @@ async function fromCacheThenRefresh(req, event){
   const refresh=fetch(req).then(async res=>{
     if(res.ok || res.type==="opaque"){
       const url=new URL(req.url);
-      if(url.pathname.endsWith("/pk-engine.js")){   // keep only the engine this response is
+      if(url.searchParams.has("v")){   // a file named by version (the engine, the cases): keep only this one
         for(const k of await cache.keys()){
           const u=new URL(k.url);
           if(u.pathname===url.pathname && u.search!==url.search) await cache.delete(k);

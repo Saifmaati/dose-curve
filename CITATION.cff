@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use DoseCurve in teaching or research, please cite it as below."
+title: "DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education"
+type: software
+authors:
+  - family-names: Maati
+    given-names: Saif
+version: 1.0.0
+date-released: 2026-09-30
+url: "https://saifmaati.github.io/dose-curve/"
+repository-code: "https://github.com/Saifmaati/dose-curve"
+license: MIT
+keywords:
+  - pharmacokinetics
+  - pharmacodynamics
+  - pharmacy education
+  - simulation
+  - Cockcroft-Gault
+  - Michaelis-Menten
+abstract: >-
+  DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD.
+  It models one-compartment kinetics (first-order or saturable Michaelis-Menten) for oral,
+  IV bolus and infusion dosing with regular, loading, missed and custom schedules, a clinical
+  patient with Cockcroft-Gault creatinine clearance, a cited drug library, guided lessons,
+  generated practice problems, clinical cases graded by the model, and a public validation
+  against an independent solver. It is an educational model, not for clinical dosing.

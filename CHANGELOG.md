@@ -2,6 +2,69 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.0.0 (2026-09-30)
+
+- **Classroom and accessibility:**
+  - **Present mode** (▣ Present): a full-width chart and larger type for a projector.
+  - The theme follows the system's light or dark setting until you pick one.
+  - Single-key shortcuts (Space, ←/→, L for log scale, B for baseline, ? for the list) never fire while typing and can be switched off.
+  - The dose timeline works from the keyboard (↑/↓ pick a dose, ←/→ move it).
+  - The chart has a text alternative with its readouts, and motion is reduced when the system asks.
+  - Lighthouse accessibility is 100 on mobile and desktop.
+  - The teaching guide has a week-by-week course plan.
+- **Population mode** (◍ POPULATION above the chart):
+  - It simulates 50–1,000 virtual patients around the scenario, with log-normal variability on clearance (CV 30%) and volume (20%). Both CVs are adjustable and labelled as teaching assumptions.
+  - A seed makes the patients reproducible, including in links.
+  - The chart shades the 5th–95th percentile band and dots the median, beside the deterministic curve.
+  - The readouts give the probability of target attainment at steady state (trough at or above MEC and peak at or below MTC) and, optionally, the share with AUC24 in a range.
+  - It runs in a Web Worker (1,000 patients in about 0.3 s), works in Compare, and leaves saturable scenarios alone, with a note.
+  - Two glossary terms (42).
+- **Release infrastructure:**
+  - A GitHub Actions workflow runs the whole suite on every push and pull request, with a badge in the README.
+  - The README is rewritten, with screenshots.
+  - New files: `LICENSE` (MIT), `CITATION.cff`, `.zenodo.json`, and issue templates (bug report, feedback, "I'm an educator and want…"), with a feedback link in the footer.
+  - Visit counting (GoatCounter, cookie-free) sits behind `ANALYTICS_SITE_ID`. It is off by default, sends only the page's path, and the privacy note says exactly what it counts.
+  - `docs/NEEDS-SAIF.md` lists what needs the owner's accounts.
+- **Validation** (`validation.html`, linked in the footer). An independent solver (`validation/reference.py`, SciPy's `solve_ivp`) runs a matrix of 94 scenarios:
+  - routes × regimens × drugs (first-order, salt, saturable) × patients
+  - the peak, trough, AUC and time in window of each, compared with DoseCurve's engine live in the browser, and in the test suite
+
+  All 376 comparisons agree within 0.5% (first-order) or 1% (saturable); the largest difference is 0.025%.
+
+  Analytic identities are tested too. The validation found that the window statistics sampled IV-bolus jumps and window crossings coarsely (up to 0.8% in AUC and 1 point in time in window). They now land exactly, and the *Short vs long infusion* lesson says 0.9 h above the MTC, where it said 0.8 h.
+- **Clinical cases** (a new Cases tab), eight of them: gentamicin conventional and once daily (the Hartford approach), vancomycin to an AUC target, phenytoin with low albumin, digoxin in an older adult, theophylline in a smoker, lithium with lower kidney function, and a late-dose question.
+  - The model grades a proposed regimen at steady state and gives rule-based hints.
+  - It re-grades the regimen rounded to the forms available.
+  - A walkthrough uses the patient's own numbers.
+  - Every case has a link and prints.
+  - The cases load only when the tab opens, and nothing numeric is stored that the model could compute.
+- **Saturable (Michaelis–Menten) elimination.** Any scenario can switch from first-order to saturable elimination. The curve is integrated numerically:
+  - RK4 in 0.05 h steps, with every dose landing at its exact time.
+  - Every chart, readout, comparison, export and link works as before.
+  - The readouts show the predicted steady state, Css = Km·R / (Vmax − R), the input as a share of Vmax, the half-life at the current level, and the dose-dependent time to 90% of steady state. They say "No steady state: input rate exceeds Vmax" when that happens.
+  - Phenytoin now uses saturable elimination (Vmax 7 mg/kg/day, Km 4 mg/L, marked unverified).
+  - A Sheiner–Tozer tool adjusts a measured phenytoin level for low albumin.
+  - New: a lesson (*Saturable elimination*), a comparison, four glossary terms, and a practice topic with four kinds (30 in all).
+- **Clinical patient mode.** Age, sex, height, weight, serum creatinine and albumin. The panel shows the working, with the numbers substituted, for:
+  - ideal body weight (Devine) and adjusted body weight
+  - Cockcroft–Gault creatinine clearance, with the weight used selectable
+  - the drug's clearance, CL = CL_ref × [(1 − fe) + fe × CrCl / 120]
+
+  Simple mode and every older link are unchanged.
+- **Drug library with sources.** Nine profiles. Digoxin, phenytoin and lithium carbonate are new, and each profile has a renal fraction, protein binding, salt factor, units and forms. Every value is tied to its FDA label on DailyMed or a paper, or marked "typical textbook value, unverified". Some profiles now follow their labels:
+  - amoxicillin: t½ 1.0 h
+  - vancomycin: 1 g every 12 h, t½ 4.8 h, V 0.4 L/kg
+  - theophylline: V 0.45 L/kg, 450 mg every 12 h
+  - caffeine: V 0.6 L/kg
+- **Units end to end.** Digoxin in mcg and ng/mL, lithium in mEq/L, with the salt factor applied to every dose. Readouts, axes, tables, explanations and CSV columns follow the drug. A scenario in other units is converted when two are compared.
+- **New lesson and comparison, *Kidney function (CrCl)*** (22 lessons, 16 comparisons), and six glossary terms (36).
+- **What changed** explains changes in creatinine clearance, the renal fraction, the salt factor and units.
+- **Links, version 5.** Links carry the clinical patient, units and the wider ranges (volume to 600 L, half-life to 72 h, weight to 200 kg, window to 14 days). Other links are written exactly as before, and a scenario link without a version is read as version 1.
+- **Fixes:**
+  - No layout shift on first load (desktop CLS 0.144 → 0.01).
+  - The inspector's ⟨ dose ⟩ buttons now carry their visible text in their accessible names.
+  - Safari's `-webkit-` blur prefix, and a fallback for `100dvh`.
+
 ## 2026-09-30
 
 - **New lesson, *Dosing by weight*** (21 lessons in all), and a matching one-click comparison (15 in all). The same 500 mg gives a 100 kg adult half the peak and half the AUC of a 50 kg adult at the same half-life; 10 mg/kg each makes the curves identical.
