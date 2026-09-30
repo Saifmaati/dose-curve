@@ -44,6 +44,11 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
   - the drug's clearance, CL = CL_ref × [(1 − fe) + fe × CrCl / 120], where fe is the fraction the kidneys excrete unchanged and 120 mL/min is the reference.
 
   Set a baseline, raise the creatinine, and the panel under the chart explains the change with the numbers, for example: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L." It is an educational model, not for clinical dosing.
+- **Show a population.** **◍ POPULATION** (above the chart) simulates 200 virtual patients (50–1,000) whose clearance and volume vary log-normally around the scenario's values. The CVs are 30% and 20% by default, as teaching assumptions.
+  - The band holds the middle 90% of their levels.
+  - For a repeated regimen the panel gives the probability of target attainment: the share whose steady-state trough is at or above MEC and whose peak is at or below MTC, and optionally the share with AUC24 in a range.
+  - In Compare it shows both regimens on the same virtual patients, a clean way to ask which regimen suits more people.
+  - The seed is in the link, so a class sees the same population.
 - **Show saturation.** Switch **Drug Parameters** from *First-order* to *Saturable (Vmax, Km)*, or load phenytoin. Elimination is then Vmax·C / (Km + C), integrated numerically.
   - The readouts give the predicted steady state, Css = Km·R / (Vmax − R), and the input as a share of Vmax.
   - They also give the half-life at that level and the time to 90% of steady state, which grows with the dose.
@@ -66,7 +71,7 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 40 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 42 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (8)
 
