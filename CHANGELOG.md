@@ -2,8 +2,16 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
-## Unreleased: v1.0 (in progress on the `v1.0` branch)
+## 1.0.0 (2026-09-30)
 
+- **Classroom and accessibility:**
+  - **Present mode** (▣ Present): a full-width chart and larger type for a projector.
+  - The theme follows the system's light or dark setting until you pick one.
+  - Single-key shortcuts (Space, ←/→, L for log scale, B for baseline, ? for the list) never fire while typing and can be switched off.
+  - The dose timeline works from the keyboard (↑/↓ pick a dose, ←/→ move it).
+  - The chart has a text alternative with its readouts, and motion is reduced when the system asks.
+  - Lighthouse accessibility is 100 on mobile and desktop.
+  - The teaching guide has a week-by-week course plan.
 - **Population mode** (◍ POPULATION above the chart):
   - It simulates 50–1,000 virtual patients around the scenario, with log-normal variability on clearance (CV 30%) and volume (20%). Both CVs are adjustable and labelled as teaching assumptions.
   - A seed makes the patients reproducible, including in links.

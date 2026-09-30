@@ -8,11 +8,13 @@
 <script>(function(){ var d=document.documentElement, q=location.search, t=(q.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
   if(/[?&]embed(?:[=&]|$)/.test(q)) d.classList.add("embed");
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
+  // no choice made yet: follow the system's light or dark setting
+  if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
   if(t==="light") d.classList.add("light");
   // decided before the first paint, so the quick-start strip never pops in and pushes the chart down
   try{ if(localStorage.getItem("dosecurve.quickstart.dismissed")==="1") d.classList.add("qs-off"); }catch(e){} })();</script>
 <title>DoseCurve — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 21 guided lessons plus practice problems. Built for pharmacy students and educators.">
+<meta name="description" content="Interactive pharmacokinetics and PK/PD simulator for pharmacy education: compare regimens, model loading, missed and custom doses, estimate creatinine clearance (Cockcroft–Gault), explore saturable (Michaelis–Menten) kinetics and population variability, and work graded clinical cases. Validated against an independent solver. Free, educational, not for clinical dosing.">
 <link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
 <meta name="theme-color" content="#05070E">
 <meta name="color-scheme" content="dark">
@@ -24,7 +26,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 21 guided lessons. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 23 guided lessons and 8 graded clinical cases. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -36,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive one-compartment pharmacokinetics and pharmacodynamics simulator for learning: regimens, custom dose schedules, side-by-side comparisons, lessons and practice problems.",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.0.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -258,8 +260,10 @@
   .pop-row label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
   .pop-row input,.pop-row select{width:96px;background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:7px;padding:6px 8px;font:inherit;font-size:13px}
   .pop-out{color:var(--text-2);line-height:1.55;margin:4px 0} .pop-out b{color:var(--hi)}
+  .pop-aucu{font-size:12px;color:var(--muted);padding-bottom:8px}
   .pop-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
   @media (max-width:480px){ .pop-panel{margin-left:14px;margin-right:14px} }
+  .keys-switch{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:12px;color:var(--text-3);line-height:1.5}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 22px 0;min-height:27px}   /* one row reserved before the script fills it: no layout shift */
   .legend .li{display:flex;align-items:center;gap:6px}
   .legend .lk{width:14px;height:3px;border-radius:2px}
@@ -873,6 +877,21 @@
   html.light .lib-kind.cmp{color:var(--pink)}
   html.light .lk.obs{background:#fff}
   html.light .foot-links a{text-decoration-color:rgba(40,60,130,.4)}
+  /* present mode: for a projector. The chart takes the width, the controls fold away, the type grows */
+  .present-exit{display:none}
+  html.present .top,html.present aside.controls,html.present .foot,html.present #quickStart,html.present .learn{display:none !important}
+  html.present .hero{position:absolute !important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0}   /* its heading stays for screen readers */
+  html.present .grid{grid-template-columns:1fr !important}
+  html.present body{font-size:17px}
+  html.present .plot-title{font-size:22px} html.present .legend{font-size:14px}
+  html.present .ro-v{font-size:30px} html.present .ro-k{font-size:12px}
+  html.present .ss-note,html.present .cmp-why,html.present .pop-out,html.present .lesson{font-size:16px}
+  html.present .present-exit{display:block;position:fixed;right:16px;bottom:16px;z-index:40;border:1px solid var(--glass-line-2);
+    background:rgba(var(--panel-rgb),.92);color:var(--hi);border-radius:999px;padding:10px 16px;font:inherit;font-size:14px;cursor:pointer}
+  @media print{ .present-exit{display:none !important} }
+  /* for readers that can't see the chart: its numbers as text */
+  .sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition-duration:0s !important;animation-duration:0s !important;scroll-behavior:auto !important} }
   .theme-btn{border:1px solid var(--glass-line-2);background:rgba(var(--well-rgb),.5);color:var(--muted);border-radius:999px;padding:5px 11px;
     font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11px;letter-spacing:.06em;cursor:pointer}
   .theme-btn:hover{color:var(--hi)}
@@ -948,6 +967,7 @@
     </div>
     <div class="top-right">
       <button class="theme-btn" id="themeBtn" aria-pressed="false">◐ Light</button>
+      <button class="theme-btn" id="presentBtn" aria-pressed="false" title="Present: a large chart and text for a projector (Esc to leave)">▣ Present</button>
       <a class="top-link" href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">OPEN SOURCE · GITHUB ↗</a>
     </div>
   </header>
@@ -957,7 +977,7 @@
   <section class="hero">
     <div class="eyebrow">Interactive PK/PD Lab</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
-    <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons and practice problems.</p>
+    <p class="hero-sub">Change a drug, a patient or a regimen and see the concentration and effect curves respond. Compare regimens side by side, build your own dose schedules, and learn the ideas behind them with guided lessons, practice problems and graded clinical cases.</p>
     <div class="hero-cta">
       <button class="cta primary" data-go="pd">Try the PK/PD Lab</button>
       <button class="cta" data-go="ls">Start a lesson</button>
@@ -1270,11 +1290,12 @@
         <div class="legend" id="legend"></div>
 
         <div class="plot-box">
-          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
+          <p class="sr-only" id="plotSummary" aria-live="off"></p>
+          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-describedby="plotSummary" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
           <div id="tooltip"></div>
         </div>
         <div class="ev-strip" id="evStripWrap" hidden>
-          <svg id="evStrip" viewBox="0 0 760 56" role="img" aria-label="Dose schedule timeline. Drag a dose sideways to move it in half-hour steps, or select it to edit it in the schedule list."></svg>
+          <svg id="evStrip" viewBox="0 0 760 56" tabindex="0" role="group" aria-roledescription="dose timeline" aria-label="Dose schedule timeline. Up and down arrows pick a dose, left and right arrows move it half an hour (Shift: 2 hours); or drag a dose sideways, or select it to edit it in the schedule list."></svg>
           <div class="ev-move"><span id="evMoveMsg" role="status" aria-live="polite"></span><button class="ib" id="evUndo" hidden>↶ Undo</button></div>
         </div>
         <div class="pd-box" id="pdBox" hidden>
@@ -1292,8 +1313,9 @@
             <button class="abtn" id="popNew" type="button">New patients</button>
           </div>
           <div class="pop-row">
-            <label>AUC24 target, low<input id="popLo" type="number" min="0" step="50" placeholder="off"></label>
-            <label>high (<span class="pop-aucu">mg·h/L</span>)<input id="popHi" type="number" min="0" step="50" placeholder="off"></label>
+            <label>AUC24 target from<input id="popLo" type="number" min="0" step="50" placeholder="off"></label>
+            <label>to<input id="popHi" type="number" min="0" step="50" placeholder="off"></label>
+            <span class="pop-aucu">mg·h/L</span>
           </div>
           <div class="pop-out" id="popOut" aria-live="polite"></div>
           <p class="pop-note">Clearance and volume vary log-normally around the scenario's values (their medians); the CVs are typical teaching assumptions, not drug-specific claims. The shaded band holds the middle 90% of levels (5th–95th percentile) and the dotted line is the median. Educational model, not for clinical dosing.</p>
@@ -1497,12 +1519,13 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Updated 30 September 2026</span>
+        <span>Version 1.0.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <button class="present-exit" id="presentExit" type="button">✕ Leave present mode</button>
 
   <dialog class="lib keys-dlg" id="keysDlg" aria-labelledby="keysTitle">
     <div class="lib-in">
@@ -1516,6 +1539,15 @@
           <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>Jump to the start or the end of the window</td></tr>
           <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Clear the cursor (or cancel a dose you're dragging)</td></tr>
+          <tr><th scope="row" colspan="2">On the dose timeline (a custom schedule)</th></tr>
+          <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Pick the previous or next dose</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the picked dose 0.5 h (<kbd>Shift</kbd>: 2 h)</td></tr>
+          <tr><th scope="row" colspan="2">Anywhere, unless you're typing (single-key shortcuts)</th></tr>
+          <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the time cursor, when nothing else has focus</td></tr>
+          <tr><td><kbd>L</kbd></td><td>Switch between linear and log scale</td></tr>
+          <tr><td><kbd>B</kbd></td><td>Set the baseline</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Open this list</td></tr>
           <tr><th scope="row" colspan="2">Everywhere else</th></tr>
           <tr><td><kbd>Tab</kbd> <kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>Move between controls</td></tr>
           <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Change a slider by one step; in the tab bar, move between tabs (<kbd>Home</kbd> <kbd>End</kbd> for the first and last)</td></tr>
@@ -1525,6 +1557,7 @@
         </tbody>
       </table>
       <p class="lib-note">The ⟨ dose ⟩, ⟨ peak ⟩ and ⟨ trough ⟩ buttons under the chart move the cursor to the previous or next dose, peak or trough.</p>
+      <label class="keys-switch"><input type="checkbox" id="keysOn" checked> Single-key shortcuts (Space, ←/→, L, B, ?). Turn them off if they get in the way of a screen reader or voice control; the choice is kept in this browser.</label>
     </div>
   </dialog>
 
@@ -2087,6 +2120,7 @@
     cards.forEach((c,i)=> c.key=keys[i]);
     if(roOpen && !keys.includes(roOpen)) roOpen=null;
     const had=document.activeElement && document.activeElement.closest ? document.activeElement.closest("#readouts .ro") : null;
+    byId("plotSummary").textContent=`Chart: ${scenarioSummary(p)}, over 0–${state.duration} h. `+cards.map(c=>`${c.k} ${c.v} ${c.u}`.trim()).join("; ")+".";
     byId("readouts").innerHTML=cards.map(c=>`
       <button class="ro${c.hot?" hot":""}${c.key===roOpen?" open":""}" data-key="${c.key}" aria-expanded="${c.key===roOpen}" aria-controls="roMath">
         <span class="ro-k">${c.k}</span>
@@ -3313,6 +3347,22 @@
       : {id, kind, undo:before, after, text:moveText(before, after, id)};
     setEvents(after, id);
   }
+  // The timeline takes the keyboard: ↑ ↓ pick the previous or next dose, ← → move it (Shift: 2 h).
+  strip.addEventListener("keydown",e=>{
+    const L=state.events;
+    if(!L.length || state.dosing!=="custom") return;
+    const i=L.findIndex(v=>v.id===evSel);
+    if(e.key==="ArrowUp" || e.key==="ArrowDown"){
+      e.preventDefault();
+      const j=i<0 ? 0 : Math.min(L.length-1, Math.max(0, i+(e.key==="ArrowDown" ? 1 : -1)));
+      evSel=L[j].id; renderEvents(); strip.focus({preventScroll:true});
+      byId("evMoveMsg").textContent=`Picked the ${doseDesc(L[j])} at ${trim(L[j].t)} h.`;
+    } else if((e.key==="ArrowLeft" || e.key==="ArrowRight") && i>=0){
+      e.preventDefault();
+      nudgeEvent(evSel, (e.key==="ArrowRight" ? 1 : -1)*(e.shiftKey ? 2 : 0.5));
+      strip.focus({preventScroll:true});
+    }
+  });
   function nudgeEvent(id, d){
     const e=state.events.find(v=>v.id===id);
     if(!e) return;
@@ -4382,6 +4432,34 @@
   let keysOpener=null;
   ["keysBtn","keysFoot"].forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
   byId("keysClose").addEventListener("click",()=> byId("keysDlg").close());
+  // Single-key shortcuts can be switched off (WCAG 2.1.4); they never fire while typing or in a dialog.
+  const KEYS_KEY="dosecurve.keys";
+  let keysOn=true;
+  try{ keysOn=localStorage.getItem(KEYS_KEY)!=="off"; }catch(e){}
+  byId("keysOn").checked=keysOn;
+  byId("keysOn").addEventListener("change",()=>{ keysOn=byId("keysOn").checked; try{ localStorage.setItem(KEYS_KEY, keysOn ? "on" : "off"); }catch(e){} });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape" && document.documentElement.classList.contains("present") && !document.querySelector("dialog[open]")){ setPresent(false); return; }
+    if(!keysOn || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || document.querySelector("dialog[open]")) return;
+    const t=e.target, typing=t.closest && t.closest("input,select,textarea,[contenteditable]");
+    if(typing) return;
+    const onControl=t.closest && t.closest("button,a,summary,[role=tab],[tabindex]:not(body)");
+    if(e.key==="?"){ e.preventDefault(); byId("keysBtn").click(); }
+    else if((e.key==="l"||e.key==="L") && !onControl){ state.scale=state.scale==="log" ? "lin" : "log"; setSegVal("scaleSeg","scale",state.scale); render(); toast(state.scale==="log" ? "Log scale" : "Linear scale"); }
+    else if((e.key==="b"||e.key==="B") && !onControl && mode==="sim"){ setBaseline(); toast("Baseline set"); }
+    else if(e.key===" " && !onControl){ e.preventDefault(); playing ? pause() : play(); }
+    else if((e.key==="ArrowLeft"||e.key==="ArrowRight") && t===document.body){ e.preventDefault(); plotEl.focus({preventScroll:true}); plotEl.dispatchEvent(new KeyboardEvent("keydown",{key:e.key, shiftKey:e.shiftKey})); }
+  });
+  // Present mode: the chart large, for a projector.
+  function setPresent(on){
+    document.documentElement.classList.toggle("present", on);
+    byId("presentBtn").setAttribute("aria-pressed", on ? "true" : "false");
+    if(on){ byId("app").scrollIntoView({block:"start"}); byId("presentExit").focus({preventScroll:true}); }
+    else byId("presentBtn").focus({preventScroll:true});
+    render();
+  }
+  byId("presentBtn").addEventListener("click",()=> setPresent(!document.documentElement.classList.contains("present")));
+  byId("presentExit").addEventListener("click",()=> setPresent(false));
   byId("keysDlg").addEventListener("click",e=>{ if(e.target===byId("keysDlg")) byId("keysDlg").close(); });   // backdrop
   byId("keysDlg").addEventListener("close",()=>{ if(keysOpener) keysOpener.focus(); });
   // An iframe for a course page or website: the compact embed view of this scenario.
