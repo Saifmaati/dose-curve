@@ -859,10 +859,10 @@
     const el=panel(`<h2 class="cs-h">Make an assignment</h2>
       <p class="cs-intro-p">Put up to ${BUNDLE_MAX} cases and worksheets in order and share one link. Students open it, work through the items (worksheet answers are checked as they go), and can make a completion code at the end. Choose a class key and tell it to your class separately: it is not in the link, and you need it to verify their codes.</p>
       <label class="cs-field">Title<input id="bmTitle" maxlength="${TEXT_LIMITS.title}" value="Assignment"></label>
-      <fieldset class="cs-field"><legend>Add a case</legend><select id="bmCase">${CASES.map(c=>`<option value="${c.id}">${h.esc(c.title)}</option>`).join("")}${lastSpec ? `<option value="community">Your case: ${h.esc(lastSpec.title)}</option>` : ""}</select>
+      <fieldset class="cs-field"><legend>Add a case</legend><select id="bmCase" aria-label="Case to add">${CASES.map(c=>`<option value="${c.id}">${h.esc(c.title)}</option>`).join("")}${lastSpec ? `<option value="community">Your case: ${h.esc(lastSpec.title)}</option>` : ""}</select>
         <button class="abtn" type="button" id="bmAddCase">Add</button></fieldset>
-      <fieldset class="cs-field"><legend>Add a worksheet</legend><select id="bmTopic"><option value="">All topics</option>${PK.PRACTICE_TOPICS.map(t=>`<option value="${t.id}">${h.esc(t.title)}</option>`).join("")}</select>
-        <select id="bmCount">${PK.WORKSHEET_SIZES.map(n=>`<option value="${n}"${n===5 ? " selected" : ""}>${n} problems</option>`).join("")}</select>
+      <fieldset class="cs-field"><legend>Add a worksheet</legend><select id="bmTopic" aria-label="Worksheet topic"><option value="">All topics</option>${PK.PRACTICE_TOPICS.map(t=>`<option value="${t.id}">${h.esc(t.title)}</option>`).join("")}</select>
+        <select id="bmCount" aria-label="Number of problems">${PK.WORKSHEET_SIZES.map(n=>`<option value="${n}"${n===5 ? " selected" : ""}>${n} problems</option>`).join("")}</select>
         <button class="abtn" type="button" id="bmAddWs">Add</button></fieldset>
       <ol class="cs-items" id="bmItems"></ol>
       <div class="cs-actions"><button class="abtn" type="button" id="bmMake">Make the link</button></div>
