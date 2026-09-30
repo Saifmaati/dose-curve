@@ -68,6 +68,29 @@ To assign a lesson, open it and use **Copy link**. The link opens that lesson fo
 
 The **glossary** under the lessons defines 40 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
+## Clinical cases (8)
+
+The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
+
+- It says whether the target is met.
+- It gives a rule-based hint when it isn't, for example "Trough above target and peak in range: lengthen the interval before reducing the dose."
+- It grades the same regimen again, rounded to the tablets, capsules or vial steps available.
+
+A **Walkthrough** works the textbook route with the patient's own numbers: Cockcroft–Gault, clearance, then the dose and interval, then the check. **What a pharmacist also weighs** lists the qualitative side. **Open in simulator** loads the case's patient and regimen, and every case has its own link (with the proposed regimen) and prints.
+
+| Case | Teaches |
+| --- | --- |
+| Gentamicin with reduced kidney function | Peak and trough targets; lengthening the interval as CrCl falls |
+| Gentamicin once daily | The Hartford approach (7 mg/kg, interval from CrCl bands) against conventional every-8-hour dosing |
+| Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L), and why the one-compartment model is a simplification |
+| Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
+| Digoxin in an older adult | ng/mL targets, a long half-life, and the loading dose |
+| Theophylline in a smoker | A cited clearance factor (about +50%) and a narrow window |
+| Lithium with lower kidney function | A renally cleared drug, 12-hour levels, and what one missed dose does |
+| A late dose: which drug minds? | Reasoning from half-life |
+
+No case stores an answer: every target check, hint, walkthrough number and reference regimen is worked out from the model when the case opens, and the tests check that each case's reference regimen passes and that a deliberately wrong one gets the expected hint. The cases teach reasoning; they are not prescribing instructions.
+
 ## Practice and assessment
 
 - **Practice problems.** There are 30 kinds of calculation problem in five topics:

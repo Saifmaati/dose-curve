@@ -13,3 +13,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-29 23:33 | 1 | Docs (teaching guide, changelog, decisions) and cache v3 | done | 52e1dd3 |
 | 2026-09-29 23:47 | 2 | Engine: Michaelis–Menten path (RK4, exact dose events, dense cached solution), Css, t90, level-dependent t½, periodic steady state, phenytoin as saturable, Sheiner–Tozer, lesson, comparison, 4 glossary terms, 4 practice kinds; tests/nonlinear.test.js | done | f609b67 |
 | 2026-09-29 23:51 | 2 | Page: kinetics switch, Vmax and Km sliders, saturable readouts and working, steady-state panel, chart note, explainer branch, albumin tool; docs; cache v4 | done | b4ee887 |
+| 2026-09-30 00:05 | 3 | Cases tab: 8 cases in cases.js (lazy), grading with rule-based hints and practical-strength rounding, walkthroughs, links, print; tests/cases.test.js; tab bar scrolls on phones; cache v5 | done | 5080fc6 |
