@@ -44,7 +44,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 | Analytics site ID | Needs a GoatCounter account; the code path is ready and off | 5 minutes |
 | NAPLEX competency mapping | The current statements couldn't be fetched and verified | 1 hour once the document is available |
 | Published worked examples in the validation | None could be checked against an accessible source | 2 hours with a library textbook |
-| Two-compartment IV model (stretch) | Not started before the ship step; to follow as 1.1 | 2–3 hours |
+| Two-compartment model (stretch) | Done after the ship step, as 1.1.0: see section 9 | — |
 | Saturable population mode | Disabled with a note: 1,000 RK4 runs per change would break the responsiveness budget | 2 hours, in the worker with a coarser grid |
 | Branch history on GitHub | Commits reached GitHub as one upload per folder per phase; the fine-grained history is in the local repository | — |
 
@@ -94,7 +94,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 
 ## 6. Known limitations of the model
 
-- **One compartment.** Distribution phases aren't modelled. Vancomycin and digoxin behave as two-compartment drugs, and their cases say so.
+- **One or two compartments.** Since 1.1.0 a second (peripheral) compartment can be switched on, with teaching-assumption exchange rates. There are no three-compartment models, and saturable elimination stays one-compartment.
 - **Direct effect only.** The Emax effect follows plasma concentration instantly: no effect-site delay, tolerance or indirect response.
 - **No active metabolites, and no protein-binding dynamics.** fu is informational, and the Sheiner–Tozer tool reads a measured level only.
 - **Renal adjustment by one formula.** Cockcroft–Gault with a reference CrCl of 120 mL/min scales only the renal fraction of clearance; volume scales with actual weight.
@@ -117,8 +117,24 @@ From `docs/NEEDS-SAIF.md`:
 
 1. **Mint the DOI and publish the release.** Every claim then has a permanent, citable home.
 2. **Pharmacist review of the cases.** Send the eight cases to the reviewers and add one case each suggests.
-3. **Two-compartment IV model** (the stretch goal) for vancomycin and digoxin, with the one-compartment comparison in their cases.
+3. **Two-compartment digoxin** (done for vancomycin in 1.1.0), once sourced distribution parameters can be read and cited.
 4. **Confirm the unverified values** from a current edition of Winter or Bauer, and cite them.
 5. **Saturable population mode** in the worker, with a coarser grid.
 6. **Instructor exports:** a CSV of a class's worksheet answers, and case hand-outs with blanks.
 7. **Usage evidence:** turn on the cookie-free counter and report real usage alongside the validation.
+
+## 9. After the ship step: 1.1.0, the stretch goal
+
+The plan's stretch was a two-compartment IV model with vancomycin as the example. It had tests against the closed form, and a note in the vancomycin case comparing it with the one-compartment approximation. All of it shipped as 1.1.0 on the `two-compartment` branch.
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Two compartments for every route and regimen: C(t) = A·e^(−αt) + B·e^(−βt) for a bolus, with V1, k10, k12 and k21 | Drug Parameters → Two compartments | `twocmt.test.js`: the closed form, and an independent RK4 integration of the compartments to 1 part in a million |
+| AUC = F·D / CL and Vss = V1·(1 + k12/k21) whatever the distribution; fast exchange tends to one compartment | Readouts; What changed | `twocmt.test.js` |
+| Lesson *One or two compartments* (vancomycin, every number tested), comparison, 2 glossary terms | Lessons → PK fundamentals | `twocmt.test.js` |
+| Vancomycin case: the same regimen under both models (peak differs, AUC24 doesn't) | Cases → Vancomycin → Walkthrough | `twocmt.test.js` |
+| Validation: two-compartment drug added to the SciPy reference (126 scenarios); window statistics made exact | validation.html | `validation.test.js` (every difference under 0.001%) |
+| Fix: the last dose's peak (up to 1.2% low for short infusions) | "Peak (last dose)" readouts | `twocmt.test.js`, `pk-engine.test.js` |
+
+The number of tests rose from 246 to 257, in 10 files.
+
