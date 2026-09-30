@@ -1723,3 +1723,40 @@ test("lesson: flip-flop kinetics", ()=>{
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{ka:0.4})), false, "kₐ 0.4 still leaves the tail over 10% long");
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{ka:0.5})), true);
 });
+
+/* ---------- progress ---------- */
+test("progress records lessons, practice and tasks, and never changes the record it was given", ()=>{
+  let p=PK.emptyProgress();
+  const p0=JSON.stringify(p);
+  p=PK.recordLesson(p,"route","predicted");
+  assert.equal(JSON.stringify(PK.emptyProgress()), p0);
+  p=PK.recordLesson(p,"route","challenge");
+  p=PK.recordLesson(p,"cl","challenge");
+  p=PK.recordPractice(p,"rep",true); p=PK.recordPractice(p,"rep",false); p=PK.recordPractice(p,"pd",true);
+  p=PK.recordTask(p,"fit"); p=PK.recordTask(p,"window"); p=PK.recordTask(p,"window");
+  assert.deepEqual(p.lessons, {route:{predicted:true, challenge:true}, cl:{challenge:true}});
+  assert.deepEqual(p.practice, {rep:{tried:2, right:1}, pd:{tried:1, right:1}});
+  assert.deepEqual(p.tasks, {fit:1, window:2});
+  assert.deepEqual(PK.progressSummary(p), {lessons:PK.LESSONS.length, predicted:1, challenges:2, tried:3, right:2, fit:1, window:2});
+  // a round trip through storage keeps it all
+  assert.deepEqual(PK.parseProgress(JSON.stringify(p)), p);
+  // unknown lessons, topics and tasks are ignored
+  const q=PK.recordTask(PK.recordPractice(PK.recordLesson(p,"nope","challenge"),"nope",true),"nope");
+  assert.deepEqual(q, p);
+  assert.deepEqual(PK.recordLesson(p,"route","hacked"), p);
+});
+
+test("progress read from storage keeps only its own shape", ()=>{
+  const e=PK.emptyProgress();
+  ["", "not json", "null", "[]", "{}", JSON.stringify({format:"other"}), 42].forEach(x=> assert.deepEqual(PK.parseProgress(x), e, String(x)));
+  const dirty={format:PK.PROGRESS_FORMAT, version:9,
+    lessons:{route:{predicted:"yes", challenge:true, extra:"<img src=x onerror=alert(1)>"}, "<script>":{challenge:true}, cl:[1,2], vd:{predicted:false}},
+    practice:{single:{tried:5, right:9}, rep:{tried:-3, right:1}, inf:{tried:2.5, right:1}, "__proto__":{tried:1,right:1}, pd:{tried:1e9, right:1e9}},
+    tasks:{fit:"3", window:4, other:7}, html:"<b>"};
+  const p=PK.parseProgress(JSON.stringify(dirty));
+  assert.deepEqual(p.lessons, {route:{challenge:true}});
+  assert.deepEqual(p.practice, {single:{tried:5, right:5}, pd:{tried:1e6, right:1e6}});
+  assert.deepEqual(p.tasks, {fit:0, window:4});
+  assert.deepEqual(Object.keys(p).sort(), ["format","lessons","practice","tasks","version"]);
+  assert.equal(p.version, 1);
+});
