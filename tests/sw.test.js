@@ -131,3 +131,16 @@ test("other sites, other paths and anything but GET pass straight through", asyn
   assert.equal((await w.request(SCOPE+"pk-engine.js?v=a", {method:"POST"})).handled, false);
   assert.equal((await w.request("https://api.github.com/repos/x", {mode:"cors"})).handled, false);
 });
+
+test("the validation page and its results are kept for offline use, and never stand in for the app", async()=>{
+  const w=makeWorker();
+  await w.lifecycle("install");
+  assert.ok(w.cache().has(SCOPE+"validation.html") && w.cache().has(SCOPE+"validation/reference-results.json"), "precached");
+  await w.request(SCOPE, {mode:"navigate"});
+  w.release();
+  await w.request(SCOPE+"validation.html", {mode:"navigate"});
+  w.goOffline();
+  assert.equal((await w.request(SCOPE+"validation.html", {mode:"navigate"})).res.body, "/dose-curve/validation.html v2", "its own saved copy");
+  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/dose-curve/ v1", "the app page is still the app page");
+  assert.equal((await w.request(SCOPE+"validation/reference-results.json", {mode:"cors"})).res.body, "/dose-curve/validation/reference-results.json v1");
+});
