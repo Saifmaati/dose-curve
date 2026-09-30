@@ -24,3 +24,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 01:56 | 1.1 | Validation: two-compartment drug in the SciPy reference (126 scenarios, 504 comparisons, every difference under 0.00002%); closeness guard test | done | eaaebbe |
 | 2026-09-30 01:56 | 1.1 | Page: compartments switch, k12/k21 sliders, V1 and terminal-half-life readouts, explainer for model and exchange changes; checked in the browser (360 px, axe clean in both themes, validation 504/504); version 1.1.0; cache v10 | done | 8e4103f |
 | 2026-09-30 01:56 | 1.1 | Docs: changelog 1.1.0, decisions 55–60, build report section 9, teaching guide, README, NEEDS-SAIF tag steps | done | 915dcc4 |
+| 2026-09-30 02:35 | 1.2 | Population mode for saturable drugs (Vmax and volume variability, exact periodic steady states, no-steady-state share); mmSteady solved directly by secant (about 100× faster, fixes up to 0.12% near Vmax); the worker integrates each patient once; superseded jobs stopped | done | 17ec7dd |
+| 2026-09-30 02:40 | 1.2 | Faster first paint: non-blocking fonts, deferred engine, app as a module script; Lighthouse mobile 85 → 98–99 on a gzip preview, CLS 0 | done | 7959880 |
+| 2026-09-30 02:47 | 1.2 | Case 9, vancomycin from two levels (first-order method, two-compartment sampling comparison); the CID executive summary read in full and cited; 360 px and axe clean in both themes | done | 5398751 |
+| 2026-09-30 02:47 | 1.2 | Version 1.2.0, cache v11, build report section 10 | done | 1978077 |

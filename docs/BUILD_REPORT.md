@@ -45,7 +45,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 | NAPLEX competency mapping | The current statements couldn't be fetched and verified | 1 hour once the document is available |
 | Published worked examples in the validation | None could be checked against an accessible source | 2 hours with a library textbook |
 | Two-compartment model (stretch) | Done after the ship step, as 1.1.0: see section 9 | — |
-| Saturable population mode | Disabled with a note: 1,000 RK4 runs per change would break the responsiveness budget | 2 hours, in the worker with a coarser grid |
+| Saturable population mode | Done after 1.1.0 (decision 61): the steady state is solved directly, and 1,000 patients take about 1 s | — |
 | Branch history on GitHub | Commits reached GitHub as one upload per folder per phase; the fine-grained history is in the local repository | — |
 
 ## 4. Metrics, before and after
@@ -99,7 +99,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 - **No active metabolites, and no protein-binding dynamics.** fu is informational, and the Sheiner–Tozer tool reads a measured level only.
 - **Renal adjustment by one formula.** Cockcroft–Gault with a reference CrCl of 120 mL/min scales only the renal fraction of clearance; volume scales with actual weight.
 - **Teaching-level variability.** The population mode's CVs (30% on CL, 20% on V) are teaching assumptions, independent log-normals with no covariates.
-- **Saturable elimination.** Vmax and Km for phenytoin are typical textbook values (unverified); there's no saturable population mode.
+- **Saturable elimination.** Vmax and Km for phenytoin are typical textbook values (unverified). Population variability is on Vmax and volume, with Km fixed.
 - **Not clinical software.** The validation checks the numerics of the model, not its fit to patients. Educational model, not for clinical dosing.
 
 ## 7. Needs Saif
@@ -119,7 +119,7 @@ From `docs/NEEDS-SAIF.md`:
 2. **Pharmacist review of the cases.** Send the eight cases to the reviewers and add one case each suggests.
 3. **Two-compartment digoxin** (done for vancomycin in 1.1.0), once sourced distribution parameters can be read and cited.
 4. **Confirm the unverified values** from a current edition of Winter or Bauer, and cite them.
-5. **Saturable population mode** in the worker, with a coarser grid.
+5. **Saturable population mode** (done after 1.1.0).
 6. **Instructor exports:** a CSV of a class's worksheet answers, and case hand-outs with blanks.
 7. **Usage evidence:** turn on the cookie-free counter and report real usage alongside the validation.
 
@@ -137,4 +137,15 @@ The plan's stretch was a two-compartment IV model with vancomycin as the example
 | Fix: the last dose's peak (up to 1.2% low for short infusions) | "Peak (last dose)" readouts | `twocmt.test.js`, `pk-engine.test.js` |
 
 The number of tests rose from 246 to 257, in 10 files.
+
+## 10. 1.2.0
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Population mode for saturable drugs: variability on Vmax and volume, PTA from each patient's exact periodic steady state, and the share with no steady state | Load phenytoin, Repeated, ◍ POPULATION | `population.test.js` (4 saturable tests) |
+| The saturable steady state solved directly (secant on the one-interval map): about 100× faster; the old search stopped up to 0.12% short near Vmax | Saturable readouts and steady-state panel | `nonlinear.test.js` (periodic to 1e-9) |
+| Faster first paint: non-blocking fonts, deferred engine, app as a module script. Lighthouse mobile 85 → 98–99 (gzip preview), LCP 3.4 → 1.8–1.9 s, CLS 0 | Any page load on a phone | `pk-engine.test.js` (script order) |
+| Case 9, *Vancomycin: the AUC from two levels*: the first-order two-level method, and why the peak waits for distribution | Cases tab | `cases.test.js` |
+
+There are now 263 tests in 10 files.
 
