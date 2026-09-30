@@ -11,3 +11,5 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-29 23:32 | 1 | Page: clinical patient panel with the working, units end to end, drug sources panel, What-changed causes, Kidney function lesson and comparison, 6 glossary terms | done | e39dce5 |
 | 2026-09-29 23:32 | 1 | Tests: tests/clinical.test.js (14 tests: hand values, fe limits, unit round trips, salt factor, library sources, v5 and v1 links, lesson) | done | e39dce5 |
 | 2026-09-29 23:33 | 1 | Docs (teaching guide, changelog, decisions) and cache v3 | done | 52e1dd3 |
+| 2026-09-29 23:47 | 2 | Engine: Michaelis–Menten path (RK4, exact dose events, dense cached solution), Css, t90, level-dependent t½, periodic steady state, phenytoin as saturable, Sheiner–Tozer, lesson, comparison, 4 glossary terms, 4 practice kinds; tests/nonlinear.test.js | done | f609b67 |
+| 2026-09-29 23:51 | 2 | Page: kinetics switch, Vmax and Km sliders, saturable readouts and working, steady-state panel, chart note, explainer branch, albumin tool; docs; cache v4 | done | b4ee887 |

@@ -14,11 +14,12 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
   3. The panel under the chart explains what moved and why. Its table gives the metrics before and after.
-- **Two regimens side by side.** The **Compare** tab has 16 one-click comparisons:
+- **Two regimens side by side.** The **Compare** tab has 17 one-click comparisons:
   - Once vs twice daily
   - Loading dose
   - Normal vs 50% clearance
   - CrCl 73 vs 41 mL/min
+  - Phenytoin 300 vs 400 mg/day
   - 50 kg vs 100 kg, same dose
   - IV bolus vs oral
   - Bolus vs infusion
@@ -43,15 +44,21 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
   - the drug's clearance, CL = CL_ref × [(1 − fe) + fe × CrCl / 120], where fe is the fraction the kidneys excrete unchanged and 120 mL/min is the reference.
 
   Set a baseline, raise the creatinine, and the panel under the chart explains the change with the numbers, for example: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L." It is an educational model, not for clinical dosing.
+- **Show saturation.** Switch **Drug Parameters** from *First-order* to *Saturable (Vmax, Km)*, or load phenytoin. Elimination is then Vmax·C / (Km + C), integrated numerically.
+  - The readouts give the predicted steady state, Css = Km·R / (Vmax − R), and the input as a share of Vmax.
+  - They also give the half-life at that level and the time to 90% of steady state, which grows with the dose.
+  - When the input reaches Vmax they say "No steady state: input rate exceeds Vmax".
+
+  With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Nine teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, digoxin, phenytoin and lithium carbonate. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (22)
+## Guided lessons (23)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent |
@@ -59,15 +66,16 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 36 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 40 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Practice and assessment
 
-- **Practice problems.** There are 26 kinds of calculation problem in four topics:
+- **Practice problems.** There are 30 kinds of calculation problem in five topics:
   - single dose (11 kinds)
   - repeated dosing (6)
   - infusions (5)
   - concentration–effect (4)
+  - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
 
   Each has a worked solution. **Visualize on curve** opens the problem's scenario with the cursor on the moment the question asks about. Answers within 2% count, so working with 0.693 for ln 2 is fine.
 - **One problem for everyone.** **Copy link to this problem** gives a link that rebuilds exactly the same numbers.
@@ -111,8 +119,9 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 3. **Infusions and schedules:**
    - lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Evenly spaced vs bunched doses
    - practice: *Infusions*
-4. **Absorption and design:**
-   - lessons: Flip-flop kinetics, Narrow window
+4. **Absorption, saturation and design:**
+   - lessons: Flip-flop kinetics, Saturable elimination, Narrow window
+   - practice: *Saturable (Michaelis–Menten)*
    - Fit the data (oral)
    - Hit the window (oral)
 5. **PK/PD:**
@@ -129,12 +138,12 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 - Superposition of every dose given, whether a regular regimen (with loading and missed doses) or a custom schedule mixing routes.
 - Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
 - A salt factor S for drugs dosed as a salt, and units per drug (mg/L, ng/mL, mEq/L).
+- Saturable (Michaelis–Menten) elimination, integrated numerically (RK4, 0.05 h steps, every dose at its exact time).
 - A direct sigmoid Emax effect that follows the plasma concentration instantly.
 
 **Left out:**
 
 - Multi-compartment distribution.
-- Saturable (Michaelis–Menten) elimination.
 - Delayed or indirect effects, tolerance and active metabolites.
 - Protein-binding changes.
 - The variability between people that real dosing has to account for.
