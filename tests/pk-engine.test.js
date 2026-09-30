@@ -1674,6 +1674,9 @@ test("a worksheet shared before new kinds arrived rebuilds exactly (version-1 li
     const t=PK.decodeTaskLink("#ws="+key), w=PK.makeWorksheet(t);
     assert.deepEqual(w.problems.map(p=>p.id+":"+p.seed), ids, key);
   });
+  // version-2 links (shared from 1.3 to 1.6) rebuild exactly too, whatever arrives later: made with the 1.6.0 engine
+  const V2={"all.15.99.2":["thalfcl:1680425933","mmt90:1278237150","auc:1040450815","cfore:2966671880","taumax:1692960689","mmcss:3878063843","clinf:826037518","effdur:3506976847","cavg:2086466836","t90:2600597767","auc2:3012898485","rate:3259124632","mmdose:1190380853","infpct:2544774965","cl2:3300014323"],"rep.10.777.2":["cavg:3021391827","rac:3643828463","mdose:591896035","taumax:2949840273","t90:2372054045","trough:3985506521","t90:2254776605","mdose:368129600","trough:3958397246","taumax:3146146540"],"inf.15.31337.2":["rate:3682274826","clinf:2203507753","auc2:2187173429","infend:3138199205","infpct:3876147105","ldinf:3621073898","clinf:3455989061","infend:3637072344","auc2:150323216","infpct:2413360870","rate:3042646043","ldinf:4144450312","infpct:2355924065","auc2:3595901977","infend:3103944959"],"single.10.2.2":["auc:865630693","cl:1822035367","ke:3586286729","thalfcl:2496752147","c0:605619160","tbelow:2887193964","cl2:1574957072","bioF:4173047984","thalf2:168367563","ct:3930744562"]};
+  Object.entries(V2).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
   // and version 2 sheets can include the new kinds
   const seen=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"inf", count:15, seed}).problems.forEach(p=>seen.add(p.id)));
   assert.ok(seen.has("auc2"));
