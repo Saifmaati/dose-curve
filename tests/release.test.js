@@ -67,12 +67,17 @@ test("NEEDS-SAIF lists the steps that need an account", ()=>{
 
 test("every file loaded on demand is named by its content hash in the page and precached under that name", ()=>{
   const crypto=require("node:crypto"), page=read("index.html"), sw=read("sw.js");
-  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js"].forEach(f=>{
+  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js"].forEach(f=>{
     const h=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,f))).digest("hex").slice(0,10);
     assert.ok(page.includes(`${f}?v=${h}`), `index.html loads ${f}?v=${h}`);
     assert.ok(sw.includes(`./${f}?v=${h}`), `sw.js precaches ${f}?v=${h}`);
   });
   assert.equal(PK.GLOSSARY.length, require("../pk-glossary.js").length, "the engine reads the glossary file in Node");
+  // lesson links and lists work from the engine's own ids; every lesson has its texts in pk-lessons.js, and nothing else
+  const texts=require("../pk-lessons.js");
+  assert.deepEqual(Object.keys(texts).sort(), PK.LESSONS.map(L=>L.id).sort());
+  PK.LESSONS.forEach(L=> ["text","tryThis","objective","predict","challenge","matters"].forEach(k=> assert.ok(L[k], `${L.id}.${k}`)));
+  assert.ok(!/text:"[A-Z]/.test(read("pk-engine.js").slice(read("pk-engine.js").indexOf("const LESSONS"), read("pk-engine.js").indexOf("const TEMPLATES"))), "no lesson text left in the engine");
   // practice links are checked before pk-practice.js loads, against the engine's list of ids: the two agree
   assert.deepEqual(PK.PRACTICE_IDS, PK.PRACTICE.map(g=>g.id));
   assert.ok(page.includes("PK.PRACTICE_IDS.length") && !/PK\.PRACTICE\.length/.test(page), "the page counts kinds without loading them");

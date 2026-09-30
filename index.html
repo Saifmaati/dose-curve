@@ -1605,7 +1605,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=19edaac954" defer></script>
+<script src="pk-engine.js?v=cacb2a4f03" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -3961,12 +3961,14 @@
     byId("lsNext").textContent=i<LESSONS.length-1?"Next lesson →":"All lessons";
     byId("lsTag").textContent=L.tag;
     byId("lsTitle").textContent=L.title;
-    byId("lsGoal").textContent=L.objective;
-    byId("lsText").textContent=L.text;
-    byId("lsWhy").textContent=L.matters;
-    byId("lsTry").textContent=L.tryThis;
-    byId("lsChal").textContent=L.challenge.text;
-    renderPredict(L);
+    // the texts come from pk-lessons.js: filled at once if it's here, else as soon as it loads
+    if(PK.lessonModule) fillLesson(L);
+    else {
+      ["lsGoal","lsText","lsWhy","lsTry","lsChal","lsQ"].forEach(id=> byId(id).textContent=id==="lsGoal" ? "Loading the lesson…" : "");
+      byId("lsChoices").innerHTML="";
+      loadLessons().then(()=>{ if(lesson===L){ fillLesson(L); chalMet=null; render(); } })
+        .catch(()=>{ if(lesson===L) byId("lsGoal").textContent="The lesson's text couldn't load. Check the connection and open it again."; });
+    }
     chalMet=null;
     byId("quickStart").hidden=true;   // the lesson is its own guide
     byId("lessonBar").hidden=false;
@@ -3974,6 +3976,29 @@
     showTab("sim");
     const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     byId("lessonBar").scrollIntoView({behavior:reduce?"auto":"smooth", block:"nearest"});
+  }
+  function fillLesson(L){
+    byId("lsGoal").textContent=L.objective;
+    byId("lsText").textContent=L.text;
+    byId("lsWhy").textContent=L.matters;
+    byId("lsTry").textContent=L.tryThis;
+    byId("lsChal").textContent=L.challenge.text;
+    renderPredict(L);
+  }
+  // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
+  // first lesson opened.
+  const LESSON_SRC="pk-lessons.js?v=6117af3ee5";
+  let lessonLoad=null;
+  function loadLessons(){
+    if(PK.lessonModule) return Promise.resolve();
+    if(!lessonLoad) lessonLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=LESSON_SRC;
+      sc.onload=()=> PK.lessonModule ? res() : rej(new Error("no lessons"));
+      sc.onerror=()=>{ lessonLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return lessonLoad;
   }
   // The card or button that opened a lesson is hidden or rewritten, so keyboard focus moves to the lesson itself.
   const focusLesson=()=> byId("lsTitle").focus({preventScroll:true});
@@ -3990,7 +4015,7 @@
   function revealLesson(){ byId("lsMore").hidden=false; byId("lsSkip").hidden=true; }
   byId("lsChoices").addEventListener("click",e=>{
     const b=e.target.closest(".lp-choice");
-    if(!b || b.disabled || !lesson) return;
+    if(!b || b.disabled || !lesson || !lesson.predict) return;
     const P=lesson.predict, pick=+b.dataset.i, right=pick===P.answer;
     if(right) saveProgress(PK.recordLesson(prog, lesson.id, "predicted"));
     byId("lsChoices").querySelectorAll(".lp-choice").forEach((x,i)=>{
@@ -4979,7 +5004,7 @@
     $("lsView").className="lsv"+(which==="ls"?" show":"");
     $("prView").className="practice"+(which==="pr"?" show":"");
     $("csView").className="cases"+(which==="cs"?" show":"");
-    if(which==="ls") loadGlossary();
+    if(which==="ls"){ loadGlossary(); loadLessons().catch(()=>{}); }   // texts ready before a lesson opens
     [["tabSim","sim"],["tabCmp","cmp"],["tabLs","ls"],["tabCs","cs"],["tabPr","pr"]].forEach(([id,w])=>{
       $(id).classList.toggle("on",w===which);
       $(id).setAttribute("aria-selected",w===which);
