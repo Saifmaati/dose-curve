@@ -59,6 +59,8 @@ The test suite and the [validation page](https://saifmaati.github.io/dose-curve/
 - the Michaelis–Menten steady state and its time to 90%
 - the Cockcroft–Gault and Devine hand values
 
+It also checks the Bayesian estimates: on 20 scenarios with one to three measured levels, an independent SciPy implementation of the same objective agrees on clearance and volume within 0.5% (in practice to within 0.00003%).
+
 A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect (with and without an effect-site delay) are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
 
 - the dose table's peaks off by one dose for IV boluses

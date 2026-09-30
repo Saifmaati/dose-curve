@@ -2,6 +2,19 @@
 
 A few steps need your accounts or your judgment. Each one says why it wasn't done during the build and exactly what to do.
 
+## 0. Merge the release pull requests
+
+**Why:** merging was blocked by Claude Code's auto-mode safety check ("Merge Without Review"). Each release is a pull request whose CI must be green first; merge them in order, then Claude Code tags the merge commit and checks the live site.
+
+- 1.10.0: https://github.com/Saifmaati/dose-curve/pull/12 (branch `v1.10.0`)
+- 1.11.0: the pull request from branch `v1.11.0` (it includes 1.10.0's commits until #12 is merged)
+
+```bash
+/Users/saifmaati/.local/bin/gh pr merge 12 --repo Saifmaati/dose-curve --merge
+```
+
+To let Claude Code merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+
 ## 1. Create the GitHub Releases (the tags are already pushed)
 
 **Why:** tags `v1.0.0` to `v1.9.0` were pushed on 2026-09-30 on the merge commits below, but creating the Releases themselves was blocked by Claude Code's auto-mode safety check ("Create Public Surface"). Zenodo archives a release, not a tag, so no DOI exists until these are created. Create them oldest first, so the newest is the one Zenodo archives last and GitHub marks as latest.
@@ -13,12 +26,12 @@ A few steps need your accounts or your judgment. Each one says why it wasn't don
 | v1.2.0 | 2d50c74 | v1.7.0 | b1ae2f3 |
 | v1.3.0 | e178f31 | v1.8.0 | b31ff5e |
 | v1.4.0 | 36e3abf | v1.9.0 | da05093 |
-| v1.4.1 | fadf6bd | v1.10.0 | the 1.10.0 merge commit (tag pushed when it merges) |
+| v1.4.1 | fadf6bd | v1.10.0, v1.11.0 | their merge commits (tagged when they merge) |
 
 From the repository folder, this creates each one with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)` in `~/.claude/settings.json`.
@@ -55,6 +68,7 @@ Every drug-library value either names its source or is marked "typical textbook 
   - Gentamicin's peak floor of 5 mg/L, a teaching target.
   - The conventional 1.7 mg/kg every 8 h used for comparison.
   - The convention of rounding IV doses to 10 mg (gentamicin) and 250 mg (vancomycin).
+- **Bayesian panel:** the prior's CVs (30% on clearance, 20% on volume) and the level error model (10% proportional plus a tenth of the MEC) are teaching assumptions; drug-specific values would need a cited population model.
 - **Liver model:** hepatic blood flow of 90 L/h in the glossary and the model's defaults (fu 0.5, CLint 20 L/h), teaching values.
 - **Sheiner–Tozer:** the CrCl threshold for the end-stage kidney variant. References disagree (under 10 or under 20 mL/min), so it is left to the user.
 

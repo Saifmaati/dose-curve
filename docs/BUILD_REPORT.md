@@ -265,3 +265,17 @@ There are 294 tests in 12 files. The initial script is +23.7% over the Phase 0 b
 
 There are 294 tests in 12 files.
 
+## 20. 1.11.0 (Plan V2, Phase B)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Bayesian (MAP) individualization in `pk-bayes.js` (lazily loaded, stamped): log-normal prior from the patient model, combined error, grid + Nelder–Mead, Laplace 95% intervals, uncertainty left | Simulator → Clinical → Individualize from levels | `bayes.test.js` (wide-prior recovery within 0.1%, no levels = prior, between prior and levels, grid vs optimizer within 0.5%, SD falls with levels) |
+| SciPy MAP reference, 20 scenarios, on the validation page | validation.html | `bayes.test.js` (within 0.5%, regression guard 1e-5) |
+| Two-level estimate beside it; dose to an AUC24 or trough target; the estimate on the chart; applying it keeps the levels' regimen as the baseline | the panel | `bayes.test.js` |
+| Measured levels in scenarios and v8 links | Copy link | `bayes.test.js`, `clinical.test.js` |
+| Cases 13–14: vancomycin (two levels an hour apart) and gentamicin (the second level higher) | Cases tab | `cases.test.js` |
+| Lesson 30, *One level and a prior*; glossary 58 | Lessons → Levels and individualization | `bayes.test.js` (every number the text states) |
+| The page's scripts parse | — | `release.test.js` |
+
+There are 308 tests in 13 files. The initial script is +14.7% over the Phase 0 baseline (limit +25%).
+

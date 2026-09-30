@@ -66,4 +66,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 11:02 | 1.9 | Deployed 1.9.0: branch v1.9.0 by web upload (4 commits), fresh clone 294/294, CI green, PR #11 merged; live byte check, lessons 27–29 and practice live | done | da05093 |
 | 2026-09-30 14:35 | 1.10 | Lesson texts, predictions and challenges moved to lazily loaded pk-lessons.js; initial script +23.7% → +10.0% | done | e397d86 |
 | 2026-09-30 | 1.10 | Push access proven (scratch branch pushed and deleted); tags v1.0.0–v1.9.0 pushed; Releases and branch deletion blocked by the auto-mode check (NEEDS-SAIF) | done | — |
+| 2026-09-30 17:46 | 1.11 | Bayesian (MAP) engine in pk-bayes.js; measured levels in scenarios and v8 links; SciPy MAP reference (20 scenarios) on the validation page | done | 97229fe |
+| 2026-09-30 17:51 | 1.11 | Individualize from levels panel; estimate on the chart; applying it keeps the levels' regimen as the baseline; page-scripts-parse test | done | f1fbf1a |
+| 2026-09-30 18:03 | 1.11 | Bayesian cases (vancomycin, gentamicin), lesson 30, glossary 58, Sheiner 1979 source, share card | done | 10f4f4f |
 

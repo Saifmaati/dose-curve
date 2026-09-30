@@ -2,6 +2,24 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.11.0 (2026-09-30)
+
+- **Individualize from levels (Bayesian).** Under the clinical patient, measured levels, each entered as hours after a given dose, give this patient's own clearance, volume and half-life. The estimate weighs each level against the patient model by its uncertainty, the approach of Sheiner et al. (*Clin Pharmacol Ther* 1979):
+  - a log-normal prior centred on the patient model (Cockcroft–Gault-adjusted clearance), with the population mode's CVs (30% on clearance, 20% on volume by default);
+  - each level's error SD √((10% of the level)² + (MEC / 10)²), a teaching assumption stated in the panel;
+  - the maximum a posteriori estimate, from a grid over ±3 prior SDs refined by Nelder–Mead, with 95% intervals from the Laplace approximation and how much of the prior's uncertainty the levels removed;
+  - beside it, the two-level estimate when two levels follow the same IV dose, and the dose for an AUC24 or trough target, rounded;
+  - the estimate is drawn dashed through the measured levels. Applying it (at the current dose or the new one) keeps the setup the levels were measured on as the baseline, because the levels belong to that regimen.
+  - One compartment and first-order elimination; two compartments and saturable drugs are left out, and the panel says so. The estimator is its own file, loaded when needed.
+- **Validated independently:** a SciPy implementation of the same objective, on the ODE solver's predictions, agrees on clearance and volume for 20 scenarios within 0.5% (in practice within 0.00003%); the validation page shows them (624 comparisons in all). Tests cover exact recovery with a wide prior, no levels giving the prior, the estimate lying between the prior and the levels, the grid against the optimizer, and the uncertainty falling as levels are added.
+- **Two cases (14 in all):**
+  - *Vancomycin: two levels an hour apart.* The two-level equations make his AUC24 look on target (583 mg·h/L) when it is 772; the Bayesian estimate from the same levels leads to 500 mg every 12 hours, an AUC24 of 514.
+  - *Gentamicin: when the second level comes back higher.* Assay error larger than the fall between two close levels gives a negative elimination rate, and the two-level method breaks; the Bayesian estimate gives 130 mg every 24 hours, on target.
+- **Lesson 30, *One level and a prior*** (a new group, *Levels and individualization*): one trough level weighed against the patient model estimates his clearance within 2%, where two levels an hour apart were 32% off. Three glossary terms (58): Bayesian estimate (MAP), prior, and uncertainty left (shrinkage).
+- Measured levels travel in links (version 8). Every older link opens as before.
+- A test now checks that the page's own scripts parse.
+- The share card says 30 lessons.
+
 ## 1.10.0 (2026-09-30)
 
 - **A lighter first load.** Each lesson's explanation, tip, prediction and challenge now come from a separate file, `pk-lessons.js`, loaded with the Lessons tab or the first lesson opened (a lesson link loads it at once). The script the page needs before it can draw fell from 394.6 to 351.0 kB, from 23.7% to 10.0% over the Phase 0 baseline (the limit is 25%), which leaves room for the next models. The file is named by its content hash and saved for offline use like the other on-demand files.
