@@ -16,6 +16,7 @@
 - Oral, IV bolus and IV infusion dosing: single, repeated (with loading and missed doses), or a custom schedule where every dose has its own time, amount and route. Drag a dose along the timeline to reschedule it.
 - **One or two compartments.** With two, the drug enters a central volume and exchanges with a peripheral one (k12, k21), so the curve falls in a fast distribution phase and a slower terminal phase, C(t) = A·e^(−αt) + B·e^(−βt). The readouts give α, β, the steady-state volume and the terminal half-life, and the vancomycin case compares its regimen under both models.
 - First-order elimination, or saturable **Michaelis–Menten** elimination (Vmax, Km) integrated numerically. The readouts give the predicted steady state Km·R / (Vmax − R), the input as a share of Vmax, the level-dependent half-life and the time to 90% of steady state, and they say "No steady state: input rate exceeds Vmax" when that happens.
+- A **liver model** (optional): hepatic clearance and first-pass bioavailability from liver blood flow, the unbound fraction and intrinsic clearance (the well-stirred model), E = fu·CLint / (Q + fu·CLint), CL = Q·E and F = fabs·(1 − E), with the working shown.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of 11 teaching profiles (gentamicin, vancomycin, meropenem, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop.
@@ -25,13 +26,15 @@
 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
-- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 20 one-click comparisons.
+- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 23 one-click comparisons.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 
+![An effect-site delay: the effect lags the plasma level, peaks later and lower, and traces a counterclockwise loop against it](docs/img/effect-delay.png)
+
 **Teach and practise**
-- **26 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
+- **29 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **12 clinical cases** (gentamicin conventional, once daily and individualized from two levels, vancomycin to an AUC24 target and from two measured levels, meropenem and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **34 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 50-term glossary.
+- **37 kinds of generated practice problems** in six topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 55-term glossary.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
 ![A clinical case graded by the model](docs/img/case-gentamicin.png)

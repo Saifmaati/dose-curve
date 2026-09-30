@@ -10,7 +10,7 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {PRACTICE_TOPICS, VIEW_DEFAULTS, WORKSHEET_SIZES, WS_VERSION, conc, derived, disposition, doseEvents, effectOf, effectStats, keOf,
-    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf}=PK;
+    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf}=PK;
   const {drawFrom, evenUp, nf, sig4, until}=PK.practiceHelpers;
 
   const step=s=>`<span class="step">${s}</span>`;
@@ -431,6 +431,44 @@
         viz:{kin:"mm", route:"iv", dosing:"single", D:C*V, vmax:vk, km, V}, view:{duration:evenUp(3*th), mec:0, mtc:0}, at:0,
         // the instantaneous half-life at t = 0: 0.693·C / (−dC/dt)
         check:p=>{ const c0=conc(p,0), h=1e-4; return Math.LN2*c0/((c0-conc(p,h))/h); }};
+    }},
+    /* ----- liver (well-stirred model) ----- */
+    // Blood flow, unbound fraction and intrinsic clearance are for 70 kg; blood and plasma concentrations are equal.
+    {id:"hepcl", topic:"liver", since:5, gen(d){
+      const Q=d(60,120,10), fu=d(0.05,0.9,0.05), CLint=[10,20,50,100,200,500,1000,2000,5000][Math.floor(d(0,8,1))];
+      const fc=fu*CLint, E=fc/(Q+fc), CL=Q*E;
+      return {type:"Hepatic clearance", unit:"L/h", dp:1, ans:CL,
+        q:`A drug is cleared only by the liver. Liver blood flow is <b>${Q} L/h</b>, the unbound fraction in blood is <b>${fu}</b>, and the intrinsic clearance is <b>${CLint} L/h</b>. What is its hepatic clearance (well-stirred model)?`,
+        sol:[step(`fu·CLint = ${fu} × ${CLint} = <b>${nf(fc,2)} L/h</b>`),
+          step(`Extraction ratio: <b>E = fu·CLint / (Q + fu·CLint)</b> = ${nf(fc,2)} / (${Q} + ${nf(fc,2)}) = <b>${nf(E,3)}</b>`),
+          step(`<b>CL = Q·E</b> = ${Q} × ${nf(E,3)} = <b>${nf(CL,1)} L/h</b>`),
+          step(E>0.7 ? `E is close to 1, so clearance is limited by blood flow: it can't pass ${Q} L/h.` : E<0.3 ? `E is small, so clearance is close to fu·CLint and follows the liver's capacity.` : `E is intermediate: both blood flow and the liver's capacity matter.`)],
+        viz:{route:"iv", D:500, V:50, hep:1, qh:Q, fub:fu, clint:CLint}, view:{duration:24}, at:0,
+        check:p=> derived(p).CL};
+    }},
+    {id:"hepf", topic:"liver", since:5, gen(d){
+      const Q=90, fu=d(0.1,0.9,0.1), CLint=[100,200,400,800,1600,3200][Math.floor(d(0,5,1))], fabs=d(0.6,1,0.1);
+      const fc=fu*CLint, E=fc/(Q+fc), F=fabs*(1-E);
+      return {type:"Oral bioavailability after first pass", unit:"%", dp:1, ans:100*F,
+        q:`A drug is cleared only by the liver (blood flow <b>${Q} L/h</b>, unbound fraction <b>${fu}</b>, intrinsic clearance <b>${CLint} L/h</b>), and <b>${Math.round(fabs*100)}%</b> of an oral dose is absorbed. What is its oral bioavailability F, in %?`,
+        sol:[step(`E = fu·CLint / (Q + fu·CLint) = ${nf(fc,1)} / (${Q} + ${nf(fc,1)}) = <b>${nf(E,4)}</b>`),
+          step(`The fraction of the absorbed drug that escapes the liver on its first pass: <b>1 − E = ${nf(1-E,4)}</b>`),
+          step(`<b>F = fabs·(1 − E)</b> = ${fabs} × ${nf(1-E,4)} = <b>${nf(100*F,1)}%</b>`),
+          step(`The simulation checks it as the ratio of the oral AUC to the IV AUC of the same dose.`)],
+        viz:{route:"oral", D:500, V:100, ka:1.5, hep:1, qh:Q, fub:fu, clint:CLint, fabs}, view:{duration:24}, at:0,
+        check:p=> 100*derived(p).auc/derived(Object.assign({}, p, {route:"iv"})).auc};
+    }},
+    {id:"hepiv", topic:"liver", since:5, gen(d){
+      const Q=90, fu=d(0.1,0.9,0.1), c0=[20,50,100,200,400,800,1200][Math.floor(d(0,6,1))], m=d(2,4,1), c1=c0*m;
+      const cl=ci=>{ const fc=fu*ci; return Q*fc/(Q+fc); }, CL0=cl(c0), CL1=cl(c1), r=CL0/CL1;
+      return {type:"Induction: IV exposure", unit:"×", dp:3, ans:r,
+        q:`Enzyme induction raises a drug's intrinsic clearance <b>${m}-fold</b>, from <b>${c0}</b> to <b>${c1} L/h</b> (liver blood flow <b>${Q} L/h</b>, unbound fraction <b>${fu}</b>; cleared only by the liver). By what factor does the AUC of an IV dose change (new AUC ÷ old)?`,
+        sol:[step(`Before: CL = Q·fu·CLint / (Q + fu·CLint) = ${Q} × ${nf(fu*c0,1)} / (${Q} + ${nf(fu*c0,1)}) = <b>${nf(CL0,2)} L/h</b>`),
+          step(`After: CL = ${Q} × ${nf(fu*c1,1)} / (${Q} + ${nf(fu*c1,1)}) = <b>${nf(CL1,2)} L/h</b>`),
+          step(`IV AUC = D / CL, so the ratio is ${nf(CL0,2)} / ${nf(CL1,2)} = <b>${nf(r,3)}</b>`),
+          step(`By mouth the AUC would change by exactly 1/${m} = ${nf(1/m,3)} whatever the extraction, because oral AUC = fabs·D / (fu·CLint).`)],
+        viz:{route:"iv", D:500, V:100, hep:1, qh:Q, fub:fu, clint:c1}, view:{duration:24}, at:0,
+        check:p=> derived(p).auc/derived(Object.assign({}, p, {clint:c0})).auc};
     }},
   ];
   // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).

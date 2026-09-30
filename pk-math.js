@@ -9,7 +9,7 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {keOf, vOf, windowStats, missedOf, ssConc, doseEvents, conc, derived, unitsOf, saltOf, clFactor, patientOf, CRCL_REF,
-    vmaxOf, mmCss, mmHalfAt, MM_STEP, disposition}=PK;
+    vmaxOf, mmCss, mmHalfAt, MM_STEP, disposition, hepOn, wellStirred, fOf}=PK;
   const nf=(v,dp)=> String(+v.toFixed(dp));          // a number to dp decimals, without trailing zeros
   const twoCmt=p=> p.cmt===2 && p.kin!=="mm";
 
@@ -83,14 +83,23 @@
           steps:[{m:`${key==="tmax" ? `tmax = ${nf(v,2)} h` : `${nf(v,2)} ${unitsOf(p).conc}`}`}, {t:`With two compartments the curve is the sum of each dose's two exponentials; DoseCurve adds them up and reads this value off it.`}]};
       }
     }
-    const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, oral=p.route==="oral", F=oral ? p.F : 1;
+    const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, oral=p.route==="oral", F=oral ? fOf(p) : 1, hep=hepOn(p);
     // units, and the salt factor: the amount of active drug is S·D (S = 1 for most drugs, and then not shown)
     const U=unitsOf(p), cu=U.conc, Sf=saltOf(p), D=p.D*Sf, Dtxt=Sf===1 ? `${p.D}` : `${nf(Sf,5)} × ${p.D}`, Sd=Sf===1 ? "D" : "S·D";
     const n1=v=>nf(v,1), n2=v=>nf(v,2), n3=v=>nf(v,3), nk=v=>nf(v,4), m=s=>({m:s}), t=s=>({t:s});
     const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
     const tmOral=()=> Math.abs(p.ka-k)<1e-6 ? 1/k : Math.log(p.ka/k)/(p.ka-k);
+    const E_TXT=E=> E>0.7 ? `E is close to 1: the liver clears nearly all the drug the blood brings, so clearance is limited by blood flow.`
+      : E<0.3 ? `E is small: clearance is close to fu·CLint, the liver's capacity, and follows enzyme induction or inhibition.` : `E is intermediate: blood flow and the liver's capacity both matter.`;
+    // the liver model: clearance from blood flow, the unbound fraction and intrinsic clearance (for 70 kg, scaled by weight)
+    const hepSteps=()=>{ const w=wellStirred(p), sc=p.wt/70;
+      return [m(`E = fu·CLint / (Q + fu·CLint) = ${nf(w.fcl,2)} / (${nf(p.qh,1)} + ${nf(w.fcl,2)}) = ${nf(w.E,3)}`),
+        m(`CL = Q·E${sc===1 ? "" : " × weight / 70"} = ${nf(p.qh,1)} × ${nf(w.E,3)}${sc===1 ? "" : ` × ${p.wt} / 70`} = ${n2(CL)} L/h`)]; };
     switch(key){
-      case "thalf": if(p.pm==="clinical"){ const pt=patientOf(p);
+      case "thalf": if(hep) return {title:"Effective half-life", value:th, steps:[
+          t(`Clearance comes from the liver model (well-stirred):`), ...hepSteps(),
+          m(`kₑ = CL / V = ${n2(CL)} / ${n1(V)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = ${n1(th)} h`)]};
+        if(p.pm==="clinical"){ const pt=patientOf(p);
         return {title:"Effective half-life", value:th, steps:[
           t(`Clearance keeps its non-renal part (1 − fe) and scales its renal part fe by creatinine clearance, against a reference CrCl of ${CRCL_REF} mL/min:`),
           m(`factor = (1 − fe) + fe × CrCl / ${CRCL_REF} = (1 − ${nf(p.fe,2)}) + ${nf(p.fe,2)} × ${n1(pt.crcl)} / ${CRCL_REF} = ${n3(pt.factor)}`),
@@ -99,13 +108,16 @@
         ? [t(`At 100% organ function the half-life is the drug's own, so the elimination rate constant is`), m(`kₑ = 0.693 / t½ = 0.693 / ${n2(th)} = ${nk(k)} h⁻¹`)]
         : [t(`Organ function scales clearance: at ${p.clFn}%, the drug is eliminated at ${p.clFn}% of its usual rate.`),
            m(`kₑ = (0.693 / ${nf(p.thalf,2)}) × ${nf(p.clFn/100,2)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = 0.693 / ${nk(k)} = ${n1(th)} h`)]};
-      case "cl": return {title:"Clearance", value:CL, steps:[m(`CL = kₑ·V = ${nk(k)} × ${n1(V)} = ${n2(CL)} L/h`),
+      case "cl": if(hep) return {title:"Clearance", value:CL, steps:[...hepSteps(),
+        t(E_TXT(wellStirred(p).E))]};
+        return {title:"Clearance", value:CL, steps:[m(`CL = kₑ·V = ${nk(k)} × ${n1(V)} = ${n2(CL)} L/h`),
         t(`Clearance is the volume of plasma cleared of drug each hour. It sets total exposure; the half-life depends on V too.`)]};
       case "v": return {title:"Volume of distribution", value:V, steps:[m(`V = V(70 kg) × weight / 70 = ${nf(p.V,1)} × ${p.wt} / 70 = ${n1(V)} L`),
         t(`The volume scales with body weight. It sets how high an IV bolus starts (D / V) and, with the half-life, the clearance (CL = kₑ·V).`)]};
       case "auc": return {title:"Total exposure (AUC∞)", value:F*D/CL, steps:[
-        m(oral ? `AUC∞ = F·${Sd} / CL = ${F} × ${Dtxt} / ${n2(CL)} = ${n1(F*D/CL)} ${U.auc}` : `AUC∞ = ${Sd} / CL = ${Dtxt} / ${n2(CL)} = ${n1(D/CL)} ${U.auc}`),
-        t(oral ? `How fast the drug is absorbed changes the curve's shape, not its area.` : `It's the whole area under the curve, out to infinity.`)]};
+        m(oral ? `AUC∞ = F·${Sd} / CL = ${hep ? n3(F) : F} × ${Dtxt} / ${n2(CL)} = ${n1(F*D/CL)} ${U.auc}` : `AUC∞ = ${Sd} / CL = ${Dtxt} / ${n2(CL)} = ${n1(D/CL)} ${U.auc}`),
+        t(oral && hep ? `F = fabs·(1 − E) = ${nf(p.fabs,2)} × ${n3(wellStirred(p).FH)}: the liver takes its share on the first pass. By mouth the AUC is fabs·D / (fu·CLint), whatever the blood flow.`
+          : oral ? `How fast the drug is absorbed changes the curve's shape, not its area.` : `It's the whole area under the curve, out to infinity.`)]};
       case "mgkg": return {title:"Dose per kilogram", value:p.D/p.wt, steps:[m(`D / weight = ${p.D} / ${p.wt} = ${n1(p.D/p.wt)} ${U.perKg}`)]};
       case "tmax":
         if(p.route==="iv") return {title:"Time of the peak (tmax)", value:0, steps:[t(`An IV bolus is highest the moment it's given, at t = 0.`)]};
@@ -163,7 +175,7 @@
         return {title:"Doses given", value:g, steps:[t(`${g} of the ${p.events.length} doses in the schedule are marked given. A missed dose adds nothing to the curve.`)]}; }
       case "total": { const g=p.events.filter(e=>e.status==="given"), tot=g.reduce((s,e)=>s+e.mg,0), shown=g.slice(0,8).map(e=>nf(e.mg,1));
         return {title:"Total given", value:tot, steps:[m(`${shown.join(" + ")}${g.length>8 ? ` + … (${g.length} doses)` : ""} = ${nf(tot,1)} ${U.dose}`)]}; }
-      case "aucWin": { const g=p.events.filter(e=>e.status==="given"), inf=Sf*g.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)/CL;
+      case "aucWin": { const g=p.events.filter(e=>e.status==="given"), inf=Sf*g.reduce((s,e)=>s+(e.route==="oral" ? fOf(p) : 1)*e.mg,0)/CL;
         return {title:`Exposure in the window (AUC 0–${nf(ws.T,2)} h)`, value:ws.auc, steps:[
           m(`Area under the curve from 0 to ${nf(ws.T,2)} h = ${n1(ws.auc)} ${U.auc}`),
           t(`It's added up in 600 slices (trapezoids). Out to infinity it would be Σ(F·${Sf===1 ? "" : "S·"}dose) / CL = ${n1(inf)} ${U.auc}, with F for oral doses and 1 for IV doses.`)]}; }

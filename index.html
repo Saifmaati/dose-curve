@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.8.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.9.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1053,7 +1053,15 @@
               <button data-cmt="1" class="on">One compartment</button>
               <button data-cmt="2">Two compartments</button>
             </div>
+            <div class="seg" id="hepSeg" role="group" aria-label="Clearance from" style="margin-top:8px">
+              <button data-hep="0" class="on">Half-life</button>
+              <button data-hep="1">Liver model</button>
+            </div>
             <div id="sliders"></div>
+            <div id="hepPanel" hidden>
+              <div class="clin-math" id="hepMath" aria-live="polite"></div>
+              <p class="clin-note">Well-stirred liver: clearance and first-pass F from blood flow, unbound fraction and intrinsic clearance (70 kg). Educational model, not for clinical dosing.</p>
+            </div>
           </div>
 
           <div class="sec" id="patientSec">
@@ -1527,7 +1535,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.8.0 · updated 30 September 2026</span>
+        <span>Version 1.9.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1597,7 +1605,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=154c3540d4" defer></script>
+<script src="pk-engine.js?v=19edaac954" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1663,6 +1671,11 @@
     // two compartments: exchange between the central volume and a peripheral one
     k12:  {name:"Central → peripheral", sym:"k12", step:0.05, unit:"h⁻¹", routes:ALL},
     k21:  {name:"Peripheral → central", sym:"k21", step:0.05, unit:"h⁻¹", routes:ALL},
+    // the liver model replaces the half-life (and F) with blood flow, the unbound fraction and intrinsic clearance
+    qh:   {name:"Liver blood flow (70 kg)", sym:"Q", step:5, unit:"L/h", routes:ALL},
+    fub:  {name:"Unbound fraction in blood", sym:"fu", step:0.01, unit:"", routes:ALL},
+    clint:{name:"Intrinsic clearance (70 kg)", sym:"CLint", log:true, unit:"L/h", routes:ALL, fmt:v=>`${trim(v)} L/h`},
+    fabs: {name:"Fraction absorbed", sym:"fabs", step:0.05, unit:"", routes:["oral"]},
     tau:  {name:"Dosing interval",    sym:"τ",   step:1,    unit:"h",   routes:ALL, dosing:"repeated"},
     nDoses:{name:"Number of doses",   sym:"n",   step:1,    unit:"",    routes:ALL, dosing:"repeated"},
     missed:{name:"Missed dose",       sym:"✕",   step:1,    unit:"",    routes:ALL, dosing:"repeated",
@@ -1750,9 +1763,28 @@
       `CL = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / ${PK.CRCL_REF}] = ${fmt(ref,2)} × [(1 − ${trim(p.fe)}) + ${trim(p.fe)} × ${n1(pt.crcl)} / ${PK.CRCL_REF}] = <b>${fmt(ref*pt.factor,2)} L/h</b>`;
   }
 
+  // With the liver model on, the half-life and F on the controls are the ones the liver gives.
+  function syncHep(){
+    const p=snapshot();
+    if(!PK.hepOn(p)) return;
+    const q=PK.normalizeScenario(p); state.thalf=q.thalf; state.F=q.F;
+  }
+  function renderHep(){
+    const p=snapshot(), on=PK.hepOn(p);
+    byId("hepPanel").hidden=!on;
+    if(!on) return;
+    const w=PK.wellStirred(p), oral=PK.isRelevant("fabs",p), n=(v,d)=>fmt(v,d), fc=String(+w.fcl.toFixed(2));
+    byId("hepMath").innerHTML=
+      `<div class="cm-h">Extraction ratio</div>E = fu·CLint / (Q + fu·CLint) = ${trim(p.fub)} × ${trim(p.clint)} / (${trim(p.qh)} + ${fc}) = <b>${n(w.E,3)}</b>`+
+      `<div class="cm-h">Hepatic clearance</div>CL = Q·E = ${trim(p.qh)} × ${n(w.E,3)} = <b>${n(w.CL,2)} L/h</b> (70 kg)`+
+      `<div class="cm-h">Half-life</div>t½ = 0.693 × V / CL = 0.693 × ${trim(p.V)} / ${n(w.CL,2)} = <b>${n(Math.LN2*p.V/w.CL,2)} h</b>`+
+      (oral ? `<div class="cm-h">Oral bioavailability (first pass)</div>F = fabs·(1 − E) = ${trim(p.fabs)} × ${n(w.FH,3)} = <b>${n(PK.fOf(p),3)}</b>` : "");
+  }
   function render(){
     checkWindow();
+    syncHep();
     renderClin();
+    renderHep();
     if(state.pop) queueMicrotask(renderPop); else byId("popPanel").hidden=true;
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
@@ -2165,7 +2197,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=f84505e78f";
+  const MATH_SRC="pk-math.js?v=42c8440065";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -2363,13 +2395,15 @@
     ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],teq:["Effect-site t½","h"],
     pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
     wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
-    kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"],cmt:["Compartments",""],k12:["k12","h⁻¹"],k21:["k21","h⁻¹"]};
+    kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"],cmt:["Compartments",""],k12:["k12","h⁻¹"],k21:["k21","h⁻¹"],
+    hep:["Clearance from",""],qh:["Liver blood flow","L/h"],fub:["fu (blood)",""],clint:["CLint","L/h"],fabs:["fabs",""]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
     if(k==="D") return `${trim(s.D)} ${PK.unitsOf(s).dose}`;
     if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
     if(k==="teq") return s.teq>0 ? `${trim(s.teq)} h` : "none";
+    if(k==="hep") return s.hep ? "liver model" : "half-life";
     if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
     if(k==="sex") return s.sex==="F" ? "female" : "male";
     if(k==="wtm") return WTM_NAME[s.wtm];
@@ -2576,6 +2610,16 @@
       : `rises (higher efficacy), so high concentrations can do more.`}`);
     if(a.hill!==b.hill) out.push(`Hill slope ${trim(a.hill)} → ${trim(b.hill)}: the effect turns on and off ${b.hill>a.hill?"more sharply, closer to a switch,":"more gradually"} as the concentration passes EC50.`);
     if(a.e0!==b.e0) out.push(`Baseline effect ${trim(a.e0)} → ${trim(b.e0)}%: the response with no drug on board.`);
+    // the liver model
+    if(PK.hepOn(a) && PK.hepOn(b)){
+      const wa=PK.wellStirred(a), wb=PK.wellStirred(b), pc=(x,y)=> `${y>x?"+":"−"}${fmt(Math.abs(100*(y/x-1)),0)}%`;
+      if(a.clint!==b.clint || a.qh!==b.qh || a.fub!==b.fub){
+        const what=[a.clint!==b.clint ? `intrinsic clearance ${trim(a.clint)} → ${trim(b.clint)} L/h` : "", a.qh!==b.qh ? `liver blood flow ${trim(a.qh)} → ${trim(b.qh)} L/h` : "", a.fub!==b.fub ? `unbound fraction ${trim(a.fub)} → ${trim(b.fub)}` : ""].filter(Boolean).join(", ");
+        out.push(`Liver model: ${what}. The extraction ratio goes from ${fmt(wa.E,3)} to <b>${fmt(wb.E,3)}</b> and hepatic clearance from ${fmt(wa.CL,2)} to <b>${fmt(wb.CL,2)} L/h</b> (${pc(wa.CL,wb.CL)}). ${wa.E>0.7 && wb.E>0.7 ? "With extraction this high, clearance is limited by blood flow." : wa.E<0.3 && wb.E<0.3 ? "With extraction this low, clearance follows fu·CLint, the liver's capacity." : ""}`.trim());
+        if(PK.isRelevant("fabs",a) && PK.isRelevant("fabs",b)) out.push(`By mouth, the fraction escaping the first pass goes from ${fmt(wa.FH,3)} to <b>${fmt(wb.FH,3)}</b>, so F goes from ${fmt(PK.fOf(a),3)} to <b>${fmt(PK.fOf(b),3)}</b>.`);
+      }
+      if(a.fabs!==b.fabs && PK.isRelevant("fabs",b)) out.push(`Fraction absorbed ${trim(a.fabs)} → ${trim(b.fabs)}: every oral level scales by ${fmt(b.fabs/a.fabs,2)}×.`);
+    } else if(PK.hepOn(a)!==PK.hepOn(b)) out.push(`Clearance now comes from ${PK.hepOn(b) ? "the liver model (blood flow, unbound fraction and intrinsic clearance)" : "the half-life, not the liver model"}.`);
     if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
       ? "lags the plasma level more. It builds later, a plasma peak reaches it later and blunted, and as the level falls the effect stays above what that level alone would give."
       : "follows the plasma level more closely: it builds sooner, a plasma peak reaches it sooner and less blunted, and it falls with the level."}`);
@@ -3073,15 +3117,16 @@
     Object.entries(SLIDERS).forEach(([key,cfg])=>{
       // F, kₐ and T·inf show only when they shape the curve: in a custom schedule F and kₐ while it has an
       // oral dose, and never T·inf (each infusion has its own duration)
-      if(["F","ka","tinf"].includes(key) ? !PK.isRelevant(key, snapshot()) : !cfg.routes.includes(state.route)) return;
-      if(["thalf","vmax","km","k12","k21"].includes(key) && !PK.isRelevant(key, snapshot())) return;
+      if(["F","ka","tinf","fabs"].includes(key) ? !PK.isRelevant(key, snapshot()) : !cfg.routes.includes(state.route)) return;
+      if(["thalf","vmax","km","k12","k21","qh","fub","clint"].includes(key) && !PK.isRelevant(key, snapshot())) return;
       if(cfg.dosing && ![].concat(cfg.dosing).includes(state.dosing)) return;
       makeSlider(el,key,cfg);
     });
     syncRouteSeg();
     const pel=byId("patientSliders"), clinical=state.pm==="clinical";
     pel.innerHTML="";
-    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(!(clinical && key==="clFn")) makeSlider(pel,key,cfg); });
+    // organ function doesn't apply to the clinical patient (CrCl does) or to the liver model (its own settings do)
+    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(key!=="clFn" || PK.isRelevant("clFn", snapshot())) makeSlider(pel,key,cfg); });
     byId("clinPanel").hidden=!clinical;
     const cel=byId("clinSliders");
     cel.innerHTML="";
@@ -3089,6 +3134,7 @@
     setSegVal("pmSeg","pm",state.pm); setSegVal("sexSeg","sex",state.sex); setSegVal("wtmSeg","wtm",state.wtm);
     setSegVal("kinSeg","kin",state.kin);
     setSegVal("cmtSeg","cmt",state.cmt); byId("cmtSeg").hidden=state.kin==="mm";
+    setSegVal("hepSeg","hep",state.hep); byId("hepSeg").hidden=!PK.isRelevant("hep", snapshot());
     const dl=byId("pdSliders");
     dl.innerHTML="";
     Object.entries(PD_SLIDERS).forEach(([key,cfg])=>{ if(PK.isRelevant(key, snapshot())) makeSlider(dl,key,cfg); });
@@ -3148,6 +3194,7 @@
   seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
   seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
   seg("cmtSeg","cmt",v=>{ state.cmt=+v; state.drug=null; markDrug(); buildSliders(); changed(["cmt"]); });
+  seg("hepSeg","hep",v=>{ state.hep=+v; state.drug=null; markDrug(); syncHep(); buildSliders(); changed(["hep","thalf","F"]); });
   seg("sexSeg","sex",v=>{ state.sex=v; changed(["sex"]); });
   seg("wtmSeg","wtm",v=>{ state.wtm=v; changed(["wtm"]); });
   seg("scaleSeg","scale",v=>{ state.scale=v; render(); });
@@ -3871,7 +3918,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=379a38ffbf";
+  const GLOSS_SRC="pk-glossary.js?v=c7406ab9b9";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4514,7 +4561,8 @@
     ["D","F","ka","tinf","thalf","V","tau","nDoses"].forEach(k=>{ if(SLIDERS[k] && PK.isRelevant(k,p) && !(p.dosing==="custom" && ["D","tau","nDoses"].includes(k))) add(k,SLIDERS[k]); });
     if(p.dosing==="repeated" && p.loadMult>1) bits.push(`loading dose ${p.loadMult}×`);
     if(p.dosing==="repeated" && PK.missedOf(p)) bits.push(`dose ${p.missed} missed`);
-    add("wt",PATIENT.wt); add("clFn",PATIENT.clFn);
+    if(PK.hepOn(p)){ bits.push("liver model"); add("qh",SLIDERS.qh,"Q"); add("fub",SLIDERS.fub,"fu"); add("clint",SLIDERS.clint,"CLint"); if(PK.isRelevant("fabs",p)) add("fabs",SLIDERS.fabs,"fabs"); }
+    add("wt",PATIENT.wt); if(PK.isRelevant("clFn",p)) add("clFn",PATIENT.clFn);
     if(state.pd){ add("ec50",PD_SLIDERS.ec50,"EC₅₀"); add("emax",PD_SLIDERS.emax,"Emax"); add("hill",PD_SLIDERS.hill,"n"); add("e0",PD_SLIDERS.e0,"E₀"); if(PK.keqOf(p)>0) add("teq",PD_SLIDERS.teq,"Effect site"); }
     return bits.join(" · ");
   }
@@ -4750,7 +4798,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=24b7eeee58";
+  const PRACTICE_SRC="pk-practice.js?v=558540efae";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();
