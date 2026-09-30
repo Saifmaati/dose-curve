@@ -34,6 +34,9 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   - Graded vs steep response
   - Dose vs double dose (effect)
   - Direct vs delayed effect
+  - Induction: a low-extraction drug
+  - Induction: first pass, by mouth
+  - Liver blood flow halved (IV)
   - Evenly spaced vs bunched doses
 
   **Vary only** locks every setting except one, so A and B can differ in exactly one respect.
@@ -60,7 +63,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (26)
+## Guided lessons (29)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
@@ -71,10 +74,11 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
 | PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
+| Liver and first pass | Hepatic extraction · First pass and induction · Liver blood flow |
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 50 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 55 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (12)
 
@@ -105,12 +109,13 @@ No case stores an answer: every target check, hint, walkthrough number and refer
 
 ## Practice and assessment
 
-- **Practice problems.** There are 34 kinds of calculation problem in five topics:
+- **Practice problems.** There are 37 kinds of calculation problem in six topics:
   - single dose (12 kinds, including clearance from a two-compartment fit)
   - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
   - infusions (6, including the AUC from two measured levels)
   - concentration–effect (5, including the time of the peak effect with an effect-site delay)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
+  - liver and first pass (3): hepatic clearance by the well-stirred model, oral bioavailability after the first pass, and what induction does to IV exposure
 
   Each has a worked solution. **Visualize on curve** opens the problem's scenario with the cursor on the moment the question asks about. Answers within 2% count, so working with 0.693 for ln 2 is fine.
 - **One problem for everyone.** **Copy link to this problem** gives a link that rebuilds exactly the same numbers.
@@ -149,7 +154,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | --- | --- | --- |
 | 1 | Concentration–time basics, routes, volume | Lessons: Oral vs IV bolus, Volume of distribution, Double the dose. Practice: *Single dose*. Glossary |
 | 2 | Clearance, half-life, dosing by weight | Lessons: Reduced clearance, Dosing by weight. Show the math on each readout. Fit the data (IV bolus) |
-| 3 | Absorption and bioavailability | Lesson: Flip-flop kinetics. Fit the data (oral) |
+| 3 | Absorption, bioavailability and the liver | Lessons: Flip-flop kinetics, Hepatic extraction, First pass and induction, Liver blood flow. Practice: *Liver and first pass*. Fit the data (oral) |
 | 4 | Multiple dosing and accumulation | Lessons: Repeated dosing, Short vs long half-life, Once vs twice daily. Practice: *Repeated dosing* |
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Time above the MIC (meropenem). Practice: *Infusions* |
@@ -172,8 +177,8 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
    - lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Time above the MIC, Evenly spaced vs bunched doses
    - practice: *Infusions*
 4. **Absorption, saturation and design:**
-   - lessons: Flip-flop kinetics, Saturable elimination, One or two compartments, Narrow window
-   - practice: *Saturable (Michaelis–Menten)*
+   - lessons: Flip-flop kinetics, Saturable elimination, One or two compartments, Narrow window, Hepatic extraction, First pass and induction, Liver blood flow
+   - practice: *Saturable (Michaelis–Menten)*, *Liver and first pass*
    - Fit the data (oral)
    - Hit the window (oral)
 5. **PK/PD:**
@@ -189,6 +194,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 - First-order oral absorption with bioavailability F, IV boluses, and zero-order infusions.
 - Superposition of every dose given, whether a regular regimen (with loading and missed doses) or a custom schedule mixing routes.
 - Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
+- Optionally, clearance from a liver model (the well-stirred model): liver blood flow Q, the unbound fraction in blood fu and the intrinsic clearance CLint give E = fu·CLint / (Q + fu·CLint), hepatic clearance Q·E and oral F = fabs·(1 − E). Blood and plasma concentrations are taken as equal.
 - A salt factor S for drugs dosed as a salt, and units per drug (mg/L, ng/mL, mEq/L).
 - Saturable (Michaelis–Menten) elimination, integrated numerically (RK4, 0.05 h steps, every dose at its exact time).
 - A sigmoid Emax effect that follows the plasma concentration instantly or, with an effect-site delay (first-order drugs), an effect compartment: dCe/dt = ke0·(C − Ce), in closed form.
@@ -197,7 +203,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 
 - Three or more compartments, and two compartments with saturable elimination.
 - Indirect effects, tolerance and active metabolites, and an effect-site delay with saturable elimination.
-- Protein-binding changes.
+- Protein-binding changes beyond the liver model's unbound fraction: unbound levels aren't drawn, and the volume doesn't depend on fu. The liver model is for first-order drugs in the simple patient, and counts no gut-wall metabolism or renal clearance alongside it.
 - Covariates and correlated variability. Population mode draws clearance and volume independently, with teaching CVs.
 
 The drug presets use typical textbook values and are not prescribing information.

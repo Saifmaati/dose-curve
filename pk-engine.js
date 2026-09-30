@@ -15,14 +15,14 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were.
-  const VERSION=6;
+  const VERSION=7;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
   // effect site's equilibration half-life (0 = the effect follows plasma directly).
   const PD_KEYS=["e0","emax","ec50","hill","teq"];
@@ -34,19 +34,23 @@
   const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
-    kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0});
+    kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
+    hep:0, qh:90, fub:0.5, clint:20, fabs:1});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
-    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2]};
+    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
-    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12]};
+    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
+    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km","cmt","k12","k21"];
   const V4_MAX={thalf:24, V:120, wt:120};
   // Settings a v5 page can't hold: the effect-site delay.
   const V6_KEYS=["teq"];
+  // Settings a v6 page can't hold: clearance from the liver model.
+  const V7_KEYS=["hep","qh","fub","clint","fabs"];
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
   // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
@@ -58,7 +62,7 @@
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
-    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["teq","Effect-site delay"],["scr","Serum creatinine"],["age","Age"]];
+    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["teq","Effect-site delay"],["clint","Intrinsic clearance"],["qh","Liver blood flow"],["fub","Unbound fraction"],["scr","Serum creatinine"],["age","Age"]];
 
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
@@ -159,18 +163,24 @@
     const q=Object.assign({},p);
     if(q.missed>=q.nDoses) q.missed=1;
     if(q.e0+q.emax>100) q.emax=100-q.e0;   // the effect is a % of the largest possible response
+    if(hepOn(q)){ q.thalf=Math.LN2*q.V/wellStirred(q).CL; q.F=fOf(q); }   // shown as the liver model gives them
     q.events=normalizeEvents(q.events, q);
     return q;
   }
   // Whether a setting means anything for a scenario (F only orally, τ only for a regular regimen, …).
   function isRelevant(k,s){
-    if(k==="F"||k==="ka") return s.dosing==="custom" ? s.events.some(e=>e.route==="oral") : s.route==="oral";
+    const oral=s.dosing==="custom" ? s.events.some(e=>e.route==="oral") : s.route==="oral";
+    if(k==="F") return oral && !hepOn(s);
+    if(k==="ka") return oral;
+    if(k==="hep") return s.kin!=="mm" && s.pm!=="clinical";
+    if(k==="qh"||k==="fub"||k==="clint") return hepOn(s);
+    if(k==="fabs") return oral && hepOn(s);
     if(k==="tinf") return s.dosing!=="custom" && s.route==="inf";   // a custom infusion has its own duration
     if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
-    if(k==="clFn") return s.pm!=="clinical";
-    if(k==="thalf") return s.kin!=="mm";
+    if(k==="clFn") return s.pm!=="clinical" && !hepOn(s);
+    if(k==="thalf") return s.kin!=="mm" && !hepOn(s);
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
@@ -202,7 +212,21 @@
     return {heightIn, ibw, adj, wtUsed, crcl, factor:renalFactor(p.fe, crcl)};
   }
   // How much of the drug's reference clearance this patient has (1 = all of it).
-  const clFactor=p=> p.pm==="clinical" ? patientOf(p).factor : p.clFn/100;
+  const clFactor=p=> hepOn(p) ? 1 : p.pm==="clinical" ? patientOf(p).factor : p.clFn/100;
+
+  /* ================= LIVER (WELL-STIRRED MODEL) ================= */
+  // With hep on (first-order kinetics, simple patient), clearance comes from the liver instead of a half-life:
+  // blood flow Q, the unbound fraction in blood fu and the intrinsic clearance CLint (all for 70 kg) give the
+  // extraction ratio E = fu·CLint / (Q + fu·CLint), hepatic clearance CL = Q·E, and the fraction of an oral dose
+  // that escapes the liver on its first pass, 1 − E. Oral F is the fraction absorbed times 1 − E. Blood and plasma
+  // concentrations are taken as equal. Clearance and volume both scale with weight, so the half-life doesn't.
+  const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm!=="clinical";
+  function wellStirred(p){
+    const fc=p.fub*p.clint, E=fc/(p.qh+fc);
+    return {E, CL:p.qh*E, FH:1-E, fcl:fc};
+  }
+  // Oral bioavailability: the liver model's fabs·(1 − E), or the scenario's own F.
+  const fOf=p=> hepOn(p) ? p.fabs*wellStirred(p).FH : p.F;
 
   // Unit systems. The engine is unit-free: a dose of D (in the dose unit) times S, over a volume in litres, gives
   // a concentration in the concentration unit. toMgL converts that unit to mg/L; cdp is extra decimals for
@@ -224,7 +248,7 @@
   }
 
   /* ================= PK ENGINE ================= */
-  const keOf = p=> (Math.LN2/p.thalf) * clFactor(p);
+  const keOf = p=> hepOn(p) ? wellStirred(p).CL/p.V : (Math.LN2/p.thalf) * clFactor(p);
   // Active drug per unit of dose (the salt factor); 1 for most drugs.
   const saltOf = p=> p.S==null ? 1 : p.S;
   const vOf  = p=> p.V * (p.wt/70);
@@ -277,7 +301,7 @@
     const route=(e && e.route) || p.route;
     if(route==="iv") return mg*bolusResp(terms,t);
     if(route==="inf") return mg*infResp(terms, t, (e && e.dur) || p.tinf);
-    return p.F*mg*oralResp(terms, t, p.ka);
+    return fOf(p)*mg*oralResp(terms, t, p.ka);
   }
 
   // Every dose actually given, as {t, mg, n, route} (+ dur for an infusion). This is the one place regimens
@@ -349,7 +373,7 @@
     const k=keOf(p), V=vOf(p), terms=disposition(p), perMg=aucPerMg(terms);
     // the effective half-life is the slowest (terminal) one
     const d={thalfEff:Math.LN2/Math.min(...terms.map(x=>x.k)), ke:k, CL:1/perMg, V:V, mgkg:p.D/p.wt};
-    const Ffac = p.route==="oral" ? p.F : 1;
+    const Ffac = p.route==="oral" ? fOf(p) : 1;
     d.auc=Ffac*saltOf(p)*p.D*perMg;
     if(p.route==="iv"){ d.tmax=0; d.cmax=p.D*bolusResp(terms,0); }
     else if(p.route==="inf"){
@@ -370,7 +394,7 @@
       const given=doseEvents(p);
       d.nGiven=given.length; d.nMissed=p.events.length-given.length;
       d.totalMg=given.reduce((s,e)=>s+e.mg,0);
-      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? p.F : 1)*e.mg,0)*saltOf(p)*perMg;   // each dose by its own route
+      d.auc=given.reduce((s,e)=>s+(e.route==="oral" ? fOf(p) : 1)*e.mg,0)*saltOf(p)*perMg;   // each dose by its own route
       d.mgkg=d.totalMg/p.wt;
     }
     if(p.dosing==="repeated"){
@@ -471,7 +495,7 @@
         c+=x.c*ka*Math.exp(-ka*s)*(s/(1-X)+tau*X/((1-X)*(1-X)));
       } else c+=x.c*ka/(ka-x.k)*(Math.exp(-x.k*s)*geo(x.k)-Math.exp(-ka*s)*geo(ka));
     }
-    return p.F*D*c;
+    return fOf(p)*D*c;
   }
 
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
@@ -802,7 +826,7 @@
     }
     const ka=p.ka;
     for(const x of terms) s+= Math.abs(ka-x.k)<SAME_RATE ? x.c*ka*linkTExp(k0,ka,t) : x.c*ka/(ka-x.k)*(linkExp(k0,x.k,t)-linkExp(k0,ka,t));
-    return p.F*s;
+    return fOf(p)*s;
   }
   // The effect-site level at time t: plasma itself when there is no delay.
   function ceConc(p, t, ev){
@@ -856,7 +880,7 @@
     const rep=p.dosing==="repeated";
     return {p,
       get cmax(){ return w().cmax; }, get tmax(){ return w().tmax; }, get tin(){ return 100*w().tIn/T; },
-      get aucInf(){ return d().auc; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
+      get aucInf(){ return d().auc; }, get cl(){ return d().CL; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
       get avgSS(){ return !rep ? null : p.kin==="mm" ? (d().mm.none ? null : d().mm.avg) : d().auc/p.tau; },
       get css(){ return rep && p.kin==="mm" ? d().css : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
@@ -1078,7 +1102,7 @@
        ref("strengths","500 mg and 1 g vials","meropenem","single-dose vials of 500 mg or 1 gram")]}
   ];
   // The settings loading a drug sets, completed with the drug's own fe, S and units.
-  const drugScenario=d=> Object.assign({cmt:1}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
+  const drugScenario=d=> Object.assign({cmt:1, hep:0}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
 
   // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
   // The claims in each text are checked against the model in tests/pk-engine.test.js.
@@ -1220,8 +1244,23 @@
     {id:"delay", tag:"t½eq", title:"Effect delay (hysteresis)", sum:"The same levels, a later and lower effect.", baseLabel:"no delay",
      text:"The plasma curves are identical: 500 mg orally, peaking at 9.3 mg/L at 1.9 h. Here the drug acts at a site that equilibrates with plasma with a half-life of 2 h, so the effect follows the level at that site, a delayed and flattened copy of the plasma curve. The effect first reaches the 50% target at 2.1 h instead of 0.3 h, and peaks at 5.0 h instead of 1.9 h, at 61% instead of 70%, because the site never fills to the plasma peak. The same plasma level no longer means the same effect: at 4 mg/L (the EC50) it is 5% while the level rises and 58% while it falls. Plotted against the plasma level, the effect traces a loop that runs counterclockwise: hysteresis.",
      tryThis:"Drag the time cursor and watch the dot on the concentration–effect chart: below the curve while plasma rises, above it as plasma falls, meeting it at the effect's peak.",
-     view:{duration:24,mec:2,mtc:30,pd:true,etgt:50},
-     base:{teq:0}, cur:{teq:2}}
+     view:{duration:24,mec:2,mtc:12,pd:true,etgt:50},
+     base:{teq:0}, cur:{teq:2}},
+    {id:"hepx", tag:"E", title:"Hepatic extraction", sum:"Induction doubles a low-extraction drug's clearance.", baseLabel:"CLint 50 L/h",
+     text:"Clearance here comes from a model of the liver (the well-stirred model): blood flow 90 L/h, 10% of the drug unbound in blood, and an intrinsic clearance of 50 L/h, the liver's capacity to clear unbound drug. It extracts only 5.3% of the drug that reaches it (E = fu·CLint / (Q + fu·CLint)), so clearance is Q·E = 4.74 L/h. Enzyme induction doubles CLint to 100 L/h: E rises to 10%, clearance almost doubles to 9.0 L/h, and the half-life falls from 5.1 to 2.7 h. A low-extraction drug's clearance follows the liver's capacity. For a drug the liver extracts 91% of, doubling the intrinsic clearance raises clearance only from 81.8 to 85.7 L/h: the liver can't clear more than the blood brings it, 90 L/h.",
+     tryThis:"Set the unbound fraction to 0.5 and CLint to 1800 L/h (E 91%), then double CLint: clearance barely moves.",
+     view:{duration:24,mec:2,mtc:20},
+     base:{hep:1,route:"iv",D:500,V:35,fub:0.1,clint:50}, cur:{hep:1,route:"iv",D:500,V:35,fub:0.1,clint:100}},
+    {id:"hepfp", tag:"F", title:"First pass and induction", sum:"Clearance barely moves; oral exposure halves.", baseLabel:"CLint 1800 L/h",
+     text:"A drug the liver extracts 91% of, taken by mouth. Everything absorbed passes through the liver before it reaches the circulation, so only 1 − E = 9.1% of the dose gets through: the first-pass effect. Induction doubles CLint from 1800 to 3600 L/h. Clearance hardly changes (81.8 → 85.7 L/h, so an IV dose's AUC would fall only 5%), but the fraction escaping the first pass halves to 4.8%, and the oral AUC halves with it, from 2.22 to 1.11 mg·h/L. By mouth, exposure is fabs·D / (fu·CLint), whatever the extraction.",
+     tryThis:"Switch the route to IV bolus: the same 2000 mg gives an AUC of 23.3 mg·h/L, because nothing is lost to a first pass.",
+     view:{duration:12,mec:0.1,mtc:1},
+     base:{hep:1,route:"oral",D:2000,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"oral",D:2000,V:150,fub:0.5,clint:3600}},
+    {id:"hepq", tag:"Q", title:"Liver blood flow", sum:"A high-extraction drug's clearance follows the flow.", baseLabel:"Q 90 L/h",
+     text:"The same high-extraction drug, given IV, with liver blood flow halved from 90 to 45 L/h, as in low cardiac output. Its clearance follows the flow, 81.8 → 42.9 L/h, so the half-life rises from 1.3 to 2.4 h and the IV AUC almost doubles (6.11 → 11.7 mg·h/L). By mouth its exposure wouldn't change: slower flow also lets the liver extract more of each oral dose on its first pass (F 9.1% → 4.8%), and the two effects cancel, leaving the oral AUC at fabs·D / (fu·CLint).",
+     tryThis:"Switch the route to oral in both: the two AUCs are equal.",
+     view:{duration:12,mec:0.5,mtc:5},
+     base:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800,qh:45}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1264,6 +1303,12 @@
      look:"B's peak effect is only 10 points higher, but it stays above target exactly one half-life (4 h) longer."},
     {id:"delay", lesson:"delay", title:"Direct vs delayed effect", nameA:"No delay", nameB:"Effect-site t½ 2 h",
      look:"Identical plasma curves. B's effect peaks 3.1 h after the plasma peak, at 61% instead of 70%, and reaches the 50% target 1.8 h later."},
+    {id:"hepx", lesson:"hepx", title:"Induction: a low-extraction drug", nameA:"CLint 50 L/h", nameB:"CLint 100 L/h",
+     look:"Clearance almost doubles (4.74 → 9.0 L/h), and B falls twice as fast."},
+    {id:"hepfp", lesson:"hepfp", title:"Induction: first pass, by mouth", nameA:"CLint 1800 L/h", nameB:"CLint 3600 L/h",
+     look:"Clearance barely moves, but B's oral AUC is half of A's (1.11 vs 2.22 mg·h/L)."},
+    {id:"hepq", lesson:"hepq", title:"Liver blood flow halved (IV)", nameA:"Q 90 L/h", nameB:"Q 45 L/h",
+     look:"B's clearance falls from 81.8 to 42.9 L/h, and its IV AUC almost doubles."},
     {id:"spacing", lesson:"spacing", title:"Evenly spaced vs bunched doses", nameA:"Every 6 h", nameB:"Four doses by 6 am",
      look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."}
   ];
@@ -1274,7 +1319,8 @@
   // `decide` returns the right choice from the lesson's computed numbers, and the tests check it against
   // `answer`; `goal` says whether the live scenario meets the challenge, and `solution` is a change that does.
   const LESSON_GROUPS=[{id:"pk",title:"PK fundamentals"},{id:"rep",title:"Repeated dosing and steady state"},
-    {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"}];
+    {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"},
+    {id:"liver",title:"Liver and first pass"}];
   const r0=v=> String(Math.round(v)), r1=v=> String(Math.round(v*10)/10), r2=v=> String(Math.round(v*100)/100);
   const HLS=["Higher","Lower","About the same"];
   // The half-life the tail of a curve shows between 12 and 24 h (what a log-linear fit of late samples gives).
@@ -1478,7 +1524,28 @@
         decide:m=> higherLowerSame(m.cur.epeak,m.base.epeak), show:m=>`Peak effect ${r0(m.base.epeak)}% → ${r0(m.cur.epeak)}%`},
       challenge:{text:"Keep the 2-hour delay and bring the peak effect back to 70% or more.",
         goal:m=> m.now.p.teq===2 && m.now.epeak>=70, solution:{D:750}},
-      matters:"When the effect lags the level, a level drawn early can look high while the effect is still building, and the effect outlasts the level on the way down."}
+      matters:"When the effect lags the level, a level drawn early can look high while the effect is still building, and the effect outlasts the level on the way down."},
+    hepx:{group:"liver", objective:"Calculate hepatic extraction and clearance with the well-stirred model, and tell low- from high-extraction drugs.",
+      predict:{q:"Induction doubles the intrinsic clearance of this low-extraction drug. Its clearance…", choices:["Almost doubles","Rises only a little","Stays the same"], answer:0,
+        why:"With E this low, the liver clears only a small share of what reaches it, so clearance ≈ fu·CLint and follows CLint.",
+        decide:m=>{ const r=m.cur.cl/m.base.cl; return r>1.6 ? 0 : r>1.02 ? 1 : 2; }, show:m=>`Clearance ${r2(m.base.cl)} → ${r2(m.cur.cl)} L/h`},
+      challenge:{text:"Make the liver extract at least half of the drug that reaches it, changing only the intrinsic clearance.",
+        goal:m=>{ const p=m.now.p; return hepOn(p) && p.fub===0.1 && p.qh===90 && p.V===35 && wellStirred(p).E>=0.5; }, solution:{clint:1000}},
+      matters:"Enzyme inducers and inhibitors change intrinsic clearance. A low-extraction drug's clearance follows them; a high-extraction drug's follows liver blood flow instead."},
+    hepfp:{group:"liver", objective:"Explain the first-pass effect, and why induction changes oral exposure even when clearance hardly moves.",
+      predict:{q:"Induction doubles the intrinsic clearance of this high-extraction drug, taken by mouth. The oral AUC…", choices:["Halves","Falls about 5%, like clearance","Stays the same"], answer:0,
+        why:"Clearance is near the blood flow already, but the fraction escaping the first pass, 1 − E, halves, and the oral AUC with it.",
+        decide:m=>{ const r=m.cur.aucInf/m.base.aucInf; return r<0.6 ? 0 : r<0.99 ? 1 : 2; }, show:m=>`Oral AUC ${r2(m.base.aucInf)} → ${r2(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Keep the induced CLint (3600 L/h) and the 2000 mg dose, and reach an AUC of at least 10 mg·h/L.",
+        goal:m=>{ const p=m.now.p; return hepOn(p) && p.clint===3600 && p.D===2000 && m.now.aucInf>=10; }, solution:{route:"iv"}},
+      matters:"High-extraction drugs taken by mouth have low bioavailability, and anything that changes the liver's capacity changes their oral exposure in proportion."},
+    hepq:{group:"liver", objective:"Predict how a fall in liver blood flow changes a high-extraction drug's clearance, IV and by mouth.",
+      predict:{q:"Liver blood flow halves. This high-extraction drug's IV AUC…", choices:["Almost doubles","Barely changes","Halves"], answer:0,
+        why:"The liver clears nearly all the drug the blood brings, so clearance falls with the flow.",
+        decide:m=>{ const r=m.cur.aucInf/m.base.aucInf; return r>1.6 ? 0 : r>0.9 ? 1 : 2; }, show:m=>`IV AUC ${r2(m.base.aucInf)} → ${r2(m.cur.aucInf)} mg·h/L`},
+      challenge:{text:"Keep the flow at 45 L/h and bring the IV AUC back to 6.11 mg·h/L or less, changing only the dose.",
+        goal:m=>{ const p=m.now.p; return hepOn(p) && p.qh===45 && p.clint===1800 && p.fub===0.5 && p.route==="iv" && m.now.aucInf<=6.115; }, solution:{D:250}},
+      matters:"The clearance of high-extraction drugs follows liver blood flow, which falls in heart failure and shock and raises their IV exposure; their oral exposure is set by the liver's capacity instead."}
   };
   LESSONS.forEach(L=> Object.assign(L, LESSON_GUIDE[L.id]));
   // Grouped order: "Next lesson" and the numbering follow it.
@@ -1541,7 +1608,8 @@
   const needsRoute=(p,e)=> e.route!==p.route || (e.route==="inf" && e.dur!==p.tinf);
   const usesV3=p=> p.dosing==="custom" && p.events.some(e=>needsRoute(p,e));
   function encodeScenario(p){
-    const parts=PK_KEYS.filter(k=>k!=="events" && p[k]!==DEFAULTS[k]).map(k=>k+":"+p[k]);
+    // with the liver model the half-life and F are derived from it, so a link carries only the model's settings
+    const parts=PK_KEYS.filter(k=>k!=="events" && p[k]!==DEFAULTS[k] && !(hepOn(p) && (k==="thalf"||k==="F"))).map(k=>k+":"+p[k]);
     if(p.dosing==="custom" && p.events.length)
       parts.push("ev:"+p.events.map(e=>`${e.t}@${e.mg}${needsRoute(p,e) ? routeCode(e) : ""}${flags(e)}`).join(";"));
     return parts.join(",");
@@ -1572,7 +1640,7 @@
       if(typeof DEFAULTS[k]==="string"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
       if(!isFinite(v)) return;
-      if(k==="loadMult"||k==="cmt"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
+      if(k==="loadMult"||k==="cmt"||k==="hep"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
       p[k]=clamp(v,RANGES[k]);
     });
@@ -1608,10 +1676,11 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV7=scen.some(p=>V7_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1736,7 +1805,8 @@
   // which works the answer out again from that scenario with the simulation itself. The tests hold every
   // generator to its check, over many seeds.
   const PRACTICE_TOPICS=[{id:"single",title:"Single dose"},{id:"rep",title:"Repeated dosing"},
-    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"},{id:"nl",title:"Saturable (Michaelis–Menten)"}];
+    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"},{id:"nl",title:"Saturable (Michaelis–Menten)"},
+    {id:"liver",title:"Liver and first pass"}];
   // mulberry32: a small seedable generator of numbers in [0, 1)
   function seededRandom(seed){
     let a=seed>>>0;
@@ -1764,10 +1834,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=4;
+  const WS_VERSION=5;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
@@ -2013,7 +2083,7 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
-    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc,
+    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc, hepOn, wellStirred, fOf,
     DRUGS, LESSONS, TEMPLATES, LESSON_GROUPS, lessonStats, lessonCheck, lessonScenario, challengeMet,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,

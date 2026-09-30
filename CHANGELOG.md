@@ -2,6 +2,23 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.9.0 (2026-09-30)
+
+- **A liver model.** Under *Drug parameters*, **Clearance from: Liver model** replaces the half-life (and, by mouth, F) with the well-stirred model of the liver:
+  - liver blood flow Q, the unbound fraction in blood fu, and the intrinsic clearance CLint (the liver's enzyme capacity), all for 70 kg, plus the fraction of an oral dose absorbed;
+  - extraction E = fu·CLint / (Q + fu·CLint), hepatic clearance Q·E, and oral F = fabs·(1 − E), with the working shown under the sliders and in the clearance, half-life and AUC readouts;
+  - What changed explains a change in any of them, and **Vary only** can hold CLint, Q or fu apart.
+  - It applies to first-order drugs in the simple patient. The half-life and F follow from it, so links carry only the model's settings (version 7). Every older link opens as before.
+- **Three lessons (29 in all), in a new group, *Liver and first pass*:**
+  - *Hepatic extraction:* induction doubles a low-extraction drug's clearance (4.74 → 9.0 L/h), but a high-extraction drug's only from 81.8 to 85.7 L/h, because the liver can't clear more than the blood brings it.
+  - *First pass and induction:* by mouth, a drug the liver extracts 91% of has F = 9.1%. Doubling CLint barely changes its clearance but halves its oral AUC (2.22 → 1.11 mg·h/L).
+  - *Liver blood flow:* halving the flow almost doubles a high-extraction drug's IV AUC (6.11 → 11.7 mg·h/L), while its oral AUC stays at fabs·D / (fu·CLint).
+  - Each has a matching comparison (23), and every number they state is tested.
+- **A practice topic, *Liver and first pass* (37 kinds):** hepatic clearance, oral bioavailability after the first pass, and what induction does to IV exposure. Each answer is checked against the model (F as the ratio of oral to IV AUC). Worksheet pools are at version 5; version-4 links rebuild exactly.
+- **Five glossary terms (55):** extraction ratio, intrinsic clearance, the well-stirred model, the first-pass effect, and hepatic blood flow.
+- Lesson 26 (effect delay) uses the default concentration window, so its curves fill the chart, and the README shows it.
+- The share card says 29 lessons.
+
 ## 1.8.0 (2026-09-30)
 
 - **A practice problem on the effect-site delay (34 kinds):** after an IV bolus, when is the effect at its peak? t = ln(ke0 / kₑ) / (ke0 − kₑ), which doesn't depend on the dose. The worked solution explains why the effect site peaks where it meets plasma, and **Visualize on curve** shows it. The answer is checked against the model's own peak effect. Worksheet pools are now at version 4; version-3 links rebuild exactly (tested against sheets made by 1.7.0).

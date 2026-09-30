@@ -250,7 +250,9 @@ test("scenarios round-trip through the link format", ()=>{
     scenario({route:"inf", dosing:"repeated", tinf:0.5, tau:8, nDoses:20, loadMult:1.5, missed:7, wt:52, clFn:35}),
     ...PK.LESSONS.flatMap(L=>[scenario(L.base), scenario(L.cur)])
   ];
-  samples.forEach(p=> assert.deepEqual(PK.decodeScenario(PK.encodeScenario(p)), p));
+  // (normalized: a liver-model scenario shows the half-life and F its liver gives, which its link doesn't carry)
+  samples.forEach(p=> assert.deepEqual(PK.decodeScenario(PK.encodeScenario(p)), PK.normalizeScenario(p)));
+  samples.filter(p=>!p.hep).forEach(p=> assert.deepEqual(PK.normalizeScenario(p), p, "normalizing changes nothing else"));
 });
 
 test("decoding ignores unknown keys and bad values, and clamps numbers", ()=>{
@@ -1685,6 +1687,11 @@ test("a worksheet shared before new kinds arrived rebuilds exactly (version-1 li
   Object.entries(V3).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
   const seen4=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"pd", count:10, seed}).problems.forEach(p=>seen4.add(p.id)));
   assert.ok(seen4.has("effpk"), "version 4 sheets include the effect-delay kind");
+  // version-4 links (shared from 1.8) rebuild exactly: made with the 1.8.0 engine, before version 5's liver kinds
+  const V4={"all.15.99.4":["renaladj:1040450815","effdur:2966671880","rate:1692960689","effc:3878063843","clinf:826037518","auc2:3506976847","cl:2086466836","mmt90:2600597767","cl2:3012898485","t90:3259124632","mmdose:1190380853","cavg:2544774965","tbelow:3300014323","infpct:1953322744","thalf2:679820681"],"pd.15.1.4":["effpk:596715197","effdur:1734070562","cfore:1063107040","effc:663542962","efft:2100857034","effc:289351446","effdur:1694877057","efft:3294703884","cfore:1227766539","effpk:819795777","effc:183522707","cfore:1835591523","efft:2535673501","effdur:3430322586","effpk:1266456452"],"single.10.2.4":["auc:865630693","cl:1822035367","ke:3586286729","thalfcl:2496752147","c0:605619160","tbelow:2887193964","cl2:1574957072","bioF:4173047984","thalf2:168367563","ct:3930744562"],"all.10.4242.4":["thalf2:3669314544","ke:344105213","effc:2834821888","auc:2938099130","auc2:1345902723","rate:3648125612","effdur:101660044","trough:4274963538","mmt90:433318463","cl2:2098610515"]};
+  Object.entries(V4).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
+  const seen5=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"liver", count:5, seed}).problems.forEach(p=>seen5.add(p.id)));
+  assert.deepEqual([...seen5].sort(), ["hepcl","hepf","hepiv"], "version 5 adds the liver topic");
 });
 
 /* ---------- hit the window ---------- */
