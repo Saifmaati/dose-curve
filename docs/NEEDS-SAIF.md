@@ -7,7 +7,8 @@ A few steps need your accounts or your judgment. Each one says why it wasn't don
 **Why:** merging was blocked by Claude Code's auto-mode safety check ("Merge Without Review"). Each release is a pull request whose CI must be green first; merge them in order, then Claude Code tags the merge commit and checks the live site.
 
 - 1.10.0: https://github.com/Saifmaati/dose-curve/pull/12 (branch `v1.10.0`)
-- 1.11.0: the pull request from branch `v1.11.0` (it includes 1.10.0's commits until #12 is merged)
+- 1.11.0: https://github.com/Saifmaati/dose-curve/pull/13 (branch `v1.11.0`)
+- 1.12.0: the pull request from branch `v1.12.0` (it includes 1.10.0 and 1.11.0 until those merge)
 
 ```bash
 /Users/saifmaati/.local/bin/gh pr merge 12 --repo Saifmaati/dose-curve --merge
@@ -26,12 +27,12 @@ To let Claude Code merge after green CI in future runs, allow `Bash(/Users/saifm
 | v1.2.0 | 2d50c74 | v1.7.0 | b1ae2f3 |
 | v1.3.0 | e178f31 | v1.8.0 | b31ff5e |
 | v1.4.0 | 36e3abf | v1.9.0 | da05093 |
-| v1.4.1 | fadf6bd | v1.10.0, v1.11.0 | their merge commits (tagged when they merge) |
+| v1.4.1 | fadf6bd | v1.10.0 – v1.12.0 | their merge commits (tagged when they merge) |
 
 From the repository folder, this creates each one with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)` in `~/.claude/settings.json`.

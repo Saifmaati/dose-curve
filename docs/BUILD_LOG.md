@@ -69,4 +69,6 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 17:46 | 1.11 | Bayesian (MAP) engine in pk-bayes.js; measured levels in scenarios and v8 links; SciPy MAP reference (20 scenarios) on the validation page | done | 97229fe |
 | 2026-09-30 17:51 | 1.11 | Individualize from levels panel; estimate on the chart; applying it keeps the levels' regimen as the baseline; page-scripts-parse test | done | f1fbf1a |
 | 2026-09-30 18:03 | 1.11 | Bayesian cases (vancomycin, gentamicin), lesson 30, glossary 58, Sheiner 1979 source, share card | done | 10f4f4f |
+| 2026-09-30 18:14 | 1.12 | Instructor tools: write a case, assignments, completion codes and verification; class guide; privacy notes | done | 8813e6f |
+| 2026-09-30 18:14 | 1.12 | Assignment builder selects labelled (axe clean in both themes) | done | df5c499 |
 

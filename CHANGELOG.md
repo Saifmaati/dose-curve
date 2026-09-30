@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.12.0 (2026-09-30)
+
+- **Write a case.** Under *Cases → For instructors*, an instructor describes a patient (age, sex, height, weight, serum creatinine), chooses a first-order drug from the library (optionally with their own half-life, volume or bioavailability, shown beside the library's), the regimens students may pick, and a target at steady state (a peak range with a trough limit, or an AUC24 range), with the setting, the task, notes and references (shown as author-provided).
+  - **Checked for a solution:** before a link is made, every regimen the choices allow is checked against the target (exactly: first-order levels scale with the dose, so each interval is simulated once), and the link is offered only when at least one meets it; the author sees how many do and one example.
+  - **Shared as a link:** the case travels in `#case=c1.…`, compressed where the browser can, and checked again when it opens. It is marked *Community case, unreviewed*. Every built-in case link opens exactly as before (a test checks each).
+- **Assignments.** An ordered list of up to 12 built-in cases, community cases and worksheets, in one link (`#bundle=b1.…`). Students work through it in the browser: cases are graded as they go, and worksheet answers are checked in the app. Progress stays in their browser.
+- **Completion codes.** At the end, a student enters the identifier the teacher gave them (not a name: letters, digits, - and _ only) and the class key, and gets a few readable lines (the assignment, the identifier, the items finished, the score and the date) with a code: an HMAC-SHA256 of those lines keyed by the class key, computed in the browser. **Verify a completion code** recomputes it. Nothing is sent anywhere; anyone who knows the key can make a code, and the page says so.
+- The teaching guide has a new section, *Run a class in ten minutes*, and the privacy notes cover assignments and codes.
+
 ## 1.11.0 (2026-09-30)
 
 - **Individualize from levels (Bayesian).** Under the clinical patient, measured levels, each entered as hours after a given dose, give this patient's own clearance, volume and half-life. The estimate weighs each level against the patient model by its uncertainty, the approach of Sheiner et al. (*Clin Pharmacol Ther* 1979):

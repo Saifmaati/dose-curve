@@ -279,3 +279,15 @@ There are 294 tests in 12 files.
 
 There are 308 tests in 13 files. The initial script is +14.7% over the Phase 0 baseline (limit +25%).
 
+## 21. 1.12.0 (Plan V2, Phase C)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Write a case: checked spec, the author's values flagged, solvability over the regimen grid, community case in a compressed versioned link, marked unreviewed | Cases → For instructors → Write a case | `instructor.test.js` (every field round-trips, compressed and plain; the count matches grading every regimen; unsolvable refused; bad values named) |
+| Built-in case links unchanged | any `#case=` link | `instructor.test.js` (all 14, with and without a regimen) |
+| Assignments: bundle links, worksheets answered in the app, progress in the browser | Make an assignment; an assignment link | `instructor.test.js` (round trip, same worksheets, limits) |
+| Completion codes and the verify panel | the end of an assignment; Verify a completion code | `instructor.test.js` (HMAC-SHA256 checked with Node's crypto; a changed score, identifier, key or code fails) |
+| Teaching guide: run a class in ten minutes; privacy notes | docs/teaching-guide.md; footer | — |
+
+There are 314 tests in 14 files. The initial script is +14.8% over the Phase 0 baseline (limit +25%); the instructor tools live in the lazily loaded cases.js.
+
