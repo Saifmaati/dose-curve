@@ -1760,3 +1760,23 @@ test("progress read from storage keeps only its own shape", ()=>{
   assert.deepEqual(Object.keys(p).sort(), ["format","lessons","practice","tasks","version"]);
   assert.equal(p.version, 1);
 });
+
+test("lesson: dosing by weight", ()=>{
+  const {L, base, cur, T, mec, mtc}=lesson("weight");
+  const [a,b]=[base,cur].map(p=>({d:PK.derived(p), w:stats(p,T,mec,mtc)}));
+  assert.deepEqual([a.d.V, b.d.V], [25, 50]);
+  assert.deepEqual([a.d.CL.toFixed(1), b.d.CL.toFixed(1)], ["4.3","8.7"]);
+  assert.deepEqual([a.d.thalfEff, b.d.thalfEff], [4, 4]);
+  assert.deepEqual([a.d.cmax.toFixed(1), b.d.cmax.toFixed(1)], ["13.0","6.5"]);
+  assert.deepEqual([a.d.auc.toFixed(1), b.d.auc.toFixed(1)], ["103.9","51.9"]);
+  assert.deepEqual([a.d.mgkg, b.d.mgkg], [10, 5]);
+  assert.equal(a.w.tAbove.toFixed(1), "1.8"); assert.equal(b.w.tAbove, 0);
+  // 10 mg/kg at 100 kg is the 50 kg curve exactly; 70 kg sits between (7.1 mg/kg)
+  const same=scenario({wt:100, D:1000});
+  [0.5,2,6,12,20].forEach(t=> rel(PK.conc(same,t), PK.conc(base,t), 1e-12, `10 mg/kg at ${t} h`));
+  const mid=PK.derived(scenario({wt:70}));
+  assert.ok(mid.cmax<a.d.cmax && mid.cmax>b.d.cmax); assert.equal(mid.mgkg.toFixed(1), "7.1");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:1000, V:36})), false, "only the dose may change");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:1000, wt:90})), false, "the weight stays 100 kg");
+  const t=PK.TEMPLATES.find(x=>x.id==="weight"); assert.ok(t && t.lesson==="weight");
+});
