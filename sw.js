@@ -6,7 +6,7 @@
 //   hash, and older engine copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v1";
+const CACHE="dosecurve-v2";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png"];
 const PAGE="./";   // every page in scope is the one app page; its saved copy lives under this key
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];
