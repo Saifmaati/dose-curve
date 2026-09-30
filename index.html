@@ -248,6 +248,19 @@
   .clin-math b{color:var(--hi);font-weight:600}
   .clin-math .cm-h{font-family:'Inter','Inter Fallback',sans-serif;color:var(--muted);font-size:10.5px;margin-top:6px}
   .clin-note,.drug-info .di-note{font-size:11px;color:var(--amber-text);margin-top:8px}
+  .bayes{margin-top:12px;border-top:1px solid var(--glass-line);padding-top:10px}
+  .bayes summary{cursor:pointer;font-size:12.5px;color:var(--hi);font-weight:600}
+  .bayes summary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .bz-intro{font-size:11.5px;color:var(--text-3);margin:8px 0}
+  .bz-row{display:grid;grid-template-columns:1fr 1fr 1.25fr auto;gap:6px;align-items:end;margin-bottom:6px}
+  .bz-row .num-field label{margin-bottom:3px;font-size:10.5px}
+  .bz-row .num-field input{padding:6px 8px;font-size:12px}
+  .bz-del{border:1px solid var(--glass-line);background:transparent;color:var(--muted);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:12px}
+  .bz-del:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .bz-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .bz-target{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-family:'Inter','Inter Fallback',sans-serif}
+  .bz-target select,.bz-target input{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px;color:var(--text);background:rgba(var(--well-rgb),.8);border:1px solid var(--glass-line);border-radius:7px;padding:4px 6px}
+  .bz-target input{width:78px}
   .drug-info{margin-top:10px;padding:10px 12px;border:1px solid var(--glass-line);border-radius:10px;background:rgba(var(--well-rgb),.5);font-size:12px;color:var(--text-3)}
   .drug-info .di-h{font-size:12.5px;color:var(--hi);font-weight:600;margin-bottom:4px}
   .drug-info dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0}
@@ -1089,6 +1102,14 @@
               </details>
               <div class="clin-math" id="clinMath" aria-live="polite"></div>
               <p class="clin-note">Educational model, not for clinical dosing.</p>
+              <details class="bayes" id="bzBox">
+                <summary>Individualize from levels (Bayesian)</summary>
+                <p class="bz-intro">Enter measured levels, each as hours after the start of a dose. The estimate weighs them against this patient model's prediction (the prior), each by how uncertain it is.</p>
+                <div id="bzLevels"></div>
+                <button class="abtn" id="bzAdd" type="button">+ Add a level</button>
+                <div class="clin-math" id="bzOut" aria-live="polite"></div>
+                <p class="clin-note" id="bzNote">Teaching assumptions: the prior's CVs are the Population settings' (clearance 30%, volume 20% unless changed there); each level's error SD is √((10% of the level)² + (MEC / 10)²); one compartment, first-order elimination. Method: Sheiner et al., Clin Pharmacol Ther 1979. Educational model, not for clinical dosing.</p>
+              </details>
             </div>
           </div>
 
@@ -1624,7 +1645,7 @@
     pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt});
   const POP_VIEW=["pop","popn","pcl","pv","pseed","plo","phi"];
   POP_VIEW.forEach(k=> state[k]=PK.VIEW_DEFAULTS[k]);
-  const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); return o; };
+  const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); o.lv=(state.lv||[]).map(l=>({n:l.n, dt:l.dt, c:l.c})); return o; };
   const loadScenario=p=>{ const q=PK.normalizeScenario(p); PK_KEYS.forEach(k=>state[k]=q[k]); };
   const windowStats=p=>PK.windowStats(p,state.duration,state.mec,state.mtc);
 
@@ -1780,11 +1801,134 @@
       `<div class="cm-h">Half-life</div>t½ = 0.693 × V / CL = 0.693 × ${trim(p.V)} / ${n(w.CL,2)} = <b>${n(Math.LN2*p.V/w.CL,2)} h</b>`+
       (oral ? `<div class="cm-h">Oral bioavailability (first pass)</div>F = fabs·(1 − E) = ${trim(p.fabs)} × ${n(w.FH,3)} = <b>${n(PK.fOf(p),3)}</b>` : "");
   }
+  /* ---------- Individualize from levels (Bayesian) ---------- */
+  // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
+  // n (the nth dose given) and dt (hours after it starts).
+  const BAYES_SRC="pk-bayes.js?v=49979aea6b";
+  let bayesLoad=null, bzCache={key:"", est:null};
+  function loadBayes(){
+    if(PK.bayesModule) return Promise.resolve();
+    if(!bayesLoad) bayesLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=BAYES_SRC;
+      sc.onload=()=> PK.bayesModule ? res() : rej(new Error("no bayes"));
+      sc.onerror=()=>{ bayesLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return bayesLoad;
+  }
+  const bzOpts=()=>({cvCL:state.pcl, cvV:state.pv, mec:state.mec});
+  // The estimate for the live scenario, cached by everything it depends on.
+  function bayesEstimate(){
+    const p=snapshot();
+    if(!PK.bayesModule || !PK.isRelevant("lv",p) || !p.lv.length) return null;
+    const key=PK.encodeLink({mode:"sim", s:p, view:PK.VIEW_DEFAULTS})+"|"+[state.pcl,state.pv,state.mec].join(",");
+    if(bzCache.key!==key) bzCache={key, est:PK.bayes.estimate(PK.normalizeScenario(p), p.lv, bzOpts()), p};
+    return bzCache.est;
+  }
+  const bayesShown=()=>{ if(mode!=="sim") return null; const est=bayesEstimate(); return est && est.ok && est.obs.length ? {est} : null; };
+  function setLevels(list){ state.lv=PK.normalizeLevels(list); if(!state.lv.length) bzTarget=null; renderLevelRows(); changed(["lv"]); }
+  function renderLevelRows(){
+    const lv=state.lv||[], full=lv.length>=PK.LEVEL_LIMITS.max;
+    byId("bzLevels").innerHTML=lv.map((l,i)=>`<div class="bz-row" data-i="${i}">
+      <div class="num-field"><label for="bzN${i}">Dose number</label><input id="bzN${i}" type="number" data-f="n" min="1" max="40" step="1" value="${l.n}"></div>
+      <div class="num-field"><label for="bzT${i}">Hours after</label><input id="bzT${i}" type="number" data-f="dt" min="0" max="336" step="0.25" value="${l.dt}"></div>
+      <div class="num-field"><label for="bzC${i}">Level (${U().conc})</label><input id="bzC${i}" type="number" data-f="c" min="0" step="0.1" value="${l.c}"></div>
+      <button class="bz-del" type="button" data-del="${i}" aria-label="Remove level ${i+1}">✕</button></div>`).join("");
+    byId("bzAdd").disabled=full;
+  }
+  byId("bzLevels").addEventListener("change",e=>{
+    const inp=e.target.closest("input"); if(!inp) return;
+    const i=+inp.closest(".bz-row").dataset.i, v=parseFloat(inp.value), lv=(state.lv||[]).map(l=>Object.assign({},l));
+    if(!isFinite(v)) { renderLevelRows(); return; }
+    lv[i][inp.dataset.f]=v; setLevels(lv);
+  });
+  byId("bzLevels").addEventListener("click",e=>{
+    const b=e.target.closest("[data-del]"); if(!b) return;
+    const lv=(state.lv||[]).filter((_,i)=>i!==+b.dataset.del); setLevels(lv);
+    byId(lv.length ? "bzN0" : "bzAdd").focus();
+  });
+  byId("bzAdd").addEventListener("click",()=>{
+    // a new level: the last dose given, just before the next one would be due (a trough), at the model's level
+    const p=PK.normalizeScenario(snapshot()), ev=doseEvents(p), n=Math.max(1, ev.length), e=ev[n-1];
+    const dt=p.dosing==="repeated" ? Math.max(0.25, p.tau-0.5) : 4, c=e ? +conc(p, e.t+dt, ev).toFixed(1) : 1;
+    setLevels((state.lv||[]).concat([{n, dt, c}]));
+    const i=(state.lv||[]).length-1; if(i>=0) byId("bzC"+i).focus();
+    loadBayes().then(render).catch(()=>{});
+  });
+  byId("bzBox").addEventListener("toggle",()=>{ if(byId("bzBox").open) loadBayes().then(render).catch(()=>{ byId("bzOut").textContent="The estimator couldn't load. Check the connection and open the panel again."; }); });
+  const roundDose=D=> { const st=D<100 ? 5 : D<1000 ? 25 : 50; return Math.max(st, Math.round(D/st)*st); };
+  // The target: set in the panel; until then the AUC24 range the Population panel sets (its middle), or else the
+  // AUC24 the patient model predicts for this regimen, so the dose restores the exposure the regimen was chosen for.
+  let bzTarget=null;
+  function targetNow(p){
+    if(bzTarget) return bzTarget;
+    if(state.plo>0 && state.phi>state.plo) return {kind:"auc", value:(state.plo+state.phi)/2, auto:"the middle of the Population panel's AUC24 range"};
+    // fixed once found, so setting the dose it leads to doesn't move it
+    const ss=PK.bayes.steadyState(PK.normalizeScenario(p));
+    return (bzTarget={kind:"auc", value:+ss.auc24.toPrecision(3), auto:`the AUC24 the patient model predicted for ${trim(ss.D)} ${U().dose} every ${trim(ss.tau)} h`});
+  }
+  function renderBayes(){
+    const box=byId("bzBox"), p=snapshot(), rel=PK.isRelevant("lv",p);
+    box.hidden=!(state.pm==="clinical");
+    if(!rel || state.pm!=="clinical") return;
+    if(byId("bzLevels").children.length!==(state.lv||[]).length) renderLevelRows();
+    if(state.lv.length && !box.open) box.open=true;
+    const out=byId("bzOut");
+    if(!PK.bayesModule){ out.textContent=state.lv.length ? "Loading the estimator…" : "No levels yet: the estimate is the patient model itself."; if(state.lv.length) loadBayes().then(render).catch(()=>{}); return; }
+    const app=PK.bayes.applicable(PK.normalizeScenario(p));
+    if(!app.ok){ out.textContent=app.why; return; }
+    const est=bayesEstimate(), pr=PK.bayes.priorOf(PK.normalizeScenario(p), bzOpts()), n=v=>fmt(v,2), iv=(ci,dp)=>`95% ${fmt(ci[0],dp)}–${fmt(ci[1],dp)}`;
+    let h=`<div class="cm-h">Prior (the patient model)</div>CL ${n(pr.CL)} L/h · V ${fmt(pr.V,1)} L · t½ ${fmt(Math.LN2*pr.V/pr.CL,1)} h`;
+    if(!est || !est.obs.length){ out.innerHTML=h+`<div class="cm-h">No levels yet</div>Add a measured level to estimate this patient's own clearance and volume.`; return; }
+    h+=`<div class="cm-h">Bayesian estimate from ${est.obs.length} level${est.obs.length>1?"s":""}</div>`+
+      `CL <b>${n(est.CL)} L/h</b> (${iv(est.ci.CL,2)}) · V <b>${fmt(est.V,1)} L</b> (${iv(est.ci.V,1)}) · t½ <b>${fmt(est.thalf,1)} h</b> (${iv(est.ci.thalf,1)})<br>`+
+      `Uncertainty left: clearance ${fmt(100*est.shrink.CL,0)}%, volume ${fmt(100*est.shrink.V,0)}% of the prior's (100% = the levels added nothing)`;
+    h+=`<div class="cm-h">Measured vs estimate</div>`+est.obs.map(o=>`dose ${o.n} + ${trim(o.dt)} h: ${fmt(o.y,cdp(1))} vs <b>${fmt(o.pred,cdp(1))}</b> ${U().conc}`).join("<br>");
+    if(est.skipped.length) h+=`<br>Left out: ${est.skipped.length} level${est.skipped.length>1?"s":""} after a dose that isn't given.`;
+    const tl=PK.bayes.twoLevel(PK.normalizeScenario(p), p.lv, bzOpts());
+    h+=`<div class="cm-h">Two-level estimate (no prior)</div>`+(tl ? `CL ${n(tl.CL)} L/h · V ${fmt(tl.V,1)} L · t½ ${fmt(tl.thalf,1)} h, from the two levels after dose ${tl.n}` : `Needs two levels after the same IV dose (after an infusion has stopped).`);
+    const T=targetNow(p), q=est.scenario, ss=PK.bayes.steadyState(q), D=PK.bayes.doseFor(q, T), Dr=D ? roundDose(D) : null;
+    const ssR=Dr ? PK.bayes.steadyState(Object.assign(PK.cloneScenario(q), {D:Dr, dosing:"repeated"})) : null;
+    h+=`<div class="cm-h">At steady state in this estimate, every ${trim(ss.tau)} h</div>${trim(ss.D)} ${U().dose}: AUC24 ${fmt(ss.auc24,0)} ${U().auc}, peak ${fmt(ss.peak,cdp(1))}, trough ${fmt(ss.trough,cdp(1))} ${U().conc}`;
+    h+=`<div class="bz-target"><label for="bzKind">Target</label><select id="bzKind"><option value="auc"${T.kind==="auc"?" selected":""}>AUC24</option><option value="trough"${T.kind==="trough"?" selected":""}>Trough</option></select>`+
+      `<input id="bzVal" type="number" min="0" step="any" value="${T.value}" aria-label="Target value"><span>${T.kind==="auc" ? U().auc : U().conc}</span></div>`+
+      (T.auto ? `<span>(${T.auto})</span><br>` : "")+
+      (Dr ? `${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h gives AUC24 ${fmt(ssR.auc24,0)} ${U().auc} and a trough of ${fmt(ssR.trough,cdp(1))} ${U().conc} in this estimate (exact dose ${fmt(D,0)}).` : "")+
+      `<div class="bz-actions"><button class="abtn" type="button" id="bzUse">Show the estimate</button>${Dr ? `<button class="abtn" type="button" id="bzDose">Show the estimate on ${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h</button>` : ""}</div>`+
+      `<span>Either keeps this setup, with its levels, as the baseline: the levels belong to the regimen they were measured on.</span>`;
+    out.innerHTML=h;
+  }
+  byId("bzOut").addEventListener("change",e=>{
+    if(e.target.id==="bzKind"){
+      // switching kinds starts from what the patient model predicts for this regimen
+      const ss=PK.bayes.steadyState(PK.normalizeScenario(snapshot()));
+      bzTarget={kind:e.target.value, value:+(e.target.value==="auc" ? ss.auc24 : ss.trough).toPrecision(3)}; render();
+    }
+    if(e.target.id==="bzVal"){ const v=parseFloat(e.target.value); if(v>0){ bzTarget=Object.assign({}, targetNow(snapshot()), {value:v, auto:null}); render(); } }
+  });
+  byId("bzOut").addEventListener("click",e=>{
+    const est=bayesEstimate(); if(!est || !est.ok) return;
+    if(e.target.id==="bzUse") applyEstimate(est, null);
+    if(e.target.id==="bzDose") applyEstimate(est, roundDose(PK.bayes.doseFor(est.scenario, targetNow(snapshot()))));
+  });
+  // The live scenario becomes the estimate (optionally on a new dose), without the levels; the setup the levels were
+  // measured on stays as the baseline. Re-estimating from the estimate would count the levels twice.
+  function applyEstimate(est, D){
+    setBaseline("patient model, with the levels");
+    const q=PK.cloneScenario(est.scenario); q.lv=[];
+    if(D) q.D=D;
+    loadScenario(q); state.drug=null; markDrug(); bzTarget=null;
+    syncControls(); render();
+    toast(D ? `The simulator shows the Bayesian estimate on ${trim(D)} ${U().dose}; the earlier setup is the baseline` : "The simulator shows the Bayesian estimate; the earlier setup is the baseline");
+  }
+
   function render(){
     checkWindow();
     syncHep();
     renderClin();
     renderHep();
+    renderBayes();
     if(state.pop) queueMicrotask(renderPop); else byId("popPanel").hidden=true;
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
@@ -1802,6 +1946,13 @@
     });
     const fitting=fit && mode==="sim";
     if(fitting) fit.obs.forEach(o=>{ if(o.c>yMax) yMax=o.c; });
+    // measured levels and the Bayesian estimate's curve (clinical patient)
+    const bz=bayesShown();
+    if(bz){
+      const q=bz.est.scenario, evq=doseEvents(q);
+      bz.raw=[]; for(let i=0;i<=N;i++){ const t=T0+span*i/N, c=conc(q,t,evq); bz.raw.push({t,c}); if(c>yMax) yMax=c; }
+      bz.est.obs.forEach(o=>{ if(o.t>=T0 && o.t<=T1 && o.y>yMax) yMax=o.y; });
+    }
     const bands=popBands(curves);
     bands.forEach(({r})=> r.t.forEach((t,i)=>{ if(t>=T0 && t<=T1 && r.q95[i]>yMax) yMax=r.q95[i]; }));
     const yTop=Math.max(yMax, state.mtc)*1.14 || 1;
@@ -1972,6 +2123,13 @@
 
     g+=lateLabels;
 
+    // the Bayesian estimate (dashed) through the measured levels
+    if(bz){
+      g+=`<path d="${polyline(bz.raw.map(q=>({x:sx(q.t), y:sy(q.c)})))}" fill="none" stroke="#FFB63D" stroke-width="1.8" stroke-dasharray="7 4" opacity="0.95"/>`;
+      bz.est.obs.forEach(o=>{ if(inView(o.t)) g+=`<circle cx="${sx(o.t)}" cy="${sy(o.y)}" r="4.5" fill="#05070E" stroke="#FFB63D" stroke-width="2"><title>Measured ${trim(o.dt)} h after dose ${o.n} (${trim(o.t)} h): ${o.y} ${U().conc}</title></circle>`; });
+      const e=bz.raw[Math.floor(bz.raw.length*0.72)];
+      if(e) g+=`<text x="${Math.min(sx(e.t), PW-M.r-110)}" y="${sy(e.c)-9}" font-family="JetBrains Mono" font-size="9.5" fill="#FFB63D" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Bayesian estimate</text>`;
+    }
     // the measured points, while fitting
     if(fitting) fit.obs.forEach(o=>{
       if(inView(o.t)) g+=`<circle cx="${sx(o.t)}" cy="${sy(o.c)}" r="4.3" fill="#05070E" stroke="#FFFFFF" stroke-width="1.7"><title>Measured at ${trim(o.t)} h: ${o.c} mg/L</title></circle>`;
@@ -2396,7 +2554,7 @@
     pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
     wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
     kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"],cmt:["Compartments",""],k12:["k12","h⁻¹"],k21:["k21","h⁻¹"],
-    hep:["Clearance from",""],qh:["Liver blood flow","L/h"],fub:["fu (blood)",""],clint:["CLint","L/h"],fabs:["fabs",""]};
+    hep:["Clearance from",""],qh:["Liver blood flow","L/h"],fub:["fu (blood)",""],clint:["CLint","L/h"],fabs:["fabs",""],lv:["Measured levels",""]};
 
   function pval(k,s){
     if(k==="events") return customSummary(s);
@@ -2404,6 +2562,7 @@
     if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
     if(k==="teq") return s.teq>0 ? `${trim(s.teq)} h` : "none";
     if(k==="hep") return s.hep ? "liver model" : "half-life";
+    if(k==="lv") return s.lv.length ? s.lv.map(l=>`dose ${l.n} + ${trim(l.dt)} h: ${trim(l.c)}`).join("; ") : "none";
     if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
     if(k==="sex") return s.sex==="F" ? "female" : "male";
     if(k==="wtm") return WTM_NAME[s.wtm];
@@ -2610,6 +2769,7 @@
       : `rises (higher efficacy), so high concentrations can do more.`}`);
     if(a.hill!==b.hill) out.push(`Hill slope ${trim(a.hill)} → ${trim(b.hill)}: the effect turns on and off ${b.hill>a.hill?"more sharply, closer to a switch,":"more gradually"} as the concentration passes EC50.`);
     if(a.e0!==b.e0) out.push(`Baseline effect ${trim(a.e0)} → ${trim(b.e0)}%: the response with no drug on board.`);
+    if(!PK.sameSetting("lv",a,b) && PK.isRelevant("lv",a) && PK.isRelevant("lv",b)) out.push(`Measured levels: ${a.lv.length} → ${b.lv.length}. The curves are the patient model's; the Bayesian estimate under the clinical patient is refit to the levels.`);
     // the liver model
     if(PK.hepOn(a) && PK.hepOn(b)){
       const wa=PK.wellStirred(a), wb=PK.wellStirred(b), pc=(x,y)=> `${y>x?"+":"−"}${fmt(Math.abs(100*(y/x-1)),0)}%`;

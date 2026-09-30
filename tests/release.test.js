@@ -67,7 +67,7 @@ test("NEEDS-SAIF lists the steps that need an account", ()=>{
 
 test("every file loaded on demand is named by its content hash in the page and precached under that name", ()=>{
   const crypto=require("node:crypto"), page=read("index.html"), sw=read("sw.js");
-  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js"].forEach(f=>{
+  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js","pk-bayes.js"].forEach(f=>{
     const h=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,f))).digest("hex").slice(0,10);
     assert.ok(page.includes(`${f}?v=${h}`), `index.html loads ${f}?v=${h}`);
     assert.ok(sw.includes(`./${f}?v=${h}`), `sw.js precaches ${f}?v=${h}`);
@@ -81,6 +81,16 @@ test("every file loaded on demand is named by its content hash in the page and p
   // practice links are checked before pk-practice.js loads, against the engine's list of ids: the two agree
   assert.deepEqual(PK.PRACTICE_IDS, PK.PRACTICE.map(g=>g.id));
   assert.ok(page.includes("PK.PRACTICE_IDS.length") && !/PK\.PRACTICE\.length/.test(page), "the page counts kinds without loading them");
+});
+
+test("the page's own scripts parse (a syntax error there would stop the whole app, and no other test runs them)", ()=>{
+  // JavaScript only: plain and module scripts (not the JSON-LD metadata)
+  const js=html=> [...html.matchAll(/<script(?![^>]*src)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+  const page=read("index.html"), scripts=js(page);
+  assert.ok(scripts.length>=1);
+  scripts.forEach((src,i)=> assert.doesNotThrow(()=> new Function(src), `inline script ${i+1}`));
+  ["validation.html","404.html"].filter(f=>fs.existsSync(path.join(root,f))).forEach(f=>
+    js(read(f)).forEach((src,i)=> assert.doesNotThrow(()=> new Function(src), `${f} script ${i+1}`)));
 });
 
 test("the initial script payload stays within the plan's budget: +25% over the Phase 0 baseline of 318,996 bytes", ()=>{
