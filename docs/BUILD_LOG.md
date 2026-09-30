@@ -59,3 +59,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 13:55 | 1.8 | Service worker installs past the HTTP cache; validation results by content hash | done | 441700c |
 | 2026-09-30 14:00 | 1.8 | Vary only: effect-site delay | done | b2d3210 |
 
+| 2026-09-30 14:05 | 1.8 | Deployed 1.8.0: branch v1.8.0 by web upload (3 commits), fresh clone 285/285, CI green, PR #10 merged; live byte check and practice live | done | b31ff5e |
+| 2026-09-30 14:10 | 1.9 | Lesson 26 on the default window; README screenshot of the effect-site delay | done | d79a368 |
+| 2026-09-30 15:30 | 1.9 | Liver model (well-stirred), lessons 27–29, practice topic (37 kinds, pool v5), glossary 55, links v7 | done | 4d08c50 |
+| 2026-09-30 15:40 | 1.9 | Version 1.9.0, cache v19, share card 29 lessons, build report section 18, decisions 76–77 | done | fe89e97 |

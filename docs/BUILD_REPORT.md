@@ -96,7 +96,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 
 - **One or two compartments.** Since 1.1.0 a second (peripheral) compartment can be switched on, with teaching-assumption exchange rates. There are no three-compartment models, and saturable elimination stays one-compartment.
 - **Direct effect, or an effect-site delay.** The Emax effect follows plasma, or since 1.7.0 an effect compartment (ke0) for first-order drugs. There is no tolerance or indirect response, and saturable drugs keep the direct link.
-- **No active metabolites, and no protein-binding dynamics.** fu is informational, and the Sheiner–Tozer tool reads a measured level only.
+- **No active metabolites, and no protein-binding dynamics.** In the drug library fu is informational, and the Sheiner–Tozer tool reads a measured level only. Since 1.9.0 the optional liver model uses fu in hepatic clearance, but unbound levels aren't drawn and the volume doesn't depend on fu.
 - **Renal adjustment by one formula.** Cockcroft–Gault with a reference CrCl of 120 mL/min scales only the renal fraction of clearance; volume scales with actual weight.
 - **Teaching-level variability.** The population mode's CVs (30% on CL, 20% on V) are teaching assumptions, independent log-normals with no covariates.
 - **Saturable elimination.** Vmax and Km for phenytoin are typical textbook values (unverified). Population variability is on Vmax and volume, with Km fixed.
@@ -237,4 +237,18 @@ There are 283 tests in 11 files. The initial script is +19.6% over the Phase 0 b
 | Service worker: install bypasses the HTTP cache; validation results named by content hash | Offline use; validation page | `sw.test.js`, `validation.test.js` |
 
 There are 285 tests in 11 files. Lighthouse (gzip preview): 100 in every category on mobile and desktop.
+
+## 18. 1.9.0
+
+1.8.0 was deployed and checked live (PR #10, merge b31ff5e): every changed file byte-identical, the new practice problem live, and the version-18 cache holding the hash-named validation results.
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| A liver model (well-stirred): Q, fu and CLint give E, hepatic clearance Q·E and oral F = fabs·(1 − E); the half-life and F follow; links v7 | Drug parameters → Clearance from: Liver model | `liver.test.js` (identities, oral AUC = fabs·D / (fu·CLint) for any Q, defaults unchanged, links) |
+| Three lessons (27–29): hepatic extraction, first pass and induction, liver blood flow; three comparisons (23); five glossary terms (55) | Lessons → Liver and first pass | `liver.test.js` (every number each lesson states) |
+| Practice topic *Liver and first pass* (37 kinds); worksheet pool version 5, with version-4 links pinned | Practice | `liver.test.js`, `pk-engine.test.js` |
+| Worked readouts for clearance, half-life and AUC with the liver model; What changed explains it; Vary only holds CLint, Q or fu apart | Readouts; Compare | `liver.test.js` |
+| Lesson 26 uses the default window, and the README shows it | README | `release.test.js` |
+
+There are 294 tests in 12 files. The initial script is +23.7% over the Phase 0 baseline (limit +25%): the next release should move the lesson texts into a lazy module before adding more to the engine.
 
