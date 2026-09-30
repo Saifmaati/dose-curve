@@ -58,7 +58,7 @@
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
-    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["scr","Serum creatinine"],["age","Age"]];
+    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["teq","Effect-site delay"],["scr","Serum creatinine"],["age","Age"]];
 
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
@@ -1764,10 +1764,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=3;
+  const WS_VERSION=4;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","mmcss","mmdose","mmt90","mmhalf"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};

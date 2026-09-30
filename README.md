@@ -31,7 +31,7 @@
 **Teach and practise**
 - **26 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **12 clinical cases** (gentamicin conventional, once daily and individualized from two levels, vancomycin to an AUC24 target and from two measured levels, meropenem and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **33 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 50-term glossary.
+- **34 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 50-term glossary.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
 ![A clinical case graded by the model](docs/img/case-gentamicin.png)

@@ -2,6 +2,13 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.8.0 (2026-09-30)
+
+- **A practice problem on the effect-site delay (34 kinds):** after an IV bolus, when is the effect at its peak? t = ln(ke0 / kₑ) / (ke0 − kₑ), which doesn't depend on the dose. The worked solution explains why the effect site peaks where it meets plasma, and **Visualize on curve** shows it. The answer is checked against the model's own peak effect. Worksheet pools are now at version 4; version-3 links rebuild exactly (tested against sheets made by 1.7.0).
+- **Vary only** can hold the effect-site delay apart, so A and B differ in nothing else.
+- **Offline copies are always the new release's.** Installing a new version now fetches every file from the network, past the browser's HTTP cache, which could still hold the last release's copy of an unversioned file for up to 10 minutes. The validation results are also named by their content hash, like the engine. On the day 1.7.0 went live, a browser that had just visited 1.6.0 showed the old 126-scenario results once before refreshing.
+- Lighthouse: 100 in every category on mobile and desktop.
+
 ## 1.7.0 (2026-09-30)
 
 - **An effect-site delay.** Some drugs act where they take time to reach, so the effect lags the plasma level. The Effect panel has a new setting, the effect site's equilibration half-life (0 to 12 h; 0 keeps the direct link). The effect then follows an effect compartment, dCe/dt = ke0·(C − Ce):

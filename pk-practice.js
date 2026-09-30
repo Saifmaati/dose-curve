@@ -369,6 +369,19 @@
         viz:{route:"iv", D, V, thalf:th, e0:0, emax:100, ec50, hill}, view:{duration:evenUp(Math.max(t+4, th*4)), pd:true}, at:t,
         check:p=> effectOf(p, conc(p,t))};
     }},
+    {id:"effpk", topic:"pd", since:4, gen(d){
+      const x=until(()=>({D:d(200,1000,100), V:d(20,50,5), th:d(2,8,1), teq:d(0.5,4,0.5)}), x=> x.teq!==x.th);
+      const {D, V, th, teq}=x, k=Math.LN2/th, k0=Math.LN2/teq, t=Math.log(k0/k)/(k0-k), dur=evenUp(Math.max(t+4, 3*th));
+      const cePk=D/V*Math.pow(k/k0, k/(k0-k)), ec50=Math.max(0.5, Math.round(cePk)/2);
+      return {type:"Effect delay · time of peak effect", unit:"h", dp:2, ans:t,
+        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b>), the effect lags the plasma level: it follows an effect site that equilibrates with plasma with a half-life of <b>${teq} h</b>. When is the effect at its peak?`,
+        sol:[step(`The rate constants: kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>, and ke0 = ${LN2} / ${teq} = <b>${nf(k0,4)} h⁻¹</b>`),
+          step(`After a bolus the effect-site level is Ce = C₀·ke0 / (ke0 − kₑ)·(e^(−kₑt) − e^(−ke0·t)). It peaks where dCe/dt = 0, which is where it meets the plasma level.`),
+          step(`<b>t = ln(ke0 / kₑ) / (ke0 − kₑ)</b> = ln(${nf(k0,4)} / ${nf(k,4)}) / (${nf(k0,4)} − ${nf(k,4)}) = <b>${nf(t,2)} h</b>`),
+          step(`The time doesn't depend on the dose or the volume. With no delay the effect would peak at once, with the injection.`)],
+        viz:{route:"iv", D, V, thalf:th, teq, e0:0, emax:100, ec50, hill:1}, view:{duration:dur, pd:true}, at:t,
+        check:p=> effectStats(p, dur, 50).tPeak};
+    }},
     /* ----- saturable (Michaelis–Menten) elimination ----- */
     // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
     // and the t90 formula assume. Vmax is for 70 kg.
