@@ -4,6 +4,8 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## 2026-09-30
 
+- **Print a handout** (⎙ Print, or the browser's own print): the scenario's settings and a link back, the charts, the readouts, time in the window, the steady-state panel and any comparison, in the light palette, without the controls.
+- **Light theme** for projectors, bright rooms and white course pages. It's in the header (and the embed bar), remembered in the browser, and can be set by `?theme=light`. Embed code keeps the theme in use, and exported PNGs follow it. The dark theme is unchanged: every element's computed colours were checked against the previous release.
 - **Five more practice kinds** (26 in all), each checked against the simulation:
   - time for an IV bolus to fall to a level
   - half-life from clearance and volume
