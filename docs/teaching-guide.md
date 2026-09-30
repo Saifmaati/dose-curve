@@ -14,10 +14,11 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
   3. The panel under the chart explains what moved and why. Its table gives the metrics before and after.
-- **Two regimens side by side.** The **Compare** tab has 15 one-click comparisons:
+- **Two regimens side by side.** The **Compare** tab has 16 one-click comparisons:
   - Once vs twice daily
   - Loading dose
   - Normal vs 50% clearance
+  - CrCl 73 vs 41 mL/min
   - 50 kg vs 100 kg, same dose
   - IV bolus vs oral
   - Bolus vs infusion
@@ -36,14 +37,21 @@ For a projector or a bright room, switch to the **light theme** (◐ Light, top 
 - **Print a handout.** **⎙ Print** (in *Analyze & Export*) prints the current scenario on one page: its settings and a link back, the charts, the readouts and the explanations, in the light palette and without the controls.
 - **Walk through time.** Drag across the chart, or focus it and use the arrow keys, to read the concentration at any moment. **Play** animates the whole window.
 - **Show the effect.** **Effect** turns on the concentration–effect charts. They show the effect over time, where the curve sits on the Emax curve, and how long the effect stays above a target.
+- **Work from a patient's numbers.** Under **Patient**, switch from *Simple* to *Clinical (CrCl)* and enter age, sex, height, weight and serum creatinine (albumin is used for phenytoin). The panel works out, with the numbers substituted:
+  - ideal body weight (Devine) and adjusted body weight
+  - creatinine clearance by Cockcroft–Gault, with actual, ideal or adjusted weight
+  - the drug's clearance, CL = CL_ref × [(1 − fe) + fe × CrCl / 120], where fe is the fraction the kidneys excrete unchanged and 120 mL/min is the reference.
 
-## Guided lessons (21)
+  Set a baseline, raise the creatinine, and the panel under the chart explains the change with the numbers, for example: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L." It is an educational model, not for clinical dosing.
+- **Use a drug from the library.** Nine teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, digoxin, phenytoin and lithium carbonate. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
+
+## Guided lessons (22)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent |
@@ -51,7 +59,7 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 30 terms, each with its symbol, unit and formula, and links to the lesson that shows it.
+The **glossary** under the lessons defines 36 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Practice and assessment
 
@@ -93,7 +101,7 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 ## A possible sequence
 
 1. **Fundamentals:**
-   - lessons: Oral vs IV bolus, Reduced clearance, Volume of distribution, Dosing by weight, Double the dose
+   - lessons: Oral vs IV bolus, Reduced clearance, Kidney function (CrCl), Volume of distribution, Dosing by weight, Double the dose
    - practice: *Single dose*
    - Fit the data (IV bolus)
 2. **Repeated dosing:**
@@ -119,7 +127,8 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 - One well-mixed compartment with first-order (linear) elimination.
 - First-order oral absorption with bioavailability F, IV boluses, and zero-order infusions.
 - Superposition of every dose given, whether a regular regimen (with loading and missed doses) or a custom schedule mixing routes.
-- Body weight scales the volume, and organ function scales clearance.
+- Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
+- A salt factor S for drugs dosed as a salt, and units per drug (mg/L, ng/mL, mEq/L).
 - A direct sigmoid Emax effect that follows the plasma concentration instantly.
 
 **Left out:**
