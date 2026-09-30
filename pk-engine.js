@@ -1433,6 +1433,63 @@
   // rounded intermediate values still lands inside it.
   const practiceCorrect=(pr,v)=> typeof v==="number" && isFinite(v) && Math.abs(v-pr.ans)<=Math.max(Math.abs(pr.ans)*0.02, Math.pow(10,-pr.dp)/2);
 
+  /* ================= PROGRESS ================= */
+  // What a learner has done, kept in their own browser only: per lesson, whether the prediction was answered right
+  // and whether the challenge was met; per practice topic, answers checked and answers right; and how many
+  // fit-the-data and hit-the-window tasks were completed. parseProgress keeps only that shape (known lessons and
+  // topics, true flags, whole counts), so a damaged or edited copy can't put anything else into the page.
+  const PROGRESS_FORMAT="dosecurve-progress", PROGRESS_VERSION=1, PROGRESS_TASKS=["fit","window"];
+  const emptyProgress=()=>({format:PROGRESS_FORMAT, version:PROGRESS_VERSION, lessons:{}, practice:{}, tasks:{fit:0, window:0}});
+  const tally=v=> Number.isInteger(v) && v>=0 ? Math.min(v, 1e6) : 0;
+  const isObj=v=> !!v && typeof v==="object" && !Array.isArray(v);
+  function parseProgress(x){
+    let o=x;
+    if(typeof x==="string"){ try{ o=JSON.parse(x); }catch(e){ return emptyProgress(); } }
+    const p=emptyProgress();
+    if(!isObj(o) || o.format!==PROGRESS_FORMAT) return p;
+    const lessons=isObj(o.lessons) ? o.lessons : {}, practice=isObj(o.practice) ? o.practice : {}, tasks=isObj(o.tasks) ? o.tasks : {};
+    LESSONS.forEach(L=>{
+      const r=lessons[L.id];
+      if(!isObj(r)) return;
+      const e={};
+      if(r.predicted===true) e.predicted=true;
+      if(r.challenge===true) e.challenge=true;
+      if(e.predicted || e.challenge) p.lessons[L.id]=e;
+    });
+    PRACTICE_TOPICS.forEach(t=>{
+      const r=practice[t.id];
+      if(!isObj(r)) return;
+      const tried=tally(r.tried), right=Math.min(tally(r.right), tried);
+      if(tried) p.practice[t.id]={tried, right};
+    });
+    PROGRESS_TASKS.forEach(k=> p.tasks[k]=tally(tasks[k]));
+    return p;
+  }
+  // Each update returns a new record and leaves the one passed in as it was.
+  function recordLesson(prog, id, what){
+    const p=parseProgress(prog);
+    if(!LESSONS.some(L=>L.id===id) || !["predicted","challenge"].includes(what)) return p;
+    p.lessons[id]=Object.assign({}, p.lessons[id], {[what]:true});
+    return p;
+  }
+  function recordPractice(prog, topic, right){
+    const p=parseProgress(prog);
+    if(!PRACTICE_TOPICS.some(t=>t.id===topic)) return p;
+    const r=p.practice[topic] || {tried:0, right:0};
+    p.practice[topic]={tried:Math.min(r.tried+1, 1e6), right:Math.min(r.right+(right ? 1 : 0), 1e6)};
+    return p;
+  }
+  function recordTask(prog, kind){
+    const p=parseProgress(prog);
+    if(PROGRESS_TASKS.includes(kind)) p.tasks[kind]=Math.min(p.tasks[kind]+1, 1e6);
+    return p;
+  }
+  function progressSummary(prog){
+    const p=parseProgress(prog), ls=Object.values(p.lessons), pr=Object.values(p.practice);
+    return {lessons:LESSONS.length, predicted:ls.filter(e=>e.predicted).length, challenges:ls.filter(e=>e.challenge).length,
+      tried:pr.reduce((s,r)=>s+r.tried,0), right:pr.reduce((s,r)=>s+r.right,0), fit:p.tasks.fit, window:p.tasks.window};
+  }
+
   /* ================= GLOSSARY ================= */
   // The terms the app uses, each with its symbol and unit, the relation DoseCurve computes it by, and the lesson
   // that shows it (lesson ids are checked by the tests).
@@ -1735,5 +1792,6 @@
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
-    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY};
+    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY,
+    PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary};
 });

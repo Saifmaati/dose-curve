@@ -461,6 +461,19 @@
   /* lessons tab */
   .lsv{display:none;padding:18px 22px 24px}
   .gloss{margin-top:26px}
+  .ls-badge{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;border:1px solid rgba(59,229,138,.45);
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:.04em;color:var(--green);vertical-align:2px}
+  .ls-badge.soft{border-color:rgba(124,107,255,.45);color:#B7ADFF}
+  .ls-badge[hidden]{display:none}
+  .ls-card.done{border-color:rgba(59,229,138,.35)}
+  .prog-line{display:flex;align-items:baseline;gap:6px 12px;flex-wrap:wrap;margin:6px 0 14px;font-size:12.5px;color:var(--muted);line-height:1.6}
+  .prog-line p{margin:0;max-width:90ch}
+  .prog-line p:focus{outline:none}
+  .prog-reset{border:0;background:none;padding:0;color:var(--muted-2);font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .prog-reset:hover{color:#fff}
+  .prog-reset.armed{color:#FF8FA3}
+  .prog-reset:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
+  .prog-reset[hidden]{display:none}
   .gloss-find{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--muted)}
   .gloss-find input{flex:1 1 220px;max-width:340px;background:rgba(5,8,16,.7);border:1px solid var(--glass-line-2);border-radius:9px;color:var(--text);
     font:inherit;font-size:13px;padding:8px 11px}
@@ -1147,6 +1160,7 @@
           <div class="pr-top">
             <div class="plot-title" style="font-size:16px">Lessons<span>One-click scenarios · each replaces the baseline with its own</span></div>
           </div>
+          <div class="prog-line"><p id="lsProgressTxt" tabindex="-1"></p><button class="prog-reset" id="progResetLs" hidden>Reset progress</button></div>
           <div id="lsGrid"></div>
           <section class="gloss" aria-labelledby="glossTitle">
             <h2 class="ls-group" id="glossTitle">Glossary</h2>
@@ -1164,6 +1178,7 @@
               <div class="pr-stat">Solved <b id="prSolved">0</b>/<span id="prTried">0</span></div>
             </div>
           </div>
+          <div class="prog-line"><p id="prProgressTxt" tabindex="-1"></p><button class="prog-reset" id="progResetPr" hidden>Reset progress</button></div>
           <div class="seg pr-topics" id="prTopics" role="group" aria-label="Topic"></div>
           <div class="pr-card">
             <div class="pr-type" id="prType"></div>
@@ -1227,7 +1242,7 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
+      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
@@ -1271,7 +1286,7 @@
 <div id="wsPrint"></div>
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
-<script src="pk-engine.js?v=bff7ddc39e"></script>
+<script src="pk-engine.js?v=3514e0ad4d"></script>
 <script>
 "use strict";
 (function(){
@@ -3089,13 +3104,50 @@
     el.innerHTML=PK.LESSON_GROUPS.map(g=>`<h2 class="ls-group">${g.title}</h2><div class="ls-grid">`+
       LESSONS.filter(L=>L.group===g.id).map(L=>`
       <button class="ls-card" data-id="${L.id}">
-        <div class="ls-h"><span class="ltag">${L.tag}</span>${L.title}</div>
+        <div class="ls-h"><span class="ltag">${L.tag}</span>${L.title}<span class="ls-badge" hidden></span></div>
         <div class="ls-p">${L.sum}</div>
       </button>`).join("")+`</div>`).join("");
     el.querySelectorAll(".ls-card").forEach(btn=>{
       btn.addEventListener("click",()=>{ loadLesson(LESSONS.find(x=>x.id===btn.dataset.id)); focusLesson(); });
     });
   }
+  /* ================= PROGRESS ================= */
+  // What this learner has done, kept in this browser only (see PK.parseProgress): lesson predictions answered right
+  // and challenges met, practice answers by topic, and fit and window tasks completed.
+  const PROG_KEY="dosecurve.progress";
+  let prog=PK.emptyProgress();
+  try{ prog=PK.parseProgress(localStorage.getItem(PROG_KEY)||""); }catch(e){ /* storage blocked: kept for this visit only */ }
+  function saveProgress(next){
+    prog=next;
+    try{ localStorage.setItem(PROG_KEY, JSON.stringify(next)); }catch(e){ /* kept for this visit only */ }
+    renderProgress();
+  }
+  const plural=(n,one,many)=> `${n} ${n===1 ? one : many}`;
+  function renderProgress(){
+    const s=PK.progressSummary(prog), any=s.predicted || s.challenges || s.tried || s.fit || s.window;
+    document.querySelectorAll(".ls-card").forEach(c=>{
+      const e=prog.lessons[c.dataset.id] || {}, b=c.querySelector(".ls-badge");
+      b.hidden=!(e.challenge || e.predicted);
+      b.textContent=e.challenge ? "✓ Challenge met" : e.predicted ? "✓ Predicted" : "";
+      b.classList.toggle("soft", !e.challenge);
+      c.classList.toggle("done", !!e.challenge);
+    });
+    byId("lsProgressTxt").textContent= s.predicted || s.challenges
+      ? `Your progress: ${s.challenges} of ${s.lessons} challenges met · ${plural(s.predicted,"prediction","predictions")} right. Kept in this browser only.`
+      : "As you work through the lessons, the predictions you get right and the challenges you meet are marked here.";
+    const topics=PK.PRACTICE_TOPICS.filter(t=>prog.practice[t.id]).map(t=>`${t.title} ${prog.practice[t.id].right}/${prog.practice[t.id].tried}`);
+    byId("prProgressTxt").textContent= s.tried || s.fit || s.window
+      ? `All time in this browser: ${s.right} of ${plural(s.tried,"answer","answers")} right${topics.length ? ` (${topics.join(" · ")})` : ""} · `+
+        `${plural(s.fit,"data set","data sets")} fitted · ${plural(s.window,"window task","window tasks")} met.`
+      : "Your all-time results show here as you answer: first answers by topic, data sets fitted and window tasks met.";
+    byId("progResetLs").hidden=byId("progResetPr").hidden=!any;
+  }
+  ["progResetLs","progResetPr"].forEach(id=> byId(id).addEventListener("click",()=>{
+    if(!armed(byId(id),"Confirm: reset all progress")) return;
+    saveProgress(PK.emptyProgress());
+    byId(id==="progResetLs" ? "lsProgressTxt" : "prProgressTxt").focus();   // the button is gone once there's nothing to reset
+    toast("Progress reset");
+  }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   function buildGlossary(){
     byId("glossList").innerHTML=PK.GLOSSARY.map(g=>{
@@ -3160,6 +3212,7 @@
     const b=e.target.closest(".lp-choice");
     if(!b || b.disabled || !lesson) return;
     const P=lesson.predict, pick=+b.dataset.i, right=pick===P.answer;
+    if(right) saveProgress(PK.recordLesson(prog, lesson.id, "predicted"));
     byId("lsChoices").querySelectorAll(".lp-choice").forEach((x,i)=>{
       x.disabled=true; x.setAttribute("aria-pressed", i===pick);
       x.classList.toggle("right", i===P.answer); x.classList.toggle("wrong", i===pick && !right);
@@ -3178,6 +3231,7 @@
     const met=PK.challengeMet(lesson, snapshot());
     if(met===chalMet) return;
     chalMet=met;
+    if(met) saveProgress(PK.recordLesson(prog, lesson.id, "challenge"));
     const el=byId("lsChalStatus");
     el.textContent=met ? "✓ Challenge met" : "Not yet";
     el.classList.toggle("met", met);
@@ -3270,6 +3324,7 @@
     byId("fitErr").classList.toggle("ok", s.good);
     byId("fitTarget").textContent=`a good fit is ${fmt(s.target,1)}% or less (the measurements scatter by about ${fmt(s.floor,1)}%)`;
     const now=s.mismatch ? "setup" : s.good ? "good" : "no";
+    if(now==="good" && !fit.counted){ fit.counted=true; saveProgress(PK.recordTask(prog, "fit")); }   // once per data set
     if(now===fitShown) return;
     fitShown=now;
     const made=`t½ = ${trim(T.thalf)} h and V = ${trim(T.V)} L`;
@@ -3351,6 +3406,7 @@
       `At steady state: trough <b class="${s.lowOk?"ok":"no"}">${fmt(s.trough,2)} mg/L</b> (at least ${W.lo}) ${s.lowOk?"✓":"✗"} · `+
       `peak <b class="${s.highOk?"ok":"no"}">${fmt(s.peak,2)} mg/L</b> (at most ${W.hi}) ${s.highOk?"✓":"✗"}`;
     const now=s.mismatch ? "setup" : s.good ? "good" : !s.lowOk && !s.highOk ? "both" : !s.lowOk ? "low" : "high";
+    if(now==="good" && !win.counted){ win.counted=true; saveProgress(PK.recordTask(prog, "window")); }   // once per task
     if(now===winShown) return;
     winShown=now;
     const D=win.drug;
@@ -3894,7 +3950,7 @@
     if(isNaN(v)) return;
     const ok=PK.practiceCorrect(prob, v);
     const vd=$("prVerdict");
-    if(!prAnswered){ prTried++; }
+    if(!prAnswered){ prTried++; saveProgress(PK.recordPractice(prog, prob.topic, ok)); }   // only the first answer counts
     if(ok){
       if(!prAnswered){ prSolved++; prStreak++; }
       vd.textContent=`✓ Correct — ${prob.ans.toFixed(prob.dp)} ${prob.unit}`;
@@ -3915,7 +3971,7 @@
   $("prInput").addEventListener("keydown",e=>{ if(e.key==="Enter") checkAnswer(); });
   $("prNext").addEventListener("click",newProblem);
   $("prReveal").addEventListener("click",()=>{
-    if(!prAnswered){ prTried++; prStreak=0; prAnswered=true;
+    if(!prAnswered){ prTried++; prStreak=0; prAnswered=true; saveProgress(PK.recordPractice(prog, prob.topic, false));
       $("prTried").textContent=prTried; $("prStreak").textContent=prStreak; }
     $("prSol").className="pr-sol show";
   });
@@ -4053,6 +4109,7 @@
   buildDrugs();
   buildLessons();
   buildGlossary();
+  renderProgress();
   buildCompare();
   syncWindow();
   const shared=PK.decodeLink(location.hash), task=PK.decodeTaskLink(location.hash);
