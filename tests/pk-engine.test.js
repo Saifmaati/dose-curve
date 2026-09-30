@@ -1578,7 +1578,7 @@ test("every readout's worked formula gives the value the simulation computes", (
       const r=PK.metricMath(p, key, view), where=`${route} ${dosing} #${i} ${key}`;
       assert.ok(r && r.title && r.steps.length, where);
       r.steps.forEach(s=> assert.ok((s.m||s.t) && !/NaN|undefined|Infinity/.test(s.m||s.t), `${where}: "${s.m||s.t}"`));
-      rel(r.value, expect[key], key==="peak" ? 2e-3 : 1e-9, where);   // an oral or infusion peak is found by sampling in both
+      rel(r.value, expect[key], 1e-9, where);
       checked++;
     });
   }
