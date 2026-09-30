@@ -67,13 +67,15 @@ test("the validation page runs the engine it ships with and says what it checks"
   const root=path.join(__dirname,".."), html=fs.readFileSync(path.join(root,"validation.html"),"utf8");
   const hash=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,"pk-engine.js"))).digest("hex").slice(0,10);
   assert.ok(html.includes(`pk-engine.js?v=${hash}`), "validation.html loads the current engine by its hash");
-  assert.ok(html.includes("validation/reference-results.json"));
+  // the results are named by their content hash, so a new release's page never reads an older release's cached results
+  const rh=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,"validation/reference-results.json"))).digest("hex").slice(0,10);
+  assert.ok(html.includes(`fetch("validation/reference-results.json?v=${rh}")`), `validation.html must fetch reference-results.json?v=${rh}`);
   assert.ok(/Educational model, not for clinical dosing/.test(html));
   assert.ok(html.includes("python3 validation/reference.py") && html.includes("node --test"));
   const page=fs.readFileSync(path.join(root,"index.html"),"utf8");
   assert.ok(/href="validation\.html"/.test(page), "linked from the app's footer");
   const sw=fs.readFileSync(path.join(root,"sw.js"),"utf8");
-  assert.ok(sw.includes('"./validation.html"') && sw.includes('"./validation/reference-results.json"'), "precached for offline use");
+  assert.ok(sw.includes('"./validation.html"') && sw.includes(`"./validation/reference-results.json?v=${rh}"`), "precached for offline use, under the same hash");
 });
 
 /* ---------- analytic identities (tolerances stated in each assertion) ---------- */

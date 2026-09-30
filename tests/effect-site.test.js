@@ -123,3 +123,15 @@ test("lesson: effect delay (hysteresis), every number the text and the compariso
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L, {teq:0})), false, "not by removing the delay");
   ["Effect compartment","Hysteresis"].forEach(term=> assert.ok(PK.GLOSSARY.some(g=> g.term===term && g.lesson==="delay"), term));
 });
+
+test("“Vary only effect-site delay” keeps B's delay and shares everything else, and survives a link", ()=>{
+  let c=PK.cmpApply(PK.newComparison({route:"oral"}), "b", {teq:2, ec50:6});
+  c=PK.cmpSetLock(c,"teq");
+  assert.deepEqual([c.a.teq, c.b.teq, c.b.ec50], [0, 2, 4], "B keeps its delay and takes A's EC50");
+  assert.ok(PK.lockHolds(c));
+  c=PK.cmpApply(c,"b",{D:750});
+  assert.equal(c.a.D, 750, "other changes are mirrored to A");
+  const st=PK.decodeLink(PK.encodeLink({mode:"cmp", a:c.a, b:c.b, lock:"teq", view:PK.VIEW_DEFAULTS}));
+  assert.equal(st.lock, "teq"); assert.equal(st.b.teq, 2);
+});
+
