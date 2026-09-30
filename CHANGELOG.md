@@ -4,6 +4,12 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## Unreleased: v1.0 (in progress on the `v1.0` branch)
 
+- **Release infrastructure:**
+  - A GitHub Actions workflow runs the whole suite on every push and pull request, with a badge in the README.
+  - The README is rewritten, with screenshots.
+  - New files: `LICENSE` (MIT), `CITATION.cff`, `.zenodo.json`, and issue templates (bug report, feedback, "I'm an educator and want…"), with a feedback link in the footer.
+  - Visit counting (GoatCounter, cookie-free) sits behind `ANALYTICS_SITE_ID`. It is off by default, sends only the page's path, and the privacy note says exactly what it counts.
+  - `docs/NEEDS-SAIF.md` lists what needs the owner's accounts.
 - **Validation** (`validation.html`, linked in the footer). An independent solver (`validation/reference.py`, SciPy's `solve_ivp`) runs a matrix of 94 scenarios:
   - routes × regimens × drugs (first-order, salt, saturable) × patients
   - the peak, trough, AUC and time in window of each, compared with DoseCurve's engine live in the browser, and in the test suite

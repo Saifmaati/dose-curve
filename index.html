@@ -341,7 +341,8 @@
   .cs-tag{font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
   .cs-title{font-weight:600;color:var(--hi);font-size:14px}
   .cs-who{font-size:12px;color:var(--text-3);line-height:1.45}
-  .cs-case{max-width:820px}
+  .cs-case{max-width:820px} .cs-case:focus{outline:none}
+  .cs-list[hidden],.cs-intro[hidden],.cs-case[hidden]{display:none}
   .cs-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:10px 0;font-size:13.5px;line-height:1.5}
   .cs-facts dt{color:var(--muted)} .cs-facts dd{color:var(--text-2)} .cs-why{color:var(--text-3)}
   .cs-task{font-size:13.5px;line-height:1.55;color:var(--text-2);margin:8px 0 12px}
@@ -1452,21 +1453,23 @@
     <footer class="foot">
       <div class="disc">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="#7A84A3" stroke-width="1.3"/><path d="M8 4.4v4.2M8 11.2h.01" stroke="#7A84A3" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment linear pharmacokinetics and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values are typical textbook figures, not prescribing information. This is not validated clinical software and must not be used to make dosing decisions for real patients.</div>
+        <div><b>Educational simulation.</b> DoseCurve models idealized one-compartment pharmacokinetics (first-order or saturable) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
       </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.</p>
+      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL. Do not enter patient-identifying information.
+        <br><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt)) &nbsp;·&nbsp; IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
         Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, every quantitative claim the lessons make, and every practice answer.</p>
+      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 94 scenarios: see Validation.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
-        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a> ·
+        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
         <a href="validation.html">Validation</a>
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
         <span>Updated 30 September 2026</span>
       </nav>
     </footer>
@@ -4662,6 +4665,19 @@
   else if(task && task.type==="window") startWindow(PK.makeWindowTask({kind:task.kind, seed:task.seed}), true);
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
   else render();
+
+  // Visit counting, off unless ANALYTICS_SITE_ID is set to a GoatCounter site code (see docs/NEEDS-SAIF.md).
+  // GoatCounter is cookie-free; only the page's path is sent, never the part after # (a scenario's settings)
+  // or anything entered here. The service worker never caches it (another site).
+  const ANALYTICS_SITE_ID="";
+  if(ANALYTICS_SITE_ID && /^[a-z0-9-]{2,50}$/.test(ANALYTICS_SITE_ID) && !document.documentElement.classList.contains("embed")){
+    window.goatcounter={no_onload:true};
+    const gc=document.createElement("script");
+    gc.async=true; gc.src="https://gc.zgo.at/count.js"; gc.dataset.goatcounter=`https://${ANALYTICS_SITE_ID}.goatcounter.com/count`;
+    gc.onload=()=>{ try{ window.goatcounter.count({path:location.pathname}); }catch(e){ /* counting is optional */ } };
+    document.head.appendChild(gc);
+    byId("anaState").textContent="on";
+  }
 
   // Offline use: after one visit a service worker (sw.js) keeps a copy of the app, so it opens without a
   // connection. Only over https or on localhost; opened as a local file, the page simply runs without it.
