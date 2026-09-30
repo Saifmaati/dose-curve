@@ -41,6 +41,9 @@ test("the dose timeline takes the keyboard, and the chart has a text alternative
   assert.match(page, /<svg id="ssPlot"[^>]*aria-describedby="ssSummary"/);
   assert.match(page, /<p class="sr-only" id="ssSummary">/);
   assert.match(page, /byId\("ssSummary"\)\.textContent=/);
+  // with an effect-site delay the concentration–effect chart's label describes the loop, and its caption says so
+  assert.match(page, /ecEl\.setAttribute\("aria-label", loops\.length \? "[^"]*counterclockwise loop/);
+  assert.match(page, /id="ecSub"/);
   // a table that scrolls sideways can be reached and scrolled from the keyboard
   assert.match(page, /<div class="tbl-wrap" tabindex="0" role="region" aria-label="[^"]+">/);
 });
