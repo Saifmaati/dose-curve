@@ -8,7 +8,9 @@ This guide collects ways to use it in a course.
 
 ## In a lecture
 
-For a projector or a bright room, switch to the **light theme** (◐ Light, top right). It's remembered in that browser, and adding `?theme=light` to a link opens it in light.
+For a projector, press **▣ Present** (top right): the chart takes the whole width, the controls fold away and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **light theme** (◐ Light) follows the computer's own light or dark setting until you pick one; the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.
+
+With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, **L** switches to a log scale and **B** sets a baseline, as long as you're not typing in a field; **?** lists every key. These single-key shortcuts can be switched off in that list.
 
 - **Change one thing and explain it.**
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
@@ -133,6 +135,23 @@ Each student's progress stays in their own browser:
 - fitted data sets and window tasks
 
 It is not sent anywhere, so a teacher can't see it; ask students to report their results or hand in a worksheet. **Reset progress** clears it.
+
+## Week by week through a pharmacokinetics course
+
+A mapping onto a typical ten-week pharmacokinetics course. Each week lists the lessons, the cases and the practice that fit it; adjust to your syllabus.
+
+| Week | Topic | In DoseCurve |
+| --- | --- | --- |
+| 1 | Concentration–time basics, routes, volume | Lessons: Oral vs IV bolus, Volume of distribution, Double the dose. Practice: *Single dose*. Glossary |
+| 2 | Clearance, half-life, dosing by weight | Lessons: Reduced clearance, Dosing by weight. Show the math on each readout. Fit the data (IV bolus) |
+| 3 | Absorption and bioavailability | Lesson: Flip-flop kinetics. Fit the data (oral) |
+| 4 | Multiple dosing and accumulation | Lessons: Repeated dosing, Short vs long half-life, Once vs twice daily. Practice: *Repeated dosing* |
+| 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
+| 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent. Practice: *Infusions* |
+| 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
+| 8 | Aminoglycosides, vancomycin, variability | Cases: Gentamicin once daily, Vancomycin to an AUC target. Population mode and probability of target attainment |
+| 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Practice: *Saturable (Michaelis–Menten)* |
+| 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect. Case: Theophylline in a smoker. A mixed worksheet |
 
 ## A possible sequence
 
