@@ -165,6 +165,13 @@ test("the numbers the library's notes state follow from its own values", ()=>{
   assert.equal(tmax("dig").toFixed(0), "2");
   assert.equal(tmax("phe").toFixed(0), "6", "saturable: found by integration");
   assert.equal(tmax("li").toFixed(1), "2.2");
+  assert.equal(tmax("lev").toFixed(1), "1.2");
+  // levetiracetam: V from the label's clearance (0.96 mL/min/kg) and half-life (7 h); fe and binding as stated
+  assert.equal((0.96*60/1000*7/Math.LN2).toFixed(2), "0.58"); near(drugP("lev").V, 41, 1e-9); rel(drugP("lev").V, 0.582*70, 0.01);
+  // meropenem: V reproduces the label's end-of-infusion peaks after 30 minutes (about 49 for 1 g, about 23 for 500 mg)
+  const mero=D=> PK.derived(drugP("mero",{dosing:"single", D})).cmax;
+  assert.equal(mero(1000).toFixed(0), "50"); assert.equal(mero(500).toFixed(0), "25");
+  assert.ok(Math.abs(mero(1000)-49)<=1.5 && mero(500)>=14 && mero(500)<=26, "within the label's ranges (39–58 and 14–26)");
   assert.equal((Math.LN2*0.45/(0.65*60/1000)).toFixed(1), "8.0", "theophylline: V 0.45 L/kg and CL 0.65 mL/kg/min");
   assert.equal((Math.LN2*0.4/0.058).toFixed(1), "4.8", "vancomycin: V 0.4 L/kg and CL 0.058 L/kg/h");
   near(drugP("vanc").V, 0.4*70, 1e-9); near(drugP("theo").V, 0.45*70, 1e-9); near(drugP("caf").V, 0.6*70, 1e-9);
@@ -253,4 +260,32 @@ test("lesson: kidney function (every number its text states)", ()=>{
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{scr:1.0})), false, "not by undoing the creatinine");
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tau:12})), false, "12 h isn't long enough");
   const t=PK.TEMPLATES.find(x=>x.id==="crcl"); assert.ok(t && t.lesson==="crcl");
+});
+
+test("lesson: time above the MIC (meropenem-like, every number the text, the template and the tip state)", ()=>{
+  const L=PK.LESSONS.find(x=>x.id==="tmic"), a=PK.normalizeScenario(scenario(L.base)), b=PK.normalizeScenario(scenario(L.cur)), T=L.view.duration;
+  const tin=p=> 100*PK.windowStats(p,T,L.view.mec,L.view.mtc).tIn/T, ssTin=p=>{ let n=0; for(let i=0;i<20000;i++) if(PK.ssConc(p,(i+0.5)*p.tau/20000)>=2) n++; return n/200; };
+  assert.equal(PK.ssProfile(a).ssPeak.toFixed(1), "49.9"); assert.equal(PK.ssProfile(b).ssPeak.toFixed(1), "24.8");
+  assert.equal(tin(a).toFixed(0), "64"); assert.equal(tin(b).toFixed(0), "82");
+  assert.equal(ssTin(a).toFixed(0), "64", "at steady state too"); assert.equal(ssTin(b).toFixed(0), "82");
+  assert.deepEqual([PK.derived(a).auc.toFixed(1), PK.derived(b).auc.toFixed(1)], ["84.9","84.9"]);
+  assert.ok(PK.ssProfile(a).ssPeak<L.view.mtc && PK.ssProfile(b).ssPeak<L.view.mtc, "the window's top is out of reach, so time in window is time above the MIC");
+  // the drug is the library's meropenem at the label regimen
+  const m=PK.drugScenario(PK.DRUGS.find(d=>d.id==="mero"));
+  ["D","tinf","tau","V","thalf"].forEach(k=> assert.equal(L.base[k], m[k], k)); assert.equal(m.mec, 2);
+  // the tip: over the whole interval it settles at D / (τ·CL)
+  const c=PK.normalizeScenario(scenario(Object.assign({}, L.cur, {tinf:8})));
+  assert.equal(PK.ssProfile(c).ssTrough.toFixed(1), "10.6"); assert.equal(PK.ssProfile(c).ssPeak.toFixed(1), "10.6");
+  // every number the text states is one checked here or a setting
+  const checked=["1","17","8","2","30","49.9","64","3","24.8","82","84.9","15"];
+  (L.text.match(/(?<![A-Za-z\d.])\d+(\.\d+)?/g)||[]).forEach(n=> assert.ok(checked.includes(n), `the text states ${n}, which no assertion checks`));
+  const t=PK.TEMPLATES.find(x=>x.id==="tmic"); assert.ok(t && t.lesson==="tmic");
+  (t.look.match(/\d+(\.\d+)?/g)||[]).forEach(n=> assert.ok(checked.includes(n), `the comparison states ${n}`));
+  // prediction and challenge
+  const chk=PK.lessonCheck(L); assert.equal(L.predict.decide(chk), L.predict.answer);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L)), false);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:4})), true);
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:3.5})), false, "not quite");
+  assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:0.5, tau:4, D:500})), false, "not by changing the regimen");
+  assert.ok(PK.GLOSSARY.some(g=> g.lesson==="tmic" && /fT>MIC/.test(g.sym)));
 });

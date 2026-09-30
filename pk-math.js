@@ -61,8 +61,13 @@
     if(key==="v") return {title:"Volumes", value:V, steps:[m(`Central V1 = ${nf(p.V,1)} × ${p.wt} / 70 = ${nf(V,1)} L`),
       m(`At steady state the drug spreads into Vss = V1·(1 + k12 / k21) = ${nf(V,1)} × (1 + ${nf(p.k12,3)} / ${nf(p.k21,3)}) = ${nf(d.Vss,1)} L`)]};
     if(key==="rac") return {title:"Accumulation ratio", value:d.Rac, steps:roots.concat([t(`With two exponentials there's no single e^(−kτ): the ratio is the steady-state trough over the first dose's trough, ${n2(d.Rac)}.`)])};
-    if(key==="t90") return {title:"Time to 90% of steady state", value:d.t90, steps:[m(`About 3.32 terminal half-lives: 3.32 × ${nf(d.thalfEff,1)} = ${nf(d.t90,1)} h`),
-      t(`An approximation with two compartments: the fast α phase is over within a few hours, so the slow β phase sets the approach.`)]};
+    if(key==="t90"){
+      // exactly, for a constant infusion into the central compartment: C/Css = 1 − Σ (cᵢ/kᵢ)·e^(−kᵢt) / Σ (cᵢ/kᵢ)
+      const terms=disposition(p), wsum=terms.reduce((s,x)=>s+x.c/x.k,0), frac=t=>1-terms.reduce((s,x)=>s+x.c/x.k*Math.exp(-x.k*t),0)/wsum;
+      let lo=0, hi=2*d.t90; for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(frac(mid)<0.9) lo=mid; else hi=mid; }
+      return {title:"Time to 90% of steady state", value:d.t90, exactInfusion:hi, steps:[m(`About 3.32 terminal half-lives: 3.32 × ${nf(d.thalfEff,1)} = ${nf(d.t90,1)} h`),
+        t(`With two compartments this errs long. A constant infusion gets to 90% of its plateau in exactly ${nf(hi,1)} h, because part of the rise comes with the fast α phase; after that, the slow β phase sets the pace.`)]};
+    }
     if(key==="cmax" && p.route==="iv") return {title:"Peak concentration (Cmax)", value:d.cmax, steps:roots.concat([m(`Cmax = D·(A + B) = D / V1 = ${p.D} / ${nf(V,1)} = ${n2(d.cmax)} ${U.conc}`)])};
     if(key==="cmax" || key==="tmax" || key==="peak" || key==="trough") return null;   // the one-compartment steps would mislead: use the sampled values below
     return null;

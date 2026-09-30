@@ -155,3 +155,12 @@ test("the glossary's formulas hold: residuals give back k10, k12 and k21 exactly
   const Cmax=C1*Math.exp(k*(t1-T)), Cmin=C2, V=(200/T)*(1-Math.exp(-k*T))/(k*(Cmax-Cmin*Math.exp(-k*T)));
   rel(k, Math.LN2/1.6, 1e-9); rel(V, 27, 1e-9);
 });
+
+test("time to 90%: with two compartments 3.32 terminal half-lives errs long, and the working gives the exact infusion figure", ()=>{
+  const L=PK.LESSONS.find(x=>x.id==="twocmt"), p=PK.normalizeScenario(scenario(L.cur)), r=PK.metricMath(p,"t90",{duration:96, mec:10, mtc:40});
+  const q=PK.normalizeScenario(scenario({route:"inf", dosing:"single", D:100000, tinf:1000, V:14, thalf:2.39, cmt:2, k12:0.545, k21:0.545}));
+  const plateau=PK.conc(q,999); let lo=0, hi=40; for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(PK.conc(q,m)<0.9*plateau) lo=m; else hi=m; }
+  near(r.exactInfusion, hi, 1e-6, "the two-exponential fraction against a simulated infusion");
+  assert.ok(r.exactInfusion<r.value, "the rule of thumb is an upper estimate");
+  assert.ok(r.steps.some(s=>s.t && s.t.includes(`${+r.exactInfusion.toFixed(1)} h`)));
+});

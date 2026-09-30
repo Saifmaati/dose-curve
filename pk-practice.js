@@ -10,7 +10,7 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {PRACTICE_TOPICS, VIEW_DEFAULTS, WORKSHEET_SIZES, WS_VERSION, conc, derived, disposition, doseEvents, effectOf, effectStats, keOf,
-    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC}=PK;
+    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf}=PK;
   const {drawFrom, evenUp, nf, sig4, until}=PK.practiceHelpers;
 
   const step=s=>`<span class="step">${s}</span>`;
@@ -239,6 +239,20 @@
         viz:{route:"iv", dosing:"repeated", D:+(V*hi*(1-Math.exp(-k*tv))).toFixed(1), V, thalf:th, tau:tv, nDoses:n},
         view:{duration:evenUp(n*tv), zoom:"last", mec:lo, mtc:hi},
         check:p=> solveUp(t=>{ const s=ssPeakTrough(scenario(Object.assign({},p,{tau:t}))); return s.peak/s.trough; }, hi/lo, 0.5, 48)};
+    }},
+    {id:"renaladj", topic:"rep", since:3, gen(d){
+      const x=until(()=>{ const fe=d(0.5,0.95,0.05), age=d(40,85,1), wt=d(50,100,1), scr=d(1.2,3,0.1), sex=d(0,1,1) ? "F" : "M";
+        return {fe, age, wt, scr, sex, crcl:crclCG(age,wt,scr,sex)}; }, x=> x.crcl>=15 && x.crcl<=90);
+      const {fe, age, wt, scr, sex, crcl}=x, tau=[8,12,24][d(0,2,1)], Dref=d(200,1000,50), th=d(2,10,0.5), V=d(20,60,5);
+      const f=renalFactor(fe, crcl), D=Dref*f, n=mostDoses(tau);
+      return {type:"Renal dose adjustment", unit:"mg", dp:0, ans:D,
+        q:`A drug is <b>${nf(100*fe,0)}%</b> excreted unchanged in the urine (fe = <b>${fe}</b>). With normal kidney function (creatinine clearance <b>120 mL/min</b>) the regimen is <b>${Dref} mg every ${tau} h</b>. What dose every ${tau} h gives a <b>${age}-year-old ${sex==="F" ? "woman" : "man"}</b> weighing <b>${wt} kg</b>, with serum creatinine <b>${scr} mg/dL</b>, the same average steady-state level?`,
+        sol:[step(`Cockcroft–Gault: CrCl = (140 − ${age}) × ${wt} / (72 × ${scr})${sex==="F" ? " × 0.85" : ""} = <b>${nf(crcl,1)} mL/min</b>`),
+          step(`Only the renal part of clearance falls: CL / CL<sub>normal</sub> = (1 − fe) + fe × CrCl / 120 = (1 − ${fe}) + ${fe} × ${nf(crcl,1)} / 120 = <b>${nf(f,3)}</b>`),
+          step(`The same average level needs the dose in the same proportion: ${Dref} × ${nf(f,3)} = <b>${nf(D,0)} mg</b> every ${tau} h. (Keeping the dose and lengthening the interval by the same factor gives the same average.)`)],
+        viz:{route:"iv", dosing:"repeated", D:+D.toFixed(1), tau, nDoses:n, thalf:th, V, pm:"clinical", age, sex, wt, ht:170, scr, fe, wtm:"actual"},
+        view:{duration:evenUp(n*tau), zoom:"last"},
+        check:p=> Dref*derived(p).CL/(Math.LN2/p.thalf*vOf(p))};
     }},
     /* ----- infusions ----- */
     {id:"rate", topic:"inf", gen(d){

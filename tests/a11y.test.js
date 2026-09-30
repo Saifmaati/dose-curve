@@ -36,6 +36,13 @@ test("the dose timeline takes the keyboard, and the chart has a text alternative
   assert.match(page, /<svg id="plot"[^>]*aria-describedby="plotSummary"/);
   assert.match(page, /id="plotSummary"/);
   assert.match(page, /byId\("plotSummary"\)\.textContent=/);
+  // the other charts: the effect chart points at its readouts; the per-dose chart has its own text, every dose listed
+  assert.match(page, /<svg id="effPlot"[^>]*aria-describedby="pdStats"/);
+  assert.match(page, /<svg id="ssPlot"[^>]*aria-describedby="ssSummary"/);
+  assert.match(page, /<p class="sr-only" id="ssSummary">/);
+  assert.match(page, /byId\("ssSummary"\)\.textContent=/);
+  // a table that scrolls sideways can be reached and scrolled from the keyboard
+  assert.match(page, /<div class="tbl-wrap" tabindex="0" role="region" aria-label="[^"]+">/);
 });
 
 test("reduced motion is respected", ()=>{

@@ -196,3 +196,20 @@ Live check after merging (pull request #6, merge fadf6bd): the deployed files ar
 
 There are 271 tests in 10 files.
 
+Live check after merging (pull request #7, merge d4d0290): the deployed files are byte-identical, and the live site shows Version 1.5.0, cache dosecurve-v15, and "t½ terminal" with two compartments.
+
+## 15. 1.6.0
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Effect statistics exact (time above a target effect, onset): bolus jumps and bisection crossings. They were up to 0.12 h off, found by the cross-check | Effect readouts | `validation.test.js` (closed form, and the random cross-check) |
+| Two-compartment t90 working: the exact constant-infusion figure (17.0 h against 18.3 h for vancomycin) | Readout → working | `twocmt.test.js` |
+| Text alternatives for the per-dose chart and the effect chart; a keyboard-reachable comparison table; axe clean on every tab in both themes | Screen readers; Compare | `a11y.test.js` |
+| Levetiracetam and meropenem from their DailyMed labels (11 drugs; 69 cited values, 20 sources) | Drug Library | `clinical.test.js` |
+| Lesson 25, *Time above the MIC* (meropenem, 30-minute vs 3-hour infusion), a comparison and a glossary term | Lessons; Compare | `clinical.test.js` |
+| Case 11, *Meropenem with reduced kidney function*: the label's renal table (a new target kind), and what the model says it does to exposure and time above the MIC | Cases tab | `cases.test.js` |
+| Case 12, *Levetiracetam with reduced kidney function*: a renal table by creatinine clearance per 1.73 m², with a dose chosen in the label's range by matching exposure | Cases tab | `cases.test.js` |
+| Practice: renal dose adjustment (33 kinds); worksheet pool version 3, with version-2 links tested unchanged | Practice → Repeated dosing | `pk-engine.test.js` |
+
+There are 277 tests in 10 files.
+

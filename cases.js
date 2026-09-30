@@ -66,6 +66,45 @@
      also:"Burn care changes gentamicin handling as the wounds, fluids and kidney function change, so levels are repeated. Other points: the infection, other nephrotoxic drugs, hearing and balance, and whether the levels were drawn at the charted times.",
      refs:["zaske1976","sawchukZaske","gent","cg"]},
 
+    {id:"lev-renal", drug:"lev", title:"Levetiracetam with reduced kidney function", tag:"Antiseizure · label renal table",
+     patient:{age:74, sex:"F", ht:160, wt:58, scr:1.4},
+     indication:"Partial-onset seizures. She takes 1,500 mg twice daily, the usual maintenance dose, and her kidney function has declined.",
+     target:{kind:"table", bsa:true, rows:[{gt:80, tau:12, lo:500, hi:1500}, {ge:50, tau:12, lo:500, hi:1000}, {ge:30, tau:12, lo:250, hi:750}, {ge:0, tau:12, lo:250, hi:500}],
+       why:"The label's Table 1 sets the dose by creatinine clearance normalized to 1.73 m² (Cockcroft–Gault, divided by body surface area and multiplied by 1.73): above 80, 500 to 1,500 mg; 50 to 80, 500 to 1,000 mg; 30 to 50, 250 to 750 mg; below 30, 250 to 500 mg; every 12 hours throughout. The label doesn't name a surface-area formula; this case uses Mosteller's."},
+     choices:{strengthsOnly:true, taus:[12,24]},
+     start:{D:1500, tau:12},
+     task:"Normalize her creatinine clearance to 1.73 m², find her group in the label's table, and choose a twice-daily dose in its range. Then check in the model how that dose compares with the exposure of a patient with normal kidneys.",
+     plan(x){ const cr=x.crcl, bsa=mosteller(x.p.ht, x.p.wt), crN=cr*1.73/bsa, row=tableRow(this.target, crN), D=1000*x.factor, Dr=x.round(D);
+       const ref=1000*24/12/(x.CL/x.factor), her=m=> m.auc24;
+       return {reg:{D:Dr, tau:12}, steps:[
+         `Body surface area (Mosteller): √(${x.p.ht} × ${x.p.wt} / 3600) = ${nf(bsa,2)} m². Normalized: ${nf(cr,1)} × 1.73 / ${nf(bsa,2)} = <b>${nf(crN,1)} mL/min/1.73 m²</b>, the label's group for ${row.gt!==undefined ? `above ${row.gt}` : row.ge===50 ? "50 to 80" : row.ge===30 ? "30 to 50" : "below 30"}: <b>${row.lo} to ${row.hi} mg every 12 hours</b>.`,
+         `Where in that range: with 66% of levetiracetam cleared unchanged by the kidneys, her clearance is (1 − 0.66) + 0.66 × ${nf(cr,1)} / 120 = ${nf(x.factor,2)} of the reference. The dose that matches the exposure of 1,000 mg twice daily with normal kidneys is 1,000 × ${nf(x.factor,2)} = ${nf(D,0)} mg, or <b>${nf(Dr,0)} mg every 12 hours</b> with the tablets.`,
+         `On her 1,500 mg twice daily the model gives an AUC24 of ${nf(her(metricsOf(this, caseScenario(this, this.start))),0)} mg·h/L, against ${nf(ref,0)} for a woman of her size with normal kidneys on 1,000 mg twice daily; ${nf(Dr,0)} mg brings her to ${nf(her(metricsOf(this, caseScenario(this, {D:Dr, tau:12}))),0)}.`]};
+     },
+     wrong:[{reg:{D:1500, tau:12}, hint:"tableDose"}, {reg:{D:500, tau:24}, hint:"tableInterval"}],
+     also:"Seizure control and side effects (drowsiness, behavioral changes) at the new dose, whether her kidney function is stable, dialysis (the label adds a supplemental dose after it), and the tablet sizes she can split: the tablets are scored.",
+     refs:["keppra","cg"]},
+
+    {id:"mero-renal", drug:"mero", title:"Meropenem with reduced kidney function", tag:"Carbapenem · label renal table",
+     patient:{age:68, sex:"M", ht:175, wt:80, scr:2.0},
+     indication:"An intra-abdominal infection. He has been started on the usual 1 g every 8 hours, infused over 30 minutes, and his kidney function is reduced.",
+     target:{kind:"table", dose:1000, mic:2, rows:[{gt:50, tau:8, frac:1}, {ge:26, tau:12, frac:1}, {ge:10, tau:12, frac:0.5}, {ge:0, tau:24, frac:0.5}],
+       why:"The label's Table 1 sets the dose and interval by Cockcroft–Gault creatinine clearance: above 50 mL/min, the recommended dose every 8 hours; 26 to 50, the recommended dose every 12 hours; 10 to 25, half of it every 12 hours; below 10, half every 24 hours. It ties efficacy to the time the unbound level stays above the MIC (2 mg/L here, an illustrative MIC)."},
+     choices:{step:250, min:250, max:2000, taus:[6,8,12,24], tinf:0.5},
+     start:{D:1000, tau:8},
+     task:"Work out his creatinine clearance, find his row in the label's renal table, and choose the dose and interval it gives. Then compare the time above the MIC and the AUC with the regimen he started on.",
+     plan(x){ const row=tableRow(this.target, x.crcl), D=this.target.dose*row.frac, cur=metricsOf(this, caseScenario(this, this.start)), nxt=metricsOf(this, caseScenario(this, {D, tau:row.tau}));
+       const k0=LN2/drugOf("mero").s.thalf;
+       return {reg:{D, tau:row.tau}, steps:[
+         `His creatinine clearance, ${nf(x.crcl,0)} mL/min, falls in the label's row for ${row.gt!==undefined ? `more than ${row.gt}` : `${row.ge} to ${row===this.target.rows[1] ? 50 : row===this.target.rows[2] ? 25 : 9}`} mL/min: <b>${row.frac===1 ? "the recommended dose" : "half the recommended dose"} every ${row.tau} hours</b>, so ${nf(D,0)} mg every ${row.tau} h.`,
+         `Why the interval stretches: with 70% of meropenem cleared unchanged by the kidneys, his clearance factor is (1 − 0.7) + 0.7 × ${nf(x.crcl,0)} / 120 = ${nf(x.factor,2)}, so his half-life is ${nf(x.th,1)} h instead of ${nf(LN2/k0,1)} h.`,
+         `On the 1 g every 8 hours he started on, the model keeps him above the MIC for ${nf(cur.aboveMic,0)}% of each interval with an AUC24 of ${nf(cur.auc24,0)} mg·h/L. On 1 g every 12 hours it is ${nf(nxt.aboveMic,0)}% with an AUC24 of ${nf(nxt.auc24,0)}: less drug a day, still above the MIC for most of each interval, because each dose lingers longer.`,
+         `The same man with normal kidneys (the model's reference clearance, ${nf(x.CL/x.factor,2)} L/h) would have an AUC24 of ${nf(3*this.target.dose/(x.CL/x.factor),0)} mg·h/L on 1 g every 8 hours. The label's adjustment keeps him near that, at ${nf(nxt.auc24,0)}, where the unadjusted regimen nearly doubles it, at ${nf(cur.auc24,0)}.`]};
+     },
+     wrong:[{reg:{D:1000, tau:8}, hint:"tableInterval"}, {reg:{D:500, tau:12}, hint:"tableDose"}],
+     also:"The infection and its site, the organism's actual MIC, whether kidney function is changing, dialysis (the table doesn't cover it), seizure risk, and interacting drugs such as valproic acid, whose levels meropenem can lower.",
+     refs:["meropenem","cg"]},
+
     {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
@@ -297,13 +336,22 @@
     cssHigh:"Predicted level above the range: reduce the daily dose in a small step.",
     hartfordDose:"The Hartford program starts at 7 mg/kg: set the dose to 7 mg/kg of body weight.",
     hartfordInterval:"The interval comes from creatinine clearance in the Hartford bands: at least 60 mL/min every 24 h, 40–59 every 36 h, 20–39 every 48 h.",
-    choice:"Compare how many half-lives the extra hours are for each drug: the one with more of them falls further."
+    choice:"Compare how many half-lives the extra hours are for each drug: the one with more of them falls further.",
+    tableInterval:"The interval doesn't match the label's row for this creatinine clearance: find the row, then use its interval.",
+    tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives."
   };
+  // The label table's row for a creatinine clearance (rows in order: gt, then ge thresholds).
+  const tableRow=(t, crcl)=> t.rows.find(r=> r.gt!==undefined ? crcl>r.gt : crcl>=r.ge) || t.rows[t.rows.length-1];
+  // Body surface area (Mosteller), for a table set by creatinine clearance per 1.73 m²
+  const mosteller=(ht, wt)=> Math.sqrt(ht*wt/3600);
+  const tableCrcl=(t, p)=>{ const cr=PK.patientOf(p).crcl; return t.bsa ? cr*1.73/mosteller(p.ht, p.wt) : cr; };
   function metricsOf(c, p){
     const ss=PK.ssProfile(p), m={peak:ss.ssPeak, trough:ss.ssTrough, none:!!(ss.mm && ss.mm.none)};
     if(p.kin==="mm"){ m.css=ss.mm.css; m.avg=ss.mm.avg; m.auc24=m.none ? null : 24*ss.mm.avg; }
     else m.auc24=PK.derived(p).auc*24/p.tau;
     if(c.target.kind==="at" && !m.none) m.atLevel=PK.ssConc(p, Math.min(c.target.at, p.tau-1e-9));
+    // the share of a steady-state interval above the MIC (sampled finely; shown to the nearest percent)
+    if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
     // hours each interval spends below 1 mg/L at steady state (the drug-free stretch of extended-interval dosing)
     if(!m.none && p.unit==="mg"){ let below=0; const N=240; for(let i=0;i<N;i++){ if(PK.ssConc(p, p.tau*(i+0.5)/N)<1) below+=p.tau/N; } m.below1=below; }
     return m;
@@ -327,6 +375,9 @@
       const perKg=reg.D/p.wt, band=t.bands.find(b=>PK.patientOf(p).crcl>=b[0]);
       const doseOk=Math.abs(perKg-t.perKg)<=0.35+1e-9, tauOk=!!band && reg.tau===band[1];
       ok=doseOk && tauOk; hint=ok ? null : !doseOk ? "hartfordDose" : "hartfordInterval";
+    } else if(t.kind==="table"){
+      const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-t.dose*row.frac)<1e-9;
+      ok=tauOk && doseOk; hint=ok ? null : !tauOk ? "tableInterval" : "tableDose";
     } else if(t.kind==="at"){
       const lo=m.atLevel<t.range[0], hi=m.atLevel>t.range[1], pkHi=m.peak>=t.peakMax;
       ok=!lo && !hi && !pkHi;
@@ -380,7 +431,7 @@
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
     const m=g.metrics;
-    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
+    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
     if(c.id==="li"){ const md=missedDose(c, ref); steps.push(`If one dose is missed at steady state, the level before the next dose falls to ${nf(md.low,2)} mEq/L (from ${nf(md.usual,2)}), and regular dosing brings the troughs back within 5% of steady state after ${nf(md.recover/24,1)} days.`); }
     return steps;
   }
@@ -423,6 +474,7 @@
     if(t.kind==="auc") return `AUC24 ${t.auc[0]}–${t.auc[1]} mg·h/L at steady state`;
     if(t.kind==="css") return `Predicted steady-state level ${t.css[0]}–${t.css[1]} ${u}`;
     if(t.kind==="hartford") return `7 mg/kg, at the interval the Hartford bands give for this CrCl`;
+    if(t.kind==="table") return `The dose and interval the label's renal table gives for this creatinine clearance`;
     if(t.kind==="at") return `The ${t.at}-hour level at steady state ${t.range[0]}–${t.range[1]} ${u}, peak below ${t.peakMax} ${u}`;
     if(t.kind==="choice") return `A reasoning question, checked against the model`;
     const parts=[];
@@ -453,7 +505,8 @@
       if(c.target.kind==="css") rows.push(["Predicted Css", `${f(m.css,1+cd)} ${u.conc}`]);
       if(c.target.kind==="at") rows.push([`${c.target.at}-hour level`, `${f(m.atLevel,2)} ${u.conc}`]);
       rows.push(["Peak", `${f(m.peak,1+cd)} ${u.conc}`], ["Trough", `${f(m.trough,1+cd)} ${u.conc}`]);
-      if(c.target.kind==="auc" || c.target.kind==="hartford") rows.push(["AUC24", `${f(m.auc24,0)} ${u.auc}`]);
+      if(c.target.kind==="auc" || c.target.kind==="hartford" || c.target.kind==="table") rows.push(["AUC24", `${f(m.auc24,0)} ${u.auc}`]);
+      if(m.aboveMic!=null) rows.push([`Time above the MIC (${c.target.mic} ${u.conc})`, `${f(m.aboveMic,0)}% of each interval`]);
       if(c.target.kind==="hartford" && m.below1!=null) rows.push(["Hours below 1 mg/L", `${f(m.below1,1)} h of ${reg.tau}`]);
     }
     return rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td></tr>`).join("");
@@ -525,7 +578,7 @@
     const sim=box.querySelector("#csSim");
     if(sim) sim.addEventListener("click",()=>{
       const reg=regFromForm(c, box) || c.start, p=caseScenario(c, reg), d=drugOf(c.drug);
-      const win=t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
+      const win=t.kind==="table" ? {mec:t.mic, mtc:d.s.mtc} : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
         : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
       h.openScenario(p, Object.assign({duration:Math.min(336, p.nDoses*p.tau)}, win), c.drug);
     });
@@ -535,5 +588,5 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
+    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
 });

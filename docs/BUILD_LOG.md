@@ -40,3 +40,11 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 03:45 | 1.4.1 | Version 1.4.1, cache v14, build report section 13 | done | 352aeaf |
 | 2026-09-30 03:54 | 1.5 | "t½ terminal" label with two compartments; README two-compartment screenshot; custom schedules in the standing cross-check | done | cb6810a, 02d9fdd, c8994e6 |
 | 2026-09-30 03:54 | 1.5 | Version 1.5.0, cache v15, build report section 14 | done | a9727fa |
+| 2026-09-30 08:06 | 1.6 | Effect statistics exact (bolus jumps, bisection crossings); window times and effect in the standing cross-check | done | 5c4adc1, db399b5 |
+| 2026-09-30 08:07 | 1.6 | Two-compartment t90 working gives the exact constant-infusion figure | done | 0d7f06b |
+| 2026-09-30 08:09 | 1.6 | Text alternatives for the per-dose and effect charts | done | e131d84 |
+| 2026-09-30 08:19 | 1.6 | Levetiracetam and meropenem from DailyMed labels; lesson 25 (time above the MIC), comparison, glossary term; comparison table keyboard-reachable; axe clean on every tab in both themes; share card 25 lessons | done | e1f33f2 |
+| 2026-09-30 08:20 | 1.6 | Version 1.6.0, cache v16, build report section 15 | done | 1e94eed |
+| 2026-09-30 08:23 | 1.6 | Case 11, meropenem by the label renal table (a label-table target) | done | b0c16c6 |
+| 2026-09-30 08:25 | 1.6 | Case 12, levetiracetam by the label renal table per 1.73 m² (Mosteller); table targets take ranges | done | b972489 |
+| 2026-09-30 08:27 | 1.6 | Practice: renal dose adjustment (33 kinds); worksheet pool v3 with v2 snapshot | done | 84ba2d7 |

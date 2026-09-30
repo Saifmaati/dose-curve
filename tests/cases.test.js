@@ -183,3 +183,38 @@ test("gentamicin from two levels (Sawchuk–Zaske): the levels recover this pati
   const ref=C.reference(c); assert.ok(ref.tau<c.current.tau && C.gradeCase(c, ref).ok);
   ["zaske1976","sawchukZaske"].forEach(r=> assert.ok(c.refs.includes(r) && PK.SOURCES[r].url.startsWith("https://doi.org/10.")));
 });
+
+test("meropenem with reduced kidney function: the label's renal table, and what the model says it does to exposure", ()=>{
+  const c=C.caseById("mero-renal"), x=C.context(c);
+  near(x.crcl, PK.crclCG(68,80,2.0,"M"), 1e-9); assert.equal(Math.round(x.crcl), 40);
+  // Table 1 rows by Cockcroft–Gault clearance
+  [[80,8,1],[51,8,1],[50,12,1],[26,12,1],[25,12,0.5],[10,12,0.5],[9,24,0.5]].forEach(([cr,tau,frac])=>{
+    const r=C.tableRow(c.target, cr); assert.equal(r.tau, tau, `${cr} mL/min`); assert.equal(r.frac, frac, `${cr} mL/min`); });
+  assert.deepEqual(C.reference(c), {D:1000, tau:12});
+  // the unadjusted regimen nearly doubles the exposure of a normal-kidney patient on it; the adjusted one stays near it
+  const g8=C.gradeCase(c, {D:1000, tau:8}), g12=C.gradeCase(c, {D:1000, tau:12}), normal=3000/(x.CL/x.factor);
+  near(g8.metrics.auc24, 3000/x.CL, 1e-6); near(g12.metrics.auc24, 2000/x.CL, 1e-6);
+  assert.ok(g8.metrics.auc24>1.8*normal && Math.abs(g12.metrics.auc24/normal-1)<0.3);
+  // time above the MIC at steady state, against a direct scan
+  let n=0; for(let i=0;i<20000;i++) if(PK.ssConc(g12.p, 12*(i+0.5)/20000)>=2) n++;
+  near(g12.metrics.aboveMic, n/200, 0.05); assert.ok(g12.metrics.aboveMic>70 && g8.metrics.aboveMic>99);
+  const w=C.walkthrough(c).join(" ");
+  [`${Math.round(g8.metrics.auc24)} mg·h/L`, `${Math.round(normal)} mg·h/L`, `${Math.round(g12.metrics.aboveMic)}%`].forEach(s=> assert.ok(w.includes(s), s));
+});
+
+test("levetiracetam with reduced kidney function: creatinine clearance per 1.73 m², the label's ranges, and matched exposure", ()=>{
+  const c=C.caseById("lev-renal"), x=C.context(c), bsa=C.mosteller(160,58), crN=x.crcl*1.73/bsa;
+  near(bsa, Math.sqrt(160*58/3600), 1e-12); assert.equal(crN.toFixed(1), "34.8");
+  const row=C.tableRow(c.target, crN); assert.deepEqual([row.lo, row.hi, row.tau], [250, 750, 12]);
+  [[81,500,1500],[80,500,1000],[50,500,1000],[49,250,750],[30,250,750],[29,250,500]].forEach(([cr,lo,hi])=>{ const r=C.tableRow(c.target, cr); assert.deepEqual([r.lo,r.hi], [lo,hi], `${cr}`); });
+  // any tablet dose in the range passes, twice daily; outside it, or once daily, doesn't
+  [250,500,750].forEach(D=> assert.ok(C.gradeCase(c,{D, tau:12}).ok, `${D}`));
+  [[1000,12,"tableDose"],[1500,12,"tableDose"],[500,24,"tableInterval"]].forEach(([D,tau,h])=> assert.equal(C.gradeCase(c,{D,tau}).hint, h, `${D} q${tau}h`));
+  // the reference matches the exposure of 1,000 mg twice daily with normal kidneys, within the tablets' rounding
+  assert.deepEqual(C.reference(c), {D:500, tau:12});
+  const normal=2000/(x.CL/x.factor), g=C.gradeCase(c,{D:500, tau:12});
+  assert.ok(Math.abs(g.metrics.auc24/normal-1)<0.05, `${g.metrics.auc24} vs ${normal}`);
+  assert.ok(C.gradeCase(c,{D:1500, tau:12}).metrics.auc24>2.8*normal, "her current dose triples it");
+  const w=C.walkthrough(c).join(" ");
+  ["34.8 mL/min/1.73 m²", "250 to 750 mg every 12 hours", `${Math.round(normal)} for a woman of her size`].forEach(s=> assert.ok(w.includes(s), s));
+});

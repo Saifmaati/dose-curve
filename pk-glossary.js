@@ -97,6 +97,8 @@
      def:"A central volume (plasma and fast tissues) that exchanges drug with a peripheral one at k12 and k21. A bolus falls as A·e^(−αt) + B·e^(−βt): a fast distribution phase, then the slower terminal phase. Clearance and AUC are the same as with one compartment."},
     {term:"Distribution phase", sym:"t½ α", unit:"h", lesson:"twocmt",
      def:"The early, fast fall in level while drug moves from the central volume into the tissues. Levels drawn during it run higher than the terminal phase would predict."},
+    {term:"Time above the MIC", sym:"fT>MIC", unit:"%", lesson:"tmic",
+     def:"The share of a dosing interval that the unbound level stays above the minimum inhibitory concentration. For β-lactams such as meropenem it is the measure that tracks efficacy most closely, and a longer infusion raises it without changing the AUC."},
     {term:"Method of residuals", sym:"α, A", unit:"h⁻¹", lesson:"twocmt",
      def:"Stripping a two-phase curve by hand. Fit the straight terminal line on the log scale (β and B), subtract it from the early points, and what remains falls on a steeper line (α and A). Then k21 = (A·β + B·α) / (A + B), k10 = α·β / k21 and k12 = α + β − k21 − k10. Fit the data has a two-compartment set to strip."},
     {term:"AUC from two levels", sym:"AUC24", unit:"mg·h/L", lesson:"twocmt",

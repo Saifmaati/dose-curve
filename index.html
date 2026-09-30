@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.5.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.6.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -619,6 +619,7 @@
   .why li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--violet)}
   .why b{color:var(--hi);font-weight:600}
   .tbl-wrap{overflow-x:auto;margin-top:14px}
+  .tbl-wrap:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:8px}
   .cmp-tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono','JetBrains Mono Fallback',monospace;font-size:11.5px}
   .cmp-tbl th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:500;text-align:right;
     padding:6px 8px;border-bottom:1px solid var(--glass-line)}
@@ -1306,7 +1307,7 @@
         </div>
         <div class="pd-box" id="pdBox" hidden>
           <div class="pd-head"><span class="pd-title">Effect–time</span><span class="pd-sub" id="pdSub"></span></div>
-          <svg id="effPlot" viewBox="0 0 760 220" role="img" aria-label="Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor."></svg>
+          <svg id="effPlot" viewBox="0 0 760 220" role="img" aria-describedby="pdStats" aria-label="Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor."></svg>
         </div>
 
         <section class="pop-panel" id="popPanel" hidden aria-label="Population">
@@ -1376,7 +1377,8 @@
             <div class="plot-title" style="font-size:16px">Steady-state build-up<span>Peak &amp; trough of every dose interval</span></div>
             <div class="ss-key" id="ssKey"></div>
           </div>
-          <svg id="ssPlot" viewBox="0 0 760 240" role="img" aria-label="Peak and trough concentration by dose number"></svg>
+          <svg id="ssPlot" viewBox="0 0 760 240" role="img" aria-describedby="ssSummary" aria-label="Peak and trough concentration by dose number"></svg>
+          <p class="sr-only" id="ssSummary"></p>
           <div class="ss-stats" id="ssStats"></div>
         </div>
 
@@ -1389,7 +1391,7 @@
           <div class="plot-title" style="font-size:16px"><b id="cmpTitle" style="font-weight:inherit">What changed</b><span id="cmpSub"></span></div>
           <div class="chips" id="cmpChips"></div>
           <ul class="why" id="cmpWhy"></ul>
-          <div class="tbl-wrap"><table class="cmp-tbl" id="cmpTbl"></table></div>
+          <div class="tbl-wrap" tabindex="0" role="region" aria-label="Comparison table (scrolls sideways on narrow screens)"><table class="cmp-tbl" id="cmpTbl"></table></div>
         </div>
 
         <div class="learn">
@@ -1525,7 +1527,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.5.0 · updated 30 September 2026</span>
+        <span>Version 1.6.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1595,7 +1597,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=5c32adee26" defer></script>
+<script src="pk-engine.js?v=fd2be4d42f" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2151,7 +2153,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=b602994011";
+  const MATH_SRC="pk-math.js?v=f84505e78f";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -2303,6 +2305,10 @@
       });
     });
     byId("ssPlot").innerHTML=`<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.18)"/>${g}`;
+    // the chart's numbers as text, for screen readers: every dose's peak and trough, then steady state
+    byId("ssSummary").textContent=series.filter(s=>!s.ghost).map(s=>`${s.tag ? `Scenario ${s.tag}: ` : ""}`+
+      s.S.rows.map(r=>`dose ${r.n}${r.missed ? " missed" : ""}, peak ${fmt(r.peak,cdp(1))}, trough ${fmt(r.trough,cdp(1))}`).join("; ")+
+      (s.S.ssPeak!=null && s.S.ssTrough!=null ? `; at steady state, peak ${fmt(s.S.ssPeak,cdp(1))}, trough ${fmt(s.S.ssTrough,cdp(1))}` : "")+` ${U().conc}.`).join(" ");
 
     const key=byId("ssKey");
     if(mode==="cmp"){
@@ -3831,7 +3837,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=5a16ba7d30";
+  const GLOSS_SRC="pk-glossary.js?v=cec71752b9";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4706,7 +4712,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=d12a568be2";
+  const PRACTICE_SRC="pk-practice.js?v=5ed5a9064b";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();
@@ -4902,7 +4908,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=22a0c1f198";
+  const CASES_SRC="cases.js?v=3ffd337354";
   let casesReady=null, casesMounted=false;
   function loadCases(){
     if(!casesReady) casesReady=new Promise((res,rej)=>{

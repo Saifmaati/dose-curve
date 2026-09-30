@@ -2,6 +2,22 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.6.0 (2026-09-30)
+
+- **A practice problem for renal dose adjustment (33 kinds):** from age, weight and serum creatinine, Cockcroft–Gault, then (1 − fe) + fe × CrCl / 120, then the dose for the same average level. It's checked against the model's own clearance. Worksheet pools are now at version 3, and version-2 links rebuild exactly (tested against sheets made before the change).
+- **Case 12, *Levetiracetam with reduced kidney function*.** Her creatinine clearance, normalized to 1.73 m² as the label asks (Mosteller surface area, since the label names no formula), puts her in the 30–50 group: 250–750 mg every 12 hours. Matching the exposure of 1,000 mg twice daily with normal kidneys lands on 500 mg (her 1,500 mg gives three times that AUC). The label-table target now takes dose ranges and normalized clearance.
+- **Case 11, *Meropenem with reduced kidney function*.** Cockcroft–Gault gives 40 mL/min, and the label's Table 1 row for 26–50 mL/min gives 1 g every 12 hours. The model shows why: his half-life is 1.9 h, and 1 g every 8 hours would nearly double a normal patient's AUC24 (418 against 223 mg·h/L). The adjusted regimen stays near it (278) and keeps 76% of each interval above the MIC. The cases gain a label-table target.
+- **Two drugs from their FDA labels (11 in all):**
+  - *Levetiracetam*: 7 h half-life, 66% excreted unchanged, 100% bioavailable, under 10% bound, 250–1,000 mg scored tablets. It is mostly renally cleared, and its label adjusts the dose by creatinine clearance, so it suits Clinical (CrCl) mode.
+  - *Meropenem*: 1 h half-life, 70% unchanged, 2% bound, 1 g every 8 h over 30 minutes. Its label ties efficacy to the time the unbound level spends above the MIC.
+  - Neither label states a volume. The volumes are derived from what they do state (clearance and half-life; the peak after a 1 g infusion), and each note says how. The library now cites 69 values from 20 sources and flags 29 as unverified.
+- **Lesson 25, *Time above the MIC*:** meropenem 1 g every 8 h, infused over 30 minutes or over 3 hours. The same AUC (84.9 mg·h/L per dose), half the peak, and 82% of each interval above an MIC of 2 mg/L instead of 64%. It comes with a matching comparison (19) and a glossary term (48). Every number it states is tested.
+- The comparison table, which scrolls sideways on narrow screens, can now be reached and scrolled from the keyboard (axe: scrollable-region-focusable). Every tab passes axe in both themes.
+- The share card says 25 lessons.
+- **Screen readers get the other charts' numbers too.** The peak-and-trough-by-dose chart has a text alternative listing every dose's peak and trough (missed doses marked) and the steady state. The effect chart is described by its readouts.
+- With two compartments, the working for the time to 90% of steady state now gives the exact figure for a constant infusion (17.0 h in the vancomycin lesson, against 18.3 h from 3.32 terminal half-lives) and says the rule of thumb errs long.
+- **Effect statistics are exact.** The time at or above a target effect, and when it is first reached, were sampled at 2,400 points and interpolated linearly. A bolus that lifts the level past the target was drawn as a ramp: up to 0.12 h off over a two-week window, and the onset a moment before the dose. They now use the window statistics' exact crossings and treat a bolus as a jump. A closed-form test checks both.
+
 ## 1.5.0 (2026-09-30)
 
 - The standing cross-check also covers 24 random custom schedules (mixed routes, missed doses, one or two compartments, saturable elimination), checking the window's peak and area.

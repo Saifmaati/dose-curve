@@ -183,3 +183,36 @@ test("random custom schedules (mixed routes, missed doses, one or two compartmen
     assert.ok(w.cmax>=top*(1-1e-9) && w.cmax<=top*(1+2e-3), `peak ${w.cmax} vs ${top}: ${where}`);
   }
 });
+
+test("effect: time above a target and its onset are exact across bolus jumps (closed form)", ()=>{
+  // 400 mg every 12 h, t½ 6 h, V 40 L; EC50 12 mg/L, so 50% effect needs 12 mg/L. Dose 1 peaks at 10 mg/L
+  // (below), and each later bolus jumps above it: the onset is the second dose itself, and every dose above
+  // the target stays there for ln(C₀ / 12) / k hours.
+  const p=PK.normalizeScenario(scenario({route:"iv", dosing:"repeated", D:400, thalf:6, V:40, tau:12, nDoses:4, ec50:12, emax:100, hill:1, e0:0}));
+  const k=Math.LN2/6, e=PK.effectStats(p, 48, 50);
+  near(e.ct, 12, 1e-12);
+  near(e.onset, 12, 1e-9, "reached at the second dose, not ramped up to before it");
+  const exact=[12,24,36].reduce((s,t)=> s+Math.log(PK.conc(p,t)/12)/k, 0);
+  near(e.tAbove, exact, 1e-6, "hours at or above 50% effect");
+  // a smooth (oral) crossing is found by bisection
+  const q=PK.normalizeScenario(scenario({route:"oral", D:500, F:1, ka:1, thalf:6, V:40, ec50:6, emax:100, hill:1, e0:0})), f=PK.effectStats(q, 24, 50);
+  near(PK.conc(q, f.onset), 6, 1e-9, "the level at onset is the target concentration");
+});
+
+test("random scenarios: time in, above and below the window, and time above a target effect, match dense sampling", ()=>{
+  const rnd=PK.seededRandom(1006), pick=(a,b)=>a+(b-a)*rnd(), one=a=>a[Math.floor(rnd()*a.length)];
+  for(let i=0;i<14;i++){
+    const o={route:one(["oral","iv","inf"]), dosing:one(["single","repeated"]), D:Math.round(pick(50,1500)), F:+pick(0.3,1).toFixed(2), ka:+pick(0.2,3).toFixed(2),
+      thalf:+pick(1,20).toFixed(1), V:Math.round(pick(8,110)), tinf:+pick(0.5,6).toFixed(2), tau:Math.round(pick(4,24)), nDoses:Math.round(pick(2,10))};
+    if(rnd()<0.25) Object.assign(o,{kin:"mm", vmax:+pick(4,10).toFixed(1), km:+pick(2,8).toFixed(1)}); else if(rnd()<0.3) Object.assign(o,{cmt:2, k12:+pick(0.2,1.5).toFixed(2), k21:+pick(0.2,1.5).toFixed(2)});
+    const p=PK.normalizeScenario(scenario(o)), ev=PK.doseEvents(p), T=Math.round(pick(12,96)), M=40000, h=T/M, where=JSON.stringify(o);
+    let top=0; for(let j=0;j<=400;j++){ const c=PK.conc(p,T*j/400,ev); if(c>top) top=c; }
+    const mec=top*pick(0.1,0.5), mtc=top*pick(0.55,0.95), w=PK.windowStats(p,T,mec,mtc);
+    const q=Object.assign({}, p, {ec50:top*pick(0.2,0.8), emax:100, hill:+pick(0.5,3).toFixed(2), e0:0}), e=PK.effectStats(q,T,50), ct=PK.concForEffect(q,50);
+    let tin=0, tab=0, tbe=0, eff=0;
+    for(let j=0;j<M;j++){ const c=PK.conc(p,(j+0.5)*h,ev); if(c>=mec && c<=mtc) tin+=h; else if(c>mtc) tab+=h; else tbe+=h; if(c>=ct) eff+=h; }
+    const tol=3*h;   // the reference is good to about a step (1.5.0 was 28 steps off on the effect time)
+    near(w.tIn, tin, tol, `in: ${where}`); near(w.tAbove, tab, tol, `above: ${where}`); near(w.tBelow, tbe, tol, `below: ${where}`);
+    near(e.tAbove, eff, tol, `effect: ${where}`);
+  }
+});

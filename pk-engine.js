@@ -773,25 +773,21 @@
     return p.ec50*Math.pow(f/(1-f), 1/p.hill);
   }
   // Effect over [0, T] against a target effect. Effect rises with concentration, so the peak effect comes
-  // with the concentration peak, and "at or above target" means "concentration at or above ct". Crossings
-  // are interpolated between samples. onset is when the target is first reached (null if never).
+  // with the concentration peak, and "at or above target" means "concentration at or above ct": the window
+  // statistics measure that exactly (jumps at boluses, crossings found by bisection). onset is when the target
+  // is first reached (null if never).
   function effectStats(p, T, target){
-    const w=windowStats(p,T,0,Infinity), ct=concForEffect(p,target), ev=doseEvents(p), N=2400, dt=T/N;
-    let above=0, onset=null;
-    if(ct!==null){
-      let t0=0, c0=conc(p,0,ev);
-      if(c0>=ct) onset=0;
-      for(let i=1;i<=N;i++){
-        const t1=i*dt, c1=conc(p,t1,ev), a0=c0>=ct, a1=c1>=ct;
-        if(a0 && a1) above+=dt;
-        else if(a0!==a1){
-          const tx=t0+(ct-c0)/(c1-c0)*dt;
-          if(a1){ above+=t1-tx; if(onset===null) onset=tx; } else above+=tx-t0;
-        }
-        t0=t1; c0=c1;
-      }
+    const w=windowStats(p,T,0,Infinity), ct=concForEffect(p,target);
+    if(ct===null) return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove:0, onset:null};
+    const tAbove=windowStats(p,T,ct,Infinity).tIn, ev=doseEvents(p), N=600;
+    const ts=[...new Set(Array.from({length:N+1},(_,i)=>T*i/N).concat(ev.filter(e=>e.t>0 && e.t<T).map(e=>e.t)))].sort((a,b)=>a-b);
+    let onset=conc(p,0,ev)>=ct ? 0 : null;
+    for(let i=1;i<ts.length && onset===null;i++){
+      const t=ts[i], cL=conc(p,t-1e-9,ev);   // just before t: a bolus at t is a jump, not a crossing
+      if(cL>=ct){ let lo=ts[i-1], hi=t; for(let k=0;k<50;k++){ const m=(lo+hi)/2; if(conc(p,m,ev)>=ct) hi=m; else lo=m; } onset=hi; }
+      else if(conc(p,t,ev)>=ct) onset=t;
     }
-    return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove:above, onset};
+    return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove, onset};
   }
 
   /* ================= LESSON CHECKS ================= */
@@ -898,6 +894,8 @@
     theo:{cite:"Theophylline extended-release tablets. Prescribing information, Teva. DailyMed.", url:DM+"25eabefa-518b-4030-9b72-01ac8b3deba9"},
     gent:{cite:"Gentamicin sulfate injection. Prescribing information, Hospira. DailyMed.", url:DM+"977180b3-a222-4282-d485-4a3217674305"},
     vanc:{cite:"Vancomycin hydrochloride for injection (pharmacy bulk package). Prescribing information, Hospira. DailyMed.", url:DM+"b01aaa02-8f1d-4b57-96a5-337503428af1"},
+    keppra:{cite:"KEPPRA (levetiracetam) tablets and oral solution. Prescribing information, UCB, Inc. DailyMed.", url:DM+"3ca9df05-a506-4ec8-a4fe-320f1219ab21"},
+    meropenem:{cite:"Meropenem for injection, for intravenous use. Prescribing information, Hikma Pharmaceuticals USA Inc. DailyMed.", url:DM+"8a2a545e-b336-416a-be73-9e0a7ccf6177"},
     amox:{cite:"Amoxicillin tablets, oral suspension, chewable tablets and capsules. Prescribing information. DailyMed.", url:DM+"b07b5ac4-253e-4c83-91c3-3fdc46e91a0f"},
     caf:{cite:"Caffeine citrate injection and oral solution. Prescribing information, Sagent. DailyMed.", url:DM+"5f38c395-0093-4afd-89ec-f96e5dc0934a"},
     ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
@@ -997,7 +995,30 @@
        ref("fe","1","lithium","primarily excreted in urine; fecal excretion is insignificant"), ref("fu","1","lithium","plasma protein binding is negligible"),
        ref("window","0.8–1.2 mEq/L","lithium","acute goal 0.8 to 1.2 mEq/L (maintenance 0.8 to 1.0); toxic concentrations from 1.5 mEq/L"),
        ref("dose","600 mg twice daily","lithium","usual acute dose 600 mg two to three times daily"),
-       ref("strengths","150, 300, 600 mg","lithium","300 mg tablets; 150, 300 and 600 mg capsules")]}
+       ref("strengths","150, 300, 600 mg","lithium","300 mg tablets; 150, 300 and 600 mg capsules")]},
+    {id:"lev", name:"Levetiracetam", sub:"500 mg PO q12h", kinetics:"linear", fe:0.66, fu:0.9, S:1, units:"mg",
+     strengths:{form:"scored tablets", mg:[250,500,750,1000]},
+     s:{route:"oral",dosing:"repeated",D:500,F:1,ka:3,thalf:7,V:41,tau:12,nDoses:8,loadMult:1,mec:12,mtc:46,duration:96},
+     refs:[ref("thalf","7 h","keppra","plasma half-life in adults 7 ± 1 hour, unaffected by dose or repeated administration"),
+       ref("V","41 L (0.58 L/kg)","keppra","the label gives no volume; 0.58 L/kg follows from its total clearance, 0.96 mL/min/kg, and the 7 h half-life"),
+       ref("F","1","keppra","oral bioavailability of the tablets is 100%"),
+       ref("ka","3 h⁻¹","keppra","chosen so the model peaks at 1.2 h; peak plasma concentrations occur in about an hour (fasted)"),
+       ref("fe","0.66","keppra","renal excretion as unchanged drug represents 66% of the administered dose"),
+       ref("fu","0.9","keppra","less than 10% bound to plasma proteins"),
+       ref("dose","500 mg twice daily","keppra","adults with partial-onset seizures start at 500 mg twice daily, increased every 2 weeks to 1,500 mg twice daily; Table 1 lowers the dose by creatinine clearance"),
+       ref("window","12–46 mg/L","","an illustrative teaching window; the label sets no therapeutic range"),
+       ref("strengths","250, 500, 750, 1000 mg","keppra","250, 500, 750 and 1,000 mg film-coated, scored tablets")]},
+    {id:"mero", name:"Meropenem", sub:"1 g IV inf q8h", kinetics:"linear", fe:0.7, fu:0.98, S:1, units:"mg",
+     strengths:{form:"vials", mg:[500,1000]},
+     s:{route:"inf",dosing:"repeated",D:1000,tinf:0.5,thalf:1,V:17,tau:8,nDoses:6,loadMult:1,mec:2,mtc:100,duration:48},
+     refs:[ref("thalf","1 h","meropenem","elimination half-life approximately 1 hour with normal renal function"),
+       ref("V","17 L","meropenem","the label gives no volume; 17 L reproduces its mean peak of about 49 mcg/mL at the end of a 30-minute infusion of 1 g (and 25 against about 23 mcg/mL for 500 mg)"),
+       ref("fe","0.7","meropenem","approximately 70% (50% to 75%) of the dose is excreted unchanged within 12 hours"),
+       ref("fu","0.98","meropenem","plasma protein binding approximately 2%"),
+       ref("dose","1 g every 8 hours over 30 minutes","meropenem","1 gram every 8 hours by intravenous infusion over 15 to 30 minutes (intra-abdominal infections); Table 1 lengthens the interval and halves the dose as creatinine clearance falls"),
+       ref("target","time above the MIC","meropenem","the percentage of the dosing interval that unbound meropenem exceeds the MIC correlates best with efficacy in animal and in vitro models"),
+       ref("window","2–100 mg/L","","the lower edge an illustrative MIC of 2 mg/L; the top is set above the peaks, since the label names no toxic level"),
+       ref("strengths","500 mg and 1 g vials","meropenem","single-dose vials of 500 mg or 1 gram")]}
   ];
   // The settings loading a drug sets, completed with the drug's own fe, S and units.
   const drugScenario=d=> Object.assign({cmt:1}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
@@ -1036,6 +1057,12 @@
      view:{duration:48,mec:4,mtc:14},
      base:sched({route:"inf",tinf:1},[{t:0,mg:2880,dur:48}]),
      cur:sched({route:"inf",tinf:1},every6h)},
+    {id:"tmic", tag:"T>MIC", title:"Time above the MIC", sum:"The same dose, longer above the MIC.", baseLabel:"1 g over 30 min",
+     text:"A meropenem-like drug (t½ 1 h, V 17 L, almost unbound): 1 g every 8 h. Its label ties efficacy to the share of each interval that the unbound level stays above the MIC, here 2 mg/L (the MEC line). Infused over 30 minutes, the level peaks at 49.9 mg/L and stays above the MIC for 64% of each interval. The same dose infused over 3 hours peaks at only 24.8 mg/L, yet stays above the MIC for 82% of the interval. The AUC is the same, 84.9 mg·h/L per dose: only the shape changes, and for a drug judged by time above the MIC the shape is what counts. (The label gives 15 to 30 minutes; the 3-hour infusion is a teaching comparison.)",
+     tryThis:"Stretch the infusion to the whole 8 h: the level settles at 10.6 mg/L and, once it has risen, never falls below the MIC, with the same AUC.",
+     view:{duration:48,mec:2,mtc:100},
+     base:{route:"inf",dosing:"repeated",D:1000,tinf:0.5,tau:8,nDoses:6,V:17,thalf:1},
+     cur:{route:"inf",dosing:"repeated",D:1000,tinf:3,tau:8,nDoses:6,V:17,thalf:1}},
     {id:"accum", tag:"Rac", title:"Repeated dosing", sum:"Accumulation, peaks and troughs, steady state.", baseLabel:"single dose",
      text:"Each dose lands on whatever is left of the one before. With the interval equal to the half-life (8 h), half of every dose is still there when the next arrives, so levels climb until the amount eliminated per interval matches the dose: about 2× a single dose.",
      tryThis:"Cut the interval to 4 h and accumulation jumps. Stretch it to 16 h and it almost disappears.",
@@ -1161,6 +1188,8 @@
      look:"B sits at 10 mg/L from the first minute; A takes about 13 h to get within 10% of it."},
     {id:"cvi", lesson:"cvi", title:"Continuous vs intermittent infusion", nameA:"Continuous 60 mg/h", nameB:"360 mg over 1 h q6h",
      look:"Same 2,880 mg and the same average level: A holds 9.9 mg/L while B swings between about 6 and 14.6 mg/L."},
+    {id:"tmic", lesson:"tmic", title:"Meropenem: 30-minute vs 3-hour infusion", nameA:"Over 30 min", nameB:"Over 3 h",
+     look:"The same 1 g every 8 h. B peaks at half of A's level (24.8 vs 49.9 mg/L) but stays above the 2 mg/L MIC for 82% of each interval instead of 64%. The AUC is the same."},
     {id:"miss", lesson:"miss", title:"On time vs missed dose", nameA:"Every dose taken", nameB:"Dose 6 missed",
      look:"B dips below the effective level after the gap, then climbs back over the next few doses."},
     {id:"potency", lesson:"potency", title:"Potent vs less potent", nameA:"EC50 2 mg/L", nameB:"EC50 8 mg/L",
@@ -1345,6 +1374,13 @@
         goal:m=>{ const ev=givenOf(m.now.p); return ev.length===8 && ev.every(e=>e.mg===360 && e.route==="inf") && m.now.cmax<13; },
         solution:{events:every6h.map(e=>Object.assign({dur:3},e))}},
       matters:"Continuous and intermittent infusions deliver the same exposure with very different peaks and troughs."},
+    tmic:{group:"inf", objective:"Tell time above the MIC apart from total exposure, and see how infusion time changes one but not the other.",
+      predict:{q:"The same 1 g every 8 h, infused over 3 hours instead of 30 minutes. The share of each interval above the MIC…", choices:["Rises","Falls","Stays the same"], answer:0,
+        why:"A slower infusion trades a high, brief peak for a lower level held longer, so less of the interval is spent below the MIC. The AUC doesn't change.",
+        decide:m=> higherLowerSame(m.cur.tin,m.base.tin), show:m=>`Time above the MIC ${r0(m.base.tin)}% → ${r0(m.cur.tin)}% of the window`},
+      challenge:{text:"Keep 1 g every 8 h and change only the infusion time, until at least 90% of the window is above the MIC.",
+        goal:m=>{ const p=m.now.p; return p.route==="inf" && p.dosing==="repeated" && p.D===1000 && p.tau===8 && p.V===17 && p.thalf===1 && m.now.tin>=90; }, solution:{tinf:4}},
+      matters:"For β-lactams such as meropenem, efficacy tracks the time the unbound level spends above the MIC, not the peak or the AUC, which is why longer infusions are a common teaching example."},
     potency:{group:"pd", objective:"Tell potency (EC50) apart from efficacy (Emax).",
       predict:{q:"With EC50 four times higher, the same concentrations give a peak effect that is…", choices:HLS, answer:1,
         why:"A higher EC50 means every level of effect needs more drug, so the same concentrations sit lower on the curve.",
@@ -1656,10 +1692,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=2;
+  const WS_VERSION=3;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","mmcss","mmdose","mmt90","mmhalf"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","mmcss","mmdose","mmt90","mmhalf"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
