@@ -76,7 +76,7 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
 | Liver and first pass | Hepatic extraction · First pass and induction · Liver blood flow |
 
-To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
+To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
 The **glossary** under the lessons defines 55 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 

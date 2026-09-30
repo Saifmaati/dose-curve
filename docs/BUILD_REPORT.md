@@ -252,3 +252,16 @@ There are 285 tests in 11 files. Lighthouse (gzip preview): 100 in every categor
 
 There are 294 tests in 12 files. The initial script is +23.7% over the Phase 0 baseline (limit +25%): the next release should move the lesson texts into a lazy module before adding more to the engine.
 
+## 19. 1.10.0
+
+1.9.0 was deployed and checked live (PR #11, merge da05093). Plan V2 (Phase A) started here; push access with `gh` works.
+
+| Item | Where to see it | Tests |
+| --- | --- | --- |
+| Lesson texts, predictions and challenges in lazily loaded `pk-lessons.js`; initial script 394.6 → 351.0 kB (+23.7% → +10.0% of the baseline) | Lessons tab; any lesson link | `release.test.js` (stamps, precache, every lesson's six texts, none left in the engine, budget) and every lesson test |
+| Tags v1.0.0–v1.9.0 on the recorded merge commits | GitHub → Tags | — |
+| GitHub Releases and merged-branch deletion | NEEDS-SAIF §1 and §6 | blocked by the auto-mode safety check |
+| Zenodo: repository 1343327284, no DOI until a Release exists | NEEDS-SAIF §2 | — |
+
+There are 294 tests in 12 files.
+

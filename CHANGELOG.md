@@ -2,6 +2,12 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.10.0 (2026-09-30)
+
+- **A lighter first load.** Each lesson's explanation, tip, prediction and challenge now come from a separate file, `pk-lessons.js`, loaded with the Lessons tab or the first lesson opened (a lesson link loads it at once). The script the page needs before it can draw fell from 394.6 to 351.0 kB, from 23.7% to 10.0% over the Phase 0 baseline (the limit is 25%), which leaves room for the next models. The file is named by its content hash and saved for offline use like the other on-demand files.
+- Every lesson still opens from its link, the lists, the glossary and the comparisons, with the same numbers; a test checks that every lesson has all six of its texts and that no lesson text is left in the engine.
+- **Every release is tagged:** `v1.0.0` to `v1.9.0` now mark their merge commits on GitHub.
+
 ## 1.9.0 (2026-09-30)
 
 - **A liver model.** Under *Drug parameters*, **Clearance from: Liver model** replaces the half-life (and, by mouth, F) with the well-stirred model of the liver:

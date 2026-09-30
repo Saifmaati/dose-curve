@@ -63,3 +63,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 14:10 | 1.9 | Lesson 26 on the default window; README screenshot of the effect-site delay | done | d79a368 |
 | 2026-09-30 15:30 | 1.9 | Liver model (well-stirred), lessons 27–29, practice topic (37 kinds, pool v5), glossary 55, links v7 | done | 4d08c50 |
 | 2026-09-30 15:40 | 1.9 | Version 1.9.0, cache v19, share card 29 lessons, build report section 18, decisions 76–77 | done | fe89e97 |
+| 2026-09-30 11:02 | 1.9 | Deployed 1.9.0: branch v1.9.0 by web upload (4 commits), fresh clone 294/294, CI green, PR #11 merged; live byte check, lessons 27–29 and practice live | done | da05093 |
+| 2026-09-30 14:35 | 1.10 | Lesson texts, predictions and challenges moved to lazily loaded pk-lessons.js; initial script +23.7% → +10.0% | done | e397d86 |
+| 2026-09-30 | 1.10 | Push access proven (scratch branch pushed and deleted); tags v1.0.0–v1.9.0 pushed; Releases and branch deletion blocked by the auto-mode check (NEEDS-SAIF) | done | — |
+
