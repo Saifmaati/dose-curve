@@ -48,3 +48,9 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 08:23 | 1.6 | Case 11, meropenem by the label renal table (a label-table target) | done | b0c16c6 |
 | 2026-09-30 08:25 | 1.6 | Case 12, levetiracetam by the label renal table per 1.73 m² (Mosteller); table targets take ranges | done | b972489 |
 | 2026-09-30 08:27 | 1.6 | Practice: renal dose adjustment (33 kinds); worksheet pool v3 with v2 snapshot | done | 84ba2d7 |
+| 2026-09-30 08:29 | 1.6 | Validation page lists the effect closed form and the standing cross-check | done | 9e183df |
+| 2026-09-30 13:10 | 1.7 | Effect-site delay (closed form, every route, 1–2 compartments, custom schedules); dashed effect-site curve, hysteresis loop, cursor, CSV, What changed; lesson 26, comparison 20, glossary 50; links v6 | done | 6b09680 |
+| 2026-09-30 13:12 | 1.7 | SciPy reference: 20 effect-site scenarios (146, 584 comparisons, earlier rows unchanged); random effect-site cross-check | done | 125e36e |
+| 2026-09-30 13:14 | 1.7 | Version 1.7.0, cache v17, share card 26 lessons, build report section 16, decisions 73–74 | done | b59bdd6 |
+| 2026-09-30 13:25 | 1.6 | Deployed 1.6.0: branch v1.6.0 by web upload (3 commits), fresh clone 277/277, CI green on push and PR, PR #8 merged | done | 0845417 |
+| 2026-09-30 13:20 | 1.7 | Teaching guide: the effect-site delay | done | ee22c1d |
