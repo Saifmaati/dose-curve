@@ -221,11 +221,7 @@
   }
   // First-order two-level AUC: k from the fall between the levels, the level back at the end of the infusion, then
   // the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
-  function twoLevel(L){
-    const dt=L.tau-L.T-L.after, k=Math.log(L.peak/L.trough)/dt, Cmax=L.peak*Math.exp(k*L.after);
-    const aInf=L.T*(L.trough+Cmax)/2, aDecl=(Cmax-L.trough)/k;
-    return {dt, k, Cmax, aInf, aDecl, auc24:(aInf+aDecl)*24/L.tau};
-  }
+  const twoLevel=L=> PK.twoLevelAUC(L.peak, L.trough, L.T, L.after, L.tau);
   // Phenytoin: this patient's Vmax (mg/day) from her albumin-adjusted steady-state level, with Km fixed.
   function pheVmax(c){
     const m=c.measured, st=PK.sheinerTozer(m.C, c.patient.alb, false), R=0.92*m.D, km=drugOf("phe").s.km;

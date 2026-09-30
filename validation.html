@@ -33,7 +33,8 @@
 <h1>Validation</h1>
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients.</p>
 
-<div class="summary" id="summary" aria-live="polite">Running the checks in your browser…</div>
+<!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
+<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>Each scenario's peak, trough, area under the curve and time in window are being compared with the independent solver's, to the tolerances below.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
@@ -80,7 +81,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=1e915c3fcb"></script>
+<script src="pk-engine.js?v=14972673b8"></script>
 <script>
 (function(){
   "use strict";

@@ -2,6 +2,16 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.3.0 (2026-09-30)
+
+- **Two new practice kinds (32 in all):**
+  - *AUC from two levels* (Infusions): the first-order two-level method on levels the model generates, with the model's exact AUC24 shown alongside.
+  - *Two compartments · clearance* (Single dose): CL = D / (A/α + B/β) from a fitted biexponential.
+- **Shared worksheets never change.** Worksheet links now carry the version of the problem pool they were made with. A link without one (every link shared before) rebuilds exactly the sheet it always did; a test compares five of them with sheets made by the 1.2.0 release.
+- The validation page no longer jumps when its results arrive: the waiting text has the result's shape. Lighthouse mobile 95 → 100 (CLS 0.139 → 0.014).
+- **The practice problems moved to `pk-practice.js`**, loaded with the Practice tab or a practice link. The initial script fell from +25.2% to +14.1% over the Phase 0 baseline (limit +25%), which leaves room to grow.
+- **Fit the data: two compartments.** A third data set type: an IV bolus into two compartments, sampled through the distribution and terminal phases (with α at least 8·β, so the phases can be stripped). Students move the half-life of k10, V1, k12 and k21 until the curve fits. *How to estimate from the data* works through the method of residuals with the data's own numbers: the terminal line (β, B), the residuals (α, A), then k21, k10, k12 and V1. For 97% of data sets those by-hand values alone make a good fit, and links reproduce each set.
+
 ## 1.2.0 (2026-09-30)
 
 - **A ninth case, *Vancomycin: the AUC from two levels*.** Two levels drawn at steady state (a post-distribution peak and a trough), which the model generates for the patient and reports to 0.1 mg/L. The student estimates k, the level at the end of the infusion and the AUC24 with first-order equations, then scales the dose to the target. The walkthrough compares the estimate with the model's exact AUC24 (within 1%). It also shows why the peak is drawn after distribution: with a two-compartment version of the patient, a peak drawn as the infusion ends overstates the AUC24 by 17%, and one an hour later is within 3.5%. The method is the one the guideline's executive summary describes (Rybak et al., *Clin Infect Dis* 2020), now cited.

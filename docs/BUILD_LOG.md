@@ -28,3 +28,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 02:40 | 1.2 | Faster first paint: non-blocking fonts, deferred engine, app as a module script; Lighthouse mobile 85 → 98–99 on a gzip preview, CLS 0 | done | 7959880 |
 | 2026-09-30 02:47 | 1.2 | Case 9, vancomycin from two levels (first-order method, two-compartment sampling comparison); the CID executive summary read in full and cited; 360 px and axe clean in both themes | done | 5398751 |
 | 2026-09-30 02:47 | 1.2 | Version 1.2.0, cache v11, build report section 10 | done | 1978077 |
+| 2026-09-30 03:06 | 1.3 | Fit the data, two compartments: strippable data (α ≥ 8β), the method of residuals in fitEstimate and on the page, the model held fixed; by-hand values fit 97% of sets | done | 4a9b5f9 |
+| 2026-09-30 03:14 | 1.3 | Practice: AUC from two levels and two-compartment clearance (32 kinds); worksheet links carry a pool version (1.2.0 sheets rebuilt exactly); problems moved to pk-practice.js (initial script +14.1%) | done | 944d59d |
+| 2026-09-30 03:16 | 1.3 | Validation page: the waiting summary has the result's shape (mobile Lighthouse 95 → 100); teaching guide counts | done | 73ad484, e03143e |
+| 2026-09-30 03:17 | 1.3 | Version 1.3.0, cache v12, build report section 11 | done | 9b34443 |

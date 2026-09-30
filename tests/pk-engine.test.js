@@ -1522,7 +1522,8 @@ test("fit error is zero on exact data and grows with the misfit", ()=>{
 
 test("estimates made from the data by hand land near the settings that made it", ()=>{
   eachFit((f,k)=>{
-    const e=PK.fitEstimate(f), tol=k.id==="iv" ? 0.12 : 0.25, where=`${k.id} seed ${f.seed}`;
+    // stripping two phases by hand compounds the 5% scatter, so its estimates are looser
+    const e=PK.fitEstimate(f), tol=k.id==="iv" ? 0.12 : k.id==="iv2" ? 0.3 : 0.25, where=`${k.id} seed ${f.seed}`;
     rel(e.thalf, f.truth.thalf, tol, `${where}: t½`);
     rel(e.V, f.truth.V, tol, `${where}: V`);
   });
@@ -1530,6 +1531,29 @@ test("estimates made from the data by hand land near the settings that made it",
   const f=PK.makeFit({kind:"iv", seed:2}), p=PK.fitScenario(f);
   const e=PK.fitEstimate(Object.assign({}, f, {obs:f.obs.map(o=>({t:o.t, c:PK.conc(p,o.t)}))}));
   rel(e.thalf, f.truth.thalf, 1e-9); rel(e.V, f.truth.V, 1e-9);
+});
+
+test("two compartments: data a hand can strip, and the method of residuals recovers the settings", ()=>{
+  let good=0;
+  FIT_SEEDS.forEach(seed=>{
+    const f=PK.makeFit({kind:"iv2", seed}), T=f.truth, q=PK.disposition(PK.fitScenario(f)), where=`seed ${seed}`;
+    assert.equal(T.cmt, 2); assert.equal(T.route, "iv");
+    ["k12","k21"].forEach(key=> assert.ok(T[key]>=PK.RANGES[key][0] && T[key]<=PK.RANGES[key][1] && Math.abs(T[key]/0.05-Math.round(T[key]/0.05))<1e-9, `${where}: ${key}`));
+    assert.ok(q[0].k>=6*q[1].k && Math.LN2/q[0].k>=0.6, `${where}: the phases are far enough apart`);
+    assert.ok(f.obs.filter(o=>o.t<5*Math.LN2/q[0].k).length>=4 && f.obs.length>=9, `${where}: both phases sampled`);
+    // the estimates, set on the sliders' steps, make a good fit
+    const e=PK.fitEstimate(f), st=(v,s)=> Math.round(v/s)*s;
+    if(PK.fitStatus(f, PK.fitScenario(f, {thalf:st(e.thalf,0.1), V:Math.round(e.V), k12:st(e.k12,0.05), k21:st(e.k21,0.05)})).good) good++;
+    // leaving two compartments, or turning on saturable elimination, is a setup mismatch
+    assert.equal(PK.fitStatus(f, PK.fitScenario(f, {cmt:1})).mismatch, "setup");
+  });
+  assert.ok(good>=0.95*FIT_SEEDS.length, `by-hand estimates fit ${good} of ${FIT_SEEDS.length}`);
+  assert.equal(PK.fitStatus(PK.makeFit({kind:"iv", seed:1}), PK.fitScenario(PK.makeFit({kind:"iv", seed:1}), {cmt:2})).mismatch, "setup");
+  // on exact data the terminal line gives β and B back, and the residuals α and A closely
+  const f=PK.makeFit({kind:"iv2", seed:11}), p=PK.fitScenario(f), q=PK.disposition(p);
+  const e=PK.fitEstimate(Object.assign({}, f, {obs:f.obs.map(o=>({t:o.t, c:PK.conc(p,o.t)}))}));
+  rel(e.beta, q[1].k, 1e-3); rel(e.B, f.truth.D*q[1].c, 5e-3); rel(e.alpha, q[0].k, 0.02); rel(e.A, f.truth.D*q[0].c, 0.02);
+  rel(e.thalf, f.truth.thalf, 0.02); rel(e.V, f.truth.V, 0.02); rel(e.k12, f.truth.k12, 0.05); rel(e.k21, f.truth.k21, 0.05);
 });
 
 test("links to one practice problem or one fit-the-data set rebuild it exactly", ()=>{
@@ -1631,11 +1655,28 @@ test("worksheets: reproducible, the size asked for, one topic or all, kinds spre
     ids.forEach((id,i)=>{ if(i) assert.notEqual(id, ids[i-1], `${topic||"all"} ${count} seed ${seed}: no kind twice running`); });
     w.problems.forEach(p=> rel(p.check(PK.practiceScenario(p)), p.ans, 2e-3, p.id));
   })));
-  // links
-  const t=PK.decodeTaskLink("#"+PK.encodeTaskLink({type:"worksheet", topic:"", count:15, seed:99}));
-  assert.deepEqual(t, {type:"worksheet", topic:"", count:15, seed:99});
-  assert.deepEqual(PK.decodeTaskLink("#ws=inf.5.7"), {type:"worksheet", topic:"inf", count:5, seed:7});
-  ["#ws=nope.10.1","#ws=all.7.1","#ws=all.10.4294967296","#ws=all.10","#ws=ALL.10.1"].forEach(h=> assert.equal(PK.decodeTaskLink(h), null, h));
+  // links: a sheet made now carries its pool version; a link without one is version 1
+  const w=PK.makeWorksheet({topic:"", count:15, seed:99}), link=PK.encodeTaskLink({type:"worksheet", topic:w.topic, count:w.count, seed:w.seed, v:w.v});
+  assert.equal(link, `ws=all.15.99.${PK.WS_VERSION}`);
+  assert.deepEqual(PK.decodeTaskLink("#"+link), {type:"worksheet", topic:"", count:15, seed:99, v:PK.WS_VERSION});
+  assert.deepEqual(PK.decodeTaskLink("#ws=inf.5.7"), {type:"worksheet", topic:"inf", count:5, seed:7, v:1});
+  ["#ws=nope.10.1","#ws=all.7.1","#ws=all.10.4294967296","#ws=all.10","#ws=ALL.10.1","#ws=all.10.1.0",`#ws=all.10.1.${PK.WS_VERSION+1}`].forEach(h=> assert.equal(PK.decodeTaskLink(h), null, h));
+});
+
+test("a worksheet shared before new kinds arrived rebuilds exactly (version-1 links)", ()=>{
+  // made with the released 1.2.0 engine
+  const RELEASED={"all.15.99":["infend:1958737519","mmt90:2955755288","mmdose:1680425933","mmcss:1278237150","effdur:1040450815","clinf:2966671880","taumax:1692960689","thalfcl:3878063843","cavg:826037518","t90:3506976847","remain:2086466836","auc:2600597767","tbelow:3012898485","rate:3259124632","effc:1190380853"],
+    "inf.10.7":["ldinf:2376515373","infpct:3134562008","infend:1107309403","clinf:669793123","rate:3281741074","clinf:2226521980","rate:846698085","ldinf:1580370125","infpct:1259487726","infend:2296688774"],
+    "single.5.2024":["tbelow:2819740090","ct:3422715331","thalf2:2054673948","ke:370532045","c0:2014563464"],
+    "rep.10.12345":["t90:1975405240","mdose:4062369846","cavg:3825196835","trough:4163299428","rac:2695781441","taumax:1068698135","trough:2032992014","rac:1310158935","taumax:3317514493","mdose:3715897801"],
+    "all.10.4294967295":["mdose:84734988","infpct:1953484427","effc:1090089882","mmhalf:2209599455","trough:1866216088","ke:901544840","mmt90:1703553564","infend:2317619743","tmax:2605211866","tbelow:637322318"]};
+  Object.entries(RELEASED).forEach(([key, ids])=>{
+    const t=PK.decodeTaskLink("#ws="+key), w=PK.makeWorksheet(t);
+    assert.deepEqual(w.problems.map(p=>p.id+":"+p.seed), ids, key);
+  });
+  // and version 2 sheets can include the new kinds
+  const seen=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"inf", count:15, seed}).problems.forEach(p=>seen.add(p.id)));
+  assert.ok(seen.has("auc2"));
 });
 
 /* ---------- hit the window ---------- */
