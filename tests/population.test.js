@@ -1,6 +1,6 @@
 // Run with: node --test
-// Population mode: log-normal between-patient variability around the scenario, a reproducible seed, the
-// probability of target attainment, and speed.
+// Population mode: log-normal between-patient variability around the scenario (clearance, or Vmax when
+// saturable), a reproducible seed, the probability of target attainment, and speed.
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
@@ -56,7 +56,44 @@ test("PTA counts troughs and peaks against the window, and AUC24 against its ran
   near(r.ptaAuc, auc/list.length, 1e-12);
   assert.ok(r.trough[0]<=r.trough[1] && r.trough[1]<=r.trough[2] && r.peak[0]<=r.peak[2]);
   assert.equal(P.population(PK, rep({dosing:"single"}), OPTS).pta, undefined, "no steady state, no PTA");
-  assert.deepEqual(P.population(PK, rep({kin:"mm"}), OPTS), {unsupported:"saturable"});
+  assert.equal(r.noSS, 0, "first-order regimens always settle");
+});
+
+/* ---------- saturable (Michaelis–Menten) scenarios ---------- */
+const mmRep=over=> rep(Object.assign({kin:"mm", vmax:7, km:4, V:49, route:"oral", F:1, ka:0.4, S:0.92, D:300, tau:24, nDoses:14}, over||{}));
+const MM_OPTS={n:120, cvCL:30, cvV:20, seed:4, T:336, mec:10, mtc:20};
+
+test("saturable: CV = 0 collapses the band onto the integrated curve", ()=>{
+  const p=mmRep(), r=P.population(PK, p, Object.assign({}, MM_OPTS, {n:50, cvCL:0, cvV:0}));
+  r.t.forEach((t,i)=>{ const c=PK.conc(p,t); near(r.q05[i], c, 1e-9*Math.max(1,c)); near(r.q95[i], c, 1e-9*Math.max(1,c)); });
+  const m=PK.mmSteady(p); assert.equal(r.pta, m.trough>=10 && m.peak<=20 ? 1 : 0);
+  near(r.trough[1], m.trough, 1e-9); near(r.peak[1], m.peak, 1e-9);
+});
+
+test("saturable: the variability is on Vmax (Km fixed), log-normal around the scenario's value", ()=>{
+  const p=mmRep(), list=P.patients(PK, p, {n:1000, cvCL:30, cvV:20, seed:3});
+  const vm=list.map(q=>q.vmax).sort((a,b)=>a-b);
+  near(P.quantile(vm,0.5)/p.vmax, 1, 0.04, "median Vmax");
+  list.forEach(q=>{ near(q.vmax, p.vmax*Math.exp(q.eCL), 1e-12); assert.equal(q.km, p.km); assert.equal(q.thalf, p.thalf); });
+});
+
+test("saturable: PTA and the share with no steady state count each patient's exact periodic steady state", ()=>{
+  const p=mmRep({D:400}), r=P.population(PK, p, Object.assign({}, MM_OPTS, {auc:[240,480]})), list=P.patients(PK, p, MM_OPTS);
+  const ms=list.map(q=>PK.mmSteady(q)), none=ms.filter(m=>m.none).length;
+  near(r.noSS, none/list.length, 1e-12);
+  near(r.pta, ms.filter(m=>!m.none && m.trough>=10 && m.peak<=20).length/list.length, 1e-12);
+  near(r.ptaAuc, ms.filter(m=>!m.none && m.avg*24>=240 && m.avg*24<=480).length/list.length, 1e-12);
+  assert.ok(none>0, "at 400 mg/day some virtual patients' Vmax is below the input");
+  // a bigger dose leaves more patients without a steady state: the saturable signature
+  let prev=-1;
+  [200,300,400,500].forEach(D=>{ const x=P.population(PK, mmRep({D}), MM_OPTS).noSS; assert.ok(x>=prev, `${D} mg: ${x} after ${prev}`); prev=x; });
+});
+
+test("saturable: 1000 virtual patients take under 5 s (it was 9 s before each patient was integrated once)", ()=>{
+  const t0=process.hrtime.bigint();
+  const r=P.population(PK, mmRep(), Object.assign({}, MM_OPTS, {n:1000}));
+  const ms=Number(process.hrtime.bigint()-t0)/1e6;
+  assert.equal(r.n, 1000); assert.ok(ms<5000, `${ms.toFixed(0)} ms`);
 });
 
 test("1000 virtual patients take under 2 s", ()=>{

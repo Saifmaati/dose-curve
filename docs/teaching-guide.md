@@ -75,7 +75,7 @@ To assign a lesson, open it and use **Copy link**. The link opens that lesson fo
 
 The **glossary** under the lessons defines 44 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
-## Clinical cases (8)
+## Clinical cases (9)
 
 The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
 
@@ -90,6 +90,7 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | Gentamicin with reduced kidney function | Peak and trough targets; lengthening the interval as CrCl falls |
 | Gentamicin once daily | The Hartford approach (7 mg/kg, interval from CrCl bands) against conventional every-8-hour dosing |
 | Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L); a two-compartment version of the patient changes the peak but not the AUC24 |
+| Vancomycin: the AUC from two levels | The first-order two-level method (a post-distribution peak and a trough): k, the level at the end of the infusion, the area over one interval, then a proportional dose change; and why the peak waits for distribution |
 | Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
 | Digoxin in an older adult | ng/mL targets, a long half-life, and the loading dose |
 | Theophylline in a smoker | A cited clearance factor (about +50%) and a narrow window |
@@ -149,8 +150,8 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent. Practice: *Infusions* |
 | 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
-| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Cases: Gentamicin once daily, Vancomycin to an AUC target. Population mode and probability of target attainment |
-| 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Practice: *Saturable (Michaelis–Menten)* |
+| 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels. Population mode and probability of target attainment |
+| 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Population mode on phenytoin: how many virtual patients have no steady state as the dose rises. Practice: *Saturable (Michaelis–Menten)* |
 | 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect. Case: Theophylline in a smoker. A mixed worksheet |
 
 ## A possible sequence

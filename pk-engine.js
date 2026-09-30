@@ -596,24 +596,29 @@
     else {
       const tau=p.tau, V=vOf(p), oral=p.route==="oral", q=Object.assign({},p,{dosing:"repeated", loadMult:1, missed:1});
       const late=Math.ceil((p.route==="inf" ? p.tinf : 0)/tau)+1;   // earlier infusions still running at the start
-      let state={t:0, ag: oral ? p.F*saltOf(p)*p.D*Math.exp(-p.ka*tau)/(1-Math.exp(-p.ka*tau)) : 0, a:m.css*V};
-      const block=Math.max(8, Math.ceil(6*mmHalfAt(p,m.css)/tau)), dose=i=>({t:i*tau, mg:p.D, route:p.route, dur:p.tinf});
-      let prev=null, steps=null;
-      for(let round=0; round<40; round++){
-        const doses=[];
-        for(let i=-late;i<block;i++) if(i>=0 || (p.route==="inf" && (i*tau)+p.tinf>0)) doses.push(dose(i));
-        steps=mmIntegrate(q, doses, block*tau, state);
-        const last=steps[steps.length-1], tr=last.a1/V;
-        state={t:0, ag:last.g1, a:last.a1};
-        if(prev!==null && Math.abs(tr-prev)<=1e-7*Math.max(tr,1e-12)) break;
-        prev=tr;
-      }
-      // one interval at steady state, starting at its dose
+      // The gut is linear, so its level just before a dose at steady state is exact. The body's pre-dose amount a
+      // is periodic when one interval maps it onto itself, Φ(a) = a; Φ rises with slope below 1 whenever a steady
+      // state exists, so a secant search (kept to a ≥ 0) finds it in a few one-interval integrations.
+      const ag0=oral ? p.F*saltOf(p)*p.D*Math.exp(-p.ka*tau)/(1-Math.exp(-p.ka*tau)) : 0, dose=i=>({t:i*tau, mg:p.D, route:p.route, dur:p.tinf});
       const doses=[]; for(let i=-late;i<=0;i++) if(i===0 || (p.route==="inf" && i*tau+p.tinf>0)) doses.push(dose(i));
+      const g=a=>{ const st=mmIntegrate(q, doses, tau, {t:0, ag:ag0, a}); return st[st.length-1].a1-a; };
+      let a0=m.css*V, g0=g(a0), a1=Math.max(0, a0+g0), g1=g(a1);
+      for(let it=0; it<60 && Math.abs(g1)>1e-11*Math.max(a1,1e-9); it++){
+        let a2=g1!==g0 ? a1-g1*(a1-a0)/(g1-g0) : a1+g1;
+        if(!(a2>=0) || !isFinite(a2)) a2=Math.max(0, a1+g1);   // a step outside the domain: one plain iteration instead
+        a0=a1; g0=g1; a1=a2; g1=g(a1);
+      }
+      const state={t:0, ag:ag0, a:a1};
+      // one interval at steady state, starting at its dose
       const one=mmIntegrate(q, doses, tau+MM_STEP, state);
       out.at=s=> mmAmount(one, Math.min(Math.max(s,0), tau))/V;
       let pk=0, pkT=0; const N=240;
       for(let i=0;i<=N;i++){ const s=tau*i/N, c=out.at(s); if(c>pk){ pk=c; pkT=s; } }
+      { // refine between the grid's neighbours (golden section); an infusion's end, a kink, is checked on its own
+        let lo=Math.max(0,pkT-tau/N), hi=Math.min(tau,pkT+tau/N);
+        for(let k=0;k<50;k++){ const x=hi-(hi-lo)*0.6180339887, y=lo+(hi-lo)*0.6180339887; if(out.at(x)<out.at(y)) lo=x; else hi=y; }
+        const c=out.at((lo+hi)/2); if(c>pk){ pk=c; pkT=(lo+hi)/2; }
+      }
       if(p.route==="inf"){ const e=Math.min(p.tinf,tau), c=out.at(e); if(c>pk){ pk=c; pkT=e; } }
       out.peak=pk; out.tPeak=pkT; out.trough=out.at(tau-1e-9);
       let sum=0; for(let i=0;i<N;i++) sum+=(out.at(tau*i/N)+out.at(tau*(i+1)/N))/2*tau/N;
@@ -893,7 +898,8 @@
     amox:{cite:"Amoxicillin tablets, oral suspension, chewable tablets and capsules. Prescribing information. DailyMed.", url:DM+"b07b5ac4-253e-4c83-91c3-3fdc46e91a0f"},
     caf:{cite:"Caffeine citrate injection and oral solution. Prescribing information, Sagent. DailyMed.", url:DM+"5f38c395-0093-4afd-89ec-f96e5dc0934a"},
     ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
-    idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"}
+    idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"},
+    rybakCid:{cite:"Rybak MJ, Le J, Lodise TP, et al. Executive summary: therapeutic monitoring of vancomycin for serious methicillin-resistant Staphylococcus aureus infections: a revised consensus guideline. Clin Infect Dis. 2020;71(6):1361–1364.", url:"https://doi.org/10.1093/cid/ciaa303"}
   };
   const UNVERIFIED="typical textbook value, unverified";
   // A library value and where it comes from: src names a SOURCES entry (and note says what the source states),
