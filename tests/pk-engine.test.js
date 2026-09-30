@@ -287,7 +287,9 @@ test("full links round-trip, including names with special characters", ()=>{
 
 test("links reject what they can't trust", ()=>{
   assert.equal(PK.decodeLink(""), null);
-  assert.equal(PK.decodeLink("#s=D:400"), null, "no version");
+  assert.equal(PK.decodeLink("#x=D:400"), null, "no scenario and no version: not a scenario link");
+  // v1.0 rule: a scenario link without a version is read as version 1
+  assert.deepEqual(PK.decodeLink("#s=D:400").s, PK.decodeLink("#v=1&s=D:400").s, "no version reads as v1");
   const st=PK.decodeLink("v=1&m=cmp&lk=evil&ed=zzz&na=%3Cb%3Ehi");
   assert.equal(st.lock, ""); assert.equal(st.edit, "a");
   assert.equal(st.nameA, "<b>hi", "names are plain text; the page escapes them");
