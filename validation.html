@@ -37,12 +37,12 @@
 
 <h2>What is checked</h2>
 <ul>
-  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
+  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
   <li><b>A scenario matrix</b> of <span id="nScen">…</span> scenarios:
     <ul>
       <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
       <li>Regimens: single dose, repeated, with a loading dose, with a missed dose, and a custom schedule with irregular times, amounts and a missed dose.</li>
-      <li>Drugs: a first-order drug, a first-order drug with a salt factor, and a saturable (Michaelis–Menten) drug.</li>
+      <li>Drugs: a first-order drug, a first-order drug with a salt factor, a saturable (Michaelis–Menten) drug, and a two-compartment drug (a central and a peripheral compartment exchanging at uneven rates).</li>
       <li>Patients: a simple-mode patient at 100% organ function, and a clinical patient (a 75-year-old woman, 60 kg, serum creatinine 1.8 mg/dL) whose clearance follows Cockcroft–Gault.</li>
     </ul></li>
   <li><b>Four numbers per scenario</b> over 0–96 h:
@@ -80,7 +80,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=18484e6d3f"></script>
+<script src="pk-engine.js?v=493ded4bdb"></script>
 <script>
 (function(){
   "use strict";
@@ -89,6 +89,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
   fetch("validation/reference-results.json").then(r=>r.json()).then(REF=>{
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
+    const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
     document.getElementById("nScen").textContent=REF.scenarios.length;
     REF.scenarios.forEach(s=>{
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc);
@@ -105,7 +106,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
       `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
-      `<div>${REF.scenarios.length} scenarios × 4 numbers. Largest difference: ${worst.rel.toFixed(3)}% (peak, trough or AUC) and ${worst.pp.toFixed(3)} percentage points (time in window).</div>`+
+      `<div>${REF.scenarios.length} scenarios × 4 numbers. Largest difference: ${small(worst.rel)}% (peak, trough or AUC) and ${small(worst.pp)} percentage points (time in window).</div>`+
       `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
 })();

@@ -2,6 +2,28 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.1.0 (2026-09-30)
+
+- **Two compartments** (Drug Parameters → One compartment / Two compartments):
+  - The drug enters a central volume V1 and exchanges with a peripheral one at rates k12 and k21. Elimination (k10) is from the central compartment.
+  - Every route and regimen works: the curve is a sum of exponentials, C(t) = A·e^(−αt) + B·e^(−βt) for a bolus.
+  - The half-life and volume sliders become the half-life of k10 and the central volume V1, so switching keeps the clearance and the AUC.
+  - The readouts give V1, the terminal half-life and the accumulation ratio. The half-life's working shows α and β.
+  - What changed explains a switch of model and a change of exchange rate. It separates the ratio k12/k21, which sets the steady-state volume, from their sum, which sets the speed.
+  - Population mode, Compare and links (v5) all carry the setting. Saturable scenarios stay one-compartment.
+- **Lesson and comparison:** *One or two compartments*, with vancomycin 1 g every 12 h. The same clearance gives the same AUC24 (492.6 mg·h/L), but a higher steady-state peak (57.6 instead of 40.3 mg/L). Also a *Vancomycin: one vs two compartments* comparison and two glossary terms (44). Lessons now number 24.
+- **The vancomycin case** compares its reference regimen with a two-compartment version of the patient: a higher peak, the same AUC24.
+- **Validation:**
+  - The independent SciPy reference gains a peripheral compartment and a two-compartment drug: 126 scenarios, 504 comparisons.
+  - The window statistics became exact:
+    - the peak is refined between samples;
+    - the area uses Simpson's rule;
+    - window crossings are found by bisection.
+  - Every comparison now agrees within 0.00002%, and within 0.000001 points in time in window. A test holds that closeness.
+- **Fix: the last dose's peak.** It was read off a grid that could step over the end of an infusion, so "Peak (last dose)" ran low: up to 1.2% for a short infusion with a long interval, and 0.6% with two compartments. It now includes every dose and infusion end and refines the peak. The worked formula uses the same value.
+- The worked formulas moved to `pk-math.js`, loaded the first time a readout is opened. This keeps the initial script within its budget (+22.2% over the Phase 0 baseline, limit +25%).
+- The share card says 24 lessons. Offline cache `dosecurve-v10`.
+
 ## 1.0.0 (2026-09-30)
 
 - **Classroom and accessibility:**
