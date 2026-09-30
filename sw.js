@@ -6,11 +6,13 @@
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v5";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v6";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
-  "./cases.js?v=b88d2d67a5"];
-const PAGE="./";   // every page in scope is the one app page; its saved copy lives under this key
+  "./cases.js?v=b88d2d67a5",
+  "./validation.html","./validation/reference-results.json"];
+const PAGE="./";   // the app page's saved copy lives under this key
+const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];
 
 self.addEventListener("install",e=>{
@@ -25,15 +27,18 @@ self.addEventListener("activate",e=>{
 const scopeUrl=path=> new URL(path, self.registration.scope).href;
 // The app page itself (not 404.html or anything else that happens to load in scope).
 const isAppPage=url=>{ const scope=new URL(self.registration.scope).pathname; return url.pathname===scope || url.pathname===scope+"index.html"; };
+const extraPage=url=>{ const scope=new URL(self.registration.scope).pathname; return PAGES.find(f=>url.pathname===scope+f) || null; };
 
 async function fromNetworkFirst(req){
   const cache=await caches.open(CACHE);
   try{
-    const res=await fetch(req);
-    if(res.ok && isAppPage(new URL(req.url))) await cache.put(scopeUrl(PAGE), res.clone());
+    const res=await fetch(req), url=new URL(req.url), extra=extraPage(url);
+    if(res.ok && isAppPage(url)) await cache.put(scopeUrl(PAGE), res.clone());
+    else if(res.ok && extra) await cache.put(scopeUrl(extra), res.clone());
     return res;
   }catch(err){
-    const saved=await cache.match(scopeUrl(PAGE));
+    const extra=extraPage(new URL(req.url));
+    const saved=await cache.match(scopeUrl(extra ? extra : PAGE));   // the validation page offline, else the app
     if(saved) return saved;
     throw err;
   }

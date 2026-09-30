@@ -4,6 +4,13 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## Unreleased: v1.0 (in progress on the `v1.0` branch)
 
+- **Validation** (`validation.html`, linked in the footer). An independent solver (`validation/reference.py`, SciPy's `solve_ivp`) runs a matrix of 94 scenarios:
+  - routes × regimens × drugs (first-order, salt, saturable) × patients
+  - the peak, trough, AUC and time in window of each, compared with DoseCurve's engine live in the browser, and in the test suite
+
+  All 376 comparisons agree within 0.5% (first-order) or 1% (saturable); the largest difference is 0.025%.
+
+  Analytic identities are tested too. The validation found that the window statistics sampled IV-bolus jumps and window crossings coarsely (up to 0.8% in AUC and 1 point in time in window). They now land exactly, and the *Short vs long infusion* lesson says 0.9 h above the MTC, where it said 0.8 h.
 - **Clinical cases** (a new Cases tab), eight of them: gentamicin conventional and once daily (the Hartford approach), vancomycin to an AUC target, phenytoin with low albumin, digoxin in an older adult, theophylline in a smoker, lithium with lower kidney function, and a late-dose question.
   - The model grades a proposed regimen at steady state and gives rule-based hints.
   - It re-grades the regimen rounded to the forms available.

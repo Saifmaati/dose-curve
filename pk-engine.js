@@ -339,26 +339,37 @@
     return d;
   }
 
-  // Numerical exposure summary over [0, T] against a therapeutic window [mec, mtc].
+  // Numerical exposure summary over [0, T] against a therapeutic window [mec, mtc]. The curve is sampled on an
+  // even 600-step grid plus every dose time and infusion end, so an IV bolus's jump and each kink land on a
+  // sample instead of inside a step: the area is summed by trapezoids up to each jump's left limit, and the time
+  // in each band is read from where each straight step crosses MEC and MTC. (validation/ checks it against an
+  // independent solver to 0.5%.)
   function windowStats(p, T, mec, mtc){
-    const ev=doseEvents(p), N=600, dt=T/N;
-    let prev=conc(p,0,ev), cmax=prev, tmax=0, auc=0, tIn=0, tBelow=0, tAbove=0;
-    for(let i=1;i<=N;i++){
-      const t=i*dt, c=conc(p,t,ev), m=(prev+c)/2;
-      auc+=m*dt;
-      if(m>mtc) tAbove+=dt; else if(m>=mec) tIn+=dt; else tBelow+=dt;
-      if(c>cmax){ cmax=c; tmax=t; }
-      prev=c;
-    }
-    // an IV bolus peaks the instant it's given and an infusion at its end: check those exact times too
+    const ev=doseEvents(p), N=600, pts=new Set(), jumps=new Set();
+    for(let i=0;i<=N;i++) pts.add(T*i/N);
     ev.forEach(e=>{
-      [e.route==="iv" ? e.t : null, e.route==="inf" ? e.t+e.dur : null].forEach(x=>{
-        if(x===null || x<0 || x>T) return;
-        const c=conc(p,x,ev);
-        if(c>cmax+1e-12){ cmax=c; tmax=x; }
-      });
+      if(e.t>0 && e.t<T){ pts.add(e.t); if(e.route==="iv") jumps.add(e.t); }
+      if(e.route==="inf" && e.t+e.dur>0 && e.t+e.dur<T) pts.add(e.t+e.dur);
     });
-    return {cmax,tmax,auc,tIn,tBelow,tAbove,T};
+    const ts=[...pts].sort((a,b)=>a-b);
+    // time in [lo, hi] along a straight step from c0 to c1 lasting dt
+    const within=(c0,c1,dt,lo,hi)=>{
+      if(c0===c1) return c0>=lo && c0<=hi ? dt : 0;
+      const a=(lo-c0)/(c1-c0), b=(hi-c0)/(c1-c0);
+      return Math.max(0, Math.min(1,Math.max(a,b))-Math.max(0,Math.min(a,b)))*dt;
+    };
+    let t0=ts[0], c0=conc(p,t0,ev), cmax=c0, tmax=t0, auc=0, tIn=0, tAbove=0;
+    for(let i=1;i<ts.length;i++){
+      const t=ts[i], cR=conc(p,t,ev), cL=jumps.has(t) ? conc(p,t-1e-9,ev) : cR, dt=t-t0;
+      auc+=(c0+cL)/2*dt;
+      tIn+=within(c0,cL,dt,mec,mtc);
+      tAbove+=within(c0,cL,dt,mtc,Infinity)-(c0===cL ? (c0===mtc ? dt : 0) : 0);
+      if(cL>cmax){ cmax=cL; tmax=t; }
+      if(cR>cmax+1e-12){ cmax=cR; tmax=t; }
+      t0=t; c0=cR;
+    }
+    tAbove=Math.max(0, Math.min(tAbove, T-tIn));
+    return {cmax,tmax,auc,tIn,tBelow:Math.max(0,T-tIn-tAbove),tAbove,T};
   }
 
   // Concentration s hours (0 ≤ s < τ) into a dose interval once a regimen of p.D every p.tau hours has run
@@ -938,7 +949,7 @@
      view:{duration:36,mec:8,mtc:18},
      base:{route:"iv",D:1000,thalf:6,V:49}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:3}},
     {id:"infdur", tag:"T·inf", title:"Short vs long infusion", sum:"The same dose, a different exposure shape.", baseLabel:"1 g over 30 min",
-     text:"The same 1 g, infused over 30 minutes (2,000 mg/h) or over 4 hours (250 mg/h). The short infusion rises almost as fast as a bolus: it peaks at 19.8 mg/L at 0.5 h and spends 0.8 h above the MTC line. The long infusion rises more slowly (10 mg/L at 2.2 h instead of 0.25 h) and has a lower modeled peak, 16.3 mg/L, when it ends at 4 h. Total exposure is the same, an AUC of 176.7 mg·h/L, because the same amount meets the same clearance; only the shape differs.",
+     text:"The same 1 g, infused over 30 minutes (2,000 mg/h) or over 4 hours (250 mg/h). The short infusion rises almost as fast as a bolus: it peaks at 19.8 mg/L at 0.5 h and spends 0.9 h above the MTC line. The long infusion rises more slowly (10 mg/L at 2.2 h instead of 0.25 h) and has a lower modeled peak, 16.3 mg/L, when it ends at 4 h. Total exposure is the same, an AUC of 176.7 mg·h/L, because the same amount meets the same clearance; only the shape differs.",
      tryThis:"Stretch the long infusion to 8 h: the peak drops further and arrives later, and the AUC still doesn't change.",
      view:{duration:36,mec:8,mtc:18},
      base:{route:"inf",D:1000,thalf:6,V:49,tinf:0.5}, cur:{route:"inf",D:1000,thalf:6,V:49,tinf:4}},
