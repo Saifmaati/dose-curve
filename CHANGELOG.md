@@ -4,6 +4,12 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## 2026-09-30
 
+- **Five more practice kinds** (26 in all), each checked against the simulation:
+  - time for an IV bolus to fall to a level
+  - half-life from clearance and volume
+  - the longest interval whose steady-state swing fits a window, τ = ln(upper / lower) / kₑ
+  - clearance from a steady-state infusion, CL = R₀ / Css
+  - how long an effect stays above a target after a bolus
 - **Embed in a course page:** **Embed code** copies an iframe snippet for the current scenario. The `?embed` view drops the landing section and footer, keeps the educational-use note, puts the chart first in a narrow column and links out to the full page. Shared links never carry `?embed`.
 - **Teaching guide** (`docs/teaching-guide.md`), linked from the footer and the README.
 - **Progress:** lesson cards show "✓ Predicted" and "✓ Challenge met"; Practice keeps all-time first-answer results by topic and counts fitted data sets and met window tasks. Kept in the browser only, with a two-step reset.
