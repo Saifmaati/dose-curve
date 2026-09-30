@@ -15,14 +15,14 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were.
-  const VERSION=7;
+  const VERSION=8;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
   // effect site's equilibration half-life (0 = the effect follows plasma directly).
   const PD_KEYS=["e0","emax","ec50","hill","teq"];
@@ -35,7 +35,7 @@
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
     kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
-    hep:0, qh:90, fub:0.5, clint:20, fabs:1});
+    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([])});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
     pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
@@ -51,6 +51,7 @@
   const V6_KEYS=["teq"];
   // Settings a v6 page can't hold: clearance from the liver model.
   const V7_KEYS=["hep","qh","fub","clint","fabs"];
+  // A v7 page can't hold measured levels (lv), which a v8 link carries.
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
   // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
@@ -80,7 +81,26 @@
     return c;
   }
   const cloneEvents=list=>(list||[]).map(cloneEvent);
-  const cloneScenario=p=>Object.assign({},p,{events:cloneEvents(p.events)});
+
+  /* ---------- measured levels ---------- */
+  // A level is {n, dt, c}: the concentration c (in the scenario's concentration unit) measured dt hours after the
+  // start of the nth dose given. Tying each level to a dose keeps it on the schedule when the regimen is edited.
+  const LEVEL_LIMITS={max:8, n:[1,40], dt:[0,336], c:[0,100000]};
+  const cloneLevels=list=>(list||[]).map(l=>({n:l.n, dt:l.dt, c:l.c}));
+  const levelsKey=list=>(list||[]).map(l=>`${l.n}@${l.dt}=${l.c}`).join(";");
+  // Valid levels only (whole dose numbers, finite values in range), sorted by dose and time, at most LEVEL_LIMITS.max.
+  function normalizeLevels(list){
+    const ok=(list||[]).filter(l=> l && [l.n,l.dt,l.c].every(v=>typeof v==="number" && isFinite(v)))
+      .map(l=>({n:Math.round(clamp(l.n,LEVEL_LIMITS.n)), dt:clamp(l.dt,LEVEL_LIMITS.dt), c:clamp(l.c,LEVEL_LIMITS.c)}));
+    return ok.sort((a,b)=> a.n-b.n || a.dt-b.dt).slice(0,LEVEL_LIMITS.max);
+  }
+  function decodeLevels(raw){
+    return normalizeLevels(String(raw).split(";").slice(0,LEVEL_LIMITS.max*4).map(tok=>{
+      const m=/^(\d{1,2})@(\d+(?:\.\d+)?)=(\d+(?:\.\d+)?)$/.exec(tok);
+      return m ? {n:+m[1], dt:+m[2], c:+m[3]} : null;
+    }));
+  }
+  const cloneScenario=p=>Object.assign({},p,{events:cloneEvents(p.events), lv:cloneLevels(p.lv)});
   const scenario=over=>cloneScenario(Object.assign({},DEFAULTS,over));
 
   // Validated, sorted copy: bad entries are dropped, times and amounts clamped, ids made unique, type,
@@ -165,6 +185,7 @@
     if(q.e0+q.emax>100) q.emax=100-q.e0;   // the effect is a % of the largest possible response
     if(hepOn(q)){ q.thalf=Math.LN2*q.V/wellStirred(q).CL; q.F=fOf(q); }   // shown as the liver model gives them
     q.events=normalizeEvents(q.events, q);
+    q.lv=normalizeLevels(q.lv);
     return q;
   }
   // Whether a setting means anything for a scenario (F only orally, τ only for a regular regimen, …).
@@ -179,6 +200,7 @@
     if(k==="tau"||k==="nDoses"||k==="loadMult"||k==="missed") return s.dosing==="repeated";
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
+    if(k==="lv") return s.pm==="clinical" && s.kin!=="mm" && s.cmt!==2;
     if(k==="clFn") return s.pm!=="clinical" && !hepOn(s);
     if(k==="thalf") return s.kin!=="mm" && !hepOn(s);
     if(k==="vmax"||k==="km") return s.kin==="mm";
@@ -189,7 +211,7 @@
     return true;
   }
   // Equality that understands schedules (plain === would compare array identity).
-  const sameSetting=(k,a,b)=> k==="events" ? eventsKey(a.events)===eventsKey(b.events) : a[k]===b[k];
+  const sameSetting=(k,a,b)=> k==="events" ? eventsKey(a.events)===eventsKey(b.events) : k==="lv" ? levelsKey(a.lv)===levelsKey(b.lv) : a[k]===b[k];
 
   /* ================= CLINICAL PATIENT ================= */
   // Cockcroft–Gault creatinine clearance (mL/min): (140 − age) × weight / (72 × SCr), × 0.85 for women.
@@ -244,7 +266,8 @@
     if(from.id===to.id) return cloneScenario(p);
     const r=from.toMgL/to.toMgL;
     // saturable elimination: Vmax (an amount rate) and Km (a concentration) scale with the amounts and levels
-    return Object.assign(cloneScenario(p), {unit:to.id, S:(p.S==null ? 1 : p.S)*r, ec50:p.ec50*r, vmax:p.vmax*r, km:p.km*r});
+    return Object.assign(cloneScenario(p), {unit:to.id, S:(p.S==null ? 1 : p.S)*r, ec50:p.ec50*r, vmax:p.vmax*r, km:p.km*r,
+      lv:(p.lv||[]).map(l=>({n:l.n, dt:l.dt, c:l.c*r}))});
   }
 
   /* ================= PK ENGINE ================= */
@@ -1269,7 +1292,7 @@
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
   // its id, title, summary, group and scenarios, which is all the lists and links need.
-  let lessonMod=null;
+  let lessonMod=null, bayesMod=null;
   function attachLessons(m){ lessonMod=m; LESSONS.forEach(L=> Object.assign(L, m[L.id])); }
   const lessonsFull=()=>{ if(!lessonMod && typeof require==="function") attachLessons(require("./pk-lessons.js")); return LESSONS; };
   // Grouped order: "Next lesson" and the numbering follow it.
@@ -1333,7 +1356,8 @@
   const usesV3=p=> p.dosing==="custom" && p.events.some(e=>needsRoute(p,e));
   function encodeScenario(p){
     // with the liver model the half-life and F are derived from it, so a link carries only the model's settings
-    const parts=PK_KEYS.filter(k=>k!=="events" && p[k]!==DEFAULTS[k] && !(hepOn(p) && (k==="thalf"||k==="F"))).map(k=>k+":"+p[k]);
+    const parts=PK_KEYS.filter(k=>k!=="events" && k!=="lv" && p[k]!==DEFAULTS[k] && !(hepOn(p) && (k==="thalf"||k==="F"))).map(k=>k+":"+p[k]);
+    if(p.lv && p.lv.length) parts.push("lv:"+levelsKey(p.lv));
     if(p.dosing==="custom" && p.events.length)
       parts.push("ev:"+p.events.map(e=>`${e.t}@${e.mg}${needsRoute(p,e) ? routeCode(e) : ""}${flags(e)}`).join(";"));
     return parts.join(",");
@@ -1360,6 +1384,7 @@
       if(i<1) return;
       const k=pair.slice(0,i), raw=pair.slice(i+1);
       if(k==="ev"){ p.events=decodeEvents(raw); return; }
+      if(k==="lv"){ p.lv=decodeLevels(raw); return; }
       if(!PK_KEYS.includes(k) || k==="events") return;
       if(typeof DEFAULTS[k]==="string"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
@@ -1400,11 +1425,12 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV8=scen.some(p=>p.lv && p.lv.length>0);
     const usesV7=scen.some(p=>V7_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1807,10 +1833,13 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
-    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc, hepOn, wellStirred, fOf,
+    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc, hepOn, wellStirred, fOf, LEVEL_LIMITS, normalizeLevels, levelsKey,
     DRUGS, TEMPLATES, LESSON_GROUPS, lessonStats, lessonCheck, lessonScenario, challengeMet,
     get LESSONS(){ return lessonsFull(); },
     get lessonModule(){ return lessonMod; }, set lessonModule(v){ attachLessons(v); },
+    // Bayesian individualization (pk-bayes.js): loaded by the page when needed, required on first use in Node
+    get bayes(){ if(!bayesMod && typeof require==="function") bayesMod=require("./pk-bayes.js"); return bayesMod; },
+    get bayesModule(){ return bayesMod; }, set bayesModule(v){ bayesMod=v; },
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,

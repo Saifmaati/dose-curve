@@ -69,6 +69,7 @@
       <li>the Cockcroft–Gault and Devine hand values</li>
       <li>the time above a target effect across bolus jumps, in closed form</li>
     </ul></li>
+  <li><b>Bayesian individualization (MAP).</b> 20 scenarios with one to three measured levels (every route, single, repeated, loading and missed-dose regimens, normal and reduced kidney function, different prior CVs). The reference minimises the same objective, the squared standardised residuals plus the log-normal prior terms, with SciPy's Nelder–Mead on the ODE solver's predictions. The estimated clearance and volume must agree within 0.5%.</li>
   <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
 <p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
@@ -78,19 +79,25 @@
 <thead><tr><th scope="col">Scenario</th><th scope="col">Peak (ref)</th><th scope="col">Peak Δ</th><th scope="col">Trough (ref)</th><th scope="col">Trough Δ</th><th scope="col">AUC (ref)</th><th scope="col">AUC Δ</th><th scope="col">In window (ref)</th><th scope="col">Δ pp</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
+<h2>Bayesian estimates (MAP)</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, DoseCurve's, and the difference.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Levels</th><th scope="col">CL prior (L/h)</th><th scope="col">CL MAP (ref)</th><th scope="col">CL Δ</th><th scope="col">V prior (L)</th><th scope="col">V MAP (ref)</th><th scope="col">V Δ</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
 <h2>How to reproduce</h2>
 <pre tabindex="0" aria-label="Commands to reproduce">node --test tests/                      # the engine, the cases and this comparison (Node 20, no dependencies)
 python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=cacb2a4f03"></script>
+<script src="pk-engine.js?v=d2db593e31"></script>
+<script src="pk-bayes.js?v=49979aea6b"></script>
 <script>
 (function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
-  fetch("validation/reference-results.json?v=22dc7c5cbb").then(r=>r.json()).then(async REF=>{
+  fetch("validation/reference-results.json?v=e5667e9156").then(r=>r.json()).then(async REF=>{
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
@@ -111,10 +118,21 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
     }
     document.querySelector("#tbl tbody").innerHTML=rows.join("");
+    // the Bayesian (MAP) estimates: clearance and volume against the reference
+    let mapPass=0, mapTotal=0, mapWorst=0;
+    const mapRows=(REF.map ? REF.map.scenarios : []).map(s=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), e=PK.bayes.estimate(p, p.lv, s.opts), r=s.reference;
+      const dCL=pct(e.CL,r.CL), dV=pct(e.V,r.V), ok=[dCL,dV].every(d=>Math.abs(d)<=100*REF.map.tolerance);
+      [dCL,dV].forEach(d=>{ mapTotal++; if(Math.abs(d)<=100*REF.map.tolerance) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.id)}</td><td>${p.lv.length}</td><td>${f(r.priorCL,3)}</td><td>${f(r.CL,3)}</td><td>${fd(dCL)}</td><td>${f(r.priorV,2)}</td><td>${f(r.V,2)}</td><td>${fd(dV)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    });
+    document.querySelector("#mapTbl tbody").innerHTML=mapRows.join("");
+    pass+=mapPass; total+=mapTotal;
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
       `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
-      `<div>${REF.scenarios.length} scenarios × 4 numbers. Largest difference: ${small(worst.rel)}% (peak, trough or AUC) and ${small(worst.pp)} percentage points (time in window).</div>`+
+      `<div>${REF.scenarios.length} scenarios × 4 numbers, and ${mapTotal/2} Bayesian estimates × 2 (clearance and volume). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
       `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
 })();

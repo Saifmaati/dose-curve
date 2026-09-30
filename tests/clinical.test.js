@@ -201,7 +201,8 @@ test("v5 links carry the clinical patient and units; everything else keeps its o
   // a drug with its own units round-trips exactly, and so does its curve
   const dig=drugP("dig"), st=PK.decodeLink(PK.encodeLink({mode:"sim", s:dig, view:Object.assign({},V,{duration:336})}));
   assert.equal(st.view.duration, 336);
-  PK.PK_KEYS.filter(k=>k!=="events").forEach(k=> assert.equal(st.s[k], dig[k], k));
+  PK.PK_KEYS.filter(k=>k!=="events" && k!=="lv").forEach(k=> assert.equal(st.s[k], dig[k], k));
+  assert.deepEqual(st.s.lv, dig.lv, "measured levels (none)");
   const li=drugP("li"); assert.equal(PK.decodeLink(PK.encodeLink({mode:"sim", s:li, view:V})).s.S, li.S);
   // wider ranges need v5 too: an older page would clamp them
   ["thalf:30","V:200","wt:150"].forEach(kv=>{

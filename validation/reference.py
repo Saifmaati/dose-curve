@@ -191,7 +191,88 @@ def matrix():
         out.append({"id": f"{dname}-mixed-custom-effect", "drug": dname, "route": "mixed", "regimen": "custom", "patient": "reduced", "site": "effect", "scenario": p})
     return out
 
+# ---------------- Bayesian (MAP) individualization ----------------
+# Written from the method's statement in pk-bayes.js, not translated from it: the prior is log-normal around the
+# patient model's CL and V (omega = sqrt(ln(1 + CV^2))), each level has error SD sqrt((prop*c)^2 + add^2), and the
+# estimate minimises sum(((c - pred) / sd)^2) + (eta_CL / omega_CL)^2 + (eta_V / omega_V)^2, with predictions from
+# the ODE solver above and scipy's Nelder-Mead (restarted until it stops moving).
+from scipy.optimize import minimize
+
+def dose_times(p):
+    return [t for t, *_ in doses(p)]
+
+def model_cl_v(p):
+    V = p["V"] * p["wt"] / 70.0
+    return math.log(2) / p["thalf"] * factor(p) * V, V
+
+def level_conc(p, CL, V, times):
+    q = dict(p); q["V"] = V * 70.0 / p["wt"]; q["thalf"] = math.log(2) * V / CL * factor(p)
+    conc, _, _, _ = simulate(q)
+    return [conc(t) for t in times]
+
+def map_estimate(p, levels, opts):
+    CL0, V0 = model_cl_v(p)
+    w = lambda cv: math.sqrt(math.log(1 + (cv / 100.0) ** 2))
+    wCL, wV = w(opts["cvCL"]), w(opts["cvV"])
+    dt = dose_times(p)
+    times = [dt[l["n"] - 1] + l["dt"] for l in levels]
+    ys = [l["c"] for l in levels]
+    sds = [math.sqrt((opts["prop"] * y) ** 2 + opts["add"] ** 2) for y in ys]
+    def ofv(x):
+        f = level_conc(p, math.exp(x[0]), math.exp(x[1]), times)
+        return sum(((y - fi) / sd) ** 2 for y, fi, sd in zip(ys, f, sds)) + ((x[0] - math.log(CL0)) / wCL) ** 2 + ((x[1] - math.log(V0)) / wV) ** 2
+    x = np.array([math.log(CL0), math.log(V0)])
+    for _ in range(4):
+        r = minimize(ofv, x, method="Nelder-Mead", options={"xatol": 1e-9, "fatol": 1e-12, "maxiter": 4000})
+        if np.max(np.abs(r.x - x)) < 1e-8: x = r.x; break
+        x = r.x
+    return {"CL": math.exp(x[0]), "V": math.exp(x[1]), "ofv": float(ofv(x)), "priorCL": CL0, "priorV": V0}
+
+def map_matrix():
+    """20 scenarios: routes, single and repeated dosing, normal and reduced kidney function, one to three levels,
+    each level drawn from a 'true' patient (the model's CL and V times the factors below) and perturbed by a fixed
+    measurement error, then rounded to 0.01."""
+    out = []
+    base = {"linear": DRUGS["linear"], "salt": DRUGS["salt"]}
+    specs = [
+        # (drug, route, regimen, patient, true CL x, true V x, levels as (dose number, hours after), errors, prior CVs, MEC)
+        ("linear", "iv", "single", "normal", 0.7, 1.2, [(1, 2), (1, 8)], [0.05, -0.04], (30, 20), 2.0),
+        ("linear", "iv", "repeated", "normal", 1.4, 0.9, [(5, 1)], [0.03], (30, 20), 2.0),
+        ("linear", "iv", "repeated", "reduced", 0.8, 1.1, [(4, 0.5), (4, 11)], [-0.05, 0.06], (30, 20), 1.0),
+        ("linear", "inf", "repeated", "normal", 0.6, 1.3, [(3, 1.5), (3, 11.5)], [0.02, 0.02], (30, 20), 4.0),
+        ("linear", "inf", "repeated", "reduced", 1.3, 0.8, [(6, 11.9)], [0.0], (30, 20), 4.0),
+        ("linear", "oral", "single", "normal", 0.9, 1.1, [(1, 2), (1, 6), (1, 12)], [0.04, -0.03, 0.05], (30, 20), 2.0),
+        ("linear", "oral", "repeated", "normal", 1.2, 1.0, [(4, 11.5)], [-0.02], (30, 20), 2.0),
+        ("linear", "oral", "repeated", "reduced", 0.75, 0.85, [(5, 3), (7, 11)], [0.05, 0.05], (50, 30), 2.0),
+        ("linear", "iv", "repeated", "normal", 1.0, 1.0, [(2, 6)], [0.1], (10, 10), 2.0),
+        ("linear", "inf", "single", "normal", 1.6, 1.4, [(1, 1.5), (1, 5)], [0.0, -0.02], (30, 20), 2.0),
+        ("salt", "iv", "single", "normal", 0.8, 0.9, [(1, 1), (1, 10)], [-0.03, 0.07], (30, 20), 1.0),
+        ("salt", "oral", "repeated", "reduced", 1.1, 1.2, [(6, 2), (6, 11.5)], [0.02, -0.05], (30, 20), 1.0),
+        ("salt", "inf", "repeated", "normal", 0.9, 0.7, [(3, 1.2)], [0.04], (40, 25), 3.0),
+        ("salt", "iv", "repeated", "reduced", 0.65, 1.0, [(2, 0.25), (2, 11.75), (5, 6)], [0.01, -0.01, 0.02], (30, 20), 1.0),
+        ("linear", "iv", "loading", "normal", 1.25, 1.15, [(1, 4), (3, 11)], [-0.04, 0.03], (30, 20), 2.0),
+        ("linear", "oral", "loading", "reduced", 0.85, 0.95, [(2, 10)], [0.06], (30, 20), 2.0),
+        ("linear", "inf", "missed", "normal", 1.0, 1.3, [(4, 2), (4, 11)], [0.0, 0.08], (30, 20), 3.0),
+        ("linear", "iv", "missed", "reduced", 0.7, 0.8, [(2, 3), (4, 1)], [-0.06, 0.04], (30, 20), 1.0),
+        ("salt", "oral", "single", "reduced", 1.3, 1.25, [(1, 4), (1, 24)], [0.03, -0.03], (30, 20), 1.0),
+        ("linear", "inf", "repeated", "reduced", 0.55, 1.2, [(5, 1.1), (5, 6), (5, 11.9)], [0.02, -0.02, 0.03], (30, 20), 4.0),
+    ]
+    for i, (dname, route, rname, pname, fcl, fv, lv, errs, cvs, mec) in enumerate(specs):
+        p = dict(base[dname]); p.update(PATIENTS[pname]); p.update(regimens(route, DOSE[dname])[rname])
+        CL0, V0 = model_cl_v(p)
+        dt = dose_times(p)
+        true_c = level_conc(p, CL0 * fcl, V0 * fv, [dt[n - 1] + h for n, h in lv])
+        levels = [{"n": n, "dt": h, "c": round(c * (1 + e), 2)} for (n, h), c, e in zip(lv, true_c, errs)]
+        p["lv"] = levels
+        opts = {"cvCL": cvs[0], "cvV": cvs[1], "prop": 0.10, "add": mec / 10.0, "mec": mec}
+        out.append({"id": f"map-{i+1:02d}-{dname}-{route}-{rname}-{pname}", "scenario": p, "opts": opts, "truth": {"CLx": fcl, "Vx": fv}})
+    return out
+
 def main():
+    maps = []
+    for s in map_matrix():
+        m = map_estimate(s["scenario"], s["scenario"]["lv"], s["opts"])
+        maps.append(dict(s, reference=m))
     rows = []
     for s in matrix():
         m = metrics(s["scenario"])
@@ -206,10 +287,12 @@ def main():
         "metrics": {"peak": "highest concentration in 0-96 h", "trough": "concentration just before the next dose would be due (repeated) or at 96 h",
                     "auc": "area under the curve 0-96 h", "tin_pct": "% of 0-96 h between MEC 4 and MTC 12"},
         "scenarios": rows,
+        "map": {"about": "Bayesian (MAP) estimates of CL (L/h) and V (L) for 20 scenarios with measured levels (scipy Nelder-Mead on ODE predictions).",
+                "tolerance": 0.005, "scenarios": maps},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:
         json.dump(doc, f, indent=1)
-    print(f"{len(rows)} scenarios written")
+    print(f"{len(rows)} scenarios and {len(maps)} MAP scenarios written")
 
 if __name__ == "__main__":
     main()

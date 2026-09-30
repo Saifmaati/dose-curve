@@ -6216,5 +6216,1060 @@
    },
    "nonlinear": false
   }
- ]
+ ],
+ "map": {
+  "about": "Bayesian (MAP) estimates of CL (L/h) and V (L) for 20 scenarios with measured levels (scipy Nelder-Mead on ODE predictions).",
+  "tolerance": 0.005,
+  "scenarios": [
+   {
+    "id": "map-01-linear-iv-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 2,
+       "c": 7.65
+      },
+      {
+       "n": 1,
+       "dt": 8,
+       "c": 4.67
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.7,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 3.9414320722272276,
+     "V": 42.21192990531595,
+     "ofv": 0.5651910874734886,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-02-linear-iv-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 1,
+       "c": 10.81
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.4,
+     "Vx": 0.9
+    },
+    "reference": {
+     "CL": 5.107662642119378,
+     "V": 41.4859558978035,
+     "ofv": 0.19367739790946276,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-03-linear-iv-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 0.5,
+       "c": 22.71
+      },
+      {
+       "n": 4,
+       "dt": 11,
+       "c": 17.05
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.8,
+     "Vx": 1.1
+    },
+    "reference": {
+     "CL": 1.436194779090464,
+     "V": 37.39954106743852,
+     "ofv": 1.3990199207980611,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-04-linear-inf-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 3,
+       "dt": 1.5,
+       "c": 13.43
+      },
+      {
+       "n": 3,
+       "dt": 11.5,
+       "c": 7.88
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 0.6,
+     "Vx": 1.3
+    },
+    "reference": {
+     "CL": 2.937286105991081,
+     "V": 44.55879687559279,
+     "ofv": 3.383901031557187,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-05-linear-inf-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 6,
+       "dt": 11.9,
+       "c": 8.74
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 1.3,
+     "Vx": 0.8
+    },
+    "reference": {
+     "CL": 2.4068002518590563,
+     "V": 32.89537208557359,
+     "ofv": 1.1713782650933096,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-06-linear-oral-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 2,
+       "c": 5.78
+      },
+      {
+       "n": 1,
+       "dt": 6,
+       "c": 4.4
+      },
+      {
+       "n": 1,
+       "dt": 12,
+       "c": 2.71
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.9,
+     "Vx": 1.1
+    },
+    "reference": {
+     "CL": 4.15821184971581,
+     "V": 42.5973944838919,
+     "ofv": 0.5839037273414486,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-07-linear-oral-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 11.5,
+       "c": 2.28
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.2,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 5.46154897213371,
+     "V": 38.639977087285985,
+     "ofv": 0.3736920750414652,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-08-linear-oral-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 3,
+       "c": 22.71
+      },
+      {
+       "n": 7,
+       "dt": 11,
+       "c": 16.9
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 50,
+     "cvV": 30,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.75,
+     "Vx": 0.85
+    },
+    "reference": {
+     "CL": 1.2748393463134708,
+     "V": 30.720839752656858,
+     "ofv": 0.7707426131956918,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-09-linear-iv-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 6,
+       "c": 6.87
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 10,
+     "cvV": 10,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.0,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 4.427469337771883,
+     "V": 39.89856739195105,
+     "ofv": 0.4349965557977619,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-10-linear-inf-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 1.5,
+       "c": 6.26
+      },
+      {
+       "n": 1,
+       "dt": 5,
+       "c": 3.87
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.6,
+     "Vx": 1.4
+    },
+    "reference": {
+     "CL": 6.926488379964735,
+     "V": 53.312405673032,
+     "ofv": 4.7834310180083275,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-11-salt-iv-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 450.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 1,
+       "c": 12.08
+      },
+      {
+       "n": 1,
+       "dt": 10,
+       "c": 7.19
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.8,
+     "Vx": 0.9
+    },
+    "reference": {
+     "CL": 1.776528941492317,
+     "V": 27.976446042485854,
+     "ofv": 1.1867668203330466,
+     "priorCL": 2.3104906018664844,
+     "priorV": 30.0
+    }
+   },
+   {
+    "id": "map-12-salt-oral-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 6,
+       "dt": 2,
+       "c": 36.12
+      },
+      {
+       "n": 6,
+       "dt": 11.5,
+       "c": 30.36
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 1.1,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 0.7002705299655442,
+     "V": 26.35555107378821,
+     "ofv": 0.5225347228257946,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-13-salt-inf-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 3,
+       "dt": 1.2,
+       "c": 23.26
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 40,
+     "cvV": 25,
+     "prop": 0.1,
+     "add": 0.3,
+     "mec": 3.0
+    },
+    "truth": {
+     "CLx": 0.9,
+     "Vx": 0.7
+    },
+    "reference": {
+     "CL": 1.6956505057280045,
+     "V": 25.82368471704578,
+     "ofv": 1.2489370329336578,
+     "priorCL": 2.3104906018664844,
+     "priorV": 30.0
+    }
+   },
+   {
+    "id": "map-14-salt-iv-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 0.25,
+       "c": 25.91
+      },
+      {
+       "n": 2,
+       "dt": 11.75,
+       "c": 21.47
+      },
+      {
+       "n": 5,
+       "dt": 6,
+       "c": 47.49
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.65,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 0.45607776422450913,
+     "V": 24.295235927879585,
+     "ofv": 1.2256897584940916,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-15-linear-iv-loading-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "loadMult": 2,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 4,
+       "c": 10.1
+      },
+      {
+       "n": 3,
+       "dt": 11,
+       "c": 2.97
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.25,
+     "Vx": 1.15
+    },
+    "reference": {
+     "CL": 5.667663843192125,
+     "V": 45.44366275334,
+     "ofv": 1.2281676263934092,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-16-linear-oral-loading-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "loadMult": 2,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 10,
+       "c": 14.73
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.85,
+     "Vx": 0.95
+    },
+    "reference": {
+     "CL": 1.458941621103672,
+     "V": 32.888909993209694,
+     "ofv": 0.6250985240108564,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-17-linear-inf-missed-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "missed": 3,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 2,
+       "c": 9.42
+      },
+      {
+       "n": 4,
+       "dt": 11,
+       "c": 4.57
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.3,
+     "mec": 3.0
+    },
+    "truth": {
+     "CLx": 1.0,
+     "Vx": 1.3
+    },
+    "reference": {
+     "CL": 4.413769387487735,
+     "V": 47.41457956812527,
+     "ofv": 1.3551563288643906,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-18-linear-iv-missed-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "missed": 3,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 3,
+       "c": 18.9
+      },
+      {
+       "n": 4,
+       "dt": 1,
+       "c": 27.36
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.7,
+     "Vx": 0.8
+    },
+    "reference": {
+     "CL": 1.2737688750924463,
+     "V": 29.66000788713555,
+     "ofv": 2.5543802080654956,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-19-salt-oral-single-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 450.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 4,
+       "c": 9.35
+      },
+      {
+       "n": 1,
+       "dt": 24,
+       "c": 6.13
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 1.3,
+     "Vx": 1.25
+    },
+    "reference": {
+     "CL": 0.75642446420171,
+     "V": 30.469366716450686,
+     "ofv": 1.8852412864290202,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-20-linear-inf-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 1.1,
+       "c": 29.92
+      },
+      {
+       "n": 5,
+       "dt": 6,
+       "c": 25.59
+      },
+      {
+       "n": 5,
+       "dt": 11.9,
+       "c": 23.37
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 0.55,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 1.1192701755098171,
+     "V": 34.24375477617336,
+     "ofv": 3.2737464877177023,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   }
+  ]
+ }
 }
