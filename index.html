@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ?embed: the compact view for an iframe (set before first paint, so the landing section never flashes) -->
+<script>if(/[?&]embed(?:[=&]|$)/.test(location.search)) document.documentElement.classList.add("embed");</script>
 <title>DoseCurve — Interactive PK/PD Lab</title>
 <meta name="description" content="Interactive pharmacokinetics lab: compare two regimens side by side or against a baseline, model loading and missed doses or build a custom dose schedule, watch accumulation toward steady state, share any scenario as a link, and see how concentration turns into effect (PK/PD), and learn through 20 guided lessons plus practice problems. Built for pharmacy students and educators.">
 <link rel="canonical" href="https://saifmaati.github.io/dose-curve/">
@@ -757,6 +759,17 @@
     .sc-reset{padding:6px 11px;font-size:12px}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  /* embed mode (?embed): just the app, with the disclaimer and a way out to the full page */
+  .embed-bar{display:none}
+  html.embed .top,html.embed .hero,html.embed .foot,html.embed #quickStart,html.embed #sharedPill{display:none !important}
+  html.embed .wrap{padding-top:10px}
+  html.embed .embed-bar{display:flex;align-items:center;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;margin:0 0 10px;
+    font-size:12px;color:var(--muted)}
+  .embed-title{display:inline;margin:0;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:700}
+  .embed-bar a{color:var(--cyan);text-underline-offset:3px}
+  /* in a narrow frame the layout stacks: put the chart first, the controls under it */
+  @media (max-width:960px){ html.embed .grid>.panel:not(.controls){order:-1} }
+  .embed-bar a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px}
 </style>
 </head>
 <body data-mode="sim">
@@ -779,6 +792,7 @@
   </header>
 
   <main id="main">
+  <div class="embed-bar"><span><h1 class="embed-title">DoseCurve</h1> · educational model, not for clinical dosing</span><a id="embedOpen" href="./" target="_blank" rel="noopener">Open in DoseCurve ↗</a></div>
   <section class="hero">
     <div class="eyebrow">Interactive PK/PD Lab</div>
     <h1>Watch a dose move through <span class="grad">the body, in real time.</span></h1>
@@ -897,6 +911,7 @@
               <button class="abtn" id="csvBtn" title="Concentrations (and effect, when shown) over the full time window, even when the chart is zoomed">↓ CSV data</button>
               <button class="abtn" id="pngBtn">↓ PNG image</button>
               <button class="abtn" id="linkBtn">⧉ Copy link</button>
+              <button class="abtn" id="embedBtn" title="An iframe snippet for a course page or website, showing this scenario">&lt;/&gt; Embed code</button>
               <button class="abtn" id="libBtn" aria-haspopup="dialog">▤ Library</button>
             </div>
             <p class="lib-note sim-only">A baseline freezes the current curve, so every change after it is compared and explained. Loading a lesson replaces it.</p>
@@ -1251,8 +1266,9 @@
       <p class="eq">The model is checked by an automated test suite (tests/pk-engine.test.js): closed-form one-compartment results, regimen edge cases, the share-link format, the concentration–effect model, every quantitative claim the lessons make, and every practice answer.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
+        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new" target="_blank" rel="noopener">Report an issue</a>
-        <span>Updated 28 September 2026</span>
+        <span>Updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -3750,8 +3766,9 @@
       lesson:lesson?lesson.id:"", view};
   }
   // Puts a link in the address bar (so a reload reopens it) and on the clipboard.
+  const pageUrl=()=> location.origin+location.pathname;   // the full page, without ?embed or anything else in the query
   function copyHash(hash){
-    const url=location.href.split("#")[0]+"#"+hash;
+    const url=pageUrl()+"#"+hash;
     history.replaceState(null,"","#"+hash);
     const fallback=()=>window.prompt("Copy this link:", url);
     if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(url).then(()=>toast("Link copied"), fallback);
@@ -3761,6 +3778,16 @@
     byId("sharedPill").hidden=true;
     copyHash(PK.encodeLink(linkState()));
   }
+  // An iframe for a course page or website: the compact embed view of this scenario.
+  byId("embedBtn").addEventListener("click",()=>{
+    const src=`${pageUrl()}?embed#${PK.encodeLink(linkState())}`;
+    const code=`<iframe src="${src}" title="DoseCurve simulation" width="100%" height="780" style="border:0;border-radius:12px" loading="lazy"></iframe>`;
+    const fallback=()=>window.prompt("Copy this embed code:", code);
+    if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code).then(()=>toast("Embed code copied"), fallback);
+    else fallback();
+  });
+  // In the embed view, "Open in DoseCurve" takes the scenario as it is now to the full page.
+  byId("embedOpen").addEventListener("click",()=>{ byId("embedOpen").href=pageUrl()+"#"+PK.encodeLink(linkState()); });
   // A problem or data-set link stays in the address bar only while that problem or data set is open.
   const clearTaskHash=()=>{ if(PK.decodeTaskLink(location.hash)) history.replaceState(null,"",location.pathname+location.search); };
   // Puts a decoded link state on screen, replacing whatever was there: a share link at start-up, or a

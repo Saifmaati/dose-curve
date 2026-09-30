@@ -10,7 +10,7 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 
 - **Simulate** oral, IV bolus and IV infusion dosing: single, repeated (with loading and missed doses), or a **custom schedule** where every dose has its own time, amount and route, each infusion its own duration, and any dose can be marked missed. Mix routes freely: a loading bolus with a continuous infusion, overlapping infusions, or IV then oral. Drag a dose along the timeline (or step it ±0.5 h) to reschedule it, with Undo.
 - **Compare against a baseline:** freeze a curve, change anything, and get a plain-English explanation of what moved and why, plus a metrics table.
-- **Compare two scenarios side by side:** edit Scenario A and B independently, lock everything but one setting ("Vary only"), or start from six one-click comparisons such as once vs twice daily.
+- **Compare two scenarios side by side:** edit Scenario A and B independently, lock everything but one setting ("Vary only"), or start from 14 one-click comparisons such as once vs twice daily.
 - **Watch steady state build up:** peak and trough for every dose, accumulation, and how long 90% of steady state takes.
 - **See the math:** select any readout (Cmax, tmax, half-life, clearance, AUC, peak and trough, accumulation, time to steady state…) to see its formula worked through with the scenario's own numbers, updating as you move the sliders. Readouts that can only be found by sampling the curve (time in window, a custom schedule's peak) say so. The tests hold each formula's result to the simulation's.
 - **Inspect any moment:** drag a cursor across the chart (or focus it and use the arrow keys) to read the concentration, window status, whether it's rising or falling, and the last dose given; jump between doses, peaks and troughs, or play the curve at 1×, 2× or 4×.
@@ -22,9 +22,12 @@ An interactive pharmacokinetics lab for exploring how drug, patient and regimen 
 - **Hit the window:** a made-up drug and a concentration window. Choose a dose and a dosing interval so that, at steady state, the trough stays at or above the lower limit and the peak at or below the upper one, with a live verdict and a textbook route (the swing e^(kₑτ) has to fit the band). Every task is built around a regimen on the sliders' steps, so it can always be met.
 - **Worksheets:** make a set of 5, 10 or 15 problems from one topic or all of them, work it on screen with an answers toggle, or print it (black on white, with a worked answer key on its own page). Its link (`#ws=topic.count.seed`) rebuilds the same sheet.
 - **Fit the data:** get a set of measured concentrations after an IV bolus or an oral dose (made by the model with about 5% measurement scatter) and move the half-life and volume until the curve runs through them, with a live fit error. A "how to estimate" panel works the same numbers out by hand: the log-linear slope and intercept for an IV bolus, and the terminal slope plus the area under the points for an oral dose.
+- **Embed** a scenario in a course page: **Embed code** copies an iframe snippet that opens a compact view (chart first in a narrow column), keeping the educational-use note and an "Open in DoseCurve" link.
 - **Share** any scenario or comparison as a link, and export the chart as PNG or the curves as CSV. A practice problem or a fit-the-data set has its own link too (`#p=kind.seed`, `#fit=iv.seed`), which rebuilds exactly the same numbers, so a whole class can work the same one.
 - **Use it offline:** after one visit a service worker keeps a copy of the app, so it opens without a connection (in a classroom or on a phone). Online, the page always comes from the network first, so updates show up at once.
 - **Save** setups in a local scenario library: save, update, rename, duplicate, delete, and export or import them as JSON. Saved scenarios and your progress stay in your browser (`localStorage`) unless you export or share them.
+
+Teaching with it? See the [teaching guide](docs/teaching-guide.md): lecture demos, lesson sequences, practice and worksheets, the estimation and regimen-design tasks, embedding, and what the model leaves out.
 
 ## How it's built
 
