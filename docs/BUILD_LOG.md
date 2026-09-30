@@ -36,3 +36,5 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 03:30 | 1.4 | Validation page checks run a dozen at a time with progress (longest task 295 → 57 ms) | done | 1953391 |
 | 2026-09-30 03:34 | 1.4 | Case 10, gentamicin after burns from two levels (Sawchuk–Zaske); Zaske 1976 abstract read, Sawchuk and Zaske 1976 metadata verified; 360 px and axe clean | done | 7f755c9 |
 | 2026-09-30 03:35 | 1.4 | Glossary: three terms (47), formulas tested; version 1.4.0, cache v13, build report section 12 | done | b90c5f5, df44897 |
+| 2026-09-30 03:44 | 1.4.1 | Standing cross-check in the tests; fixed the IV-bolus dose table (off by one dose since 1.0) | done | c77fe4f |
+| 2026-09-30 03:45 | 1.4.1 | Version 1.4.1, cache v14, build report section 13 | done | 352aeaf |
