@@ -141,3 +141,17 @@ test("the vancomycin case compares its regimen with a two-compartment version of
   assert.ok(auc && auc[1]===auc[2], "the same AUC24 either way");
   assert.equal(PK.drugScenario(PK.DRUGS.find(d=>d.id==="vanc")).cmt, 1, "loading a drug starts from one compartment");
 });
+
+test("the glossary's formulas hold: residuals give back k10, k12 and k21 exactly; the infusion equation gives back V", ()=>{
+  [{V:14, thalf:2.39, k12:0.545, k21:0.545}, {V:25, thalf:4, k12:1.2, k21:0.3}, {V:9, thalf:1.5, k12:0.4, k21:0.9}].forEach(x=>{
+    const p=scenario(Object.assign({route:"iv", D:1000, cmt:2}, x)), q=PK.disposition(p), V1=PK.vOf(p);
+    const a=q[0].k, b=q[1].k, A=1000*q[0].c, B=1000*q[1].c;
+    const k21=(A*b+B*a)/(A+B), k10=a*b/k21, k12=a+b-k21-k10;
+    rel(k21, x.k21, 1e-9); rel(k10, Math.LN2/x.thalf, 1e-9); rel(k12, x.k12, 1e-9); rel(1000/(A+B), V1, 1e-9);
+  });
+  // Sawchuk–Zaske on exact steady-state levels of a one-compartment infusion: k and V come back exactly
+  const p=PK.normalizeScenario(scenario({route:"inf", dosing:"repeated", D:200, tinf:0.5, tau:6, nDoses:20, V:27, thalf:1.6}));
+  const T=0.5, t1=1, t2=6-1e-9, C1=PK.ssConc(p,t1), C2=PK.ssConc(p,t2), k=Math.log(C1/C2)/(t2-t1);
+  const Cmax=C1*Math.exp(k*(t1-T)), Cmin=C2, V=(200/T)*(1-Math.exp(-k*T))/(k*(Cmax-Cmin*Math.exp(-k*T)));
+  rel(k, Math.LN2/1.6, 1e-9); rel(V, 27, 1e-9);
+});

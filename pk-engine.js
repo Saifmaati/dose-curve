@@ -320,9 +320,9 @@
 
   // The highest level in [t0, t1]: a grid that includes every dose and infusion end in the span (the kinks
   // where a peak can sit), then a golden-section search between the neighbours of the grid's highest point.
-  function peakIn(p, t0, t1, ev){
-    ev=ev||(p.kin==="mm" ? null : doseEvents(p));
-    const N=400, ts=[];
+  function peakIn(p, t0, t1, ev, N){
+    ev=ev||(p.kin==="mm" ? null : doseEvents(p)); N=N||400;
+    const ts=[];
     for(let i=0;i<=N;i++) ts.push(t0+(t1-t0)*i/N);
     (ev||doseEvents(p)).forEach(e=>{ [e.t, e.route==="inf" ? e.t+e.dur : null].forEach(t=>{ if(t!==null && t>t0 && t<t1) ts.push(t); }); });
     ts.sort((a,b)=>a-b);
@@ -390,7 +390,9 @@
   function windowStats(p, T, mec, mtc){
     const ev=doseEvents(p), N=600, pts=new Set(), jumps=new Set();
     for(let i=0;i<=N;i++) pts.add(T*i/N);
+    let endJump=false;   // a bolus exactly at the window's end adds nothing inside it: the end takes the level just before
     ev.forEach(e=>{
+      if(e.route==="iv" && Math.abs(e.t-T)<1e-9) endJump=true;
       if(e.t>0 && e.t<T){ pts.add(e.t); if(e.route==="iv") jumps.add(e.t); }
       if(e.route==="inf" && e.t+e.dur>0 && e.t+e.dur<T) pts.add(e.t+e.dur);
     });
@@ -410,7 +412,7 @@
     };
     let t0=ts[0], c0=conc(p,t0,ev), cmax=c0, tmax=t0, im=0, auc=0, tIn=0, tAbove=0;
     for(let i=1;i<ts.length;i++){
-      const t=ts[i], cR=conc(p,t,ev), cL=jumps.has(t) ? conc(p,t-1e-9,ev) : cR, dt=t-t0;
+      const t=ts[i], atEnd=endJump && i===ts.length-1, cL=jumps.has(t) || atEnd ? conc(p,t-1e-9,ev) : conc(p,t,ev), cR=atEnd ? cL : conc(p,t,ev), dt=t-t0;
       auc+=(c0+4*conc(p,t0+dt/2,ev)+cL)/6*dt;   // Simpson: every step is smooth (doses and infusion ends are grid points)
       tIn+=within(t0,c0,t,cL,mec,mtc);
       tAbove+=within(t0,c0,t,cL,mtc,Infinity)-(c0===cL ? (c0===mtc ? dt : 0) : 0);
@@ -469,19 +471,17 @@
     if(p.dosing!=="repeated") return null;
     if(p.kin==="mm") return mmProfile(p);
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
-    const peakTrough=(q,a,evq)=>{
-      let pk=0;
-      for(let j=0;j<=S;j++){ const c=conc(q,a+tau*j/S,evq); if(c>pk) pk=c; }
-      return [pk, conc(q,a+tau-1e-9,evq)];
-    };
+    // each interval's peak: a 60-point grid with its dose and infusion ends, refined between samples
+    const peakTrough=(q,a,evq)=> [peakIn(q, a, a+tau, evq, S)[0], conc(q,a+tau-1e-9,evq)];
     const rows=[];
     for(let i=0;i<p.nDoses;i++){
       const [peak,trough]=peakTrough(p,i*tau,ev);
       rows.push({n:i+1, peak, trough, missed:i+1===skip});
     }
-    // steady state in closed form: sample the interval, plus the exact peak of a bolus (s = 0) or an infusion (its end)
+    // steady state in closed form: sample the interval, plus the exact peak of a bolus (s = 0) or an infusion (its
+    // end), and the peak refined between samples
     const cand=[0]; if(p.route==="inf") cand.push(p.tinf%tau);
-    let ssPeak=0;
+    let ssPeak=ssPeakTrough(p).peak;
     for(let j=0;j<=S;j++) cand.push(tau*j/S);
     cand.forEach(s=>{ const c=ssConc(p,s); if(c>ssPeak) ssPeak=c; });
     const ssTrough=ssConc(p,tau-1e-9);
@@ -630,7 +630,7 @@
   function mmProfile(p){
     const ev=doseEvents(p), tau=p.tau, skip=missedOf(p), S=60, rows=[];
     for(let i=0;i<p.nDoses;i++){
-      let pk=0; for(let j=0;j<=S;j++){ const c=conc(p,i*tau+tau*j/S,ev); if(c>pk) pk=c; }
+      const pk=peakIn(p, i*tau, (i+1)*tau, null, S)[0];
       rows.push({n:i+1, peak:pk, trough:conc(p,(i+1)*tau-1e-9,ev), missed:i+1===skip});
     }
     const m=mmSteady(p), t90=mmT90(p);
@@ -887,6 +887,8 @@
     cg:{cite:"Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron. 1976;16(1):31–41.", url:"https://doi.org/10.1159/000180580"},
     devine:{cite:"Devine BJ. Gentamicin therapy. Drug Intell Clin Pharm. 1974;8(11):650–655 (in its “Clinical Pharmacy: Case Studies” section).", url:"https://doi.org/10.1177/106002807400801104"},
     rybak:{cite:"Rybak MJ, Le J, Lodise TP, et al. Therapeutic monitoring of vancomycin for serious methicillin-resistant Staphylococcus aureus infections: a revised consensus guideline and review by ASHP, IDSA, PIDS and SIDP. Am J Health Syst Pharm. 2020;77(11):835–864.", url:"https://doi.org/10.1093/ajhp/zxaa036"},
+    zaske1976:{cite:"Zaske DE, Sawchuk RJ, Gerding DN, Strate RG. Increased dosage requirements of gentamicin in burn patients. J Trauma. 1976;16(10):824–828.", url:"https://doi.org/10.1097/00005373-197610000-00014"},
+    sawchukZaske:{cite:"Sawchuk RJ, Zaske DE. Pharmacokinetics of dosing regimens which utilize multiple intravenous infusions: gentamicin in burn patients. J Pharmacokinet Biopharm. 1976;4(2):183–195.", url:"https://doi.org/10.1007/BF01086153"},
     nicolau:{cite:"Nicolau DP, Freeman CD, Belliveau PP, Nightingale CH, Ross JW, Quintiliani R. Experience with a once-daily aminoglycoside program administered to 2,184 adult patients. Antimicrob Agents Chemother. 1995;39(3):650–655.", url:"https://doi.org/10.1128/AAC.39.3.650"},
     sheinerTozer:{cite:"Sheiner LB, Tozer TN. Clinical pharmacokinetics: the use of plasma concentrations of drugs. In: Melmon KL, Morrelli HF, eds. Clinical Pharmacology: Basic Principles in Therapeutics. 2nd ed. Macmillan; 1978.", url:null},
     lanoxin:{cite:"LANOXIN (digoxin) tablets. Prescribing information, ADVANZ PHARMA. DailyMed.", url:DM+"d91e3646-4c63-4512-ab22-db39c085c4dc"},

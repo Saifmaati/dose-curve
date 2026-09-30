@@ -81,18 +81,22 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=14972673b8"></script>
+<script src="pk-engine.js?v=bc0bcd9939"></script>
 <script>
 (function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
-  fetch("validation/reference-results.json").then(r=>r.json()).then(REF=>{
+  fetch("validation/reference-results.json").then(r=>r.json()).then(async REF=>{
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
     document.getElementById("nScen").textContent=REF.scenarios.length;
-    REF.scenarios.forEach(s=>{
+    // a dozen scenarios at a time, handing the page back in between so it never stalls
+    const first=document.querySelector("#summary .big");
+    for(let i=0;i<REF.scenarios.length;i++){
+      if(i && i%12===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
+      const s=REF.scenarios[i];
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc);
       const m={peak:w.cmax, trough:PK.conc(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
       const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
@@ -102,7 +106,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       total++; if(Math.abs(d.tin)<=tpp) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
-    });
+    }
     document.querySelector("#tbl tbody").innerHTML=rows.join("");
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=

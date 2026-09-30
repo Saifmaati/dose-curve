@@ -7,9 +7,9 @@ A few steps need your accounts or your judgment. Each one says why it wasn't don
 **Why:** this machine has no git push credentials and no authenticated `gh`, so a tag can't be pushed from here.
 
 1. Open https://github.com/Saifmaati/dose-curve/releases/new.
-2. Under **Choose a tag**, type `v1.3.0` and choose **Create new tag: v1.3.0 on publish**, with target `main`.
-3. Title: `DoseCurve 1.3.0`.
-4. Paste the sections of `CHANGELOG.md` from "1.3.0" down to "1.0.0" as the description. To tag earlier versions separately, first create `v1.0.0` with target commit `c0a0f69`, `v1.1.0` with `a584978` and `v1.2.0` with `2d50c74`.
+2. Under **Choose a tag**, type `v1.4.0` and choose **Create new tag: v1.4.0 on publish**, with target `main`.
+3. Title: `DoseCurve 1.4.0`.
+4. Paste the sections of `CHANGELOG.md` from "1.4.0" down to "1.0.0" as the description. To tag earlier versions separately, first create `v1.0.0` with target commit `c0a0f69`, `v1.1.0` with `a584978`, `v1.2.0` with `2d50c74` and `v1.3.0` with `e178f31`.
 5. Click **Publish release**.
 
 ## 2. Mint a DOI on Zenodo

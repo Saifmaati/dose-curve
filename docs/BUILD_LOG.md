@@ -32,3 +32,7 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 03:14 | 1.3 | Practice: AUC from two levels and two-compartment clearance (32 kinds); worksheet links carry a pool version (1.2.0 sheets rebuilt exactly); problems moved to pk-practice.js (initial script +14.1%) | done | 944d59d |
 | 2026-09-30 03:16 | 1.3 | Validation page: the waiting summary has the result's shape (mobile Lighthouse 95 → 100); teaching guide counts | done | 73ad484, e03143e |
 | 2026-09-30 03:17 | 1.3 | Version 1.3.0, cache v12, build report section 11 | done | 9b34443 |
+| 2026-09-30 03:27 | 1.4 | Random-scenario cross-check against dense scans; fixed the dose-table and steady-state peaks (up to 3.7% low) and a bolus at the window's end; regression tests | done | 6ddef7a |
+| 2026-09-30 03:30 | 1.4 | Validation page checks run a dozen at a time with progress (longest task 295 → 57 ms) | done | 1953391 |
+| 2026-09-30 03:34 | 1.4 | Case 10, gentamicin after burns from two levels (Sawchuk–Zaske); Zaske 1976 abstract read, Sawchuk and Zaske 1976 metadata verified; 360 px and axe clean | done | 7f755c9 |
+| 2026-09-30 03:35 | 1.4 | Glossary: three terms (47), formulas tested; version 1.4.0, cache v13, build report section 12 | done | b90c5f5, df44897 |

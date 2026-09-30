@@ -167,3 +167,16 @@ Live check after merging (pull request #3, merge 2d50c74):
 
 There are now 265 tests in 10 files.
 
+Live check after merging (pull request #4, merge e178f31): the deployed files are byte-identical. In the browser: defaults unchanged, Version 1.3.0, the Practice tab loads its module only when opened, `pk-practice.js` is in the offline cache (dosecurve-v12), and the two-compartment fit link opens. Live Lighthouse: app mobile 97, validation page 96.
+
+## 12. 1.4.0
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Accuracy: the dose table's and steady-state peaks were refined (they were up to 3.7% low for sharp oral peaks); a bolus at the window's end now stays outside the window. Both were found by a random-scenario cross-check against dense scans | Dose table; readouts | `validation.test.js` (two regression tests) |
+| Validation page: checks run a dozen at a time with progress (longest task 295 → 57 ms) | validation.html | — |
+| Case 10, *Gentamicin after burns: individualizing from two levels* (Sawchuk–Zaske), citing Zaske et al. 1976 and Sawchuk and Zaske 1976 | Cases tab | `cases.test.js` (k and V recovered within 2%) |
+| Glossary: method of residuals, AUC from two levels, Sawchuk–Zaske method (47 terms), each formula tested | Lessons → Glossary | `twocmt.test.js` |
+
+There are now 269 tests in 10 files.
+

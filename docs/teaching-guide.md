@@ -73,9 +73,9 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone.
 
-The **glossary** under the lessons defines 44 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 47 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
-## Clinical cases (9)
+## Clinical cases (10)
 
 The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
 
@@ -88,6 +88,7 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | Case | Teaches |
 | --- | --- |
 | Gentamicin with reduced kidney function | Peak and trough targets; lengthening the interval as CrCl falls |
+| Gentamicin after burns: individualizing from two levels | The Sawchuk–Zaske approach: k from two levels, V from the infusion equation, then a new dose and interval; why levels matter when a patient clears the drug faster than creatinine predicts (Zaske et al. 1976) |
 | Gentamicin once daily | The Hartford approach (7 mg/kg, interval from CrCl bands) against conventional every-8-hour dosing |
 | Vancomycin to an AUC target | AUC24 400–600 mg·h/L (MIC 1 mg/L); a two-compartment version of the patient changes the peak but not the AUC24 |
 | Vancomycin: the AUC from two levels | The first-order two-level method (a post-distribution peak and a trough): k, the level at the end of the infusion, the area over one interval, then a proportional dose change; and why the peak waits for distribution |

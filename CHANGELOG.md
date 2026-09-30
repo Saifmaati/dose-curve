@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.4.0 (2026-09-30)
+
+- **Three glossary terms (47):** method of residuals, AUC from two levels, and the Sawchuk–Zaske method. Each formula they state is tested against the model.
+- **A tenth case, *Gentamicin after burns: individualizing from two levels*** (the Sawchuk–Zaske approach). On about 5 mg/kg a day, the patient's levels (3.6 mg/L after the infusion, 0.41 mg/L at 6 h) give his own k and V: a 1.6 h half-life against the 2.1 h Cockcroft–Gault predicts, and 27 L against 19.3 L. They lead to 220 mg every 6 h. The faster clearance and larger volume are the case's stated premise. The finding it teaches, short half-lives and low peaks in burn patients, with regimens individualized from levels, is from Zaske et al. (*J Trauma* 1976), and the method is cited to Sawchuk and Zaske (1976).
+- **Two accuracy fixes, found by cross-checking random scenarios against dense scans of the curve:**
+  - The dose table's peaks and the steady-state peak were read off 60 samples per interval, so a sharp oral peak could fall between them: up to 3.7% low with two compartments. Both are now refined between samples, as the last dose's peak has been since 1.1.0.
+  - A bolus landing exactly at the end of the window was counted inside it. It added a sliver of area (up to 0.04% of the AUC) and could make that instantaneous level the window's peak. The window now ends just before it.
+- The validation page runs its checks a dozen scenarios at a time, showing progress, so it never stalls the page (longest task 295 → 57 ms).
+
 ## 1.3.0 (2026-09-30)
 
 - **Two new practice kinds (32 in all):**
