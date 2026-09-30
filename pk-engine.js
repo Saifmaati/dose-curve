@@ -22,7 +22,7 @@
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model).
   const PD_KEYS=["e0","emax","ec50","hill"];
   // The patient (pm = patient mode): "simple" scales clearance by the organ-function slider (clFn); "clinical"
@@ -32,16 +32,17 @@
   // of active drug per unit of dose (lithium carbonate: mEq of lithium per mg). unit names the unit system.
   const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
-    pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg"});
+    pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
+    kin:"linear", vmax:7, km:4});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
-    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"]};
+    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
-    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1]};
+    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
-  const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit"];
+  const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km"];
   const V4_MAX={thalf:24, V:120, wt:120};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50};
@@ -161,6 +162,8 @@
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
     if(k==="clFn") return s.pm!=="clinical";
+    if(k==="thalf") return s.kin!=="mm";
+    if(k==="vmax"||k==="km") return s.kin==="mm";
     if(["age","sex","ht","scr","alb","wtm","fe"].includes(k)) return s.pm==="clinical";
     return true;
   }
@@ -200,12 +203,13 @@
     meq:{id:"meq", dose:"mg",  amount:"mEq", conc:"mEq/L", auc:"mEq·h/L", perKg:"mg/kg",  toMgL:6.94,  cdp:1}};
   const unitsOf=p=> UNITS[p && p.unit] || UNITS.mg;
   // The same scenario expressed in another unit system (for comparing A and B drawn in different units): every
-  // concentration, and the EC50, scale by the ratio of the two units; the curves are otherwise identical.
+  // concentration, and the EC50 (and Vmax and Km), scale by the ratio of the two units; the curves are otherwise identical.
   function convertUnits(p, unit){
     const from=unitsOf(p), to=UNITS[unit] || UNITS.mg;
     if(from.id===to.id) return cloneScenario(p);
     const r=from.toMgL/to.toMgL;
-    return Object.assign(cloneScenario(p), {unit:to.id, S:(p.S==null ? 1 : p.S)*r, ec50:p.ec50*r});
+    // saturable elimination: Vmax (an amount rate) and Km (a concentration) scale with the amounts and levels
+    return Object.assign(cloneScenario(p), {unit:to.id, S:(p.S==null ? 1 : p.S)*r, ec50:p.ec50*r, vmax:p.vmax*r, km:p.km*r});
   }
 
   /* ================= PK ENGINE ================= */
@@ -288,8 +292,9 @@
     return {n:ev.length, mg:ev.reduce((s,e)=>s+(e.route==="inf" ? e.mg*Math.min(1,(T-e.t)/e.dur) : e.mg),0)};
   }
 
-  // Superposition of every dose actually given.
+  // Superposition of every dose actually given (or, for saturable elimination, the integrated curve).
   function conc(p, t, ev){
+    if(p.kin==="mm") return t<0 ? 0 : mmConc(p,t);
     ev=ev||doseEvents(p);
     const terms=disposition(p);
     let sum=0;
@@ -298,6 +303,7 @@
   }
 
   function derived(p){
+    if(p.kin==="mm") return mmDerived(p);
     const k=keOf(p), V=vOf(p), terms=disposition(p), perMg=aucPerMg(terms);
     // the effective half-life is the slowest (terminal) one
     const d={thalfEff:Math.LN2/Math.min(...terms.map(x=>x.k)), ke:k, CL:1/perMg, V:V, mgkg:p.D/p.wt};
@@ -360,6 +366,7 @@
   // (once an infusion has stopped), so all but the first few terms form geometric series with exact sums.
   function ssConc(p, s){
     if(p.dosing!=="repeated") return null;   // only a regular periodic regimen has a steady state
+    if(p.kin==="mm"){ const m=mmSteady(p); return m.none ? null : m.at(s); }
     const terms=disposition(p), tau=p.tau, D=p.D*saltOf(p), geo=l=>1/(1-Math.exp(-l*tau));
     let c=0;
     if(p.route==="iv"){
@@ -388,6 +395,7 @@
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
   function ssProfile(p){
     if(p.dosing!=="repeated") return null;
+    if(p.kin==="mm") return mmProfile(p);
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
     const peakTrough=(q,a,evq)=>{
       let pk=0;
@@ -419,6 +427,191 @@
     let running=0, maxRunning=0, from=null;
     edges.forEach(([t,d])=>{ running+=d; if(running>maxRunning){ maxRunning=running; from=t; } });
     return maxRunning>1 ? {maxRunning, from} : null;
+  }
+
+  /* ================= SATURABLE (MICHAELIS–MENTEN) ELIMINATION ================= */
+  // kin "mm": the body eliminates Vmax·C / (Km + C) per hour instead of kₑ·A. vmax is per kg per day (in the
+  // dose's amount unit, after S) and km is in the concentration unit; organ function (or the clinical renal
+  // factor) scales Vmax. Superposition no longer holds, so the curve is integrated: RK4 on the gut amount
+  // (oral doses, absorbed at kₐ) and the body amount, with every dose landing exactly at its time (a bolus
+  // adds to the body, an oral dose F·S·D to the gut, an infusion a constant rate while it runs). The solution
+  // is kept step by step and read between steps by cubic Hermite interpolation.
+  const MM_STEP=0.05;   // h; the tests hold the error under 0.5% against a ten times finer step
+  const vmaxOf=p=> p.vmax*p.wt/24*clFactor(p);   // amount per hour for this body
+  // Integrates from `state` ({ag, a} at t0) over [t0, T] with the given doses ({t, mg, route, dur}), returning
+  // the steps {t0, t1, g0, g1, a0, a1, f0, f1}: gut and body amounts at each end, and dA/dt there.
+  function mmIntegrate(p, doses, T, state, h0){
+    const V=vOf(p), Vm=vmaxOf(p), Km=p.km, ka=p.ka, S=saltOf(p), F=p.F, t0=state ? state.t : 0;
+    const cuts=new Set([t0, T]);
+    doses.forEach(e=>{ if(e.t>=t0 && e.t<T) cuts.add(e.t); if(e.route==="inf" && e.t+e.dur>t0 && e.t+e.dur<T) cuts.add(e.t+e.dur); });
+    const bps=[...cuts].sort((a,b)=>a-b);
+    let ag=state ? state.ag : 0, a=state ? state.a : 0;
+    const elim=x=>{ const C=Math.max(0,x)/V; return Vm*C/(Km+C); };
+    const steps=[];
+    for(let i=0;i<bps.length-1;i++){
+      const s0=bps[i], s1=bps[i+1];
+      doses.forEach(e=>{ if(e.t===s0){ if(e.route==="iv") a+=S*e.mg; else if(e.route==="oral") ag+=F*S*e.mg; } });
+      let R=0;   // infusion input, constant between cuts
+      doses.forEach(e=>{ if(e.route==="inf" && e.t<=s0 && s0<e.t+e.dur) R+=S*e.mg/e.dur; });
+      const n=Math.max(1,Math.ceil((s1-s0)/(h0||MM_STEP)-1e-9)), h=(s1-s0)/n;
+      const da=(g,x)=> ka*g+R-elim(x);
+      for(let j=0;j<n;j++){
+        const ta=s0+j*h, g0=ag, a0=a, f0=da(g0,a0);
+        const k1g=-ka*g0, k1a=f0;
+        const k2g=-ka*(g0+h/2*k1g), k2a=da(g0+h/2*k1g, a0+h/2*k1a);
+        const k3g=-ka*(g0+h/2*k2g), k3a=da(g0+h/2*k2g, a0+h/2*k2a);
+        const k4g=-ka*(g0+h*k3g),   k4a=da(g0+h*k3g, a0+h*k3a);
+        ag=g0+h/6*(k1g+2*k2g+2*k3g+k4g); a=a0+h/6*(k1a+2*k2a+2*k3a+k4a);
+        steps.push({t0:ta, t1:j===n-1 ? s1 : ta+h, g0, g1:ag, a0, a1:a, f0, f1:da(ag,a)});
+      }
+    }
+    return steps;
+  }
+  // The body amount at t from a step list (cubic Hermite inside the step that starts at or before t).
+  function mmAmount(steps, t){
+    let lo=0, hi=steps.length-1;
+    if(t<=steps[0].t0) return steps[0].a0;
+    while(lo<hi){ const mid=(lo+hi+1)>>1; if(steps[mid].t0<=t) lo=mid; else hi=mid-1; }
+    const st=steps[lo], h=st.t1-st.t0, x=Math.min(1,(t-st.t0)/h), x2=x*x, x3=x2*x;
+    return (2*x3-3*x2+1)*st.a0+(x3-2*x2+x)*h*st.f0+(-2*x3+3*x2)*st.a1+(x3-x2)*h*st.f1;
+  }
+  // Solutions are cached per scenario object, and by content for scenarios rebuilt with the same settings.
+  const mmByObj=new WeakMap(), mmByKey=new Map();
+  function mmSolution(p, t){
+    let sol=mmByObj.get(p);
+    if(!sol){
+      const key=encodeScenario(p);
+      sol=mmByKey.get(key);
+      if(!sol){ sol={T:0, end:0, steps:null}; mmByKey.set(key,sol); if(mmByKey.size>24) mmByKey.delete(mmByKey.keys().next().value); }
+      mmByObj.set(p,sol);
+    }
+    if(t>sol.T || !sol.steps){
+      // extend from where the solution ends (at least doubling it), so reading further never starts over; a
+      // dose exactly at the new end lands in the next extension
+      const end=Math.max(t, sol.T*2, 48)+MM_STEP, ev=doseEvents(p);
+      if(!sol.steps) sol.steps=mmIntegrate(p, ev, end);
+      else { const last=sol.steps[sol.steps.length-1]; sol.steps=sol.steps.concat(mmIntegrate(p, ev, end, {t:last.t1, ag:last.g1, a:last.a1})); }
+      sol.T=end-MM_STEP;
+    }
+    return sol;
+  }
+  const mmConc=(p,t)=> mmAmount(mmSolution(p,t).steps, t)/vOf(p);
+  // The average input rate R of a regular regimen (amount per hour), and what saturation predicts for it.
+  const mmRate=p=> (p.route==="oral" ? p.F : 1)*saltOf(p)*p.D/p.tau;
+  // Css = Km·R / (Vmax − R), defined only while R < Vmax. It is exact for a constant input; with doses the
+  // average level swings around it.
+  function mmCss(p){
+    const R=mmRate(p), Vm=vmaxOf(p);
+    return {R, Vmax:Vm, ratio:R/Vm, css: R<Vm ? p.km*R/(Vm-R) : null};
+  }
+  // Time to reach 90% of Css from zero at a constant input R: integrating dC/dt = (R·Km − (Vmax − R)·C) /
+  // (V·(Km + C)) gives t90 = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)². It grows with the dose, unlike linear PK.
+  function mmT90(p){
+    const {R, Vmax, css}=mmCss(p);
+    return css===null ? null : vOf(p)*p.km*(Math.LN10*Vmax-0.9*R)/((Vmax-R)*(Vmax-R));
+  }
+  // Half-life and clearance at a concentration C: t½ = 0.693·V·(Km + C) / Vmax, CL = Vmax / (Km + C).
+  const mmHalfAt=(p,C)=> Math.LN2*vOf(p)*(p.km+C)/vmaxOf(p);
+  // The regimen given forever: started at the predicted Css (and the gut at its periodic level) and run until
+  // successive troughs agree, then kept as one dosing interval. {none: true} when input exceeds Vmax.
+  const mmSSCache=new Map();
+  function mmSteady(p){
+    const key=encodeScenario(p);
+    if(mmSSCache.has(key)) return mmSSCache.get(key);
+    const m=mmCss(p), out=Object.assign({}, m);
+    if(m.css===null){ out.none=true; }
+    else {
+      const tau=p.tau, V=vOf(p), oral=p.route==="oral", q=Object.assign({},p,{dosing:"repeated", loadMult:1, missed:1});
+      const late=Math.ceil((p.route==="inf" ? p.tinf : 0)/tau)+1;   // earlier infusions still running at the start
+      let state={t:0, ag: oral ? p.F*saltOf(p)*p.D*Math.exp(-p.ka*tau)/(1-Math.exp(-p.ka*tau)) : 0, a:m.css*V};
+      const block=Math.max(8, Math.ceil(6*mmHalfAt(p,m.css)/tau)), dose=i=>({t:i*tau, mg:p.D, route:p.route, dur:p.tinf});
+      let prev=null, steps=null;
+      for(let round=0; round<40; round++){
+        const doses=[];
+        for(let i=-late;i<block;i++) if(i>=0 || (p.route==="inf" && (i*tau)+p.tinf>0)) doses.push(dose(i));
+        steps=mmIntegrate(q, doses, block*tau, state);
+        const last=steps[steps.length-1], tr=last.a1/V;
+        state={t:0, ag:last.g1, a:last.a1};
+        if(prev!==null && Math.abs(tr-prev)<=1e-7*Math.max(tr,1e-12)) break;
+        prev=tr;
+      }
+      // one interval at steady state, starting at its dose
+      const doses=[]; for(let i=-late;i<=0;i++) if(i===0 || (p.route==="inf" && i*tau+p.tinf>0)) doses.push(dose(i));
+      const one=mmIntegrate(q, doses, tau+MM_STEP, state);
+      out.at=s=> mmAmount(one, Math.min(Math.max(s,0), tau))/V;
+      let pk=0, pkT=0; const N=240;
+      for(let i=0;i<=N;i++){ const s=tau*i/N, c=out.at(s); if(c>pk){ pk=c; pkT=s; } }
+      if(p.route==="inf"){ const e=Math.min(p.tinf,tau), c=out.at(e); if(c>pk){ pk=c; pkT=e; } }
+      out.peak=pk; out.tPeak=pkT; out.trough=out.at(tau-1e-9);
+      let sum=0; for(let i=0;i<N;i++) sum+=(out.at(tau*i/N)+out.at(tau*(i+1)/N))/2*tau/N;
+      out.avg=sum/tau;
+    }
+    mmSSCache.set(key,out); if(mmSSCache.size>24) mmSSCache.delete(mmSSCache.keys().next().value);
+    return out;
+  }
+  function mmProfile(p){
+    const ev=doseEvents(p), tau=p.tau, skip=missedOf(p), S=60, rows=[];
+    for(let i=0;i<p.nDoses;i++){
+      let pk=0; for(let j=0;j<=S;j++){ const c=conc(p,i*tau+tau*j/S,ev); if(c>pk) pk=c; }
+      rows.push({n:i+1, peak:pk, trough:conc(p,(i+1)*tau-1e-9,ev), missed:i+1===skip});
+    }
+    const m=mmSteady(p), t90=mmT90(p);
+    return {rows, ssPeak:m.none ? null : m.peak, ssTrough:m.none ? null : m.trough, clears:false,
+      swing:m.none ? null : m.peak/m.trough, Rac:null, t90, dosesTo90:t90===null ? null : Math.ceil(t90/tau), mm:m};
+  }
+  // Exposure over all time for the doses given: the integrated area, run until the level is 0.1% of its peak,
+  // plus the tail (where C ≪ Km, elimination is first-order at Vmax / (Km·V)).
+  function mmAucInf(p){
+    const ev=doseEvents(p);
+    if(!ev.length) return 0;
+    const lastT=Math.max(...ev.map(e=>e.t+(e.route==="inf" ? e.dur : 0)));
+    let T=lastT+24;
+    for(let k=0;k<30;k++){
+      const sol=mmSolution(p,T), steps=sol.steps;
+      let auc=0, cmax=0;
+      for(const st of steps){ if(st.t1>T) break; const h=st.t1-st.t0;
+        auc+=h*(st.a0+st.a1)/2+h*h*(st.f0-st.f1)/12;   // Hermite-exact area of each step
+        cmax=Math.max(cmax,st.a1); }
+      const aT=mmAmount(steps,T);
+      if(aT<=1e-3*cmax) return (auc+aT*p.km*vOf(p)/vmaxOf(p))/vOf(p);   // tail: amount decays at Vmax / (Km·V)
+      T*=2;
+    }
+    return NaN;
+  }
+  function mmDerived(p){
+    const V=vOf(p), Vm=vmaxOf(p), d={V, mgkg:p.D/p.wt, vmaxH:Vm, km:p.km};
+    const peakOf=(t0,t1)=>{ let mx=0, tm=t0; const N=400; for(let i=0;i<=N;i++){ const t=t0+(t1-t0)*i/N, c=conc(p,t); if(c>mx){ mx=c; tm=t; } } return [mx,tm]; };
+    if(p.dosing==="repeated"){
+      const t0=(p.nDoses-1)*p.tau, t1=p.nDoses*p.tau, [mx,tm]=peakOf(t0,t1);
+      d.cmaxSS=mx; d.tmaxSS=tm; d.cminSS=conc(p,t1);
+      const m=mmSteady(p), t90=mmT90(p);
+      d.mm=m; d.css=m.css; d.t90=t90; d.Rac=null;
+      d.fSS=m.none ? null : d.cminSS/m.trough;
+      d.cAt=m.none ? d.cminSS : m.avg;   // the level the half-life and clearance below are read at
+    } else if(p.dosing==="single"){
+      const horizon=Math.max(24, 3*mmHalfAt(p,0)), [mx,tm]=peakOf(0,horizon);
+      d.cmax=mx; d.tmax=tm; d.cAt=mx;
+    }
+    if(p.dosing==="custom"){
+      const given=doseEvents(p);
+      d.nGiven=given.length; d.nMissed=p.events.length-given.length;
+      d.totalMg=given.reduce((s,e)=>s+e.mg,0); d.mgkg=d.totalMg/p.wt;
+      let mx=0; for(let i=0;i<=400;i++){ const c=conc(p, EVENT_LIMITS.t[1]*i/400); if(c>mx) mx=c; }
+      d.cAt=mx;
+    }
+    d.thalfEff=mmHalfAt(p,d.cAt); d.CL=Vm/(p.km+d.cAt); d.ke=d.CL/V;
+    // the all-time exposure needs the curve followed until it has nearly gone: worked out only when asked for
+    let auc;
+    Object.defineProperty(d, "auc", {enumerable:true, get:()=> auc===undefined ? (auc=mmAucInf(p)) : auc});
+    return d;
+  }
+
+  // Sheiner–Tozer: a measured total phenytoin level adjusted to what it would be at normal albumin binding,
+  // C_adj = C_measured / (0.2 × albumin + 0.1); with end-stage kidney disease the albumin coefficient is 0.1.
+  // A tool for reading a measured level, separate from the simulation.
+  function sheinerTozer(measured, alb, renal){
+    const k=renal ? 0.1 : 0.2;
+    return {k, factor:k*alb+0.1, value:measured/(k*alb+0.1)};
   }
 
   /* ================= TIME INSPECTION ================= */
@@ -532,7 +725,8 @@
     return {p,
       get cmax(){ return w().cmax; }, get tmax(){ return w().tmax; }, get tin(){ return 100*w().tIn/T; },
       get aucInf(){ return d().auc; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
-      get avgSS(){ return rep ? d().auc/p.tau : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
+      get avgSS(){ return !rep ? null : p.kin==="mm" ? (d().mm.none ? null : d().mm.avg) : d().auc/p.tau; },
+      get css(){ return rep && p.kin==="mm" ? d().css : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
       effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
       at:t=> conc(p,t),
@@ -698,12 +892,14 @@
        ref("window","0.5–2 ng/mL","lanoxin","below 0.5 ng/mL efficacy is diminished; above 2 ng/mL toxicity increases without more benefit"),
        ref("strengths","62.5, 125, 250 mcg","lanoxin","tablets of 62.5 mcg, 125 mcg and 250 mcg"),
        ref("model","one compartment","lanoxin","the label describes a 6 to 8 h tissue distribution phase, which one compartment doesn't show; levels are drawn 6 h or more after a dose")]},
-    {id:"phe", name:"Phenytoin", sub:"300 mg PO daily", kinetics:"linear", fe:0.05, fu:0.1, S:0.92, units:"mg",
+    {id:"phe", name:"Phenytoin", sub:"300 mg PO daily", kinetics:"michaelis-menten", fe:0.05, fu:0.1, S:0.92, units:"mg",
      strengths:{form:"extended capsules (phenytoin sodium)", mg:[30,100]},
-     s:{route:"oral",dosing:"repeated",D:300,F:1,ka:0.4,thalf:22,V:49,tau:24,nDoses:14,loadMult:1,mec:10,mtc:20,duration:336},
-     refs:[ref("thalf","22 h","dilantin","plasma half-life averages 22 h (range 7 to 42 h); it rises with the level because metabolism saturates"),
+     s:{route:"oral",dosing:"repeated",D:300,F:1,ka:0.4,thalf:22,V:49,vmax:7,km:4,tau:24,nDoses:14,loadMult:1,mec:10,mtc:20,duration:336},
+     refs:[ref("kinetics","saturable","dilantin","hydroxylated in the liver by an enzyme system that is saturable at high serum levels; small dose increments may produce very substantial increases in levels"),
+       ref("vmax","7 mg/kg/day"), ref("km","4 mg/L"),
+       ref("thalf","22 h (label average)","dilantin","plasma half-life averages 22 h (range 7 to 42 h); in this model it follows from Vmax, Km and the level"),
        ref("V","49 L (0.7 L/kg)"), ref("F","1"),
-       ref("ka","0.4 h⁻¹","dilantin","chosen so the model peaks at about 7 h; extended capsules peak 4 to 12 hours after a dose"),
+       ref("ka","0.4 h⁻¹","dilantin","chosen so a single dose peaks at about 6 h in the model; extended capsules peak 4 to 12 hours after a dose"),
        ref("S","0.92","dilantin","the free acid form carries about 8% more drug than the sodium salt in these capsules"),
        ref("fe","0.05"), ref("fu","0.1","","the label says “extensively bound” without a number"),
        ref("window","10–20 mg/L","dilantin","clinically effective total concentration 10 to 20 mcg/mL (unbound 1 to 2 mcg/mL)"),
@@ -721,7 +917,7 @@
        ref("strengths","150, 300, 600 mg","lithium","300 mg tablets; 150, 300 and 600 mg capsules")]}
   ];
   // The settings loading a drug sets, completed with the drug's own fe, S and units.
-  const drugScenario=d=> Object.assign({}, d.s, {fe:d.fe, S:d.S, unit:d.units});
+  const drugScenario=d=> Object.assign({}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
 
   // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
   // The claims in each text are checked against the model in tests/pk-engine.test.js.
@@ -798,6 +994,11 @@
      tryThis:"On this log scale both tails are straight lines, and the slow one is far shallower. Raise kₐ and watch the tail swing back to the 2 h slope.",
      view:{duration:36,mec:0.5,mtc:20,scale:"log"},
      base:{D:500,thalf:2,ka:1.5}, cur:{D:500,thalf:2,ka:0.1}},
+    {id:"mm", tag:"Vmax · Km", title:"Saturable elimination", sum:"A third more dose, more than twice the level.", baseLabel:"300 mg/day",
+     text:"Phenytoin's metabolism saturates. The body can remove at most Vmax, here 7 mg/kg/day (490 mg a day at 70 kg), and it works at half that speed when the level equals Km, 4 mg/L. At 300 mg a day (276 mg of phenytoin after the salt factor, 0.92) the input is 56% of Vmax and the level settles near 5.2 mg/L. At 400 mg a day, a third more, the input is 75% of Vmax and the predicted level is 12.1 mg/L, 2.3 times higher. It takes longer to get there too: 90% of steady state in 10.5 days instead of 3.8.",
+     tryThis:"Try 450 mg a day: the input is 84% of Vmax and the predicted level passes 20 mg/L. At 550 mg a day the input exceeds Vmax and there is no steady state at all.",
+     view:{duration:336,mec:10,mtc:20},
+     base:{route:"oral",dosing:"repeated",F:1,ka:0.4,V:49,tau:24,nDoses:14,S:0.92,kin:"mm",vmax:7,km:4,D:300}, cur:{route:"oral",dosing:"repeated",F:1,ka:0.4,V:49,tau:24,nDoses:14,S:0.92,kin:"mm",vmax:7,km:4,D:400}},
     {id:"miss", tag:"✕", title:"Missed dose", sum:"The dip, and how long recovery takes.", baseLabel:"every dose taken",
      text:"Dose 6 is skipped. With nothing coming in, concentration keeps falling through the gap and drops below the effective level. Once regular doses resume, it takes a few intervals to climb back to the usual peak–trough pattern.",
      tryThis:"Move the missed dose, or shorten the half-life for a sharper dip and a faster recovery.",
@@ -854,6 +1055,8 @@
      look:"B is inside the window almost from the start; both settle at the same steady state."},
     {id:"cl", lesson:"cl", title:"Normal vs 50% clearance", nameA:"Organ function 100%", nameB:"Organ function 50%",
      look:"Same regimen. B's half-life doubles, its troughs climb and its peaks cross the toxic line."},
+    {id:"mm", lesson:"mm", title:"Phenytoin 300 vs 400 mg/day", nameA:"300 mg/day", nameB:"400 mg/day",
+     look:"A third more dose. B's predicted steady-state level is 2.3 times A's, and it takes 10.5 days instead of 3.8 to get within 10% of it."},
     {id:"crcl", lesson:"crcl", title:"CrCl 73 vs 41 mL/min", nameA:"SCr 1.0 mg/dL", nameB:"SCr 1.8 mg/dL",
      look:"A drug 90% cleared by the kidneys. B's clearance is 38% lower, its half-life 6.2 h instead of 3.9 h, and its trough more than twice A's."},
     {id:"weight", lesson:"weight", title:"50 kg vs 100 kg, same dose", nameA:"50 kg", nameB:"100 kg",
@@ -916,6 +1119,17 @@
       challenge:{text:"Keep organ function at 50% and bring average steady-state exposure back to the baseline's (within 5%) by changing the dose or the interval.",
         goal:m=> m.now.p.clFn===50 && m.now.avgSS!==null && Math.abs(m.now.avgSS/m.base.avgSS-1)<=0.05, solution:{D:200}},
       matters:"Reduced kidney or liver function lowers clearance for many drugs. This is the mechanism behind adjusting a regimen for organ function."},
+    mm:{group:"pk", objective:"Predict how a saturable drug's steady-state level and time to reach it respond to a dose change.",
+      predict:{q:"The daily dose goes from 300 to 400 mg, a third more. The steady-state level becomes…", choices:["About a third higher","About twice as high","More than twice as high"], answer:2,
+        why:"Each extra milligram meets less spare enzyme capacity. The input rises from 56% to 75% of Vmax, and Css = Km·R / (Vmax − R) grows much faster than R as R nears Vmax.",
+        decide:m=>{ const r=m.cur.css/m.base.css; return r<1.5 ? 0 : r<2.2 ? 1 : 2; },
+        show:m=>`Predicted Css ${r1(m.base.css)} → ${r1(m.cur.css)} mg/L (${r1(m.cur.css/m.base.css)}×)`},
+      challenge:{text:"Changing only the daily dose, in 25 mg steps, find the largest dose whose predicted steady-state level stays at or below 20 mg/L.",
+        goal:m=>{ const p=m.now.p; if(!(p.kin==="mm" && p.vmax===7 && p.km===4 && p.tau===24 && p.S===0.92 && p.wt===70 && p.dosing==="repeated" && p.D%25===0)) return false;
+          const next=mmCss(Object.assign({},p,{D:p.D+25})).css;
+          return m.now.css!==null && m.now.css<=20 && (next===null || next>20); },
+        solution:{D:425}},
+      matters:"Phenytoin is the classic case where a small change in dose causes a large change in level. Near saturation neither the size of the change nor the time it takes to settle follows the linear rules, so changes are made in small steps and levels checked."},
     crcl:{group:"pk", objective:"Estimate creatinine clearance by Cockcroft–Gault and predict what a fall in it does to a renally cleared drug.",
       predict:{q:"Serum creatinine rises from 1.0 to 1.8 mg/dL. The trough before each dose becomes…", choices:["About the same","Higher, but under 2×","More than 2×"], answer:2,
         why:"CrCl falls from 73 to 41 mL/min. With 90% of clearance renal, clearance falls 38% and the half-life lengthens from 3.9 to 6.2 h, so much more of each dose is left when the next one starts.",
@@ -1313,7 +1527,7 @@
   // which works the answer out again from that scenario with the simulation itself. The tests hold every
   // generator to its check, over many seeds.
   const PRACTICE_TOPICS=[{id:"single",title:"Single dose"},{id:"rep",title:"Repeated dosing"},
-    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"}];
+    {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"},{id:"nl",title:"Saturable (Michaelis–Menten)"}];
   // mulberry32: a small seedable generator of numbers in [0, 1)
   function seededRandom(seed){
     let a=seed>>>0;
@@ -1647,7 +1861,57 @@
           step(`The effect falls more slowly than the concentration while C is well above EC50, then faster.`)],
         viz:{route:"iv", D, V, thalf:th, e0:0, emax:100, ec50, hill}, view:{duration:evenUp(Math.max(t+4, th*4)), pd:true}, at:t,
         check:p=> effectOf(p, conc(p,t))};
-    }}
+    }},
+    /* ----- saturable (Michaelis–Menten) elimination ----- */
+    // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
+    // and the t90 formula assume. Vmax is for 70 kg.
+    {id:"mmcss", topic:"nl", gen(d){
+      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), salt=d(0,1,1)===1, D=d(150,500,25), S=salt ? 0.92 : 1, Vm=vk*70, R=S*D;
+        return {vk,km,salt,D,S,Vm,R,css:km*R/(Vm-R)}; }, x=> x.R>=0.3*x.Vm && x.R<=0.92*x.Vm);
+      const {vk,km,salt,D,S,Vm,R,css}=x;
+      return {type:"Steady state with saturable elimination", unit:"mg/L", dp:2, ans:css,
+        q:`A drug is eliminated by saturable (Michaelis–Menten) metabolism with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>.${salt ? ` It is given as a sodium salt with <b>S = 0.92</b>.` : ""} What steady-state concentration does <b>${D} mg a day</b> reach?`,
+        sol:[step(`The daily input is R = ${salt ? `S·D = 0.92 × ${D}` : `D = ${D}`} = <b>${nf(R,1)} mg/day</b>, below Vmax, so a steady state exists.`),
+          step(`At steady state input equals elimination, R = Vmax·C / (Km + C), so <b>Css = Km·R / (Vmax − R)</b>.`),
+          step(`Css = ${km} × ${nf(R,1)} / (${nf(Vm,0)} − ${nf(R,1)}) = <b>${nf(css,2)} mg/L</b>`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(css*1.5)},
+        check:p=> mmSteady(p).avg};
+    }},
+    {id:"mmdose", topic:"nl", gen(d){
+      const vk=d(5,10,0.5), km=d(2,8,0.5), c=d(8,20,1), Vm=vk*70, R=Vm*c/(km+c), D=R/0.92;
+      return {type:"Dose for a saturable drug", unit:"mg/day", dp:0, ans:D,
+        q:`A drug given as a sodium salt (<b>S = 0.92</b>) is eliminated with <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b>. Which daily dose of the salt gives a steady-state concentration of <b>${c} mg/L</b>?`,
+        sol:[step(`At steady state the input matches elimination: <b>R = Vmax·Css / (Km + Css)</b>.`),
+          step(`R = ${nf(Vm,0)} × ${c} / (${km} + ${c}) = <b>${nf(R,1)} mg/day</b> of the drug`),
+          step(`Of the salt: D = R / S = ${nf(R,1)} / 0.92 = <b>${nf(D,0)} mg/day</b>`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, S:0.92, vmax:vk, km, V:49}, view:{duration:336, mec:0, mtc:Math.ceil(c*1.5)},
+        // the dose that gives c: at the answer dose the simulated steady state is c
+        check:p=> p.D*mmSteady(p).avg/c};
+    }},
+    {id:"mmt90", topic:"nl", gen(d){
+      const x=until(()=>{ const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), D=d(150,450,25), Vm=vk*70, R=D, t90=V*km*(Math.LN10*Vm-0.9*R)/((Vm-R)*(Vm-R));
+        return {vk,km,V,D,Vm,R,t90}; }, x=> x.R<=0.85*x.Vm && x.R>=0.3*x.Vm && x.t90*24<=300);
+      const {vk,km,V,D,Vm,R,t90}=x;
+      return {type:"Time to steady state, saturable", unit:"days", dp:1, ans:t90,
+        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> is started at a steady <b>${D} mg/day</b>. How many days until it reaches 90% of its steady-state level?`,
+        sol:[step(`With saturable elimination the approach to steady state depends on the dose. Integrating the model at a constant input gives <b>t₉₀ = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)²</b>.`),
+          step(`t₉₀ = ${V} × ${km} × (2.303 × ${nf(Vm,0)} − 0.9 × ${R}) / (${nf(Vm,0)} − ${R})² = <b>${nf(t90,1)} days</b>`),
+          step(`A linear drug's 3.32 half-lives would not change with the dose; here a higher dose means a longer wait.`)],
+        viz:{kin:"mm", route:"inf", dosing:"repeated", tinf:24, tau:24, nDoses:14, D, vmax:vk, km, V}, view:{duration:336, mec:0, mtc:0}, at:t90*24,
+        check:p=>{ const css=mmCss(p).css; return solveUp(x=> conc(p,x), 0.9*css, 0, 336)/24; }};
+    }},
+    {id:"mmhalf", topic:"nl", gen(d){
+      const vk=d(5,10,0.5), km=d(2,8,0.5), V=d(35,70,5), C=d(2,25,1), Vm=vk*70, th=Math.LN2*V*(km+C)/(Vm/24);
+      return {type:"Half-life at a concentration", unit:"h", dp:1, ans:th,
+        q:`A drug with <b>V = ${V} L</b>, <b>Vmax = ${nf(Vm,0)} mg/day</b> and <b>Km = ${km} mg/L</b> has a level of <b>${C} mg/L</b>. What is its half-life at that level?`,
+        sol:[step(`Elimination is Vmax·C / (Km + C), so the clearance at C is Vmax / (Km + C) and <b>t½ = 0.693·V·(Km + C) / Vmax</b>, with Vmax per hour.`),
+          step(`Vmax = ${nf(Vm,0)} / 24 = ${nf(Vm/24,2)} mg/h`),
+          step(`t½ = ${LN2} × ${V} × (${km} + ${C}) / ${nf(Vm/24,2)} = <b>${nf(th,1)} h</b>`),
+          step(`At a higher level the half-life is longer: the enzymes are closer to saturation.`)],
+        viz:{kin:"mm", route:"iv", dosing:"single", D:C*V, vmax:vk, km, V}, view:{duration:evenUp(3*th), mec:0, mtc:0}, at:0,
+        // the instantaneous half-life at t = 0: 0.693·C / (−dC/dt)
+        check:p=>{ const c0=conc(p,0), h=1e-4; return Math.LN2*c0/((c0-conc(p,h))/h); }};
+    }},
   ];
   // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).
   function makeProblem(o){
@@ -1818,6 +2082,14 @@
      def:"IBW + 0.4 × (actual weight − IBW): a weight between ideal and actual that some references use in Cockcroft–Gault for people well above their ideal weight."},
     {term:"Salt factor", sym:"S", unit:"", lesson:"crcl",
      def:"How much active drug each unit of a dosed salt delivers: 0.92 for phenytoin sodium, and 8.12 mEq of lithium per 300 mg of lithium carbonate. DoseCurve multiplies every dose by S."},
+    {term:"Michaelis–Menten elimination", sym:"", unit:"", lesson:"mm",
+     def:"Elimination that saturates: rate = Vmax·C / (Km + C). At low levels it is nearly first-order; near Vmax the body removes an almost fixed amount per day, so levels rise out of proportion to the dose."},
+    {term:"Maximum elimination rate", sym:"Vmax", unit:"mg/day", lesson:"mm",
+     def:"The most the body can eliminate per day with the enzymes saturated. With a daily input R below it the level settles at Css = Km·R / (Vmax − R); at or above it there is no steady state."},
+    {term:"Michaelis constant", sym:"Km", unit:"mg/L", lesson:"mm",
+     def:"The concentration at which elimination runs at half of Vmax. Well below Km the drug behaves almost linearly; well above it, elimination hardly speeds up as the level rises."},
+    {term:"Albumin-adjusted concentration", sym:"", unit:"mg/L", lesson:"mm",
+     def:"A measured total phenytoin level scaled to what it would be at normal albumin (Sheiner–Tozer): C / (0.2 × albumin + 0.1), with 0.1 in place of 0.2 in end-stage kidney disease. It interprets a measurement; the simulation doesn't use it."},
   ];
 
   /* ================= HIT THE WINDOW ================= */
@@ -1875,7 +2147,51 @@
   const READOUT_KEYS={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
     repeated:["peak","trough","rac","thalf","cl","t90","mgkg","ttr"],
     custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
+  // With saturable elimination there's no single half-life or clearance, and steady state has its own rules.
+  const READOUT_KEYS_MM={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
+    repeated:["peak","trough","css","t90","thalf","ratio","mgkg","ttr"],
+    custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
+  const readoutKeys=p=> (p.kin==="mm" ? READOUT_KEYS_MM : READOUT_KEYS)[p.dosing];
+  function mmMath(p, key, view){
+    const U=unitsOf(p), cu=U.conc, V=vOf(p), Vm=vmaxOf(p), Km=p.km, d=derived(p), m=s=>({m:s}), t=s=>({t:s});
+    const n1=v=>nf(v,1), n2=v=>nf(v,2), perDay=v=>`${nf(v*24,0)} ${U.amount}/day`;
+    const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
+    const vmTxt=`Vmax = ${nf(p.vmax,2)} ${U.amount}/kg/day × ${p.wt} kg${clFactor(p)!==1 ? ` × ${nf(clFactor(p),3)}` : ""} = ${perDay(Vm)}`;
+    const atTxt=p.dosing==="repeated" ? (d.mm.none ? "the final trough" : "the average steady-state level") : p.dosing==="single" ? "the peak" : "the highest level";
+    const sampled=`Saturable elimination has no closed-form curve here: DoseCurve integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
+    switch(key){
+      case "thalf": return {title:"Half-life at this level", value:d.thalfEff, steps:[
+        t(`With saturable elimination the half-life depends on the concentration. At ${atTxt}, C = ${n2(d.cAt)} ${cu}:`), m(vmTxt),
+        m(`t½ = 0.693·V·(Km + C) / Vmax = 0.693 × ${n1(V)} × (${n2(Km)} + ${n2(d.cAt)}) / ${n2(Vm)} = ${n1(d.thalfEff)} h`),
+        t(`At low levels (C ≪ Km) it shortens toward 0.693·V·Km / Vmax = ${n1(mmHalfAt(p,0))} h; as C climbs past Km it lengthens.`)]};
+      case "cl": return {title:"Clearance at this level", value:d.CL, steps:[m(vmTxt),
+        m(`CL = Vmax / (Km + C) = ${n2(Vm)} / (${n2(Km)} + ${n2(d.cAt)}) = ${n2(d.CL)} L/h, at ${atTxt}`),
+        t(`Clearance falls as the level rises: the enzymes are closer to saturation.`)]};
+      case "css": { const c=mmCss(p);
+        if(c.css===null) return {title:"Steady state", value:null, steps:[m(`R = ${p.route==="oral" ? "F·" : ""}${saltOf(p)===1 ? "" : "S·"}D / τ = ${perDay(c.R)}; ${vmTxt}`),
+          t(`No steady state: input rate exceeds Vmax. The level keeps climbing for as long as the dosing continues.`)]};
+        return {title:"Predicted steady state (Css)", value:c.css, steps:[
+          m(`R = ${p.route==="oral" ? "F·" : ""}${saltOf(p)===1 ? "" : "S·"}D / τ = ${perDay(c.R)} (${n2(c.R)} ${U.amount}/h)`), m(vmTxt),
+          m(`Css = Km·R / (Vmax − R) = ${n2(Km)} × ${n2(c.R)} / (${n2(Vm)} − ${n2(c.R)}) = ${n2(c.css)} ${cu}`),
+          t(`That is exact for a constant input. Given in doses, the level swings around it: at steady state this regimen averages ${n2(d.mm.avg)} ${cu}.`)]}; }
+      case "t90": { const c=mmCss(p);
+        return {title:"Time to 90% of steady state", value:d.t90, steps: c.css===null ? [t(`No steady state is reached, so there is no time to reach it.`)] : [
+          m(`t90 = V·Km·(2.303·Vmax − 0.9·R) / (Vmax − R)² = ${n1(V)} × ${n2(Km)} × (2.303 × ${n2(Vm)} − 0.9 × ${n2(c.R)}) / (${n2(Vm)} − ${n2(c.R)})² = ${n1(d.t90)} h (${n1(d.t90/24)} days)`),
+          t(`It comes from integrating the saturable model at a constant input. Unlike linear kinetics it depends on the dose: the closer R is to Vmax, the longer the wait.`)]}; }
+      case "ratio": { const c=mmCss(p);
+        return {title:"Input rate ÷ Vmax", value:100*c.ratio, steps:[m(`R / Vmax = ${perDay(c.R)} / ${perDay(Vm)} = ${nf(100*c.ratio,0)}%`),
+          t(c.ratio>=1 ? `At or above 100% the enzymes can't keep up: no steady state.` : `The closer this is to 100%, the more a small dose change moves the level.`)]}; }
+      case "auc": return {title:"Total exposure (AUC∞)", value:d.auc, steps:[m(`AUC∞ = ${n1(d.auc)} ${U.auc}`), t(sampled),
+        t(`It isn't F·D / CL here: clearance changes with the level, so doubling the dose more than doubles the AUC.`)]};
+      case "cmax": case "tmax": return {title:key==="cmax" ? "Peak concentration (Cmax)" : "Time of the peak (tmax)", value:key==="cmax" ? d.cmax : d.tmax,
+        steps:[m(`Cmax = ${n2(d.cmax)} ${cu} at ${n2(d.tmax)} h`), t(sampled)]};
+      case "peak": case "trough": return {title:key==="peak" ? "Peak after the last dose" : "Trough after the last dose", value:key==="peak" ? d.cmaxSS : d.cminSS,
+        steps:[m(`${key==="peak" ? "Peak" : "Trough"} = ${n2(key==="peak" ? d.cmaxSS : d.cminSS)} ${cu}`), t(sampled)].concat(key==="trough" && !d.mm.none ? [t(`Given forever, the trough would settle at ${n2(d.mm.trough)} ${cu}.`)] : [])};
+    }
+    return null;
+  }
   function metricMath(p, key, view){
+    if(p.kin==="mm"){ const r=mmMath(p,key,view); if(r) return r; }
     const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, oral=p.route==="oral", F=oral ? p.F : 1;
     // units, and the salt factor: the amount of active drug is S·D (S = 1 for most drugs, and then not shown)
     const U=unitsOf(p), cu=U.conc, Sf=saltOf(p), D=p.D*Sf, Dtxt=Sf===1 ? `${p.D}` : `${nf(Sf,5)} × ${p.D}`, Sd=Sf===1 ? "D" : "S·D";
@@ -2066,5 +2382,5 @@
     READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY,
     PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
     crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, clFactor, UNITS, unitsOf, convertUnits, saltOf,
-    SOURCES, UNVERIFIED, drugScenario};
+    SOURCES, UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, sheinerTozer};
 });

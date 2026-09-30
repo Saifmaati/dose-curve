@@ -4,6 +4,13 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## Unreleased: v1.0 (in progress on the `v1.0` branch)
 
+- **Saturable (Michaelis–Menten) elimination.** Any scenario can switch from first-order to saturable elimination. The curve is integrated numerically:
+  - RK4 in 0.05 h steps, with every dose landing at its exact time.
+  - Every chart, readout, comparison, export and link works as before.
+  - The readouts show the predicted steady state, Css = Km·R / (Vmax − R), the input as a share of Vmax, the half-life at the current level, and the dose-dependent time to 90% of steady state. They say "No steady state: input rate exceeds Vmax" when that happens.
+  - Phenytoin now uses saturable elimination (Vmax 7 mg/kg/day, Km 4 mg/L, marked unverified).
+  - A Sheiner–Tozer tool adjusts a measured phenytoin level for low albumin.
+  - New: a lesson (*Saturable elimination*), a comparison, four glossary terms, and a practice topic with four kinds (30 in all).
 - **Clinical patient mode.** Age, sex, height, weight, serum creatinine and albumin. The panel shows the working, with the numbers substituted, for:
   - ideal body weight (Devine) and adjusted body weight
   - Cockcroft–Gault creatinine clearance, with the weight used selectable
