@@ -8,6 +8,8 @@ This guide collects ways to use it in a course.
 
 ## In a lecture
 
+For a projector or a bright room, switch to the **light theme** (◐ Light, top right). It's remembered in that browser, and adding `?theme=light` to a link opens it in light.
+
 - **Change one thing and explain it.**
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
@@ -30,6 +32,7 @@ This guide collects ways to use it in a course.
 
   **Vary only** locks every setting except one, so A and B can differ in exactly one respect.
 - **Show where a number comes from.** Select any readout under the chart (Cmax, tmax, half-life, clearance, AUC, peak, trough, accumulation…). It shows the formula worked through with the scenario's own numbers, and updates as you move the sliders.
+- **Print a handout.** **⎙ Print** (in *Analyze & Export*) prints the current scenario on one page: its settings and a link back, the charts, the readouts and the explanations, in the light palette and without the controls.
 - **Walk through time.** Drag across the chart, or focus it and use the arrow keys, to read the concentration at any moment. **Play** animates the whole window.
 - **Show the effect.** **Effect** turns on the concentration–effect charts. They show the effect over time, where the curve sits on the Emax curve, and how long the effect stays above a target.
 
