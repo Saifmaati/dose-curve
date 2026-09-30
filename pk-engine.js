@@ -45,8 +45,13 @@
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km"];
   const V4_MAX={thalf:24, V:120, wt:120};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
-  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50};
-  const VIEW_RANGES={duration:[6,336],mec:[0,10000],mtc:[0,10000],etgt:[1,99]};
+  // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
+  // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
+  const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50,
+    pop:false,popn:200,pcl:30,pv:20,pseed:1,plo:0,phi:0};
+  const VIEW_RANGES={duration:[6,336],mec:[0,10000],mtc:[0,10000],etgt:[1,99],
+    popn:[50,1000],pcl:[0,100],pv:[0,100],pseed:[1,4294967295],plo:[0,100000],phi:[0,100000]};
+  const POP_KEYS=["popn","pcl","pv","pseed","plo","phi"];
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
@@ -1392,16 +1397,19 @@
     if(v.zoom==="last") out.push("zoom:last");
     if(v.pd) out.push("pd:1");
     if(v.etgt!==undefined && v.etgt!==VIEW_DEFAULTS.etgt) out.push("etgt:"+v.etgt);
+    if(v.pop) out.push("pop:1");
+    POP_KEYS.forEach(k=>{ if(v[k]!==undefined && v[k]!==VIEW_DEFAULTS[k]) out.push(k+":"+v[k]); });
     return out.join(",");
   }
   function decodeView(str){
     const v=Object.assign({},VIEW_DEFAULTS);
     String(str||"").split(",").forEach(pair=>{
       const [k,raw]=pair.split(":");
-      if(VIEW_RANGES[k]){ const n=parseFloat(raw); if(isFinite(n)) v[k]=clamp(n,VIEW_RANGES[k]); }
+      if(VIEW_RANGES[k]){ let n=parseFloat(raw); if(isFinite(n)){ if(k==="popn"||k==="pseed") n=Math.round(n); v[k]=clamp(n,VIEW_RANGES[k]); } }
       else if(k==="scale" && (raw==="lin"||raw==="log")) v.scale=raw;
       else if(k==="zoom" && (raw==="full"||raw==="last")) v.zoom=raw;
       else if(k==="pd") v.pd=raw==="1";
+      else if(k==="pop") v.pop=raw==="1";
     });
     return v;
   }
@@ -1412,7 +1420,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
-    const usesV5=view.duration>168 || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
+    const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const parts=["v="+(usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
@@ -2019,90 +2027,8 @@
   }
 
   /* ================= GLOSSARY ================= */
-  // The terms the app uses, each with its symbol and unit, the relation DoseCurve computes it by, and the lesson
-  // that shows it (lesson ids are checked by the tests).
-  const GLOSSARY=[
-    {term:"Concentration", sym:"C", unit:"mg/L", lesson:"route",
-     def:"How much drug is in each litre of plasma. DoseCurve uses mg/L, which is the same as µg/mL."},
-    {term:"Peak concentration", sym:"Cmax", unit:"mg/L", lesson:"route",
-     def:"The highest concentration after a dose. An IV bolus peaks at once, an oral dose later and lower, and an infusion when it stops."},
-    {term:"Time of the peak", sym:"tmax", unit:"h", lesson:"route",
-     def:"When the peak comes. For an oral dose tmax = ln(kₐ / kₑ) / (kₐ − kₑ), so it depends on the two rate constants, not on the dose."},
-    {term:"Trough", sym:"Cmin", unit:"mg/L", lesson:"accum",
-     def:"The lowest concentration in a dosing interval, just before the next dose."},
-    {term:"Area under the curve", sym:"AUC", unit:"mg·h/L", lesson:"route",
-     def:"Total exposure: the area under the concentration–time curve. For one dose AUC∞ = F·D / CL, however fast the drug is absorbed."},
-    {term:"Bioavailability", sym:"F", unit:"fraction", lesson:"route",
-     def:"The fraction of an oral dose that reaches the circulation, from 0 to 1. An IV dose has F = 1."},
-    {term:"Absorption rate constant", sym:"kₐ", unit:"h⁻¹", lesson:"route",
-     def:"How fast an oral dose moves into the blood. A larger kₐ gives an earlier, higher peak; the AUC stays the same."},
-    {term:"Elimination rate constant", sym:"kₑ", unit:"h⁻¹", lesson:"half",
-     def:"The fraction of the drug in the body removed per hour in first-order elimination: kₑ = ln2 / t½ = CL / V."},
-    {term:"Half-life", sym:"t½", unit:"h", lesson:"half",
-     def:"The time for the concentration to halve once absorption is over: t½ = 0.693 / kₑ = 0.693·V / CL, so it depends on both volume and clearance."},
-    {term:"Volume of distribution", sym:"V", unit:"L", lesson:"vd",
-     def:"The apparent volume the drug spreads into: for an IV bolus, the dose divided by the starting concentration (V = D / C₀). In DoseCurve it scales with body weight."},
-    {term:"Clearance", sym:"CL", unit:"L/h", lesson:"cl",
-     def:"The volume of plasma cleared of drug each hour: CL = kₑ·V. It sets total exposure (AUC = F·D / CL). In DoseCurve, organ function scales it."},
-    {term:"IV bolus", sym:"", unit:"", lesson:"inf",
-     def:"A dose injected into a vein all at once: the concentration starts at D / V and falls from there."},
-    {term:"IV infusion", sym:"R₀", unit:"mg/h", lesson:"infdur",
-     def:"A dose run into a vein at a constant rate R₀ = D / T. The level climbs toward R₀ / CL and falls once the infusion stops."},
-    {term:"Loading dose", sym:"LD", unit:"mg", lesson:"load",
-     def:"A larger first dose, or a bolus given with an infusion, that reaches the target level at once instead of after 4–5 half-lives: LD = C_target·V."},
-    {term:"Maintenance dose", sym:"D", unit:"mg", lesson:"accum",
-     def:"The dose repeated every interval. At steady state it replaces what is cleared, so the average level is F·D / (CL·τ)."},
-    {term:"Dosing interval", sym:"τ", unit:"h", lesson:"split",
-     def:"The time between the doses of a regular regimen."},
-    {term:"Steady state", sym:"SS", unit:"", lesson:"accum",
-     def:"When what each interval adds matches what is cleared, so peaks and troughs stop rising. About 90% of the way after 3.3 half-lives and about 97% after 5, whatever the dose."},
-    {term:"Accumulation ratio", sym:"R", unit:"×", lesson:"accum",
-     def:"How many times higher levels settle than after the first dose: R = 1 / (1 − e^(−kₑτ)). The shorter the interval next to the half-life, the larger it is."},
-    {term:"Swing", sym:"peak / trough", unit:"×", lesson:"split",
-     def:"How far the level falls between doses. For a repeated IV bolus at steady state, peak / trough = e^(kₑτ): the interval sets it, the dose doesn't."},
-    {term:"Superposition", sym:"", unit:"", lesson:"spacing",
-     def:"In a linear model each dose adds its own curve, so the concentration is the sum of what is left of every dose given."},
-    {term:"Minimum effective concentration", sym:"MEC", unit:"mg/L", lesson:"er",
-     def:"The lower edge of the window on DoseCurve's charts: below it, the modeled level is taken as too low to act."},
-    {term:"Minimum toxic concentration", sym:"MTC", unit:"mg/L", lesson:"er",
-     def:"The upper edge of the window on DoseCurve's charts: above it, the modeled level is taken as too high."},
-    {term:"Therapeutic window", sym:"", unit:"", lesson:"er",
-     def:"The range between MEC and MTC. DoseCurve reports the share of the time window the curve spends inside it."},
-    {term:"Missed dose", sym:"", unit:"", lesson:"miss",
-     def:"A scheduled dose that isn't given: its curve is simply left out of the sum, and the level recovers over the following doses."},
-    {term:"Baseline effect", sym:"E₀", unit:"%", lesson:"potency",
-     def:"The effect with no drug present, as a percentage of the largest possible response."},
-    {term:"Maximum effect", sym:"Emax", unit:"%", lesson:"efficacy",
-     def:"The largest effect the drug can add on top of the baseline: a ceiling no concentration can pass."},
-    {term:"Potency", sym:"EC50", unit:"mg/L", lesson:"potency",
-     def:"The concentration that gives half of the maximum effect. A lower EC50 means less drug is needed for the same effect."},
-    {term:"Hill slope", sym:"n", unit:"", lesson:"hill",
-     def:"How steeply the effect rises around EC50. A large n makes the response close to on/off; n = 1 is a gradual curve."},
-    {term:"Emax model", sym:"E", unit:"%", lesson:"pdose",
-     def:"E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ). DoseCurve links the effect directly to the plasma concentration, with no delay."},
-    {term:"One-compartment model", sym:"", unit:"", lesson:"vd",
-     def:"The idealized body DoseCurve simulates: the drug spreads at once through one well-mixed volume and is eliminated in proportion to its concentration (first-order, linear)."},
-    {term:"Creatinine clearance", sym:"CrCl", unit:"mL/min", lesson:"crcl",
-     def:"An estimate of how fast the kidneys filter blood, worked out from serum creatinine. The clearance of drugs the kidneys remove falls with it."},
-    {term:"Cockcroft–Gault equation", sym:"CrCl", unit:"mL/min", lesson:"crcl",
-     def:"CrCl = (140 − age) × weight / (72 × serum creatinine), × 0.85 for women (Cockcroft and Gault, 1976). Drug labels and dosing references have long stated renal adjustments this way, in mL/min; the eGFR laboratories report is scaled to 1.73 m² of body surface, so the two numbers aren't interchangeable."},
-    {term:"Fraction excreted unchanged", sym:"fe", unit:"", lesson:"crcl",
-     def:"The share of clearance the kidneys account for by removing the drug unchanged. DoseCurve scales only that part with creatinine clearance: CL = CL_ref × [(1 − fe) + fe × CrCl / 120]."},
-    {term:"Ideal body weight", sym:"IBW", unit:"kg", lesson:"crcl",
-     def:"Devine's estimate: 50 kg for men or 45.5 kg for women, plus 2.3 kg for each inch of height over 5 feet. Some references use it in Cockcroft–Gault for people well above it."},
-    {term:"Adjusted body weight", sym:"AdjBW", unit:"kg", lesson:"crcl",
-     def:"IBW + 0.4 × (actual weight − IBW): a weight between ideal and actual that some references use in Cockcroft–Gault for people well above their ideal weight."},
-    {term:"Salt factor", sym:"S", unit:"", lesson:"crcl",
-     def:"How much active drug each unit of a dosed salt delivers: 0.92 for phenytoin sodium, and 8.12 mEq of lithium per 300 mg of lithium carbonate. DoseCurve multiplies every dose by S."},
-    {term:"Michaelis–Menten elimination", sym:"", unit:"", lesson:"mm",
-     def:"Elimination that saturates: rate = Vmax·C / (Km + C). At low levels it is nearly first-order; near Vmax the body removes an almost fixed amount per day, so levels rise out of proportion to the dose."},
-    {term:"Maximum elimination rate", sym:"Vmax", unit:"mg/day", lesson:"mm",
-     def:"The most the body can eliminate per day with the enzymes saturated. With a daily input R below it the level settles at Css = Km·R / (Vmax − R); at or above it there is no steady state."},
-    {term:"Michaelis constant", sym:"Km", unit:"mg/L", lesson:"mm",
-     def:"The concentration at which elimination runs at half of Vmax. Well below Km the drug behaves almost linearly; well above it, elimination hardly speeds up as the level rises."},
-    {term:"Albumin-adjusted concentration", sym:"", unit:"mg/L", lesson:"mm",
-     def:"A measured total phenytoin level scaled to what it would be at normal albumin (Sheiner–Tozer): C / (0.2 × albumin + 0.1), with 0.1 in place of 0.2 in end-stage kidney disease. It interprets a measurement; the simulation doesn't use it."},
-  ];
+  // The glossary's terms live in pk-glossary.js, loaded with the Lessons tab (see GLOSSARY in the exports).
+  let glossary=null;
 
   /* ================= HIT THE WINDOW ================= */
   // Regimen design: for a made-up drug, choose a dose and an interval so that at steady state the trough stays at
@@ -2391,7 +2317,9 @@
     LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE, seededRandom, makeProblem, practiceScenario, practiceCorrect, WORKSHEET_SIZES, makeWorksheet,
     FIT_KINDS, FIT_NOISE, makeFit, fitError, fitScenario, fitStatus, fitEstimate, encodeTaskLink, decodeTaskLink,
-    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough, GLOSSARY,
+    READOUT_KEYS, metricMath, WINDOW_KINDS, makeWindowTask, windowScenario, windowStatus, ssPeakTrough,
+    get GLOSSARY(){ if(!glossary && typeof require==='function') glossary=require('./pk-glossary.js'); return glossary; },
+    set GLOSSARY(v){ glossary=v; },
     PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
     crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, clFactor, UNITS, unitsOf, convertUnits, saltOf,
     SOURCES, UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, sheinerTozer};

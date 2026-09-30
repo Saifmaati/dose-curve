@@ -4,6 +4,13 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## Unreleased: v1.0 (in progress on the `v1.0` branch)
 
+- **Population mode** (◍ POPULATION above the chart):
+  - It simulates 50–1,000 virtual patients around the scenario, with log-normal variability on clearance (CV 30%) and volume (20%). Both CVs are adjustable and labelled as teaching assumptions.
+  - A seed makes the patients reproducible, including in links.
+  - The chart shades the 5th–95th percentile band and dots the median, beside the deterministic curve.
+  - The readouts give the probability of target attainment at steady state (trough at or above MEC and peak at or below MTC) and, optionally, the share with AUC24 in a range.
+  - It runs in a Web Worker (1,000 patients in about 0.3 s), works in Compare, and leaves saturable scenarios alone, with a note.
+  - Two glossary terms (42).
 - **Release infrastructure:**
   - A GitHub Actions workflow runs the whole suite on every push and pull request, with a badge in the README.
   - The README is rewritten, with screenshots.

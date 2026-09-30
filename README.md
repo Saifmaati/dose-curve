@@ -18,6 +18,7 @@
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of nine teaching profiles (gentamicin, vancomycin, digoxin, phenytoin, theophylline, lithium carbonate and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect.
+- A **population**: 50–1,000 virtual patients with log-normal variability on clearance and volume, drawn as a 5th–95th percentile band. It reports the probability of target attainment at steady state (and for an AUC24 range), is computed in a Web Worker, and reproduces from its seed.
 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
@@ -27,7 +28,7 @@
 **Teach and practise**
 - **23 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **8 clinical cases** (gentamicin conventional and once daily, vancomycin to an AUC24 target, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **30 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" and "Hit the window" exercises, and a 40-term glossary.
+- **30 kinds of generated practice problems** in five topics with worked solutions, printable worksheets with answer keys, "Fit the data" and "Hit the window" exercises, and a 42-term glossary.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
 ![A clinical case graded by the model](docs/img/case-gentamicin.png)
