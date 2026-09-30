@@ -2,6 +2,19 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.7.0 (2026-09-30)
+
+- **An effect-site delay.** Some drugs act where they take time to reach, so the effect lags the plasma level. The Effect panel has a new setting, the effect site's equilibration half-life (0 to 12 h; 0 keeps the direct link). The effect then follows an effect compartment, dCe/dt = ke0·(C − Ce):
+  - The effect-site level is drawn dashed under the plasma curve, in the effect colour.
+  - The concentration–effect chart plots the effect against the plasma level, which traces a counterclockwise loop (hysteresis), with an arrow on the rising side. The time cursor's dot moves around it.
+  - The peak effect, its time, the onset and the time above the target all follow the effect site, as do the cursor readout (which gives the effect-site level), the comparison table, What changed, the print header and the CSV (with an effect-site column).
+  - It works for every route, regimen and custom schedule, with one or two compartments, in closed form. Saturable drugs keep the direct link, and the setting is hidden for them.
+- **Lesson 26, *Effect delay (hysteresis)*:** the default oral dose, with and without a 2-hour delay. Identical plasma curves; the effect first reaches 50% at 2.1 h instead of 0.3 h and peaks at 5.0 h instead of 1.9 h, at 61% instead of 70%. At 4 mg/L the effect is 5% while the level rises and 58% while it falls. It comes with a comparison (20) and two glossary terms, *Effect compartment* and *Hysteresis* (50).
+- **Validated like plasma.** The independent SciPy solver now carries the effect site as two extra states and adds 20 effect-site scenarios (146 in all, 584 comparisons, all within tolerance; the largest effect-site difference is 0.000004%). The 126 earlier reference rows are unchanged to the last digit. The test suite also checks the closed forms against an RK4 integration (to 10⁻⁸), the bolus formula, the equal-rate limits and the conserved AUC, and the standing cross-check covers effect-site peaks, onset and time above target.
+- Links with a delay are version 6. Every older link opens as before.
+- The label on the chart's target-effect line now uses the scenario's concentration unit (it said mg/L for ng/mL and mEq/L drugs).
+- The share card says 26 lessons.
+
 ## 1.6.0 (2026-09-30)
 
 - **A practice problem for renal dose adjustment (33 kinds):** from age, weight and serum creatinine, Cockcroft–Gault, then (1 − fe) + fe × CrCl / 120, then the dose for the same average level. It's checked against the model's own clearance. Worksheet pools are now at version 3, and version-2 links rebuild exactly (tested against sheets made before the change).

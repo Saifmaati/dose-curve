@@ -15,16 +15,17 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were.
-  const VERSION=5;
+  const VERSION=6;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21"];
-  // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model).
-  const PD_KEYS=["e0","emax","ec50","hill"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq"];
+  // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
+  // effect site's equilibration half-life (0 = the effect follows plasma directly).
+  const PD_KEYS=["e0","emax","ec50","hill","teq"];
   // The patient (pm = patient mode): "simple" scales clearance by the organ-function slider (clFn); "clinical"
   // estimates creatinine clearance by Cockcroft–Gault from age, sex, weight and serum creatinine (mg/dL), and
   // scales the renally cleared fraction fe of clearance by it. ht is height in cm, alb albumin in g/dL, and wtm
@@ -33,17 +34,19 @@
   const DEFAULTS=Object.freeze({route:"oral",dosing:"single",D:500,F:0.9,ka:1.2,thalf:4,V:35,tinf:1,tau:8,nDoses:6,loadMult:1,missed:1,wt:70,clFn:100,
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
-    kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5});
+    kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
     pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
-    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5]};
+    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km","cmt","k12","k21"];
   const V4_MAX={thalf:24, V:120, wt:120};
+  // Settings a v5 page can't hold: the effect-site delay.
+  const V6_KEYS=["teq"];
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
   // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
@@ -171,6 +174,7 @@
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
+    if(k==="teq") return s.kin!=="mm";
     if(["age","sex","ht","scr","alb","wtm","fe"].includes(k)) return s.pm==="clinical";
     return true;
   }
@@ -388,13 +392,16 @@
   // sample instead of inside a step: the area is summed by trapezoids up to each jump's left limit, and the time
   // in each band is read from where each straight step crosses MEC and MTC. (validation/ checks it against an
   // independent solver to 0.5%.)
-  function windowStats(p, T, mec, mtc){
+  // With site "effect" (and an effect-site delay) the same statistics are taken of the effect-site level, which
+  // never jumps.
+  function windowStats(p, T, mec, mtc, site){
     const ev=doseEvents(p), N=600, pts=new Set(), jumps=new Set();
+    const eff=site==="effect" && keqOf(p)>0, level=eff ? t=>ceConc(p,t,ev) : t=>conc(p,t,ev);
     for(let i=0;i<=N;i++) pts.add(T*i/N);
     let endJump=false;   // a bolus exactly at the window's end adds nothing inside it: the end takes the level just before
     ev.forEach(e=>{
-      if(e.route==="iv" && Math.abs(e.t-T)<1e-9) endJump=true;
-      if(e.t>0 && e.t<T){ pts.add(e.t); if(e.route==="iv") jumps.add(e.t); }
+      if(!eff && e.route==="iv" && Math.abs(e.t-T)<1e-9) endJump=true;
+      if(e.t>0 && e.t<T){ pts.add(e.t); if(!eff && e.route==="iv") jumps.add(e.t); }
       if(e.route==="inf" && e.t+e.dur>0 && e.t+e.dur<T) pts.add(e.t+e.dur);
     });
     const ts=[...pts].sort((a,b)=>a-b);
@@ -406,15 +413,15 @@
         if(up ? L<=c0 : L>=c0) return ta;
         if(up ? L>=c1 : L<=c1) return tb;
         let a=ta, b=tb;
-        for(let k=0;k<40;k++){ const m=(a+b)/2; if((conc(p,m,ev)<L)===up) a=m; else b=m; }
+        for(let k=0;k<40;k++){ const m=(a+b)/2; if((level(m)<L)===up) a=m; else b=m; }
         return (a+b)/2;
       };
       return Math.abs(at(hi)-at(lo));
     };
-    let t0=ts[0], c0=conc(p,t0,ev), cmax=c0, tmax=t0, im=0, auc=0, tIn=0, tAbove=0;
+    let t0=ts[0], c0=level(t0), cmax=c0, tmax=t0, im=0, auc=0, tIn=0, tAbove=0;
     for(let i=1;i<ts.length;i++){
-      const t=ts[i], atEnd=endJump && i===ts.length-1, cL=jumps.has(t) || atEnd ? conc(p,t-1e-9,ev) : conc(p,t,ev), cR=atEnd ? cL : conc(p,t,ev), dt=t-t0;
-      auc+=(c0+4*conc(p,t0+dt/2,ev)+cL)/6*dt;   // Simpson: every step is smooth (doses and infusion ends are grid points)
+      const t=ts[i], atEnd=endJump && i===ts.length-1, cL=jumps.has(t) || atEnd ? level(t-1e-9) : level(t), cR=atEnd ? cL : level(t), dt=t-t0;
+      auc+=(c0+4*level(t0+dt/2)+cL)/6*dt;   // Simpson: every step is smooth (doses and infusion ends are grid points)
       tIn+=within(t0,c0,t,cL,mec,mtc);
       tAbove+=within(t0,c0,t,cL,mtc,Infinity)-(c0===cL ? (c0===mtc ? dt : 0) : 0);
       if(cL>cmax){ cmax=cL; tmax=t; im=i; }
@@ -427,9 +434,9 @@
       let lo=ts[Math.max(0,im-1)], hi=ts[Math.min(ts.length-1,im+1)];
       for(let k=0;k<40;k++){
         const a=hi-(hi-lo)*0.6180339887, b=lo+(hi-lo)*0.6180339887;
-        if(conc(p,a,ev)<conc(p,b,ev)) lo=a; else hi=b;
+        if(level(a)<level(b)) lo=a; else hi=b;
       }
-      const t=(lo+hi)/2, c=conc(p,t,ev);
+      const t=(lo+hi)/2, c=level(t);
       if(c>cmax){ cmax=c; tmax=t; }
     }
     tAbove=Math.max(0, Math.min(tAbove, T-tIn));
@@ -758,7 +765,57 @@
   }
 
   /* ================= PHARMACODYNAMICS ================= */
-  // Sigmoid Emax model linked directly to plasma concentration (no effect-site delay):
+  // Effect-site delay. Some drugs act somewhere that takes time to equilibrate with plasma, so the effect lags
+  // the level. The effect then follows a hypothetical effect compartment that holds a negligible amount of drug,
+  // dCe/dt = ke0·(C − Ce), and teq = ln 2 / ke0 is its equilibration half-life. Every plasma curve here is a
+  // sum of exponentials after each dose, so Ce has a closed form too: each term e^(−λt) reaches the effect site
+  // as ke0·∫₀ᵗ e^(−ke0(t−s))·e^(−λs) ds. Saturable elimination has no such form and keeps the direct link.
+  const keqOf=p=> p.teq>0 && p.kin!=="mm" ? Math.LN2/p.teq : 0;
+  // ke0·∫₀ᵗ e^(−ke0(t−s))·e^(−λs) ds = ke0·(e^(−λt) − e^(−ke0·t)) / (ke0 − λ), with the difference written
+  // through expm1 so that close rates lose no precision (and ke0·t·e^(−ke0·t) when they are equal)
+  function linkExp(k0, lam, t){
+    const d=k0-lam;
+    if(d===0) return k0*t*Math.exp(-k0*t);
+    return k0*(d>0 ? -Math.exp(-lam*t)*Math.expm1(-d*t) : Math.exp(-k0*t)*Math.expm1(d*t))/d;
+  }
+  // ke0·∫₀ᵗ e^(−ke0(t−s))·s·e^(−λs) ds, for an oral dose absorbed at the disposition rate (kₐ = k), whose
+  // plasma curve is kₐ·t·e^(−kₐt): a series while (ke0 − λ)·t is small, the closed form otherwise
+  function linkTExp(k0, lam, t){
+    const d=k0-lam, x=d*t;
+    if(Math.abs(x)<0.5){
+      let s=0, term=t*t;   // ∫₀ᵗ s·e^(ds) ds = Σ dⁿ·t^(n+2) / (n!·(n+2))
+      for(let n=0;n<30;n++){ s+=term/(n+2); term*=x/(n+1); }
+      return k0*Math.exp(-k0*t)*s;
+    }
+    return k0*(Math.exp(-lam*t)*(x-1)+Math.exp(-k0*t))/(d*d);
+  }
+  // The effect-site level per mg of dose (before F and S), t hours after one dose given by route (as singleConc).
+  function ceResp(p, terms, k0, t, e){
+    if(t<=0) return 0;
+    const route=(e && e.route) || p.route;
+    let s=0;
+    if(route==="iv"){ for(const x of terms) s+=x.c*linkExp(k0,x.k,t); return s; }
+    if(route==="inf"){
+      // an infusion is a step up at its start and a step down at its end; a step's plasma curve is Σ (c/k)·(1 − e^(−kt))
+      const Ti=(e && e.dur) || p.tinf, step=u=>{ let g=0; if(u>0) for(const x of terms) g+=x.c/x.k*(linkExp(k0,0,u)-linkExp(k0,x.k,u)); return g; };
+      return (step(t)-step(t-Ti))/Ti;
+    }
+    const ka=p.ka;
+    for(const x of terms) s+= Math.abs(ka-x.k)<SAME_RATE ? x.c*ka*linkTExp(k0,ka,t) : x.c*ka/(ka-x.k)*(linkExp(k0,x.k,t)-linkExp(k0,ka,t));
+    return p.F*s;
+  }
+  // The effect-site level at time t: plasma itself when there is no delay.
+  function ceConc(p, t, ev){
+    const k0=keqOf(p);
+    if(!k0) return conc(p,t,ev);
+    ev=ev||doseEvents(p);
+    const terms=disposition(p), S=saltOf(p);
+    let sum=0;
+    for(const e of ev) if(t>e.t) sum+=e.mg*S*ceResp(p, terms, k0, t-e.t, e);
+    return sum;
+  }
+
+  // Sigmoid Emax model, driven by plasma or, with a delay, by the effect site:
   // E = E0 + Emax·Cⁿ / (EC50ⁿ + Cⁿ), in % of the largest possible response. Written as Emax / (1 + (EC50/C)ⁿ)
   // so that tiny and huge concentrations stay exact.
   function effectOf(p, c){
@@ -772,20 +829,20 @@
     if(f>=1) return null;
     return p.ec50*Math.pow(f/(1-f), 1/p.hill);
   }
-  // Effect over [0, T] against a target effect. Effect rises with concentration, so the peak effect comes
-  // with the concentration peak, and "at or above target" means "concentration at or above ct": the window
-  // statistics measure that exactly (jumps at boluses, crossings found by bisection). onset is when the target
-  // is first reached (null if never).
+  // Effect over [0, T] against a target effect. Effect rises with the level driving it (plasma, or the effect
+  // site), so the peak effect comes with that level's peak, and "at or above target" means "level at or above
+  // ct": the window statistics measure that exactly (jumps at boluses, crossings found by bisection). onset is
+  // when the target is first reached (null if never).
   function effectStats(p, T, target){
-    const w=windowStats(p,T,0,Infinity), ct=concForEffect(p,target);
+    const w=windowStats(p,T,0,Infinity,"effect"), ct=concForEffect(p,target);
     if(ct===null) return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove:0, onset:null};
-    const tAbove=windowStats(p,T,ct,Infinity).tIn, ev=doseEvents(p), N=600;
+    const tAbove=windowStats(p,T,ct,Infinity,"effect").tIn, ev=doseEvents(p), N=600, level=t=>ceConc(p,t,ev);
     const ts=[...new Set(Array.from({length:N+1},(_,i)=>T*i/N).concat(ev.filter(e=>e.t>0 && e.t<T).map(e=>e.t)))].sort((a,b)=>a-b);
-    let onset=conc(p,0,ev)>=ct ? 0 : null;
+    let onset=level(0)>=ct ? 0 : null;
     for(let i=1;i<ts.length && onset===null;i++){
-      const t=ts[i], cL=conc(p,t-1e-9,ev);   // just before t: a bolus at t is a jump, not a crossing
-      if(cL>=ct){ let lo=ts[i-1], hi=t; for(let k=0;k<50;k++){ const m=(lo+hi)/2; if(conc(p,m,ev)>=ct) hi=m; else lo=m; } onset=hi; }
-      else if(conc(p,t,ev)>=ct) onset=t;
+      const t=ts[i], cL=level(t-1e-9);   // just before t: a bolus at t is a jump, not a crossing
+      if(cL>=ct){ let lo=ts[i-1], hi=t; for(let k=0;k<50;k++){ const m=(lo+hi)/2; if(level(m)>=ct) hi=m; else lo=m; } onset=hi; }
+      else if(level(t)>=ct) onset=t;
     }
     return {peak:effectOf(p,w.cmax), tPeak:w.tmax, ct, tAbove, onset};
   }
@@ -1159,7 +1216,12 @@
      text:"Doubling a 500 mg IV bolus doubles every concentration, but the peak effect only rises from 78% to 88%: the drug is already near the top of its sigmoid. What the extra dose buys is time. The level needs one more half-life to fall back to EC50 (4 mg/L, which gives the 50% target), so the effect stays at or above target for 11.3 h instead of 7.3 h: exactly 4 h, one half-life, longer.",
      tryThis:"Double it again to 2,000 mg: another 4 h above target, and the peak effect only reaches 93%.",
      view:{duration:24,mec:2,mtc:30,pd:true,etgt:50},
-     base:{route:"iv",D:500}, cur:{route:"iv",D:1000}}
+     base:{route:"iv",D:500}, cur:{route:"iv",D:1000}},
+    {id:"delay", tag:"t½eq", title:"Effect delay (hysteresis)", sum:"The same levels, a later and lower effect.", baseLabel:"no delay",
+     text:"The plasma curves are identical: 500 mg orally, peaking at 9.3 mg/L at 1.9 h. Here the drug acts at a site that equilibrates with plasma with a half-life of 2 h, so the effect follows the level at that site, a delayed and flattened copy of the plasma curve. The effect first reaches the 50% target at 2.1 h instead of 0.3 h, and peaks at 5.0 h instead of 1.9 h, at 61% instead of 70%, because the site never fills to the plasma peak. The same plasma level no longer means the same effect: at 4 mg/L (the EC50) it is 5% while the level rises and 58% while it falls. Plotted against the plasma level, the effect traces a loop that runs counterclockwise: hysteresis.",
+     tryThis:"Drag the time cursor and watch the dot on the concentration–effect chart: below the curve while plasma rises, above it as plasma falls, meeting it at the effect's peak.",
+     view:{duration:24,mec:2,mtc:30,pd:true,etgt:50},
+     base:{teq:0}, cur:{teq:2}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1200,6 +1262,8 @@
      look:"Both cross 50% at 7.3 h, but B switches from nearly full effect to almost none within a few hours."},
     {id:"pdose", lesson:"pdose", title:"Dose vs double dose (effect)", nameA:"500 mg", nameB:"1,000 mg",
      look:"B's peak effect is only 10 points higher, but it stays above target exactly one half-life (4 h) longer."},
+    {id:"delay", lesson:"delay", title:"Direct vs delayed effect", nameA:"No delay", nameB:"Effect-site t½ 2 h",
+     look:"Identical plasma curves. B's effect peaks 3.1 h after the plasma peak, at 61% instead of 70%, and reaches the 50% target 1.8 h later."},
     {id:"spacing", lesson:"spacing", title:"Evenly spaced vs bunched doses", nameA:"Every 6 h", nameB:"Four doses by 6 am",
      look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."}
   ];
@@ -1407,7 +1471,14 @@
         why:"Near the top of the sigmoid, doubling the concentration moves the effect only a little further up the curve.",
         decide:m=>{ const d=m.cur.epeak-m.base.epeak; return d>40 ? 0 : d>2 ? 1 : 2; }, show:m=>`Peak effect ${r0(m.base.epeak)}% → ${r0(m.cur.epeak)}%`},
       challenge:{text:"Keep the effect at or above 50% for 15 hours or more.", goal:m=> m.now.effAbove(50)>=15, solution:{D:2000}},
-      matters:"Near the top of the concentration–effect curve, extra dose mostly buys time, not intensity: each doubling adds about one half-life."}
+      matters:"Near the top of the concentration–effect curve, extra dose mostly buys time, not intensity: each doubling adds about one half-life."},
+    delay:{group:"pd", objective:"Explain why an effect can lag the plasma level, and read the hysteresis loop.",
+      predict:{q:"With the effect site equilibrating over a 2-hour half-life, the peak effect is…", choices:HLS, answer:1,
+        why:"The site is still filling when plasma starts to fall, so its level never reaches the plasma peak.",
+        decide:m=> higherLowerSame(m.cur.epeak,m.base.epeak), show:m=>`Peak effect ${r0(m.base.epeak)}% → ${r0(m.cur.epeak)}%`},
+      challenge:{text:"Keep the 2-hour delay and bring the peak effect back to 70% or more.",
+        goal:m=> m.now.p.teq===2 && m.now.epeak>=70, solution:{D:750}},
+      matters:"When the effect lags the level, a level drawn early can look high while the effect is still building, and the effect outlasts the level on the way down."}
   };
   LESSONS.forEach(L=> Object.assign(L, LESSON_GUIDE[L.id]));
   // Grouped order: "Next lesson" and the numbering follow it.
@@ -1537,9 +1608,10 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1941,7 +2013,7 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
-    PD_KEYS, effectOf, concForEffect, effectStats,
+    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc,
     DRUGS, LESSONS, TEMPLATES, LESSON_GROUPS, lessonStats, lessonCheck, lessonScenario, challengeMet,
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,

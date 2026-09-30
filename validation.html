@@ -38,13 +38,14 @@
 
 <h2>What is checked</h2>
 <ul>
-  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
+  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve, and for an effect-site delay two more follow the effect-site level, dCe/dt = ke0·(C − Ce), and its area. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, and their effect-site levels from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
   <li><b>A scenario matrix</b> of <span id="nScen">…</span> scenarios:
     <ul>
       <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
       <li>Regimens: single dose, repeated, with a loading dose, with a missed dose, and a custom schedule with irregular times, amounts and a missed dose.</li>
       <li>Drugs: a first-order drug, a first-order drug with a salt factor, a saturable (Michaelis–Menten) drug, and a two-compartment drug (a central and a peripheral compartment exchanging at uneven rates).</li>
       <li>Patients: a simple-mode patient at 100% organ function, and a clinical patient (a 75-year-old woman, 60 kg, serum creatinine 1.8 mg/dL) whose clearance follows Cockcroft–Gault.</li>
+      <li>An effect-site delay: 20 first-order scenarios (one and two compartments, every route, a single dose, a loading dose, custom and mixed-route schedules) read at the effect site instead of plasma. Their ids end in <code>-effect</code>.</li>
     </ul></li>
   <li><b>Four numbers per scenario</b> over 0–96 h:
     <ul>
@@ -83,7 +84,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=fd2be4d42f"></script>
+<script src="pk-engine.js?v=b36f1e08c6"></script>
 <script>
 (function(){
   "use strict";
@@ -99,8 +100,8 @@ python3 validation/reference.py         # regenerates validation/reference-resul
     for(let i=0;i<REF.scenarios.length;i++){
       if(i && i%12===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
       const s=REF.scenarios[i];
-      const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc);
-      const m={peak:w.cmax, trough:PK.conc(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc,s.site), level=s.site==="effect" ? PK.ceConc : PK.conc;
+      const m={peak:w.cmax, trough:level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
       const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
       const d={peak:pct(m.peak,r.peak), trough:pct(m.trough,r.trough), auc:pct(m.auc,r.auc), tin:m.tin-r.tin_pct};
       const ok=["peak","trough","auc"].every(k=>Math.abs(d[k])<=100*tol) && Math.abs(d.tin)<=tpp;
