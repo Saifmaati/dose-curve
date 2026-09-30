@@ -66,7 +66,9 @@
       <li>the infusion plateau R₀ / CL</li>
       <li>the Michaelis–Menten steady state Km·R / (Vmax − R), its time to 90%, and its first-order limit at low levels</li>
       <li>the Cockcroft–Gault and Devine hand values</li>
+      <li>the time above a target effect across bolus jumps, in closed form</li>
     </ul></li>
+  <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
 <p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
 
@@ -81,7 +83,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=5c32adee26"></script>
+<script src="pk-engine.js?v=fd2be4d42f"></script>
 <script>
 (function(){
   "use strict";
