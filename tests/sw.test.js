@@ -11,9 +11,11 @@ const SCOPE="https://example.github.io/dose-curve/";
 const SRC=fs.readFileSync(path.join(__dirname,"..","sw.js"),"utf8");
 // The cache name carries a version that each release phase bumps; the tests follow whatever sw.js says.
 const CACHE=SRC.match(/const CACHE="(dosecurve-v\d+)"/)[1];
+// the validation results, named by their content hash as sw.js lists them
+const RESULTS=SRC.match(/"\.\/(validation\/reference-results\.json\?v=[0-9a-f]{10})"/)[1];
 
 function makeWorker(){
-  const handlers={}, store=new Map(), log=[];
+  const handlers={}, store=new Map(), log=[], modes=[];
   let online=true, version=1;
   const keyOf=r=> typeof r==="string" ? new URL(r, SCOPE).href : r.url;
   const response=(url, mode)=>{
@@ -23,7 +25,7 @@ function makeWorker(){
       body:`${u.pathname}${u.search} v${version}`, clone(){ return this; }};
   };
   const network=async(req)=>{
-    const url=keyOf(req); log.push(url);
+    const url=keyOf(req); log.push(url); modes.push(typeof req==="string" ? "default" : req.cache || "default");
     if(!online) throw new TypeError("Failed to fetch");
     return response(url, typeof req==="string" ? "cors" : req.mode);
   };
@@ -41,7 +43,9 @@ function makeWorker(){
   const caches={open:async name=>cacheOf(name), keys:async()=>[...store.keys()], delete:async name=>store.delete(name)};
   const self={addEventListener:(type,fn)=>{ handlers[type]=fn; }, registration:{scope:SCOPE}, location:new URL(SCOPE+"sw.js"),
     skipWaiting:async()=>{}, clients:{claim:async()=>{}}};
-  vm.runInNewContext(SRC, {self, caches, fetch:network, URL, Promise, console});
+  // a Request as far as the worker uses it: its address and cache mode
+  function Request(u, o){ this.url=new URL(u, SCOPE).href; this.cache=(o && o.cache) || "default"; this.mode="cors"; }
+  vm.runInNewContext(SRC, {self, caches, fetch:network, URL, Request, Promise, console});
   const lifecycle=async type=>{ let p; handlers[type]({waitUntil:x=>{ p=x; }}); await p; };
   // a fetch event: {handled:false} when the worker lets the browser deal with it
   const request=async(url, {mode="no-cors", method="GET"}={})=>{
@@ -52,7 +56,7 @@ function makeWorker(){
     if(later) await later;
     return {handled:true, res};
   };
-  return {lifecycle, request, store, log, cache:()=>store.get(CACHE),
+  return {lifecycle, request, store, log, modes, cache:()=>store.get(CACHE),
     goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }};
 }
 
@@ -135,12 +139,21 @@ test("other sites, other paths and anything but GET pass straight through", asyn
 test("the validation page and its results are kept for offline use, and never stand in for the app", async()=>{
   const w=makeWorker();
   await w.lifecycle("install");
-  assert.ok(w.cache().has(SCOPE+"validation.html") && w.cache().has(SCOPE+"validation/reference-results.json"), "precached");
+  assert.ok(w.cache().has(SCOPE+"validation.html") && w.cache().has(SCOPE+RESULTS), "precached");
   await w.request(SCOPE, {mode:"navigate"});
   w.release();
   await w.request(SCOPE+"validation.html", {mode:"navigate"});
   w.goOffline();
   assert.equal((await w.request(SCOPE+"validation.html", {mode:"navigate"})).res.body, "/dose-curve/validation.html v2", "its own saved copy");
   assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/dose-curve/ v1", "the app page is still the app page");
-  assert.equal((await w.request(SCOPE+"validation/reference-results.json", {mode:"cors"})).res.body, "/dose-curve/validation/reference-results.json v1");
+  assert.equal((await w.request(SCOPE+RESULTS, {mode:"cors"})).res.body, "/dose-curve/"+RESULTS+" v1");
 });
+
+test("installing fetches every file from the network, past the browser's HTTP cache (a new release never saves the last one's copy)", async()=>{
+  const w=makeWorker();
+  await w.lifecycle("install");
+  assert.ok(w.modes.length>=10, `${w.modes.length} files`);
+  assert.ok(w.modes.every(m=>m==="reload"), `cache modes: ${[...new Set(w.modes)].join(", ")}`);
+  assert.ok(w.cache().has(SCOPE) && w.cache().has(SCOPE+"validation.html"), "saved under their plain addresses");
+});
+

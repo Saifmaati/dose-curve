@@ -225,3 +225,16 @@ There are 277 tests in 10 files.
 | The standing cross-check covers effect-site peaks, onset and time above a target | — | `validation.test.js` |
 
 There are 283 tests in 11 files. The initial script is +19.6% over the Phase 0 baseline (limit +25%).
+
+## 17. 1.8.0
+
+1.6.0 and 1.7.0 were deployed and checked live: PR #8 (merge 0845417) and PR #9 (merge b1ae2f3). Every changed file was byte-identical on Pages, and the live validation page reported 584 of 584 comparisons within tolerance.
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Practice: effect delay, time of peak effect (34 kinds); worksheet pool version 4, with version-3 links pinned | Practice → Concentration–effect | `pk-engine.test.js` (every kind against the model; the v3 snapshot) |
+| Vary only: the effect-site delay | Compare | `effect-site.test.js` |
+| Service worker: install bypasses the HTTP cache; validation results named by content hash | Offline use; validation page | `sw.test.js`, `validation.test.js` |
+
+There are 285 tests in 11 files. Lighthouse (gzip preview): 100 in every category on mobile and desktop.
+

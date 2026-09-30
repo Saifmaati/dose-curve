@@ -1680,6 +1680,11 @@ test("a worksheet shared before new kinds arrived rebuilds exactly (version-1 li
   // and version 2 sheets can include the new kinds
   const seen=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"inf", count:15, seed}).problems.forEach(p=>seen.add(p.id)));
   assert.ok(seen.has("auc2"));
+  // version-3 links (shared from 1.6 to 1.7) rebuild exactly: made with the 1.7.0 engine, before version 4's effect-delay kind
+  const V3={"all.15.99.3":["rac:1278237150","cfore:1040450815","mmt90:2966671880","cl2:1692960689","cl:3878063843","auc:826037518","infend:3506976847","thalfcl:2086466836","effdur:2600597767","mdose:3012898485","renaladj:3259124632","clinf:1190380853","rate:2544774965","taumax:3300014323","ldinf:1953322744"],"pd.10.4242.3":["efft:2524250870","cfore:3140510815","effc:3240356459","effdur:2609655636","cfore:4269880394","effc:1447969846","efft:3226386556","effdur:3693093960","effc:861206457","efft:2758302108"],"rep.15.31337.3":["renaladj:3138199205","t90:3876147105","taumax:3621073898","mdose:3455989061","cavg:3637072344","rac:150323216","trough:2413360870","t90:3042646043","mdose:4144450312","cavg:2355924065","renaladj:3595901977","taumax:3103944959","trough:3555029807","rac:995414297","renaladj:1356664921"],"pd.15.1.3":["efft:596715197","cfore:1734070562","effc:1063107040","effdur:663542962","cfore:2100857034","effc:289351446","effdur:1694877057","efft:3294703884","cfore:1227766539","effc:819795777","efft:183522707","effdur:1835591523","effc:2535673501","cfore:3430322586","efft:1266456452"]};
+  Object.entries(V3).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
+  const seen4=new Set(); SEEDS.slice(0,30).forEach(seed=> PK.makeWorksheet({topic:"pd", count:10, seed}).problems.forEach(p=>seen4.add(p.id)));
+  assert.ok(seen4.has("effpk"), "version 4 sheets include the effect-delay kind");
 });
 
 /* ---------- hit the window ---------- */

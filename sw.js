@@ -1,22 +1,25 @@
 // DoseCurve service worker: after one visit the app opens without a connection.
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
-// - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), icons, manifest and the Google
+// - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), the validation results (by hash too),
+//   icons, manifest and the Google
 //   Fonts files come from the cache and are refreshed in the background. A page and its scripts always match:
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v17";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v18";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
   "./cases.js?v=3ffd337354",
-  "./pk-practice.js?v=5ed5a9064b","./pk-math.js?v=f84505e78f","./pk-glossary.js?v=379a38ffbf","./pop-worker.js?v=4b1fe43934","./validation.html","./validation/reference-results.json"];
+  "./pk-practice.js?v=24b7eeee58","./pk-math.js?v=f84505e78f","./pk-glossary.js?v=379a38ffbf","./pop-worker.js?v=4b1fe43934","./validation.html","./validation/reference-results.json?v=22dc7c5cbb"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];
 
+// A new release's files come from the network, not the browser's HTTP cache, which can still hold the previous
+// release's copy of an unversioned file (the app page, the validation page) for up to 10 minutes.
 self.addEventListener("install",e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate",e=>{
   e.waitUntil(caches.keys()

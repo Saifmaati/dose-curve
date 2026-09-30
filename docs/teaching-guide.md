@@ -105,11 +105,11 @@ No case stores an answer: every target check, hint, walkthrough number and refer
 
 ## Practice and assessment
 
-- **Practice problems.** There are 33 kinds of calculation problem in five topics:
+- **Practice problems.** There are 34 kinds of calculation problem in five topics:
   - single dose (12 kinds, including clearance from a two-compartment fit)
   - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
   - infusions (6, including the AUC from two measured levels)
-  - concentration–effect (4)
+  - concentration–effect (5, including the time of the peak effect with an effect-site delay)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
 
   Each has a worked solution. **Visualize on curve** opens the problem's scenario with the cursor on the moment the question asks about. Answers within 2% count, so working with 0.693 for ln 2 is fine.
