@@ -122,3 +122,24 @@ test("Cockcroft–Gault and Devine hand values (from the plan): 72.9 and 62.0 mL
   assert.equal(PK.crclCG(65,70,1,"M").toFixed(1), "72.9"); assert.equal(PK.crclCG(65,70,1,"F").toFixed(1), "62.0");
   assert.equal(PK.ibwDevine("M",70).toFixed(1), "73.0"); assert.equal(PK.ibwDevine("F",65).toFixed(1), "57.0");
 });
+
+test("a bolus exactly at the window's end adds nothing inside it: the area is the closed form, and the peak is an earlier dose's", ()=>{
+  const p=PK.normalizeScenario(scenario({route:"iv", dosing:"repeated", D:1060, thalf:9.5, V:51, tau:21, nDoses:9})), T=168, k=Math.LN2/9.5;
+  let exact=0; PK.doseEvents(p).forEach(e=>{ if(e.t<T) exact+=e.mg/51*(1-Math.exp(-k*(T-e.t)))/k; });
+  const w=PK.windowStats(p, T, 1, 1e9);
+  rel(w.auc, exact, 1e-9, "∫ over [0, 168) of the doses given before 168 h");
+  near(w.tmax, 147, 1e-9, "the last dose inside the window");
+  rel(w.cmax, PK.conc(p, 147), 1e-12);
+});
+
+test("peaks read off a sampled interval are refined: the dose table and the steady state match a dense scan (1e-6)", ()=>{
+  // a sharp oral peak with two compartments, where 60 samples an interval fell 3.7% short
+  const p=PK.normalizeScenario(scenario({route:"oral", dosing:"repeated", D:638, F:0.77, ka:2.44, thalf:2.3, V:39, tau:22, nDoses:7, cmt:2, k12:1.6, k21:0.52}));
+  const ss=PK.ssProfile(p), scan=(f,a,b)=>{ let m=0; for(let j=0;j<=40000;j++){ const c=f(a+(b-a)*j/40000); if(c>m) m=c; } return m; };
+  const ssScan=scan(s=>PK.ssConc(p,s), 0, 22-1e-9);
+  assert.ok(ss.ssPeak>=ssScan*(1-1e-6) && ss.ssPeak<=ssScan*(1+1e-6), `steady-state peak ${ss.ssPeak} vs ${ssScan}`);
+  ss.rows.forEach((r,i)=>{ const m=scan(t=>PK.conc(p,t), i*22, (i+1)*22-1e-9); assert.ok(r.peak>=m*(1-1e-6) && r.peak<=m*(1+1e-6), `dose ${i+1}: ${r.peak} vs ${m}`); });
+  // and for a saturable regimen's dose table
+  const q=PK.normalizeScenario(scenario({kin:"mm", route:"oral", dosing:"repeated", D:300, tau:24, nDoses:5, vmax:7, km:4, V:49, ka:1.5, F:1}));
+  PK.ssProfile(q).rows.forEach((r,i)=>{ const m=scan(t=>PK.conc(q,t), i*24, (i+1)*24-1e-9); assert.ok(Math.abs(r.peak/m-1)<1e-6, `saturable dose ${i+1}: ${r.peak} vs ${m}`); });
+});

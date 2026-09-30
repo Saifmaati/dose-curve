@@ -26,7 +26,7 @@ test("there are 6 to 12 cases, each with its patient, target, task, what else a 
     assert.ok(c.refs.length && c.refs.every(r=>PK.SOURCES[r]), `${c.id}: sources`);
     if(c.drug) assert.ok(PK.DRUGS.some(d=>d.id===c.drug));
   });
-  ["gent","gent-ext","vanc","vanc-lv","phe","dig","theo","li"].forEach(id=> assert.ok(C.caseById(id), id));
+  ["gent","gent-lv","gent-ext","vanc","vanc-lv","phe","dig","theo","li"].forEach(id=> assert.ok(C.caseById(id), id));
 });
 
 test("each case's reference regimen, worked out from the patient, passes its own grader", ()=>{
@@ -163,4 +163,23 @@ test("vancomycin from two levels: the first-order estimate, the dose it leads to
   const w=C.walkthrough(c).join(" ");
   [`${+e.k.toFixed(4)} h⁻¹`, `${+e.auc24.toFixed(0)} mg·h/L`, "1500 mg every 12 h", `${+exact.toFixed(0)} mg·h/L`].forEach(s=> assert.ok(w.includes(s), s));
   assert.ok(PK.SOURCES.rybakCid.url.endsWith("10.1093/cid/ciaa303"));
+});
+
+test("gentamicin from two levels (Sawchuk–Zaske): the levels recover this patient's own k and V, which differ from the prediction", ()=>{
+  const c=C.caseById("gent-lv"), L=C.levelsOf(c), p=L.p, k0=PK.keOf(p), V0=PK.vOf(p);
+  // the premise is stated, and the model patient carries it: 1.8× the predicted clearance, 1.4× the volume
+  assert.ok(/1\.8 times faster/.test(c.indication) && /1\.4 times/.test(c.indication) && /premise/.test(c.indication));
+  const pop=C.caseScenario(Object.assign({}, c, {clMult:0, vMult:0}), c.current);
+  rel(PK.derived(p).CL, 1.8*PK.derived(pop).CL, 1e-9); rel(V0, 1.4*PK.vOf(pop), 1e-9);
+  // levels as reported (0.1 mg/L, or two significant figures below 1 mg/L) from the model's steady state
+  near(L.peak, PK.ssConc(p, L.T+0.5), 0.05); near(L.trough, PK.ssConc(p, 6), 0.005); assert.equal(L.second, 6);
+  // the method: k from the two levels, then V from the infusion equation, both close to the patient's own
+  const w=C.walkthrough(c).join(" "), k=Math.log(L.peak/L.trough)/(6-L.T-0.5);
+  rel(k, k0, 0.02, "k from the levels"); assert.ok(w.includes(`${+k.toFixed(4)} h⁻¹`));
+  const V=+(w.match(/= <b>([\d.]+) L<\/b>, against the/)||[])[1]; rel(V, V0, 0.02, "V from the levels");
+  assert.ok(w.includes("Cockcroft–Gault predicts a clearance"), "the prediction comes before the levels");
+  // the opening regimen is too low, the reference is on target, and the method shortens the interval
+  assert.equal(C.gradeCase(c, c.current).hint, "increase");
+  const ref=C.reference(c); assert.ok(ref.tau<c.current.tau && C.gradeCase(c, ref).ok);
+  ["zaske1976","sawchukZaske"].forEach(r=> assert.ok(c.refs.includes(r) && PK.SOURCES[r].url.startsWith("https://doi.org/10.")));
 });
