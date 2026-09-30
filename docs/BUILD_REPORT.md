@@ -180,3 +180,9 @@ Live check after merging (pull request #4, merge e178f31): the deployed files ar
 
 There are now 269 tests in 10 files.
 
+Live check after merging (pull request #5, merge 36e3abf): the deployed files are byte-identical. In the browser: Version 1.4.0, offline cache dosecurve-v13, the tenth case grades 220 mg every 6 h on target, and the validation page shows 504 of 504.
+
+## 13. 1.4.1
+
+A patch. The IV-bolus dose table was off by one dose (since 1.0): each row's peak included the bolus that starts the next interval. The fix reads each interval as [start, end). A standing cross-check now runs in the test suite (40 seeded random scenarios against dense scans of the engine's own curve) and passed 800 more before release. There are 270 tests in 10 files.
+

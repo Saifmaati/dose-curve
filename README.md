@@ -101,7 +101,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 1.4.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 1.4.1. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 

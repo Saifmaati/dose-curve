@@ -143,3 +143,27 @@ test("peaks read off a sampled interval are refined: the dose table and the stea
   const q=PK.normalizeScenario(scenario({kin:"mm", route:"oral", dosing:"repeated", D:300, tau:24, nDoses:5, vmax:7, km:4, V:49, ka:1.5, F:1}));
   PK.ssProfile(q).rows.forEach((r,i)=>{ const m=scan(t=>PK.conc(q,t), i*24, (i+1)*24-1e-9); assert.ok(Math.abs(r.peak/m-1)<1e-6, `saturable dose ${i+1}: ${r.peak} vs ${m}`); });
 });
+
+/* ---------- a standing cross-check: random scenarios against dense scans of the engine's own curve ---------- */
+test("random scenarios: every peak, trough, steady state and window area the engine reports matches a dense scan of its curve", ()=>{
+  const rnd=PK.seededRandom(20260930), pick=(a,b)=>a+(b-a)*rnd(), one=a=>a[Math.floor(rnd()*a.length)];
+  // a dense scan, plus the moments a peak can sit at exactly (dose times and infusion ends inside the span)
+  const scan=(f,a,b,n,kinks)=>{ let m=0; for(let j=0;j<=n;j++){ const c=f(a+(b-a)*j/n); if(c>m) m=c; }
+    (kinks||[]).forEach(t=>{ if(t>=a && t<=b){ const c=f(t); if(c>m) m=c; } }); return m; };
+  // Simpson's rule between breakpoints (doses and infusion ends), each segment open at its right end
+  const area=(p,T)=>{ const ev=PK.doseEvents(p), bp=[...new Set([0,T].concat(ev.map(e=>e.t), ev.filter(e=>e.route==="inf").map(e=>e.t+e.dur)).filter(t=>t>=0&&t<=T))].sort((a,b)=>a-b);
+    let s=0; for(let j=0;j<bp.length-1;j++){ const a=bp[j], b=bp[j+1], n=400, h=(b-a)/n; let q=0; for(let m=0;m<=n;m++) q+=(m===0||m===n?1:m%2?4:2)*PK.conc(p, m===n ? b-1e-12 : a+m*h, ev); s+=q*h/3; } return s; };
+  for(let i=0;i<40;i++){
+    const route=one(["oral","iv","inf"]), o={route, dosing:"repeated", D:Math.round(pick(50,1500)), F:+pick(0.3,1).toFixed(2), ka:+pick(0.2,3).toFixed(2),
+      thalf:+pick(1,20).toFixed(1), V:Math.round(pick(8,110)), tinf:+pick(0.5,6).toFixed(2), tau:Math.round(pick(4,24)), nDoses:Math.round(pick(2,10)), loadMult:rnd()<0.2?2:1, missed:rnd()<0.2?2:1};
+    if(rnd()<0.4) Object.assign(o,{cmt:2, k12:+pick(0.1,2).toFixed(2), k21:+pick(0.1,2).toFixed(2)});
+    const p=PK.normalizeScenario(scenario(o)), d=PK.derived(p), where=JSON.stringify(o), t0=(p.nDoses-1)*p.tau, t1=p.nDoses*p.tau;
+    const kinks=PK.doseEvents(p).flatMap(e=> e.route==="inf" ? [e.t, e.t+e.dur] : [e.t]);
+    const last=scan(t=>PK.conc(p,t), t0, t1-1e-9, 6000, kinks);
+    assert.ok(d.cmaxSS>=last*(1-1e-9) && d.cmaxSS<=last*(1+1e-3), `last-dose peak ${d.cmaxSS} vs ${last}: ${where}`);
+    const ss=PK.ssProfile(p), ssScan=scan(s=>PK.ssConc(p,s), 0, p.tau-1e-9, 6000, route==="inf" ? [p.tinf%p.tau] : []);
+    assert.ok(ss.ssPeak>=ssScan*(1-1e-9) && ss.ssPeak<=ssScan*(1+1e-3), `steady-state peak: ${where}`);
+    ss.rows.forEach((r,k)=>{ const m=scan(t=>PK.conc(p,t), k*p.tau, (k+1)*p.tau-1e-9, 3000, kinks); assert.ok(r.peak>=m*(1-1e-9) && r.peak<=m*(1+1e-3), `dose ${k+1} peak: ${where}`); });
+    const T=Math.min(168, t1+2*d.thalfEff); rel(PK.windowStats(p,T,1,1e9).auc, area(p,T), 1e-4, `window area: ${where}`);
+  }
+});
