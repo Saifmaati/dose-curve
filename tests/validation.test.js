@@ -167,3 +167,19 @@ test("random scenarios: every peak, trough, steady state and window area the eng
     const T=Math.min(168, t1+2*d.thalfEff); rel(PK.windowStats(p,T,1,1e9).auc, area(p,T), 1e-4, `window area: ${where}`);
   }
 });
+
+test("random custom schedules (mixed routes, missed doses, one or two compartments, saturable): window peak and area match dense scans", ()=>{
+  const rnd=PK.seededRandom(930), pick=(a,b)=>a+(b-a)*rnd(), one=a=>a[Math.floor(rnd()*a.length)];
+  for(let i=0;i<24;i++){
+    const n=2+Math.floor(rnd()*5), events=[]; let t=0;
+    for(let j=0;j<n;j++){ t+= j ? +pick(0.5,14).toFixed(2) : 0; events.push({t:+t.toFixed(2), mg:Math.round(pick(50,800)), route:one(["oral","iv","inf"]), dur:+pick(0.5,8).toFixed(2), status:rnd()<0.15 ? "missed" : "given"}); }
+    const mm=rnd()<0.3, o={route:"oral", dosing:"custom", events, F:+pick(0.4,1).toFixed(2), ka:+pick(0.3,2.5).toFixed(2), thalf:+pick(2,16).toFixed(1), V:Math.round(pick(15,80))};
+    if(mm) Object.assign(o,{kin:"mm", vmax:+pick(4,10).toFixed(1), km:+pick(2,8).toFixed(1)}); else if(rnd()<0.4) Object.assign(o,{cmt:2, k12:+pick(0.2,1.5).toFixed(2), k21:+pick(0.2,1.5).toFixed(2)});
+    const p=PK.normalizeScenario(scenario(o)), ev=PK.doseEvents(p), T=Math.min(168, t+24), w=PK.windowStats(p,T,2,1e9), where=JSON.stringify(o).slice(0,240);
+    const bp=[...new Set([0,T].concat(ev.map(e=>e.t), ev.filter(e=>e.route==="inf").map(e=>e.t+e.dur)).filter(x=>x>=0&&x<=T))].sort((a,b)=>a-b);
+    let ref=0, top=0;
+    for(let j=0;j<bp.length-1;j++){ const a=bp[j], b=bp[j+1], m=300, h=(b-a)/m; let s=0; for(let q=0;q<=m;q++){ const c=PK.conc(p, q===m ? b-1e-12 : a+q*h, ev); s+=(q===0||q===m?1:q%2?4:2)*c; if(c>top) top=c; } ref+=s*h/3; }
+    rel(w.auc, ref, 1e-4, `area: ${where}`);
+    assert.ok(w.cmax>=top*(1-1e-9) && w.cmax<=top*(1+2e-3), `peak ${w.cmax} vs ${top}: ${where}`);
+  }
+});

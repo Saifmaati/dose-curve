@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.4.1",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.5.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1525,7 +1525,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.4.1 · updated 30 September 2026</span>
+        <span>Version 1.5.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -2093,7 +2093,7 @@
     let cards=!lin ? null : [
       {k:"Cmax", hot:1, v:fmt(d.cmax,cdp(1)), u:U().conc},
       {k:"Tmax", v:fmt(d.tmax,2), u:"h"},
-      {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
+      {k:d.Vss ? "t½ terminal" : "t½ eff", v:fmt(d.thalfEff,1), u:"h"},
       {k:"CL", v:fmt(d.CL,2), u:"L/h"},
       {k:d.Vss ? "V1 (central)" : "Vd (patient)", v:fmt(d.V,0), u:"L"},
       {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc},
@@ -2105,7 +2105,7 @@
         {k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:U().conc},
         {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:U().conc},
         {k:"Accum. ratio", v:fmt(d.Rac,2), u:"×"},
-        {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
+        {k:d.Vss ? "t½ terminal" : "t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
         {k:"→90% SS", v:fmt(d.t90,1), u:"h"},
         {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg},
@@ -2118,7 +2118,7 @@
         {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
         {k:"Doses given", v:d.nMissed ? `${d.nGiven}/${d.nGiven+d.nMissed}` : String(d.nGiven), u:""},
         {k:"Total given", v:fmt(d.totalMg,0), u:U().dose},
-        {k:"t½ eff", v:fmt(d.thalfEff,1), u:"h"},
+        {k:d.Vss ? "t½ terminal" : "t½ eff", v:fmt(d.thalfEff,1), u:"h"},
         {k:"CL", v:fmt(d.CL,2), u:"L/h"},
         {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:U().auc},
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
