@@ -1,0 +1,3899 @@
+{
+ "about": "Independent reference results for DoseCurve's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
+ "generated": "2026-09-30",
+ "python": "3.9.6",
+ "numpy": "2.0.2",
+ "scipy": "1.13.1",
+ "window": {
+  "T": 96.0,
+  "mec": 4.0,
+  "mtc": 12.0
+ },
+ "tolerance": {
+  "linear": 0.005,
+  "nonlinear": 0.01,
+  "tin_pp_linear": 0.5,
+  "tin_pp_nonlinear": 1.0
+ },
+ "metrics": {
+  "peak": "highest concentration in 0-96 h",
+  "trough": "concentration just before the next dose would be due (repeated) or at 96 h",
+  "auc": "area under the curve 0-96 h",
+  "tin_pct": "% of 0-96 h between MEC 4 and MTC 12"
+ },
+ "scenarios": [
+  {
+   "id": "linear-oral-single-normal",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 6.034794503685585,
+    "trough": 0.00013801435615641835,
+    "auc": 69.24816728690716,
+    "tin_pct": 6.5647100339995
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-single-reduced",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 7.937958988213804,
+    "trough": 0.06754194305767543,
+    "auc": 178.54996003036496,
+    "tin_pct": 17.481450417796072
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-repeated-normal",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 8.353906356407922,
+    "trough": 3.014730021668667,
+    "auc": 478.2214093970704,
+    "tin_pct": 64.45120301455701
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-repeated-reduced",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 17.62043375614104,
+    "trough": 11.247691085429382,
+    "auc": 1142.6838124501298,
+    "tin_pct": 47.60645709929414
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-loading-normal",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 12.06958900737222,
+    "trough": 3.015282079093286,
+    "auc": 547.4695766839773,
+    "tin_pct": 72.01497642589167
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-loading-reduced",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 17.82852376282935,
+    "trough": 11.373590694085042,
+    "auc": 1321.2337724804975,
+    "tin_pct": 24.55939171420175
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-missed-normal",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 8.32623895063727,
+    "trough": 3.005897102874747,
+    "auc": 408.99116224660906,
+    "tin_pct": 51.80581970485412
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-missed-reduced",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 16.898409062669632,
+    "trough": 10.810243483786975,
+    "auc": 967.3545605309029,
+    "tin_pct": 70.70189593222993
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-custom-normal",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 9.875854718193226,
+    "trough": 0.19078282266703905,
+    "auc": 344.59536122065083,
+    "tin_pct": 41.52233772243833
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-custom-reduced",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 16.722649995928585,
+    "trough": 2.7573270352292925,
+    "auc": 846.1242549021175,
+    "tin_pct": 72.42976555184022
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-single-normal",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 10.0,
+    "trough": 0.00015258789064446197,
+    "auc": 86.56038162657917,
+    "tin_pct": 8.262050593078188
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-single-reduced",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 11.666666666666668,
+    "trough": 0.08004609520019479,
+    "auc": 223.27187746677254,
+    "tin_pct": 21.486659821218556
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-repeated-normal",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 13.332519531255912,
+    "trough": 3.3331298832238234,
+    "auc": 598.7188822444825,
+    "tin_pct": 67.69814437035025
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-repeated-reduced",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 24.847525561166048,
+    "trough": 13.330066507568814,
+    "auc": 1435.897431939017,
+    "tin_pct": 28.332524022904874
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-loading-normal",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 20.0,
+    "trough": 3.3337402347858487,
+    "auc": 685.2792638710619,
+    "tin_pct": 67.33005881340624
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-loading-reduced",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 25.125651702606632,
+    "trough": 13.479274119975578,
+    "auc": 1659.1693094057891,
+    "tin_pct": 10.16661562131942
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-missed-normal",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 13.293457031255638,
+    "trough": 3.3233642582234117,
+    "auc": 512.178313019283,
+    "tin_pct": 56.82644155916964
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-missed-reduced",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 23.881155491980344,
+    "trough": 12.811633504579184,
+    "auc": 1216.4425176273694,
+    "tin_pct": 47.908475007255454
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-custom-normal",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 16.20104242406652,
+    "trough": 0.21092840841139257,
+    "auc": 430.98268005411376,
+    "tin_pct": 44.26510733020661
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-custom-reduced",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 24.148397502248876,
+    "trough": 3.267795570698682,
+    "auc": 1061.101977421383,
+    "tin_pct": 60.080580241544
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-single-normal",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 9.443992697613691,
+    "trough": 0.00016175115034383484,
+    "auc": 86.5603023078432,
+    "tin_pct": 8.361296493715674
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-single-reduced",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0
+   },
+   "reference": {
+    "peak": 11.369117015780063,
+    "trough": 0.08215947719188112,
+    "auc": 223.23115301548393,
+    "tin_pct": 21.64938719772518
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-repeated-normal",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 12.59122170939666,
+    "trough": 3.5332921280223055,
+    "auc": 598.2857226274598,
+    "tin_pct": 73.14002605555127
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-repeated-reduced",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 24.213807913498357,
+    "trough": 13.682007754013519,
+    "auc": 1432.2591481045104,
+    "tin_pct": 27.148363405934912
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-loading-normal",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 18.88798539522738,
+    "trough": 3.5339391326222667,
+    "auc": 684.846024935303,
+    "tin_pct": 72.61193687660958
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-loading-reduced",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 24.484840654685687,
+    "trough": 13.835154755085028,
+    "auc": 1655.4903011199947,
+    "tin_pct": 10.007152325269518
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-missed-normal",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 12.554331112921407,
+    "trough": 3.5229400544026874,
+    "auc": 511.7464225020355,
+    "tin_pct": 60.607065870179866
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-missed-reduced",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 23.272084393745324,
+    "trough": 13.149887050595737,
+    "auc": 1212.945733943135,
+    "tin_pct": 46.91091817526328
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-custom-normal",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 14.403739241329642,
+    "trough": 0.22510445690871697,
+    "auc": 430.85996976492896,
+    "tin_pct": 46.36665871475649
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-custom-reduced",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 22.77365667672244,
+    "trough": 3.380233572692047,
+    "auc": 1058.9353194517432,
+    "tin_pct": 59.92834710410286
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-single-normal",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 8.425767410270788,
+    "trough": 0.008046024902782473,
+    "auc": 147.91603955318064,
+    "tin_pct": 15.239132994773549
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-single-reduced",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 11.704074753945061,
+    "trough": 1.5971216017834564,
+    "auc": 520.6723445461953,
+    "tin_pct": 56.82481713779259
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-repeated-normal",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 15.021002348003753,
+    "trough": 8.58225773440417,
+    "auc": 991.8705367186233,
+    "tin_pct": 61.474797176078916
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-repeated-reduced",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 44.155844887288275,
+    "trough": 37.86512301329331,
+    "auc": 2855.3632228519045,
+    "tin_pct": 12.082616860889845
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-loading-normal",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 16.851534820488865,
+    "trough": 8.602532446690068,
+    "auc": 1139.7865762718038,
+    "tin_pct": 43.24074325873426
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-loading-reduced",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 46.69182183637081,
+    "trough": 39.956704972289074,
+    "auc": 3376.0355673981535,
+    "tin_pct": 0.7757269312909728
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-missed-normal",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 14.763081647940346,
+    "trough": 8.453521335960213,
+    "auc": 844.5133791012296,
+    "tin_pct": 72.4171417931573
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-missed-reduced",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 39.81939792706684,
+    "trough": 34.277979980503936,
+    "auc": 2385.4996935106456,
+    "tin_pct": 12.082616860889845
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-custom-normal",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 15.57524905276871,
+    "trough": 1.2327906490639076,
+    "auc": 724.0956872230371,
+    "tin_pct": 72.86699463940421
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-oral-custom-reduced",
+   "drug": "salt",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 33.36577424778096,
+    "trough": 17.285279460590203,
+    "auc": 2189.610371956107,
+    "tin_pct": 6.777721510764447
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-single-normal",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 12.0,
+    "trough": 0.007382349902348762,
+    "auc": 155.71521009966742,
+    "tin_pct": 14.859023444268459
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-single-reduced",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 14.0,
+    "trough": 1.6182022788839379,
+    "auc": 550.8781198762059,
+    "tin_pct": 50.91491673904719
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-repeated-normal",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 19.864715026428474,
+    "trough": 7.8833173831917005,
+    "auc": 1050.0562524448535,
+    "tin_pct": 59.38499202728206
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-repeated-reduced",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 50.256182059479976,
+    "trough": 38.37537116166996,
+    "auc": 3056.3849634094595,
+    "tin_pct": 5.355924597188383
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-loading-normal",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 24.0,
+    "trough": 7.901919739274019,
+    "auc": 1205.7714625445196,
+    "tin_pct": 44.52633036113691
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-loading-reduced",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 53.031460840805295,
+    "trough": 40.494560263344475,
+    "auc": 3607.2630832857344,
+    "tin_pct": 0.0
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-missed-normal",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 19.56707732918341,
+    "trough": 7.765199784749326,
+    "auc": 894.853824999224,
+    "tin_pct": 65.42476516290995
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-missed-reduced",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 45.49647283476576,
+    "trough": 34.740880823647174,
+    "auc": 2556.9862928501534,
+    "tin_pct": 5.355924597188383
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-custom-normal",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 21.59535277687864,
+    "trough": 1.131104133597088,
+    "auc": 764.3687771627457,
+    "tin_pct": 63.91841306120832
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-iv-custom-reduced",
+   "drug": "salt",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 38.96237524821056,
+    "trough": 17.513430790693025,
+    "auc": 2335.178074795839,
+    "tin_pct": 0.14759126383060983
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-single-normal",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 11.549539978660125,
+    "trough": 0.007674071538522663,
+    "auc": 155.71142231144736,
+    "tin_pct": 15.03144236937982
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-single-reduced",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 450.0
+   },
+   "reference": {
+    "peak": 13.843836869233309,
+    "trough": 1.6365250390868973,
+    "auc": 550.0629226069053,
+    "tin_pct": 51.51790786881322
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-repeated-normal",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 19.119026696868882,
+    "trough": 8.194835297592508,
+    "auc": 1048.4510613286138,
+    "tin_pct": 59.013722230882045
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-repeated-reduced",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 49.69559900727993,
+    "trough": 38.80989207009059,
+    "auc": 3041.622950073832,
+    "tin_pct": 5.527195812008336
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-loading-normal",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 23.099079957320253,
+    "trough": 8.214172746131515,
+    "auc": 1204.1624836400604,
+    "tin_pct": 43.592686827538024
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-loading-reduced",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 52.43992091551649,
+    "trough": 40.953076561155946,
+    "auc": 3591.6858726808064,
+    "tin_pct": 0.2995437083866693
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-missed-normal",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 18.832561823244866,
+    "trough": 8.072050152977667,
+    "auc": 893.2726848390054,
+    "tin_pct": 66.2432111018223
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-missed-reduced",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 450.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 44.98898200357115,
+    "trough": 35.13424872179249,
+    "auc": 2543.6223740010014,
+    "tin_pct": 5.527195812008336
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-custom-normal",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 19.886112110591156,
+    "trough": 1.1858335253125782,
+    "auc": 763.6581567646316,
+    "tin_pct": 65.34503564720934
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "salt-inf-custom-reduced",
+   "drug": "salt",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 9.0,
+    "V": 30.0,
+    "F": 0.95,
+    "ka": 0.6,
+    "fe": 0.9,
+    "S": 0.8,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 450.0
+     },
+     {
+      "t": 7,
+      "mg": 225.0
+     },
+     {
+      "t": 20,
+      "mg": 450.0
+     },
+     {
+      "t": 26,
+      "mg": 450.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 675.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 450.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 37.90222746968456,
+    "trough": 17.78029183063893,
+    "auc": 2323.3051698057043,
+    "tin_pct": 0.6029911291401873
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "mm-oral-single-normal",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 4.086098180626222,
+    "trough": 0.0012512616961282861,
+    "auc": 87.17315063030308,
+    "tin_pct": 3.0125086861398938
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-single-reduced",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 4.889905184216347,
+    "trough": 0.0026862001037316527,
+    "auc": 113.22338464020532,
+    "tin_pct": 10.450608175290721
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-repeated-normal",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 16.90728251757909,
+    "trough": 15.285813779945846,
+    "auc": 1032.609157866238,
+    "tin_pct": 43.43643950010377
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-repeated-reduced",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 22.764551420958057,
+    "trough": 21.2320504469436,
+    "auc": 1372.7143569627783,
+    "tin_pct": 35.34809237962207
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-loading-normal",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 19.98533724743353,
+    "trough": 18.28580828366676,
+    "auc": 1375.853645318713,
+    "tin_pct": 25.653700311423776
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-loading-reduced",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 27.079164027089707,
+    "trough": 25.487185049104134,
+    "auc": 1823.476085872843,
+    "tin_pct": 12.758818975583067
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-missed-normal",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 13.40151843634683,
+    "trough": 11.901174252608724,
+    "auc": 754.0973394567508,
+    "tin_pct": 75.41367355340306
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-missed-reduced",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 17.94376107362553,
+    "trough": 16.50460010410454,
+    "auc": 1008.6572160156378,
+    "tin_pct": 55.587252397245514
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-custom-normal",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 10.647381561849459,
+    "trough": 3.4943772133590194,
+    "auc": 665.5416828702772,
+    "tin_pct": 92.56523890450696
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-oral-custom-reduced",
+   "drug": "mm",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 14.131368074116509,
+    "trough": 6.542548589356213,
+    "auc": 910.2374659038708,
+    "tin_pct": 70.39055996406348
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-single-normal",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 5.63265306122449,
+    "trough": 0.0010452308857018494,
+    "auc": 92.13557046976334,
+    "tin_pct": 7.504494717491674
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-single-reduced",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 6.571428571428571,
+    "trough": 0.00228460829511715,
+    "auc": 119.58908235368797,
+    "tin_pct": 11.859519978911315
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-repeated-normal",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 18.706784475776363,
+    "trough": 14.677159494993697,
+    "auc": 1078.538310835669,
+    "tin_pct": 46.61538436800413
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-repeated-reduced",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 24.732483867528426,
+    "trough": 20.650673273735894,
+    "auc": 1436.3349771837802,
+    "tin_pct": 30.95467809604736
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-loading-normal",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 21.919878981137753,
+    "trough": 17.761354695729185,
+    "auc": 1441.7002768221425,
+    "tin_pct": 22.191002595916604
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-loading-reduced",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 29.199338245262002,
+    "trough": 25.014767984715814,
+    "auc": 1911.440664168207,
+    "tin_pct": 8.578873594917782
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-missed-normal",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 15.166330985552655,
+    "trough": 11.332088896761379,
+    "auc": 791.392623628028,
+    "tin_pct": 75.22806849915969
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-missed-reduced",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 19.873309422445892,
+    "trough": 15.949756573447024,
+    "auc": 1059.9900779422721,
+    "tin_pct": 54.54906386652974
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-custom-normal",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 12.720401955927043,
+    "trough": 3.1317956280578856,
+    "auc": 690.7003042002389,
+    "tin_pct": 91.66313972377473
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-iv-custom-reduced",
+   "drug": "mm",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 16.029385033682132,
+    "trough": 6.090622495950065,
+    "auc": 946.0182793230948,
+    "tin_pct": 73.19778990212758
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-single-normal",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 5.477665736528268,
+    "trough": 0.0010851802850583266,
+    "auc": 91.33833920917961,
+    "tin_pct": 7.1226780541538455
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-single-reduced",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 300.0
+   },
+   "reference": {
+    "peak": 6.409376469480075,
+    "trough": 0.002364959119645064,
+    "auc": 118.56456835041908,
+    "tin_pct": 11.573363401181664
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-repeated-normal",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 18.50366375931117,
+    "trough": 14.810783357789841,
+    "auc": 1070.0335645674725,
+    "tin_pct": 46.18611857102937
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-repeated-reduced",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "repeated",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7
+   },
+   "reference": {
+    "peak": 24.52378706447374,
+    "trough": 20.782836463522987,
+    "auc": 1424.4453818998172,
+    "tin_pct": 31.34693971503145
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-loading-normal",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 21.69362988208923,
+    "trough": 17.882974699223798,
+    "auc": 1429.6413824261522,
+    "tin_pct": 22.481541219588234
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-loading-reduced",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "loadMult": 2
+   },
+   "reference": {
+    "peak": 28.96485819080123,
+    "trough": 25.12993713955698,
+    "auc": 1895.0913463594602,
+    "tin_pct": 9.324938724944552
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-missed-normal",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 14.9708335809636,
+    "trough": 11.457379640605724,
+    "auc": 784.6026655575938,
+    "tin_pct": 75.34702255766256
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-missed-reduced",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "missed",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 300.0,
+    "nDoses": 7,
+    "missed": 3
+   },
+   "reference": {
+    "peak": 19.67176622519144,
+    "trough": 16.076143430654387,
+    "auc": 1050.5346554516088,
+    "tin_pct": 54.795530532152945
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-custom-normal",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 12.25173373733737,
+    "trough": 3.224015626894311,
+    "auc": 683.7773111936035,
+    "tin_pct": 93.61275586270436
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-inf-custom-reduced",
+   "drug": "mm",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 300.0
+     },
+     {
+      "t": 7,
+      "mg": 150.0
+     },
+     {
+      "t": 20,
+      "mg": 300.0
+     },
+     {
+      "t": 26,
+      "mg": 300.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 450.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 300.0
+     }
+    ]
+   },
+   "reference": {
+    "peak": 15.860240477582428,
+    "trough": 6.204938357998685,
+    "auc": 936.181554165693,
+    "tin_pct": 73.26167997445754
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "linear-mixed-custom-normal",
+   "drug": "linear",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ]
+   },
+   "reference": {
+    "peak": 15.328318258214637,
+    "trough": 0.006182119521246226,
+    "auc": 333.20904096630403,
+    "tin_pct": 36.81319287409758
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-mixed-custom-reduced",
+   "drug": "linear",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ]
+   },
+   "reference": {
+    "peak": 21.690705064776818,
+    "trough": 0.7297090247380782,
+    "auc": 851.4738988310893,
+    "tin_pct": 29.389947974140625
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "mm-mixed-custom-normal",
+   "drug": "mm",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "normal",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ]
+   },
+   "reference": {
+    "peak": 20.093517737008927,
+    "trough": 3.219400896685713,
+    "auc": 1151.1933481128558,
+    "tin_pct": 40.358073442225184
+   },
+   "nonlinear": true
+  },
+  {
+   "id": "mm-mixed-custom-reduced",
+   "drug": "mm",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "reduced",
+   "scenario": {
+    "kin": "mm",
+    "thalf": 22.0,
+    "V": 49.0,
+    "F": 1.0,
+    "ka": 0.4,
+    "fe": 0.05,
+    "S": 0.92,
+    "vmax": 7.0,
+    "km": 4.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ]
+   },
+   "reference": {
+    "peak": 25.229672948898035,
+    "trough": 7.172496640184236,
+    "auc": 1557.9049541939648,
+    "tin_pct": 25.906664864068038
+   },
+   "nonlinear": true
+  }
+ ]
+}
