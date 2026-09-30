@@ -1,7 +1,7 @@
 """DoseCurve validation: an independent reference implementation.
 
-Written from the model's equations, not translated from pk-engine.js. It integrates the one-compartment model
-with scipy's solve_ivp (DOP853, rtol 1e-11) piecewise between doses, with an extra state that accumulates the
+Written from the model's equations, not translated from pk-engine.js. It integrates the one- and two-compartment
+models with scipy's solve_ivp (DOP853, rtol 1e-11) piecewise between doses, with an extra state that accumulates the
 area under the curve, and writes validation/reference-results.json. tests/validation.test.js runs DoseCurve's
 engine on the same scenarios and compares.
 
@@ -11,6 +11,8 @@ engine on the same scenarios and compares.
 The model:
     gut amount   dAg/dt = -ka*Ag                         (oral doses add F*S*dose to Ag)
     body amount  dA/dt  = ka*Ag + R(t) - elimination(A)   (IV boluses add S*dose to A; infusions add R = S*dose/T)
+    two compartments: A is the central amount (volume V), and a peripheral amount Ap exchanges with it,
+                 dA/dt gains - k12*A + k21*Ap, and dAp/dt = k12*A - k21*Ap
     elimination  ke*A  (first-order), or Vmax*C/(Km + C) with C = A/V (Michaelis-Menten)
     V = V70 * weight / 70
     clearance factor: simple mode, organ function % / 100; clinical mode, (1 - fe) + fe * CrCl / 120, where
@@ -56,6 +58,7 @@ def simulate(p):
     ke = math.log(2) / p["thalf"] * fac if not mm else None
     vmax_h = p.get("vmax", 7) * p["wt"] / 24.0 * fac if mm else None
     km = p.get("km", 4.0)
+    k12, k21 = (p["k12"], p["k21"]) if p.get("cmt") == 2 and not mm else (0.0, 0.0)
     ds = doses(p)
     cuts = sorted({0.0, T_END} | {t for t, *_ in ds if t < T_END} | {t + d for t, _, r, d in ds if r == "inf" and t + d < T_END})
 
@@ -63,12 +66,12 @@ def simulate(p):
         return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
 
     def rhs(t, y, R):
-        ag, a, _ = y
+        ag, a, _, ap = y
         c = max(a, 0.0) / V
         el = vmax_h * c / (km + c) if mm else ke * a
-        return [-ka * ag, ka * ag + R - el, c]
+        return [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, c, k12 * a - k21 * ap]
 
-    y = np.array([0.0, 0.0, 0.0])
+    y = np.array([0.0, 0.0, 0.0, 0.0])
     pieces = []
     for s0, s1 in zip(cuts[:-1], cuts[1:]):
         for t0, mg, r, d in ds:
@@ -135,8 +138,10 @@ DRUGS = {
     "linear": {"kin": "linear", "thalf": 6.0, "V": 40.0, "F": 0.8, "ka": 1.0, "fe": 0.7, "S": 1.0},
     "salt":   {"kin": "linear", "thalf": 9.0, "V": 30.0, "F": 0.95, "ka": 0.6, "fe": 0.9, "S": 0.8},
     "mm":     {"kin": "mm", "thalf": 22.0, "V": 49.0, "F": 1.0, "ka": 0.4, "fe": 0.05, "S": 0.92, "vmax": 7.0, "km": 4.0},
+    # two compartments: V is the central volume, the half-life is that of k10, and exchange is uneven
+    "twocmt": {"kin": "linear", "cmt": 2, "k12": 0.6, "k21": 0.25, "thalf": 3.0, "V": 20.0, "F": 0.85, "ka": 1.2, "fe": 0.8, "S": 1.0},
 }
-DOSE = {"linear": 400.0, "salt": 450.0, "mm": 300.0}
+DOSE = {"linear": 400.0, "salt": 450.0, "mm": 300.0, "twocmt": 250.0}
 PATIENTS = {
     "normal":  {"pm": "simple", "clFn": 100, "wt": 70},
     "reduced": {"pm": "clinical", "age": 75, "sex": "F", "wt": 60, "ht": 160, "scr": 1.8, "wtm": "actual", "alb": 4},
@@ -164,7 +169,7 @@ def matrix():
     # one mixed-route schedule: an IV bolus, an infusion and oral doses
     mixed = {"route": "oral", "dosing": "custom", "tinf": 1.0, "events": [
         {"t": 0, "mg": 300, "route": "iv"}, {"t": 6, "mg": 600, "route": "inf", "dur": 3}, {"t": 18, "mg": 400, "route": "oral"}, {"t": 30, "mg": 400, "route": "oral"}]}
-    for dname in ["linear", "mm"]:
+    for dname in ["linear", "mm", "twocmt"]:
         for pname, pat in PATIENTS.items():
             p = dict(DRUGS[dname]); p.update(pat); p.update(mixed)
             out.append({"id": f"{dname}-mixed-custom-{pname}", "drug": dname, "route": "mixed", "regimen": "custom", "patient": pname, "scenario": p})
