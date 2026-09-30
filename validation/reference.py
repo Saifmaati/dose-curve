@@ -14,6 +14,8 @@ The model:
     two compartments: A is the central amount (volume V), and a peripheral amount Ap exchanges with it,
                  dA/dt gains - k12*A + k21*Ap, and dAp/dt = k12*A - k21*Ap
     elimination  ke*A  (first-order), or Vmax*C/(Km + C) with C = A/V (Michaelis-Menten)
+    effect site  dCe/dt = ke0*(C - Ce), ke0 = ln 2 / teq  (scenarios with an effect-site delay are read at the
+                 effect site: its peak, trough, area and time in window)
     V = V70 * weight / 70
     clearance factor: simple mode, organ function % / 100; clinical mode, (1 - fe) + fe * CrCl / 120, where
     CrCl = (140 - age) * weight / (72 * SCr), * 0.85 for women (Cockcroft-Gault)
@@ -59,6 +61,7 @@ def simulate(p):
     vmax_h = p.get("vmax", 7) * p["wt"] / 24.0 * fac if mm else None
     km = p.get("km", 4.0)
     k12, k21 = (p["k12"], p["k21"]) if p.get("cmt") == 2 and not mm else (0.0, 0.0)
+    ke0 = math.log(2) / p["teq"] if p.get("teq", 0) > 0 and not mm else None
     ds = doses(p)
     cuts = sorted({0.0, T_END} | {t for t, *_ in ds if t < T_END} | {t + d for t, _, r, d in ds if r == "inf" and t + d < T_END})
 
@@ -66,12 +69,15 @@ def simulate(p):
         return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
 
     def rhs(t, y, R):
-        ag, a, _, ap = y
+        ag, a, _, ap = y[:4]
         c = max(a, 0.0) / V
         el = vmax_h * c / (km + c) if mm else ke * a
-        return [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, c, k12 * a - k21 * ap]
+        out = [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, c, k12 * a - k21 * ap]
+        if ke0 is not None:   # the effect-site level and its area
+            out += [ke0 * (c - y[4]), y[4]]
+        return out
 
-    y = np.array([0.0, 0.0, 0.0, 0.0])
+    y = np.zeros(6 if ke0 is not None else 4)
     pieces = []
     for s0, s1 in zip(cuts[:-1], cuts[1:]):
         for t0, mg, r, d in ds:
@@ -83,23 +89,25 @@ def simulate(p):
         sol = solve_ivp(rhs, (s0, s1), y, args=(rate(s0),), method="DOP853", rtol=1e-11, atol=1e-13, dense_output=True)
         pieces.append((s0, s1, sol.sol))
         y = sol.y[:, -1].copy()
-    auc = y[2]
+    effect = ke0 is not None
+    auc = y[5] if effect else y[2]
+    level = (lambda z: z[4]) if effect else (lambda z: np.maximum(z[1], 0.0) / V)
 
     def conc(t):
         for s0, s1, f in pieces:
             if s0 <= t < s1 or (t == s1 == T_END):
-                return max(f(t)[1], 0.0) / V
-        return y[1] / V
+                return level(f(t))
+        return level(y)
 
-    return conc, auc, pieces, V
+    return conc, auc, pieces, level
 
 def metrics(p):
-    conc, auc, pieces, V = simulate(p)
+    conc, auc, pieces, level = simulate(p)
     grid = np.arange(0.0, T_END + SAMPLE / 2, SAMPLE)
     cs = np.empty_like(grid)
     for s0, s1, f in pieces:
         m = (grid >= s0) & (grid < s1)
-        cs[m] = np.maximum(f(grid[m])[1], 0) / V
+        cs[m] = np.maximum(level(f(grid[m])), 0)
     cs[-1] = conc(T_END)
     # peak: the grid maximum, refined by golden-section search next to it
     i = int(np.argmax(cs))
@@ -173,6 +181,14 @@ def matrix():
         for pname, pat in PATIENTS.items():
             p = dict(DRUGS[dname]); p.update(pat); p.update(mixed)
             out.append({"id": f"{dname}-mixed-custom-{pname}", "drug": dname, "route": "mixed", "regimen": "custom", "patient": pname, "scenario": p})
+    # an effect-site delay, read at the effect site: first-order drugs, every route, three regimens and the mixed schedule
+    for dname, teq in [("linear", 1.5), ("twocmt", 3.0)]:
+        for route in ["oral", "iv", "inf"]:
+            for rname in ["single", "loading", "custom"]:
+                p = dict(DRUGS[dname]); p.update(PATIENTS["normal"]); p.update(regimens(route, DOSE[dname])[rname]); p["teq"] = teq
+                out.append({"id": f"{dname}-{route}-{rname}-effect", "drug": dname, "route": route, "regimen": rname, "patient": "normal", "site": "effect", "scenario": p})
+        p = dict(DRUGS[dname]); p.update(PATIENTS["reduced"]); p.update(mixed); p["teq"] = teq / 2
+        out.append({"id": f"{dname}-mixed-custom-effect", "drug": dname, "route": "mixed", "regimen": "custom", "patient": "reduced", "site": "effect", "scenario": p})
     return out
 
 def main():
@@ -186,6 +202,7 @@ def main():
         "python": sys.version.split()[0], "numpy": np.__version__, "scipy": __import__("scipy").__version__,
         "window": {"T": T_END, "mec": MEC, "mtc": MTC},
         "tolerance": {"linear": 0.005, "nonlinear": 0.01, "tin_pp_linear": 0.5, "tin_pp_nonlinear": 1.0},
+        "sites": {"effect": "the effect-site level Ce, for scenarios with an effect-site delay (teq)"},
         "metrics": {"peak": "highest concentration in 0-96 h", "trough": "concentration just before the next dose would be due (repeated) or at 96 h",
                     "auc": "area under the curve 0-96 h", "tin_pct": "% of 0-96 h between MEC 4 and MTC 12"},
         "scenarios": rows,

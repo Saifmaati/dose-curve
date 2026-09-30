@@ -15,6 +15,9 @@
   "tin_pp_linear": 0.5,
   "tin_pp_nonlinear": 1.0
  },
+ "sites": {
+  "effect": "the effect-site level Ce, for scenarios with an effect-site delay (teq)"
+ },
  "metrics": {
   "peak": "highest concentration in 0-96 h",
   "trough": "concentration just before the next dose would be due (repeated) or at 96 h",
@@ -5294,6 +5297,922 @@
     "trough": 3.5107626817620665,
     "auc": 926.9703567228275,
     "tin_pct": 63.704362467451624
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-single-effect",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 4.863902497247409,
+    "trough": 0.0001840191415423628,
+    "auc": 69.2477690616528,
+    "tin_pct": 6.066230529118741
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-loading-effect",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 9.72780499449831,
+    "trough": 3.942732713060684,
+    "auc": 545.295127716272,
+    "tin_pct": 84.34528132851524
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-oral-custom-effect",
+   "drug": "linear",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ],
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 8.093146457034365,
+    "trough": 0.2543747327803437,
+    "auc": 344.04488347244876,
+    "tin_pct": 44.37677234399286
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-single-effect",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 6.299605249560333,
+    "trough": 0.00020345052085935726,
+    "auc": 86.55994135099296,
+    "tin_pct": 9.311456339770979
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-loading-effect",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 12.59921049894604,
+    "trough": 4.392699397970482,
+    "auc": 682.874920621382,
+    "tin_pct": 85.01157717616421
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-iv-custom-effect",
+   "drug": "linear",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ],
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 10.47122519180946,
+    "trough": 0.2812362883075263,
+    "auc": 430.3740727564997,
+    "tin_pct": 54.290031317136226
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-single-effect",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 400.0,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 6.285641028820056,
+    "trough": 0.00021566820045856803,
+    "auc": 86.55983559267834,
+    "tin_pct": 9.285143042019309
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-loading-effect",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 400.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 12.571282057642401,
+    "trough": 4.6454529152943005,
+    "auc": 682.2973885607339,
+    "tin_pct": 85.05619417000604
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-inf-custom-effect",
+   "drug": "linear",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 400.0
+     },
+     {
+      "t": 7,
+      "mg": 200.0
+     },
+     {
+      "t": 20,
+      "mg": 400.0
+     },
+     {
+      "t": 26,
+      "mg": 400.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 600.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 400.0
+     }
+    ],
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 10.320221811391539,
+    "trough": 0.300137255230643,
+    "auc": 430.21045997044797,
+    "tin_pct": 54.33875619267683
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "linear-mixed-custom-effect",
+   "drug": "linear",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "reduced",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "thalf": 6.0,
+    "V": 40.0,
+    "F": 0.8,
+    "ka": 1.0,
+    "fe": 0.7,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ],
+    "teq": 0.75
+   },
+   "reference": {
+    "peak": 19.74348500584722,
+    "trough": 0.7731206278962622,
+    "auc": 850.6373658592297,
+    "tin_pct": 29.6247724127217
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-oral-single-effect",
+   "drug": "twocmt",
+   "route": "oral",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 250.0,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 2.037863887515478,
+    "trough": 0.013164594156533848,
+    "auc": 45.752370147970915,
+    "tin_pct": 0.0
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-oral-loading-effect",
+   "drug": "twocmt",
+   "route": "oral",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 250.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 4.472773527445959,
+    "trough": 3.021135638637442,
+    "auc": 340.39629382335283,
+    "tin_pct": 33.42391006492377
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-oral-custom-effect",
+   "drug": "twocmt",
+   "route": "oral",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "oral",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 250.0
+     },
+     {
+      "t": 7,
+      "mg": 125.0
+     },
+     {
+      "t": 20,
+      "mg": 250.0
+     },
+     {
+      "t": 26,
+      "mg": 250.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 375.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 250.0
+     }
+    ],
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 4.229955144283674,
+    "trough": 0.67342402256177,
+    "auc": 217.98132279528016,
+    "tin_pct": 3.5715479991773456
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-iv-single-effect",
+   "drug": "twocmt",
+   "route": "iv",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 250.0,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 2.462371410623252,
+    "trough": 0.014760205676267924,
+    "auc": 53.83922428600089,
+    "tin_pct": 0.0
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-iv-loading-effect",
+   "drug": "twocmt",
+   "route": "iv",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 250.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 5.382880772281423,
+    "trough": 3.392121118862028,
+    "auc": 401.9842540828618,
+    "tin_pct": 61.53817652122682
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-iv-custom-effect",
+   "drug": "twocmt",
+   "route": "iv",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "iv",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 250.0
+     },
+     {
+      "t": 7,
+      "mg": 125.0
+     },
+     {
+      "t": 20,
+      "mg": 250.0
+     },
+     {
+      "t": 26,
+      "mg": 250.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 375.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 250.0
+     }
+    ],
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 5.105554102644732,
+    "trough": 0.7550710536052027,
+    "auc": 257.1088346831969,
+    "tin_pct": 11.92232856198107
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-inf-single-effect",
+   "drug": "twocmt",
+   "route": "inf",
+   "regimen": "single",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "single",
+    "D": 250.0,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 2.45757617153728,
+    "trough": 0.01518415918304047,
+    "auc": 53.83170353166443,
+    "tin_pct": 0.0
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-inf-loading-effect",
+   "drug": "twocmt",
+   "route": "inf",
+   "regimen": "loading",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "repeated",
+    "D": 250.0,
+    "nDoses": 7,
+    "loadMult": 2,
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 5.371456844716396,
+    "trough": 3.4870095708573365,
+    "auc": 401.09958220421413,
+    "tin_pct": 61.42916173069627
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-inf-custom-effect",
+   "drug": "twocmt",
+   "route": "inf",
+   "regimen": "custom",
+   "patient": "normal",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "simple",
+    "clFn": 100,
+    "wt": 70,
+    "route": "inf",
+    "tinf": 1.0,
+    "tau": 12,
+    "dosing": "custom",
+    "events": [
+     {
+      "t": 0,
+      "mg": 250.0
+     },
+     {
+      "t": 7,
+      "mg": 125.0
+     },
+     {
+      "t": 20,
+      "mg": 250.0
+     },
+     {
+      "t": 26,
+      "mg": 250.0,
+      "status": "missed"
+     },
+     {
+      "t": 40,
+      "mg": 375.0,
+      "dur": 2.0
+     },
+     {
+      "t": 61.5,
+      "mg": 250.0
+     }
+    ],
+    "teq": 3.0
+   },
+   "reference": {
+    "peak": 5.0254083481788765,
+    "trough": 0.7830414347826657,
+    "auc": 256.6124184211817,
+    "tin_pct": 11.658796130067868
+   },
+   "nonlinear": false
+  },
+  {
+   "id": "twocmt-mixed-custom-effect",
+   "drug": "twocmt",
+   "route": "mixed",
+   "regimen": "custom",
+   "patient": "reduced",
+   "site": "effect",
+   "scenario": {
+    "kin": "linear",
+    "cmt": 2,
+    "k12": 0.6,
+    "k21": 0.25,
+    "thalf": 3.0,
+    "V": 20.0,
+    "F": 0.85,
+    "ka": 1.2,
+    "fe": 0.8,
+    "S": 1.0,
+    "pm": "clinical",
+    "age": 75,
+    "sex": "F",
+    "wt": 60,
+    "ht": 160,
+    "scr": 1.8,
+    "wtm": "actual",
+    "alb": 4,
+    "route": "oral",
+    "dosing": "custom",
+    "tinf": 1.0,
+    "events": [
+     {
+      "t": 0,
+      "mg": 300,
+      "route": "iv"
+     },
+     {
+      "t": 6,
+      "mg": 600,
+      "route": "inf",
+      "dur": 3
+     },
+     {
+      "t": 18,
+      "mg": 400,
+      "route": "oral"
+     },
+     {
+      "t": 30,
+      "mg": 400,
+      "route": "oral"
+     }
+    ],
+    "teq": 1.5
+   },
+   "reference": {
+    "peak": 17.29101520027899,
+    "trough": 3.6985628520257112,
+    "auc": 918.9665092954841,
+    "tin_pct": 61.34349018393417
    },
    "nonlinear": false
   }
