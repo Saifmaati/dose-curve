@@ -566,7 +566,16 @@ export function start(PK){
       } else {
         const tg=sets.map(pts=> Float32Array.from(pts, q=> YH*q.c/top));
         if(stillQ.matches) g.userData.ribbons.forEach((r,i)=> r.userData.writeY(tg[i])); else morph=tg;
+        // the camera drifts toward the part of the curve that changed most, then settles back (2.14)
+        const r0=g.userData.ribbons[cvs.findIndex(cv=>!cv.ghost)];
+        if(r0 && !stillQ.matches){ const ys=r0.userData.ys, t0=tg[cvs.findIndex(cv=>!cv.ghost)]; let bi=0, bd=0; for(let k=0;k<ys.length;k++){ const d=Math.abs(t0[k]-ys[k]); if(d>bd){ bd=d; bi=k; } }
+          if(bd>0.05){ drift.x=clamp(r0.userData.xs[bi]*0.32, -2.4, 2.4); drift.y=clamp((t0[bi]-ys[bi])*0.25, -0.8, 0.8); drift.t0=performance.now(); } }
       }
+      // the glass figure beside the ribbon (desktop): its level the concentration at the time cursor, else at the peak
+      if(!phone){ let fg=g.getObjectByName("lfig");
+        const lv={mec:live.mec, mtc:live.mtc, top}, key=[live.mec, live.mtc, top.toFixed(4)].join();
+        if(!fg || fg.userData.key!==key){ if(fg) disposeGroup(fg); fg=figure(lv); fg.name="lfig"; fg.userData.key=key; fg.position.set(XW/2+3.4, 0, -2.6); fg.scale.setScalar(.82); g.add(fg); fg.traverse(o=>{ if(o.userData && o.userData.tone) o.userData.tone(tone); }); }
+        placeFigure(); }
       g.userData.T=T;
       // the window, the doses and the population follow at once (they are cheap to redraw)
       const deco=g.getObjectByName("deco"); deco.children.slice().forEach(disposeGroup);
@@ -580,6 +589,14 @@ export function start(PK){
       }
       placeCursor(); setVis(); frame();
     }
+    function placeFigure(){
+      const g=groups.live, fg=g && g.getObjectByName("lfig"), lead=live && live.curves.find(cv=>!cv.ghost); if(!fg || !lead) return;
+      const P=lead.pts, t=curT===null ? null : curT;
+      let c=0; if(t!==null && t>=P[0].t && t<=P[P.length-1].t){ let i=P.findIndex(q=>q.t>=t); if(i<=0) c=P[0].c; else { const a=P[i-1], b=P[i], u=(t-a.t)/Math.max(1e-9,b.t-a.t); c=a.c+(b.c-a.c)*u; } }
+      else c=Math.max(...P.map(q=>q.c));
+      fg.userData.set(c, 0);
+    }
+    const drift={x:0, y:0, cx:0, cy:0, t0:0};
     function placeCursor(){
       const g=groups.live, m=g && g.getObjectByName("cur"); if(!m) return;
       const i0=live.curves.findIndex(cv=>!cv.ghost), r=g.userData.ribbons[i0], T=g.userData.T, t=curT===null ? -1 : curT-live.T[0];
@@ -641,7 +658,9 @@ export function start(PK){
     const FIG=[[0,0],[.72,0],[.84,.06],[.92,.3],[1.02,.78],[.98,1.15],[.82,1.6],[.74,1.9],[.84,2.3],[1.06,2.7],[1.26,3.02],[1.3,3.2],[1.18,3.36],[.66,3.5],[.3,3.6],
       [.25,3.7],[.25,3.96],[.38,4.08],[.48,4.3],[.5,4.56],[.46,4.82],[.34,5.02],[.16,5.15],[0,5.18]];
     const FIG_Y=c=> .14+3.25*Math.min(c,14)/14;   // a level, as a height inside the figure (14 mg/L at the shoulders)
-    function figure(){
+    function figure(lv){
+      lv=lv || {mec:V0.mec, mtc:V0.mtc, top:14};
+      const sc14=c=> 14*c/lv.top;   // the figure's scale: 14 mg/L (or the scenario's top) at the shoulders
       const g=new THREE.Group(), outer=new THREE.SplineCurve(FIG.map(([x,y])=> new THREE.Vector2(x,y))).getPoints(120);
       g.add(toned(new THREE.Mesh(new THREE.LatheGeometry(outer, SEG)), "vessel"));
       const inner=[new THREE.Vector2(0,.1)].concat(outer.filter(v=> v.y>.12 && v.y<3.52).map(v=> new THREE.Vector2(Math.max(.02, v.x*.9-.03), v.y)));
@@ -649,9 +668,9 @@ export function start(PK){
       const lm=liquidMat(), plane=new THREE.Plane(new THREE.Vector3(0,-1,0), 0); lm.clippingPlanes=[plane];
       const liq=liquidMesh(new THREE.LatheGeometry(inner, SEG), lm); g.add(liq);
       const surf=surfaceDisc(); g.add(surf);
-      [[V0.mec,"hairMec"],[V0.mtc,"hairMtc"]].forEach(([c,role])=>{ const y=FIG_Y(c), r=rAt(y)/.9+.06, ring=new THREE.Mesh(new THREE.TorusGeometry(r, .011, 6, SEG)); ring.rotation.x=Math.PI/2; ring.position.y=y; g.add(toned(ring, role)); });
+      [[lv.mec,"hairMec"],[lv.mtc,"hairMtc"]].forEach(([c,role])=>{ if(!(c>0) || c>lv.top) return; const y=FIG_Y(sc14(c)), r=rAt(y)/.9+.06, ring=new THREE.Mesh(new THREE.TorusGeometry(r, .011, 6, SEG)); ring.rotation.x=Math.PI/2; ring.position.y=y; g.add(toned(ring, role)); });
       const cp=capsule(.5,.12); cp.position.set(0, 1.42, 0); g.add(cp);
-      g.userData={rAt, set:(c, rem)=>{ const y=FIG_Y(c); plane.constant=y+g.position.y; surf.position.y=y; const r=rAt(y); surf.scale.set(r,r,r); surf.visible=c>.02; cp.userData.set(rem); }};
+      g.userData={rAt, set:(c, rem)=>{ const y=FIG_Y(sc14(c)); plane.constant=y+g.position.y; surf.position.y=y; const r=rAt(y); surf.scale.set(r,r,r); surf.visible=c>.02; cp.userData.set(rem); }};
       return g;
     }
 
@@ -1001,7 +1020,7 @@ export function start(PK){
       }
       if(portrait) return {p:PHA[0].clone(), l:PHA[1].clone()};
       const f=FR[tab]||FR.sim, d=scrollS;
-      return {p:f[0].clone().add(V(1.2*d,-0.9*d,0.8*d)), l:f[1].clone().add(V(1.2*d,-0.2*d,0))};
+      return {p:f[0].clone().add(V(1.2*d+drift.cx,-0.9*d+drift.cy,0.8*d)), l:f[1].clone().add(V(1.2*d+drift.cx*1.4,-0.2*d+drift.cy,0))};
     }
     // reduced motion: each scene holds one resting frame (its last, where every beat is complete); nothing travels
     const restOf=Pv=>{ const i=clamp(Math.round((Pv-0.82)/2),0,REST.length-1); return 2*i+.82; };
@@ -1238,6 +1257,9 @@ export function start(PK){
         placeCursor(); if(left>1e-3) busy=true; else morph=null;
       }
       const rg=groups.live && groups.live.getObjectByName("rings");   // the app: the new schedule's doses pulse in order
+      // the drift toward a change eases out and back in about two seconds
+      if(mode==="app"){ const back=now-drift.t0>1300; drift.cx+=((back ? 0 : drift.x)-drift.cx)*0.05; drift.cy+=((back ? 0 : drift.y)-drift.cy)*0.05;
+        if(Math.abs(drift.cx)>1e-3 || Math.abs(drift.cy)>1e-3 || !back) busy=true; }
       if(rg && pulseAt){ const e=(now-pulseAt)/1000; rg.children.forEach((r,i)=>{ const a=clamp(e-i*0.12,0,1), s=a<1 ? 1+a*1.8 : 1; r.scale.set(s,s,s); r.material.opacity=a<1 ? .95-.6*a : .95; });
         if(e<rg.children.length*0.12+1) busy=true; else pulseAt=0; }
       // the light: first light in the cold open; exposure, focus and grade by the scene
@@ -1260,7 +1282,10 @@ export function start(PK){
     }
     let offset=null;
     function resize(){
-      const w=innerWidth, h=innerHeight, off=w>760 && mode!=="intro" ? -w*0.24 : 0, k=w+"x"+h+"x"+off;
+      // the app's picture sits right of centre, clear of the controls; in the desktop workspace (2.14) it is centred,
+      // behind the chart's glass
+      const w=innerWidth, h=innerHeight, ws=w>=1100 && !D.classList.contains("ed-app") && !D.classList.contains("present");
+      const off=w>760 && mode!=="intro" && !ws ? -w*0.24 : 0, k=w+"x"+h+"x"+off;
       if(k===offset) return; offset=k;
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(w,h,false);
       camera.aspect=w/h; camera.fov=w<h ? 46 : 34;
@@ -1278,7 +1303,7 @@ export function start(PK){
     applyTone();
     return {
       setLive, scroll:w=>scroll(w), frame, light6,
-      cursor:t=>{ curT=t; placeCursor(); frame(); },
+      cursor:t=>{ curT=t; placeCursor(); placeFigure(); frame(); },
       draw1:()=> frame(),
       view:()=>{ if(mode==="app") moveTo(); },
       intro:()=>{ buildIntro(); },

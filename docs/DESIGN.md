@@ -491,3 +491,16 @@ Motion: the first view draws the curve in 1.3 s (ease-out cubic) with a glowing 
 head with a 70 px wake; discrete changes morph every layer in 300 ms; the grid crossfades in 0.45 s when the scale
 changes. Reduced motion: none of it, and the chart is simply there.
 
+## 20. 2.14: the workspace
+
+At 1100 px and wider, outside the paper pages, present mode and embeds:
+
+| Part | Rule |
+| --- | --- |
+| Page | full width, 20 px gutters; a 64 px rail and the chart's panel |
+| Chart | the plot as tall as the screen less 372 px (at least 380 px), drawn one unit to a pixel; at 1440 × 900 the plot is 1294 × 528 and the panel 1320 wide (92% of the width) |
+| Rail | glass, 64 px with a hairline on its right; a pin and one 16 px line icon per section; opens to 380 px over the chart (0.32 s, cubic-bezier(.22, 1, .36, 1)) on hover, focus or a click; Escape or a click elsewhere closes it |
+| HUD | the readouts directly under the plot: 28 px light numbers over a faint gradient, a hairline above |
+| Focus | F or the toolbar: the top bar, rail, tabs and everything but the head, legend, plot, HUD and inspector hidden; the plot as tall as the screen less 250 px |
+| Stage | centred behind the chart; the live ribbon, the window's glass plane, the doses' pulses and the glass figure (at 82%, beside the ribbon's end); a change drifts the camera up to 2.4 units toward its largest difference and back |
+

@@ -254,3 +254,29 @@ test("2.13: the chart as an object: colour by state, the doses' own curves, glas
   assert.match(eff, /return \{renderPd, updatePdCursor\};/);
 });
 
+
+test("2.14: the workspace: the chart fills a desktop screen, the controls are a rail that opens over it, the HUD under it, focus mode; the stage beside it", ()=>{
+  // pure CSS from the first paint (no shift): a desktop that isn't a paper page, present mode or an embed
+  assert.match(page, /@media \(min-width:1100px\)\{\n\s+html:not\(\.ed-app\):not\(\.present\):not\(\.embed\) \.app \.wrap/);
+  assert.match(page, /html:not\(\.ed-app\):not\(\.present\):not\(\.embed\) \.grid\{grid-template-columns:64px minmax\(0,1fr\);gap:16px\}/);
+  // the rail: 64 px, opening to 380 over the chart on hover, focus or a click (so the keyboard reaches every control)
+  assert.match(page, /\.controls:is\(:hover,:focus-within,\.open\)\{width:380px;/);
+  assert.match(page, /<nav class="rail" id="rail" aria-label="Control sections">/);
+  assert.match(page, /aria-label="\$\{esc\(name\)\}">\$\{railIcon\(name\)\}<\/button>/);
+  // the chart is drawn one unit to a pixel at its box's size in the workspace, and redrawn when that changes
+  assert.match(page, /if\(inWorkspace\(\) && plotEl\.clientWidth>200 && plotEl\.clientHeight>200\)\{ PW=Math\.round\(plotEl\.clientWidth\); PH=Math\.round\(plotEl\.clientHeight\); \}/);
+  assert.match(page, /new ResizeObserver\(\(\)=>\{ if\(sizeRaf\) return;/);
+  assert.match(page, /#plot\{height:calc\(100vh - 372px\);height:calc\(100svh - 372px\);min-height:380px\}/);
+  // the readouts sit right under the chart (a HUD), before the inspector
+  assert.match(page, /#simView>\.plot-box\{order:7\}[\s\S]*#simView>\.readouts\{order:8\}[\s\S]*#simView>\.insp\{order:9\}/);
+  // focus mode: the chart and its HUD alone; F and Escape
+  assert.match(page, /html\.focus \.top,html\.focus \.controls,html\.focus \.tabbar/);
+  assert.match(page, /\(e\.key==="f" \|\| e\.key==="F"\) && inWorkspace\(\)/);
+  // the stage: the glass figure beside the live ribbon (its level the cursor's concentration or the peak), centred
+  // behind the workspace's chart, the camera drifting toward what changed and back
+  assert.match(stage, /fg=figure\(lv\); fg\.name="lfig";/);
+  assert.match(stage, /off=w>760 && mode!=="intro" && !ws \? -w\*0\.24 : 0/);
+  assert.match(stage, /drift\.x=clamp\(r0\.userData\.xs\[bi\]\*0\.32, -2\.4, 2\.4\)/);
+  // phones keep the stacked layout: the workspace rules are inside the desktop media query only
+  assert.ok(!/@media \(max-width:760px\)\{[^}]*\.rail\{display:flex/.test(page));
+});

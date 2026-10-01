@@ -2,6 +2,26 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.14.0 (2026-10-01)
+
+The simulator becomes a workspace on a desktop (the final brief, part 2).
+
+- **The chart takes the screen:**
+  - On a screen 1100 px or wider, the simulator and compare are one workspace the height of the screen, and the chart's glass panel fills it.
+  - The plot is drawn one unit to a pixel at whatever size the screen gives it, so its type stays true to size. It redraws when that size changes.
+- **The controls become a slim glass rail** on the left, with one line icon per section:
+  - It opens over the chart on hover, on keyboard focus, or with a click on a section, which scrolls to that section.
+  - The top button keeps it open; Escape or a click elsewhere closes it.
+  - Every control is still in reading order, so the keyboard reaches them all.
+- **The readouts are a HUD** strip right under the chart, before the time inspector.
+- **Focus mode** (the toolbar's Focus, or F): the chart and its HUD alone. Escape leaves.
+- **The stage behind the chart shows the same scenario in 3D:**
+  - The ribbon, the window as a glass plane, the doses as pulses, and now the frosted-glass figure beside it. The figure's level is the concentration at the time cursor, else at the peak.
+  - Centred behind the chart's glass in the workspace.
+  - A change morphs the 2D chart and the 3D ribbon together, and the camera drifts toward the part of the curve that changed most, then settles back.
+- **Elsewhere:** phones, the paper pages (lessons, cases, practice), present mode and embeds keep their layouts.
+- **Small details:** panels lift a pixel under the pointer, and focus rings are drawn as an accent ring.
+
 ## 2.13.0 (2026-10-01)
 
 The concentration chart rebuilt as an object rather than a plot. Its data, ids and tests are unchanged.

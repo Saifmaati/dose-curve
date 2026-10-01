@@ -55,7 +55,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.13.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.14.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1221,6 +1221,59 @@
   /* the pill belongs to the landing; in the app the toolbar in the chart's head carries its actions */
   html:not(.in-intro) .pill{display:none}
 
+  /* ===== 2.14: the workspace =====
+     On a desktop the simulator (and compare) is one workspace the height of the screen: the chart's glass panel fills
+     it, the controls are a slim glass rail on the left that opens over the chart (hover, focus or a click; the top
+     button keeps it open), and the readouts are a HUD strip right under the chart. The paper pages (lessons, cases,
+     practice), present mode, embeds and phones keep their layouts. Pure CSS from the first paint, so nothing shifts. */
+  .rail{display:none}
+  .ws-only{display:none}
+  @media (min-width:1100px){
+    html:not(.ed-app):not(.present):not(.embed) .app .wrap,html:not(.ed-app):not(.present):not(.embed) .wrap{max-width:none;padding:0 20px}
+    html:not(.ed-app):not(.present):not(.embed) .grid{grid-template-columns:64px minmax(0,1fr);gap:16px}
+    html:not(.ed-app):not(.present):not(.embed) .controls{position:sticky;top:72px;z-index:12;width:64px;height:calc(100vh - 88px);height:calc(100svh - 88px);max-height:none;
+      display:grid;grid-template-columns:64px 316px;overflow:hidden;padding:0;transition:width .32s cubic-bezier(.22,1,.36,1),box-shadow .32s ease}
+    html:not(.ed-app):not(.present):not(.embed) .controls:is(:hover,:focus-within,.open){width:380px;box-shadow:inset 0 1px 0 var(--glass-hi),0 40px 90px -20px rgba(0,0,0,.6)}
+    html:not(.ed-app):not(.present):not(.embed) .controls .panel-pad{grid-column:2;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;opacity:0;transition:opacity .2s ease}
+    html:not(.ed-app):not(.present):not(.embed) .controls:is(:hover,:focus-within,.open) .panel-pad{opacity:1;transition-delay:.08s}
+    html:not(.ed-app):not(.present):not(.embed) .rail{display:flex;grid-column:1;flex-direction:column;align-items:center;gap:4px;padding:12px 0;border-right:1px solid var(--hair-2);overflow-y:auto;scrollbar-width:none}
+    html:not(.ed-app):not(.present):not(.embed) .ws-only{display:inline-flex}
+    .rail-pin,.rail-list button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:transparent;color:var(--c-muted);transition:background-color var(--t-fast) var(--ease),color var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+    .rail-pin:hover,.rail-list button:hover{background:var(--hair-2);color:var(--c-text);transform:translateY(-1px)}
+    .rail-pin[aria-pressed="true"]{color:var(--c-accent);background:var(--c-accent-soft)}
+    .rail-list{display:flex;flex-direction:column;gap:4px;margin-top:8px;padding-top:10px;border-top:1px solid var(--hair-2)}
+    .rail-list button{font:500 11px/1 var(--f-sans)}
+    .rail-list button.on{color:var(--c-text);box-shadow:inset 2px 0 0 var(--c-accent)}
+    /* the chart takes the screen: its plot is as tall as the space left under the head, with the HUD below it */
+    html:not(.ed-app):not(.present):not(.embed) #simView{display:flex;flex-direction:column}
+    html:not(.ed-app):not(.present):not(.embed) #simView>*{order:10}
+    html:not(.ed-app):not(.present):not(.embed) #simView>.print-head{order:0} html:not(.ed-app):not(.present):not(.embed) #simView>.shared{order:1}
+    html:not(.ed-app):not(.present):not(.embed) #simView>.cmpbar{order:2} html:not(.ed-app):not(.present):not(.embed) #simView>.lesson{order:3}
+    html:not(.ed-app):not(.present):not(.embed) #simView>.qs{order:4} html:not(.ed-app):not(.present):not(.embed) #simView>.plot-head{order:5}
+    html:not(.ed-app):not(.present):not(.embed) #simView>.legend{order:6} html:not(.ed-app):not(.present):not(.embed) #simView>.plot-box{order:7}
+    html:not(.ed-app):not(.present):not(.embed) #simView>.readouts{order:8} html:not(.ed-app):not(.present):not(.embed) #simView>.insp{order:9}
+    html:not(.ed-app):not(.present):not(.embed) #plot{height:calc(100vh - 372px);height:calc(100svh - 372px);min-height:380px}
+    html:not(.ed-app):not(.present):not(.embed) .plot-head{flex-wrap:nowrap;align-items:center}
+    /* the HUD: one strip of large light numbers on the chart's glass */
+    html:not(.ed-app):not(.present):not(.embed) .readouts{padding:6px var(--gut) 0}
+    html:not(.ed-app):not(.present):not(.embed) .ro-grid{border-top:1px solid var(--hair);border-bottom:0;background:linear-gradient(var(--hair-2),transparent 70%)}
+    html:not(.ed-app):not(.present):not(.embed) .ro{padding:10px 12px 8px}
+    html:not(.ed-app):not(.present):not(.embed) .ro-v{font-size:28px;margin-top:3px}
+    html:not(.ed-app):not(.present):not(.embed) .ro-hint{display:none}
+    /* focus: the chart and its HUD alone */
+    html.focus .top,html.focus .controls,html.focus .tabbar,html.focus #simView>:not(.plot-head):not(.legend):not(.plot-box):not(.readouts):not(.insp){display:none !important}
+    html.focus:not(.ed-app):not(.present):not(.embed) .grid{grid-template-columns:minmax(0,1fr)}
+    html.focus body{padding-top:16px}
+    html.focus:not(.ed-app):not(.present):not(.embed) #plot{height:calc(100vh - 250px);height:calc(100svh - 250px)}
+    html.focus .plot-tools>:not(.tb),html.focus .tb>:not(#tbFocus){display:none}
+  }
+  html.focus.in-intro .top{display:grid}
+  /* panels lift a little under the pointer; focus rings are drawn, not the browser's */
+  @media (hover:hover){ .panel{transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s ease} .sc-card:hover,.cs-card:hover{transform:translateY(-1px)} }
+  :focus-visible{outline:none;box-shadow:0 0 0 2px var(--c-page),0 0 0 3.5px color-mix(in srgb,var(--c-accent) 85%,transparent);border-radius:var(--r-2)}
+  .seg button:focus-visible,.mini-seg button:focus-visible,.tb button:focus-visible{border-radius:999px}
+  input[type=range]:focus-visible{box-shadow:none}
+
   /* layout steps */
   @media (max-width:1100px){ .ro-grid{grid-template-columns:repeat(4,minmax(0,1fr))} .ro-v{font-size:19px} }
   @media (max-width:960px){
@@ -1476,7 +1529,11 @@
     <div class="grid">
 
       <!-- ============ CONTROLS ============ -->
-      <aside class="panel controls">
+      <aside class="panel controls" id="controls">
+        <nav class="rail" id="rail" aria-label="Control sections">
+          <button type="button" class="rail-pin" id="railPin" aria-pressed="false" title="Keep the controls open"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="sr-only">Keep the controls open</span></button>
+          <div class="rail-list" id="railList"></div>
+        </nav>
         <div class="panel-pad">
 
           <div class="sec cmp-only">
@@ -1826,6 +1883,7 @@
             <div class="tb" role="toolbar" aria-label="This scenario">
               <button type="button" id="tbBase" class="sim-only" aria-pressed="false" title="Freeze this curve to compare every change against it"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 10.5C3.5 10.5 3.5 3 6.5 3S9 8 13 8" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><path d="M1 12.5h12" stroke="currentColor" stroke-width="1.3"/></svg>Baseline</button>
               <button type="button" id="tbCmp" aria-pressed="false" title="Scenarios A and B side by side"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 11C3 11 3.5 3 6 3s3 6 7 6" stroke="currentColor" stroke-width="1.3"/><path d="M1 12c3 0 4-5 7-5s3 3 5 3" stroke="currentColor" stroke-width="1.3" opacity=".55"/></svg>Compare</button>
+              <button type="button" id="tbFocus" class="ws-only" aria-pressed="false" title="Focus: the chart and its readouts alone (F; Escape leaves)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1.5 5V1.5H5M9 1.5h3.5V5M12.5 9v3.5H9M5 12.5H1.5V9" stroke="currentColor" stroke-width="1.3"/></svg>Focus</button>
               <button type="button" id="tbShare" title="Copy a link that opens exactly this setup"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M5.8 8.2l2.4-2.4M6.2 3.6l1-1a2.4 2.4 0 013.4 3.4l-1 1M7.8 10.4l-1 1A2.4 2.4 0 013.4 8l1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Share</button>
             </div>
             <div class="mini-seg" id="viewSeg" role="group" aria-label="Time range" style="display:none">
@@ -2080,7 +2138,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.13.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.14.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2326,13 +2384,21 @@
   const M={l:56,r:20,t:22,b:46}, narrowQ=matchMedia("(max-width:560px)");
   const plotEl=byId("plot");
   let plotCurves=[], sx, sy, PW, PH;
+  // In the desktop workspace (2.14) the chart is drawn one unit to a pixel at whatever size the screen gives it, so it
+  // fills the space and its type stays its true size; elsewhere it keeps the fixed 760 (or 440) wide drawing.
+  const wsQ=matchMedia("(min-width:1100px)");
+  const inWorkspace=()=>{ const d=document.documentElement.classList; return wsQ.matches && !d.contains("ed-app") && !d.contains("present") && !d.contains("embed"); };
   function chartSize(){
-    PW=narrowQ.matches ? 440 : 760; PH=narrowQ.matches ? 380 : 430;
+    if(inWorkspace() && plotEl.clientWidth>200 && plotEl.clientHeight>200){ PW=Math.round(plotEl.clientWidth); PH=Math.round(plotEl.clientHeight); }
+    else { PW=narrowQ.matches ? 440 : 760; PH=narrowQ.matches ? 380 : 430; }
     M.r=narrowQ.matches ? 46 : 56;   // the right margin carries the MEC, MTC and MIC labels (2.13)
     [["plot",PH],["effPlot",220],["ssPlot",240]].forEach(([id,h])=> byId(id).setAttribute("viewBox",`0 0 ${PW} ${h}`));
   }
   chartSize();
   narrowQ.addEventListener("change",()=>{ chartSize(); render(); });
+  // the workspace's chart follows its box: a new size redraws it, once a frame at most
+  let sizeRaf=0;
+  if("ResizeObserver" in window) new ResizeObserver(()=>{ if(sizeRaf) return; sizeRaf=requestAnimationFrame(()=>{ sizeRaf=0; const w=PW, h=PH; chartSize(); if((w!==PW || h!==PH) && plotCurves.length) render(); }); }).observe(plotEl);
 
   // What the main chart draws: the live scenario (plus baseline), or scenarios A and B.
   function chartCurves(){
@@ -3019,8 +3085,11 @@
 
   // the chart's toolbar (2.12) mirrors the state the controls' own buttons change
   function syncToolbar(){ byId("tbBase").setAttribute("aria-pressed", !!baseline); byId("tbCmp").setAttribute("aria-pressed", mode==="cmp"); }
+  let railSig="", railReady=false;   // (the rail is set up further down; until then it is simply not refreshed)
   function renderPanels(){
     syncToolbar();
+    // the rail lists the sections that show (Pharmacodynamics, a schedule, compare's editing come and go)
+    if(railReady){ const sig=[...document.querySelectorAll("#controls .panel-pad > .sec")].map(x=> x.hidden || x.offsetParent===null ? 0 : 1).join(""); if(sig!==railSig){ railSig=sig; buildRail(); } }
     if(mode==="sim"){
       const p=snapshot(), d=derived(p), ws=windowStats(p);
       renderReadouts(p, d, ws);
@@ -5523,6 +5592,53 @@
     location.reload();
   });
 
+  /* ================= WORKSPACE (2.14) ================= */
+  // The rail: one button per section of the controls (its initial, in the display face); a click opens the rail on that
+  // section, the top button keeps it open, Escape or a click elsewhere closes it. Focus mode: the chart and its HUD.
+  const ctrlEl=byId("controls"), railList=byId("railList"), railPin=byId("railPin");
+  function buildRail(){
+    railList.innerHTML=[...ctrlEl.querySelectorAll(".panel-pad > .sec")].filter(sec=> !sec.hidden && sec.offsetParent!==null && sec.querySelector(".sec-label"))
+      .map((sec,i)=>{ if(!sec.id) sec.id="sec"+i; const name=sec.querySelector(".sec-label").textContent.trim();
+        return `<button type="button" data-sec="${sec.id}" title="${esc(name)}" aria-label="${esc(name)}">${railIcon(name)}</button>`; }).join("");
+  }
+  // a line icon per section, 16 px, drawn in the text colour
+  function railIcon(name){
+    const n=name.toLowerCase(), I=d=>`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+    if(/editing/.test(n)) return "A·B";
+    if(/route/.test(n)) return I('<rect x="2.5" y="6" width="9" height="4" rx="2"/><path d="M7 6v4M11.5 8h2.5M12.5 6.5 14 8l-1.5 1.5"/>');
+    if(/schedule/.test(n)) return I('<path d="M2.5 12.5h11M4 12.5V9M7 12.5V6M10 12.5V9.5M13 12.5V7"/>');
+    if(/drug param/.test(n)) return I('<path d="M6 2.5h4M6.5 2.5v4L3.5 12a1.5 1.5 0 0 0 1.3 2h6.4a1.5 1.5 0 0 0 1.3-2L9.5 6.5v-4"/><path d="M5 10h6"/>');
+    if(/patient/.test(n)) return I('<circle cx="8" cy="4.5" r="2.2"/><path d="M3.5 13.5c.4-2.8 2.2-4.3 4.5-4.3s4.1 1.5 4.5 4.3"/>');
+    if(/pharmaco/.test(n)) return I('<path d="M2.5 12.5c3 0 3.5-9 6-9s3 3 5 3"/><path d="M2.5 13.5h11" opacity=".5"/>');
+    if(/window/.test(n)) return I('<path d="M2.5 5h11M2.5 10h11"/><path d="M2.5 7.5h11" opacity=".35"/>');
+    if(/antimicrob/.test(n)) return I('<circle cx="8" cy="8" r="5.5"/><circle cx="6.5" cy="7" r=".6" fill="currentColor"/><circle cx="9.5" cy="9" r=".6" fill="currentColor"/><circle cx="8.5" cy="5.8" r=".6" fill="currentColor"/>');
+    if(/library/.test(n)) return I('<path d="M3 3h3.5v10H3zM7.5 3H11v10H7.5zM12 3.5l1.7.4-1.4 9.3-1.6-.3"/>');
+    if(/export|analy/.test(n)) return I('<path d="M8 2.5v7M5.5 5 8 2.5 10.5 5M3 9.5v3h10v-3"/>');
+    return esc(name.charAt(0));
+  }
+  const railOpen=on=>{ ctrlEl.classList.toggle("open", on || railPin.getAttribute("aria-pressed")==="true"); };
+  railList.addEventListener("click",e=>{
+    const b=e.target.closest("button[data-sec]"); if(!b) return;
+    railList.querySelectorAll("button").forEach(x=> x.classList.toggle("on", x===b)); railOpen(true);
+    const sec=byId(b.dataset.sec), pad=ctrlEl.querySelector(".panel-pad");
+    pad.scrollTo({top:sec.offsetTop-pad.offsetTop-8, behavior:noMotion() ? "auto" : "smooth"});
+    const f=sec.querySelector("button,input,select,textarea,summary"); if(f) setTimeout(()=> f.focus({preventScroll:true}), noMotion() ? 0 : 260);
+  });
+  railPin.addEventListener("click",()=>{ const on=railPin.getAttribute("aria-pressed")!=="true"; railPin.setAttribute("aria-pressed", on); railOpen(on); });
+  document.addEventListener("pointerdown",e=>{ if(ctrlEl.classList.contains("open") && !ctrlEl.contains(e.target)) railOpen(false); });
+  ctrlEl.addEventListener("keydown",e=>{ if(e.key==="Escape" && inWorkspace()){ railOpen(false); if(ctrlEl.contains(document.activeElement)) document.activeElement.blur(); } });
+  buildRail(); railReady=true;
+  function setFocusMode(on){
+    document.documentElement.classList.toggle("focus", on); byId("tbFocus").setAttribute("aria-pressed", on);
+    if(on) byId("plot").scrollIntoView({block:"center"});
+  }
+  byId("tbFocus").addEventListener("click",()=> setFocusMode(!document.documentElement.classList.contains("focus")));
+  document.addEventListener("keydown",e=>{
+    if(e.ctrlKey || e.metaKey || e.altKey || e.target.closest && e.target.closest("input,select,textarea,[contenteditable]")) return;
+    if((e.key==="f" || e.key==="F") && inWorkspace() && !document.querySelector("dialog[open]")){ e.preventDefault(); setFocusMode(!document.documentElement.classList.contains("focus")); }
+    else if(e.key==="Escape" && document.documentElement.classList.contains("focus")) setFocusMode(false);
+  });
+
   /* ================= BASELINE / EXPORT ================= */
   // the chart's toolbar: the controls' own buttons, from the chart (2.12; the pill no longer shows in the app)
   byId("tbBase").addEventListener("click",()=> byId(baseline ? "clearPinBtn" : "pinBtn").click());
@@ -5907,7 +6023,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=f024ac338a";
+  const STAGE_SRC="stage.js?v=5ec7411131";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
