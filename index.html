@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.16.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.17.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1618,15 +1618,16 @@
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay &nbsp;·&nbsp; kₑ = ln2/t½ · CL = kₑ·V · superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
         Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
       </div>
-      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 146 scenarios: see Validation.</p>
+      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see Validation.</p>
       <nav class="foot-links" aria-label="Project links">
         <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
         <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
         <a href="validation.html">Validation</a>
+        <a href="educators.html">For educators</a>
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.16.0 · updated 30 September 2026</span>
+        <span>Version 1.17.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -2344,7 +2345,8 @@
       const col=cv.col ? cv.col.line : "#7FD4FF", pts=cv.raw.map(q=>({x:sx(q.t), y:sy(cv.p.fu*q.c)}));
       g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.95"/>`;
       const at=cv.raw.reduce((m,q,i)=> q.c>cv.raw[m].c ? i : m, 0), q=cv.raw[at];
-      lateLabels+=`<text x="${Math.min(Math.max(sx(q.t)+8, M.l+40), PW-M.r-70)}" y="${sy(cv.p.fu*q.c)+14}" font-family="JetBrains Mono" font-size="9.5" fill="${col}" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+" · ":""}unbound (fu ${trim(cv.p.fu)})</text>`;
+      const lx=sx(q.t), right=lx+150<PW-M.r;   // the label sits right of the peak, or left of it near the chart's edge
+      lateLabels+=`<text x="${right ? Math.max(lx+8, M.l+40) : lx-8}" text-anchor="${right ? "start" : "end"}" y="${sy(cv.p.fu*q.c)+14}" font-family="JetBrains Mono" font-size="9.5" fill="${col}" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+" · ":""}unbound (fu ${trim(cv.p.fu)})</text>`;
     });
 
     g+=lateLabels;
@@ -5575,6 +5577,7 @@
   }
   else if(task && task.type==="window") startWindow(PK.makeWindowTask({kind:task.kind, seed:task.seed}), true);
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
+  else if(/^#(practice|lessons|cases|compare)$/.test(location.hash)){ render(); $({practice:"tabPr", lessons:"tabLs", cases:"tabCs", compare:"tabCmp"}[location.hash.slice(1)]).click(); }   // a tab, by name
   else render();
 
   // Visit counting, off unless ANALYTICS_SITE_ID is set to a GoatCounter site code (see docs/NEEDS-SAIF.md).

@@ -4,7 +4,7 @@
 
 [![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml)
 
-**Live:** https://saifmaati.github.io/dose-curve/ · **Validation:** https://saifmaati.github.io/dose-curve/validation.html · **Teaching guide:** [docs/teaching-guide.md](docs/teaching-guide.md)
+**Live:** https://saifmaati.github.io/dose-curve/ · **Validation:** https://saifmaati.github.io/dose-curve/validation.html · **Teaching guide:** [docs/teaching-guide.md](docs/teaching-guide.md) · **For educators:** https://saifmaati.github.io/dose-curve/educators.html
 
 > Educational model, not for clinical dosing. DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a direct Emax effect for learning and demonstration. Its validation checks that it solves its own model correctly, not that the model predicts real patients.
 
@@ -27,6 +27,12 @@
 
 ![One or two compartments: vancomycin with the same clearance, a higher peak and the same AUC24](docs/img/two-compartments.png)
 
+![Piperacillin-tazobactam, 3 g every 6 h over 30 minutes or 3 hours: the dotted unbound levels against the 16 mg/L MIC, and the comparison table with fT>MIC 47.2% vs 68.6% and the same AUC24/MIC](docs/img/antimicrobial.png)
+
+![An indirect response: one dose of a warfarin-like drug, with a response that turns over in 5 hours (dashed) or 60 hours, bottoming out at 24 h or 96 h](docs/img/indirect-response.png)
+
+![Gentamicin on hemodialysis: 120 mg after each 8-hour session, each session (shaded) halving the level, with the clearance on and off dialysis](docs/img/hemodialysis.png)
+
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
 - Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 27 one-click comparisons.
@@ -34,6 +40,8 @@
 - **Sensitivity:** move each input (clearance, volume, F, kₐ, dose, interval; k12 and k21 with two compartments) 20% down and up, one at a time, and see a tornado chart of the change in AUC24, the peak, the trough or the time in the window, with a sentence naming the input that matters most.
 
 ![An effect-site delay: the effect lags the plasma level, peaks later and lower, and traces a counterclockwise loop against it](docs/img/effect-delay.png)
+
+![Sensitivity for vancomycin 1 g every 12 h: clearance and the dosing interval move AUC24 by +25% and −16.7% at ±20%, the dose by ±20%, the volume not at all](docs/img/sensitivity.png)
 
 **Teach and practise**
 - **34 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
@@ -121,6 +129,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
+| `educators.html` | The page for instructors: what DoseCurve covers, how to run a class, and a link to every lesson and case |
 | `sw.js` | The service worker for offline use |
 | `tests/` | The engine, clinical, saturable, two-compartment, cases, population, validation, accessibility, release and service-worker tests |
 | `docs/` | The teaching guide, audits, the v1.0 build log, decisions and report |

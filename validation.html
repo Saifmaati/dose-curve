@@ -34,12 +34,12 @@
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients.</p>
 
 <!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
-<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>Each scenario's peak, trough, area under the curve and time in window are being compared with the independent solver's, to the tolerances below.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
+<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 12 indirect responses at five times and at their largest change, and the 8 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
   <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve, and for an effect-site delay two more follow the effect-site level, dCe/dt = ke0·(C − Ce), and its area. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, and their effect-site levels from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
-  <li><b>A scenario matrix</b> of <span id="nScen">…</span> scenarios:
+  <li><b>A scenario matrix</b> of <span id="nScen">146</span> scenarios:
     <ul>
       <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
       <li>Regimens: single dose, repeated, with a loading dose, with a missed dose, and a custom schedule with irregular times, amounts and a missed dose.</li>
@@ -83,22 +83,22 @@
 <tbody></tbody></table></div>
 
 <h2>Bayesian estimates (MAP)</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, DoseCurve's, and the difference.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table" style="min-height:600px"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, DoseCurve's, and the difference.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Levels</th><th scope="col">CL prior (L/h)</th><th scope="col">CL MAP (ref)</th><th scope="col">CL Δ</th><th scope="col">V prior (L)</th><th scope="col">V MAP (ref)</th><th scope="col">V Δ</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
 <h2>Antimicrobial PK/PD indices</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="PK/PD indices table"><table id="pkpdTbl"><caption>Each regimen at steady state: the reference value, DoseCurve's, and the difference.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="PK/PD indices table" style="min-height:384px"><table id="pkpdTbl"><caption>Each regimen at steady state: the reference value, DoseCurve's, and the difference.</caption>
 <thead><tr><th scope="col">Regimen</th><th scope="col">fT&gt;MIC (ref)</th><th scope="col">Δ pp</th><th scope="col">Cmax/MIC (ref)</th><th scope="col">Δ</th><th scope="col">AUC24/MIC (ref)</th><th scope="col">Δ</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
 <h2>Indirect responses</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:384px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Largest change (ref, %)</th><th scope="col">Δ</th><th scope="col">When (ref, h)</th><th scope="col">Δ h</th><th scope="col">Worst of 5 times</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
 <h2>Hemodialysis</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Hemodialysis table"><table id="hdTbl"><caption>Each scenario: the largest difference in the level at six times, and in each session's levels and the amount it removed.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Hemodialysis table" style="min-height:276px"><table id="hdTbl"><caption>Each scenario: the largest difference in the level at six times, and in each session's levels and the amount it removed.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Sessions</th><th scope="col">First session removes (ref)</th><th scope="col">Worst level Δ</th><th scope="col">Worst session Δ</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
@@ -108,12 +108,13 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=4013aff61f"></script>
-<script src="pk-hd.js?v=b96f5ee841"></script>
-<script src="pk-idr.js?v=046041894a"></script>
-<script src="pk-bayes.js?v=49979aea6b"></script>
+<script src="pk-engine.js?v=4013aff61f" defer></script>
+<script src="pk-hd.js?v=b96f5ee841" defer></script>
+<script src="pk-idr.js?v=046041894a" defer></script>
+<script src="pk-bayes.js?v=49979aea6b" defer></script>
 <script>
-(function(){
+// the engine files are deferred: the checks start once they have run
+document.addEventListener("DOMContentLoaded", function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
@@ -122,10 +123,10 @@ python3 validation/reference.py         # regenerates validation/reference-resul
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
     document.getElementById("nScen").textContent=REF.scenarios.length;
-    // a dozen scenarios at a time, handing the page back in between so it never stalls
+    // four scenarios at a time, handing the page back in between so it never stalls
     const first=document.querySelector("#summary .big");
     for(let i=0;i<REF.scenarios.length;i++){
-      if(i && i%12===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
+      if(i && i%4===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
       const s=REF.scenarios[i];
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc,s.site), level=s.site==="effect" ? PK.ceConc : PK.conc;
       const m={peak:w.cmax, trough:level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
@@ -140,31 +141,33 @@ python3 validation/reference.py         # regenerates validation/reference-resul
     document.querySelector("#tbl tbody").innerHTML=rows.join("");
     // the Bayesian (MAP) estimates: clearance and volume against the reference
     let mapPass=0, mapTotal=0, mapWorst=0;
-    const mapRows=(REF.map ? REF.map.scenarios : []).map(s=>{
+    const tick=()=> new Promise(r=>setTimeout(r));   // hand the page back between heavier checks
+    const mapRows=[];
+    for(const s of (REF.map ? REF.map.scenarios : [])){ await tick(); mapRows.push((()=>{
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), e=PK.bayes.estimate(p, p.lv, s.opts), r=s.reference;
       const dCL=pct(e.CL,r.CL), dV=pct(e.V,r.V), ok=[dCL,dV].every(d=>Math.abs(d)<=100*REF.map.tolerance);
       [dCL,dV].forEach(d=>{ mapTotal++; if(Math.abs(d)<=100*REF.map.tolerance) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.id)}</td><td>${p.lv.length}</td><td>${f(r.priorCL,3)}</td><td>${f(r.CL,3)}</td><td>${fd(dCL)}</td><td>${f(r.priorV,2)}</td><td>${f(r.V,2)}</td><td>${fd(dV)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    });
+    })()); }
     document.querySelector("#mapTbl tbody").innerHTML=mapRows.join("");
     pass+=mapPass; total+=mapTotal;
     // the antimicrobial indices at steady state
     let pkPass=0, pkTotal=0;
     const P=REF.pkpd || {scenarios:[], tolerance:{}};
-    document.querySelector("#pkpdTbl tbody").innerHTML=P.scenarios.map(s=>{
+    { const out=[]; for(const s of P.scenarios){ await tick(); out.push((()=>{
       const m=PK.micStats(PK.normalizeScenario(PK.scenario(s.scenario)), s.mic, 24), r=s.reference;
       const dft=m.ft-r.ft_pct, dc=pct(m.cmaxMic,r.cmax_mic), da=pct(m.aucMic,r.auc24_mic);
       const oks=[Math.abs(dft)<=P.tolerance.ft_pp, Math.abs(dc)<=100*P.tolerance.ratio, Math.abs(da)<=100*P.tolerance.ratio], ok=oks.every(Boolean);
       oks.forEach(o=>{ pkTotal++; if(o) pkPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${f(r.ft_pct,2)}%</td><td>${Math.abs(dft)<0.0005 ? "0.000" : f(dft,3)}</td><td>${f(r.cmax_mic,3)}</td><td>${fd(dc)}</td><td>${f(r.auc24_mic,2)}</td><td>${fd(da)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    }).join("");
+    })()); } document.querySelector("#pkpdTbl tbody").innerHTML=out.join(""); }
     pass+=pkPass; total+=pkTotal;
     // indirect responses: at five times and at the largest change
     let idPass=0, idTotal=0;
     const D=REF.idr || {scenarios:[], tolerance:{}};
-    document.querySelector("#idrTbl tbody").innerHTML=D.scenarios.map(s=>{
+    { const out=[]; for(const s of D.scenarios){ await tick(); out.push((()=>{
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), st=PK.idr.stats(p, s.T), r=s.reference;
       const worst=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.idr.at(p, s.T, +f*s.T), v))));
       const de=pct(st.ext, r.ext), dt=st.tExt-r.t_ext;
@@ -172,12 +175,12 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       oks.forEach(o=>{ idTotal++; if(o) idPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${f(r.ext,3)}</td><td>${fd(de)}</td><td>${f(r.t_ext,2)}</td><td>${Math.abs(dt)<0.0005 ? "0.000" : f(dt,3)}</td><td>${fd(worst)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    }).join("");
+    })()); } document.querySelector("#idrTbl tbody").innerHTML=out.join(""); }
     pass+=idPass; total+=idTotal;
     // hemodialysis: the level at six times, and each session's levels and removal
     let hdPass=0, hdTotal=0;
     const HDR=REF.hd || {scenarios:[], tolerance:{}};
-    document.querySelector("#hdTbl tbody").innerHTML=HDR.scenarios.map(s=>{
+    { const out=[]; for(const s of HDR.scenarios){ await tick(); out.push((()=>{
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), r=s.reference, tab=PK.hd.sessionTable(p, s.T).filter(x=>x.end<=s.T);
       const wl=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.conc(p, +f*s.T-1e-9), v))));
       const wsn=Math.max(0, ...r.sessions.flatMap((x,i)=> [pct(tab[i].pre,x.pre), pct(tab[i].post,x.post), pct(tab[i].removed,x.removed)].map(Math.abs)));
@@ -185,7 +188,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       oks.forEach(o=>{ hdTotal++; if(o) hdPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${r.sessions.length}</td><td>${f(r.sessions[0].removed,2)}</td><td>${fd(wl)}</td><td>${fd(wsn)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    }).join("");
+    })()); } document.querySelector("#hdTbl tbody").innerHTML=out.join(""); }
     pass+=hdPass; total+=hdTotal;
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
@@ -193,7 +196,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       `<div>${REF.scenarios.length} scenarios × 4 numbers, ${mapTotal/2} Bayesian estimates × 2 (clearance and volume), ${pkTotal/3} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), ${idTotal/3} indirect responses × 3 (five times, the largest change and its time), and ${hdTotal/2} dialysis scenarios × 2 (the levels, and each session's levels and removal). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
       `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
-})();
+});
 </script>
 </body>
 </html>
