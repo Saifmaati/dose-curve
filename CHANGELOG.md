@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.8.0 (2026-10-01)
+
+Every lesson link scores 89 or more on mobile.
+
+- **Lesson links render faster.** A lesson link renders several times as its files arrive (the lesson's texts, the explanations, the stage), and each render recomputed the same window statistics, readouts and dose-by-dose peaks and troughs. The engine now keeps the last 64 of each. They are keyed by the scenario's link, so a changed setting always computes afresh, and by whether the dialysis model has loaded. Each caller gets its own copy. A repeated comparison takes 1.2 ms instead of 3.0.
+- **Results.** A Lighthouse run on all 36 lesson links found one below the floor of 85: the Bayesian-estimate lesson at 78 (73 with a layout shift on 2.4.0). It now scores 89, with blocking time 780 → 370 ms. The other low scorers rose too: continuous vs intermittent 88 → 94, piperacillin 87 → 94, gentamicin divided vs once daily 89 → 95, the CrCl lesson 91 → 94. Every link kind still opens with zero layout shift at 390 and 1440 px.
+
+Lighthouse on mobile: the root address 99, the validation page 99. 386 tests in 22 files.
+
 ## 2.7.0 (2026-10-01)
 
 Hemodialysis with two compartments, and the rebound after each session.

@@ -1845,3 +1845,15 @@ test("lesson: dosing by weight", ()=>{
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:1000, wt:90})), false, "the weight stays 100 kg");
   const t=PK.TEMPLATES.find(x=>x.id==="weight"); assert.ok(t && t.lesson==="weight");
 });
+
+test("2.8: window statistics and readouts are remembered by the scenario's settings: copies, never stale", ()=>{
+  const p=PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6}));
+  const w1=PK.windowStats(p, 72, 2, 12), d1=PK.derived(p);
+  w1.auc=-1; d1.CL=-1;
+  assert.ok(PK.windowStats(p, 72, 2, 12).auc>0 && PK.derived(p).CL>0, "each caller gets its own copy");
+  p.D=1000;   // the same object, changed in place
+  const w2=PK.windowStats(p, 72, 2, 12), fresh=PK.windowStats(PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6, D:1000})), 72, 2, 12);
+  assert.deepEqual(w2, fresh); assert.ok(Math.abs(w2.auc/PK.windowStats(PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6})), 72, 2, 12).auc-2)<1e-9, "twice the dose, twice the area");
+  assert.equal(PK.DEFAULTS.D, 500); assert.ok(Math.abs(PK.derived(p).auc/d1.auc-2)<1e-9, "the readouts follow the change too");
+  assert.notDeepEqual(PK.windowStats(p, 72, 2, 12), PK.windowStats(p, 48, 2, 12), "the window is part of it");
+});

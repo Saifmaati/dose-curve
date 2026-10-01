@@ -415,7 +415,16 @@
     return [mx, tm];
   }
 
+  // The readouts are pure in the scenario's settings too, and asked for again by each render: the last 64 are kept the
+  // same way as the window statistics (by link, and whether the dialysis model has loaded), each caller getting a copy.
+  const dMemo=new Map();
   function derived(p){
+    const key=encodeScenario(p)+"|"+p.unit+"|"+(hdOn(p) && hdApi() ? 1 : 0);
+    let d=dMemo.get(key);
+    if(!d){ d=derivedOf(p); if(dMemo.size>=64) dMemo.delete(dMemo.keys().next().value); dMemo.set(key, d); }
+    return Object.assign({}, d);
+  }
+  function derivedOf(p){
     if(p.kin==="mm") return mmDerived(p);
     const k=keOf(p), V=vOf(p), terms=disposition(p), perMg=aucPerMg(terms);
     // the effective half-life is the slowest (terminal) one
@@ -467,7 +476,18 @@
   // independent solver to 0.5%.)
   // With site "effect" (and an effect-site delay) the same statistics are taken of the effect-site level, which
   // never jumps.
+  // Window statistics are pure in the scenario's settings and the window, and one render asks for the same ones several
+  // times (the readouts, What changed, a lesson's checks), as does each render that follows a file arriving: the last
+  // 64 are kept, keyed by the scenario's link and the window, and by whether the dialysis model has loaded (until it
+  // has, the curve has no sessions). Each caller gets its own copy.
+  const wsMemo=new Map();
   function windowStats(p, T, mec, mtc, site){
+    const key=encodeScenario(p)+"|"+p.unit+"|"+T+"|"+mec+"|"+mtc+"|"+(site||"")+"|"+(hdOn(p) && hdApi() ? 1 : 0);
+    let w=wsMemo.get(key);
+    if(!w){ w=windowStatsOf(p, T, mec, mtc, site); if(wsMemo.size>=64) wsMemo.delete(wsMemo.keys().next().value); wsMemo.set(key, w); }
+    return Object.assign({}, w);
+  }
+  function windowStatsOf(p, T, mec, mtc, site){
     const ev=doseEvents(p), N=600, pts=new Set(), jumps=new Set();
     const eff=site==="effect" && keqOf(p)>0, level=eff ? t=>ceConc(p,t,ev) : t=>conc(p,t,ev);
     for(let i=0;i<=N;i++) pts.add(T*i/N);
@@ -550,7 +570,16 @@
   }
 
   // Peak and trough of every dose interval, plus where an uninterrupted regimen settles.
+  // Remembered like the readouts (by link, and whether the dialysis model has loaded); each caller gets its own rows.
+  const sMemo=new Map();
   function ssProfile(p){
+    if(p.dosing!=="repeated") return null;
+    const key=encodeScenario(p)+"|"+p.unit+"|"+(hdOn(p) && hdApi() ? 1 : 0);
+    let S=sMemo.get(key);
+    if(!S){ S=ssProfileOf(p); if(sMemo.size>=64) sMemo.delete(sMemo.keys().next().value); sMemo.set(key, S); }
+    return Object.assign({}, S, {rows:S.rows.map(r=>Object.assign({}, r))}, S.mm ? {mm:Object.assign({}, S.mm)} : {});
+  }
+  function ssProfileOf(p){
     if(p.dosing!=="repeated") return null;
     if(p.kin==="mm") return mmProfile(p);
     if(hdOn(p)){

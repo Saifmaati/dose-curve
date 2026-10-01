@@ -466,3 +466,11 @@ axe: no violations. 379 tests in 22 files.
 | What changed: AUC sentences with dialysis | the rebound lesson | the lesson's own output (9% higher) |
 
 All 36 lesson links CLS 0 at 390 and 1440. 385 tests in 22 files.
+
+## 36. 2.8.0 (every lesson link at 89 or more on mobile)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Remembered window statistics, readouts and profiles | any lesson link | `pk-engine.test.js` (copies; a value changed in place gives the new result; the window is part of the key); Lighthouse on the lesson links |
+
+Lighthouse on mobile: all 36 lesson links measured on 2.7.0 (87–95, the Bayesian lesson 78); on 2.8.0 the seven lowest 89–95, the Bayesian lesson 89; root 99, validation 99. CLS 0 on all 108 links at 390. 386 tests in 22 files.
