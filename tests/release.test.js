@@ -67,7 +67,7 @@ test("NEEDS-SAIF lists the steps that need an account", ()=>{
 
 test("every file loaded on demand is named by its content hash in the page and precached under that name", ()=>{
   const crypto=require("node:crypto"), page=read("index.html"), sw=read("sw.js");
-  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js","pk-bayes.js","pk-idr.js","pk-sources.js","pk-hd.js","pk-sens.js","pk-tdm.js"].forEach(f=>{
+  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js","pk-bayes.js","pk-idr.js","pk-sources.js","pk-hd.js","pk-sens.js","pk-tdm.js","pk-explain.js"].forEach(f=>{
     const h=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,f))).digest("hex").slice(0,10);
     assert.ok(page.includes(`${f}?v=${h}`), `index.html loads ${f}?v=${h}`);
     assert.ok(sw.includes(`./${f}?v=${h}`), `sw.js precaches ${f}?v=${h}`);

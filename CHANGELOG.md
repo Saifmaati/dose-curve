@@ -2,6 +2,17 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.5.0 (2026-10-01)
+
+Every link opens without the page moving, and the first view loads less.
+
+- **Lesson links no longer shift the page.** A lesson link showed the lesson before its texts arrived, and the texts then pushed the chart down. The shift reached 0.23 on phones (seven lessons above 0.1, the threshold Lighthouse flags) and dates from when the texts moved to their own file. A lesson link now shows once its texts (and any model it needs) are in place.
+- **`#cases` no longer shifts the page.** The case list filled in after the tab showed (a shift of 0.63). The tab now waits for the list, as a single case's link already did.
+- Every kind of link was measured at 390 and 1440 px: all 35 lessons, 40 practice kinds, 7 worksheet topics, each Fit the data and Hit the window kind, all 16 cases and each tab by name. Layout shift is 0 on every one.
+- **The "What changed" sentences moved to their own file** (`pk-explain.js`), unchanged: 526 of 526 scenario pairs give identical text before and after. The file loads just after the first paint, and a link that opens with a baseline or in Compare waits for it. The initial script falls from 24.7% to 18.0% over the Phase 0 baseline, which leaves room under the 25% budget for later features. The sentences now have tests of their own: the README's example word for word, every lesson's pair in both modes, and a single change to every library drug, all in descriptive words with no empty numbers.
+
+Lighthouse on mobile: the root address 99, a lesson link 90 (86 with a 0.16 shift before), `#cases` 97; accessibility 100, layout shift 0. 375 tests in 22 files.
+
 ## 2.4.0 (2026-10-01)
 
 Teaching additions after the redesign: when to sample, a lesson on the weight in Cockcroft–Gault, a case of the day, and documents for contributors.

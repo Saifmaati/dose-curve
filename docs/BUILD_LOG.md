@@ -87,3 +87,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-10-01 02:05 | 2.2.0 | Redesign stage 3: paper pages for lessons, cases, practice, fit and hit the window; mastheads; case dossier with accordions and a dark levels panel; pill actions; faster paper rendering | done | (this release) |
 | 2026-10-01 02:35 | 2.3.0 | Redesign stage 4: the validation sphere (712 checks), the educator page on paper, README screenshots, link preview image and counts, masthead fitted to its words | done | (this release) |
 | 2026-10-01 03:40 | 2.4.0 | When to sample (pk-tdm.js), lesson "Which weight for CrCl" (35 lessons), case of the day, ARCHITECTURE.md, CONTRIBUTING.md, tools/stamp.js, print fixes | done | (this release) |
+| 2026-10-01 04:40 | 2.5.0 | Layout shift fixed on lesson links (up to 0.23) and #cases (0.63); all 107 link kinds CLS 0 at 390 and 1440; What changed sentences in pk-explain.js (script +24.7% to +18.0%) | done | (this release) |

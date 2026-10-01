@@ -18,6 +18,7 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `pk-hd.js` | Hemodialysis sessions, exact between events | when a scenario uses dialysis |
 | `pk-sens.js` | Sensitivity analysis (±20% on each input) and its tornado chart | when its panel opens |
 | `pk-tdm.js` | When to sample: the dose from which a repeated regimen is within 10% of steady state, and the model's peak and trough times in that interval | when its section opens |
+| `pk-explain.js` | The sentences under "What changed" and in Compare: what moved between two scenarios and why, with the model's numbers | just after the first paint; a link that opens with a baseline waits for it |
 | `pk-sources.js` | The drug library's citations | when a drug's sources or a case's references show |
 | `cases.js` | The clinical cases, their grading, the case and assignment writers | when Cases or a case link opens |
 | `pop-worker.js` | Population mode's virtual patients and percentiles, as a Web Worker (also `require`-able) | when Population is on |
@@ -52,7 +53,9 @@ words.
 
 **Layout never shifts.** Space that a script fills later is reserved (the readouts' rows, the practice problem,
 the validation summary), fonts have metric-matched fallbacks, and a link with a `#` part keeps the app invisible
-until it has been applied (`html.route-wait`).
+until it has been applied (`html.route-wait`), including the files that link needs: a case's or the case list's
+`cases.js`, a lesson's texts, and the explanations for a link that opens with a baseline. Every link kind (each lesson,
+each practice kind, worksheet, fit, window and case, and each tab) is checked at 390 and 1440 px before a release.
 
 ## The page's script
 

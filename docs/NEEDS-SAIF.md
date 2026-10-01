@@ -14,7 +14,8 @@ Merging is blocked for Claude Code by its auto-mode safety check ("Merge Without
 | 1.13.0 | https://github.com/Saifmaati/dose-curve/pull/15 | 1.17.0 | https://github.com/Saifmaati/dose-curve/pull/19 |
 | 1.17.1 | https://github.com/Saifmaati/dose-curve/pull/20 | 2.0.0 | https://github.com/Saifmaati/dose-curve/pull/21 |
 | 2.1.0 | https://github.com/Saifmaati/dose-curve/pull/22 | 2.2.0 | https://github.com/Saifmaati/dose-curve/pull/23 |
-| 2.3.0 | https://github.com/Saifmaati/dose-curve/pull/24 | 2.4.0 | the pull request from branch `v2.4.0` |
+| 2.3.0 | https://github.com/Saifmaati/dose-curve/pull/24 | 2.4.0 | https://github.com/Saifmaati/dose-curve/pull/25 |
+| 2.5.0 | the pull request from branch `v2.5.0` | | |
 
 Each one contains the ones before it. Merging them one by one, oldest first, gives each release its own merge commit to tag:
 
@@ -22,14 +23,14 @@ Each one contains the ones before it. Merging them one by one, oldest first, giv
 for n in 12 13 14 15 16 17 18 19; do /Users/saifmaati/.local/bin/gh pr merge $n --repo Saifmaati/dose-curve --merge; done
 ```
 
-Then merge 1.17.1 (#20), 2.0.0 (#21), 2.1.0 (#22), 2.2.0 (#23), 2.3.0 (#24) and 2.4.0 the same way. Each contains the ones before it, so merging only the last one also works, at the cost of one merge commit for all of them. Afterwards Claude Code tags each merge commit, checks the live site byte for byte and runs Lighthouse. To let it merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+Then merge 1.17.1 (#20), 2.0.0 (#21), 2.1.0 (#22), 2.2.0 (#23), 2.3.0 (#24), 2.4.0 (#25) and 2.5.0 the same way. Each contains the ones before it, so merging only the last one also works, at the cost of one merge commit for all of them. Afterwards Claude Code tags each merge commit, checks the live site byte for byte and runs Lighthouse. To let it merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
 
 ## 2. Create the GitHub Releases
 
 Tags `v1.0.0` to `v1.9.0` are pushed; v1.10.0 onward are tagged as they merge. Creating the Releases is blocked for Claude Code ("Create Public Surface"), and Zenodo archives a release, not a tag. From the repository folder, oldest first, each with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0 1.17.1 2.0.0 2.1.0 2.2.0 2.3.0 2.4.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0 1.17.1 2.0.0 2.1.0 2.2.0 2.3.0 2.4.0 2.5.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)`.

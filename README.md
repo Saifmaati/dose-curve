@@ -118,7 +118,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py
 ```
 
-When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pk-practice.js`, `pk-lessons.js`, `pk-bayes.js`, `pk-idr.js`, `pk-hd.js`, `pk-sens.js`, `pk-tdm.js`, `pk-sources.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
+When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pk-practice.js`, `pk-lessons.js`, `pk-bayes.js`, `pk-idr.js`, `pk-hd.js`, `pk-sens.js`, `pk-tdm.js`, `pk-explain.js`, `pk-sources.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
 
 ## How it's built
 
@@ -135,6 +135,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-idr.js` | The indirect response models, loaded when a scenario uses one |
 | `pk-sens.js` | The sensitivity analysis and its tornado chart, loaded when its panel opens |
 | `pk-tdm.js` | When to sample: the model's steady-state, peak and trough times for a repeated regimen, loaded when its section opens |
+| `pk-explain.js` | The sentences under "What changed" and in Compare, loaded just after the first paint |
 | `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
@@ -155,7 +156,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.4.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.5.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 

@@ -1327,7 +1327,7 @@
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
   // its id, title, summary, group and scenarios, which is all the lists and links need.
-  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null, hdMod=null, sensMod=null, tdmMod=null;
+  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null, hdMod=null, sensMod=null, tdmMod=null, explainMod=null;
   function hdApi(){ if(!hdMod && typeof require==="function") hdMod=require("./pk-hd.js"); return hdMod; }
   // the sources: attached to the drugs when pk-sources.js loads (the page) or on first use (Node)
   function attachSources(m){ srcMod=m; DRUGS.forEach(d=>{ d.refs=m.REFS[d.id]; }); }
@@ -1891,7 +1891,7 @@
     // Bayesian individualization (pk-bayes.js): loaded by the page when needed, required on first use in Node
     get bayes(){ if(!bayesMod && typeof require==="function") bayesMod=require("./pk-bayes.js"); return bayesMod; },
     get idr(){ return idrApi(); }, get hd(){ return hdApi(); },
-    get sens(){ if(!sensMod && typeof require==="function") sensMod=require("./pk-sens.js"); return sensMod; }, get sensModule(){ return sensMod; }, set sensModule(v){ sensMod=v; }, get tdm(){ if(!tdmMod && typeof require==="function") tdmMod=require("./pk-tdm.js"); return tdmMod; }, get tdmModule(){ return tdmMod; }, set tdmModule(v){ tdmMod=v; }, get hdModule(){ return hdMod; }, set hdModule(v){ hdMod=v; }, hdOn, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
+    get sens(){ if(!sensMod && typeof require==="function") sensMod=require("./pk-sens.js"); return sensMod; }, get sensModule(){ return sensMod; }, set sensModule(v){ sensMod=v; }, get tdm(){ if(!tdmMod && typeof require==="function") tdmMod=require("./pk-tdm.js"); return tdmMod; }, get tdmModule(){ return tdmMod; }, set tdmModule(v){ tdmMod=v; }, get explain(){ if(!explainMod && typeof require==="function") explainMod=require("./pk-explain.js"); return explainMod; }, get explainModule(){ return explainMod; }, set explainModule(v){ explainMod=v; }, get hdModule(){ return hdMod; }, set hdModule(v){ hdMod=v; }, hdOn, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
     get bayesModule(){ return bayesMod; }, set bayesModule(v){ bayesMod=v; },
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

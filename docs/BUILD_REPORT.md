@@ -434,3 +434,14 @@ Lighthouse on mobile: root 99, validation 99 (desktop 100), educators 100; acces
 Lighthouse on mobile: root 96–99 (three runs), a two-compartment vancomycin link 94; accessibility 100 and CLS 0. axe: no violations, the new section included, in both themes at 1280 and 390. 371 tests in 21 files. Initial script +24.7% of the 25% budget.
 
 Not done: pediatric allometry with maturation (DECISIONS 143), until its parameters are verified against their sources.
+
+## 33. 2.5.0 (every link without layout shift; explanations in their own file)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Lesson links wait for their texts | any lesson's link | all 35 lesson links, CLS 0 at 390 and 1440 (was up to 0.23) |
+| `#cases` waits for the case list | `#cases` | CLS 0 (was 0.63) |
+| Every link kind measured | 107 links | CLS 0 on each, at both widths |
+| "What changed" sentences in `pk-explain.js` | set a baseline, or Compare | `explain.test.js`; 526 of 526 pairs identical to the inline version |
+
+Lighthouse on mobile: root 99, a lesson link 90, `#cases` 97; accessibility 100, CLS 0. 375 tests in 22 files. Initial script +18.0% of the 25% budget.
