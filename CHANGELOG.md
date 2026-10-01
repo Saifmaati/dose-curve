@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.16.0 (2026-09-30)
+
+- **Sensitivity: which input matters most?** Under the readouts, each input is moved 20% down and 20% up, one at a time with everything else held: clearance (with the volume held, so the half-life follows), volume (with clearance held), F (capped at 1), kₐ, the dose and the dosing interval, plus k12 and k21 with two compartments and Vmax and Km for a saturable drug. The liver model sets clearance and F itself, so they aren't moved there.
+  - A tornado chart shows the change in AUC24, the peak, the trough or the time in the window, largest first, and a sentence names the input that matters most, with its numbers: for a regular regimen, "AUC24 at steady state is most sensitive to clearance and dosing interval: −20% changes it by +25.0%, +20% by −16.7%."
+  - A regular regimen is read at steady state; a single dose, a custom schedule or a regimen on dialysis over the time window (the AUC over the first 24 h, the window's peak and the level at its end).
+  - It is computed and drawn only while its panel is open, from its own file.
+- **One glossary term (69):** sensitivity analysis.
+- Tests hold it to the closed forms: clearance ±20% moves AUC24 at steady state by +25% and −16.7% for every route, one and two compartments and the clinical patient; the dose moves AUC24, the peak and the trough in proportion; the interval moves AUC24 like clearance; the volume leaves AUC24 alone, and moves an IV bolus's steady-state peak exactly as (D/V)/(1 − e^(−kτ)) says. Every input's sign is checked, and a saturable drug's exposure rises more than in proportion to the dose.
+
 ## 1.15.0 (2026-09-30)
 
 - **Hemodialysis.** Under the patient, **Hemodialysis** adds sessions: the dialysis clearance, the session length, when the first starts and how often they repeat. While a session runs, the dialyzer's clearance adds to the body's own.

@@ -80,7 +80,7 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
-The **glossary** under the lessons defines 68 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 69 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (16)
 
@@ -114,6 +114,10 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | A late dose: which drug minds? | Reasoning from half-life |
 
 No case stores an answer: every target check, hint, walkthrough number and reference regimen is worked out from the model when the case opens, and the tests check that each case's reference regimen passes and that a deliberately wrong one gets the expected hint. The cases teach reasoning; they are not prescribing instructions.
+
+## Sensitivity: which input matters most
+
+Under the readouts, **Sensitivity** moves each input 20% down and 20% up, one at a time with everything else held, and draws a tornado chart of the change in AUC24, the peak, the trough or the time in the window, largest first, with a sentence naming the input that matters most. Clearance moves with the volume held (so the half-life follows), and volume with clearance held. It turns a common exam point into something students can see: AUC24 depends on clearance and the daily dose but not on volume (clearance −20% gives +25%, +20% gives −16.7%), while volume moves the peak and the trough. Switch the output to the trough and the dosing interval often comes first. A regular regimen is read at steady state; a single dose, a custom schedule or a regimen on dialysis over the time window.
 
 ## Hemodialysis
 

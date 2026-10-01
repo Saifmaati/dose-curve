@@ -336,3 +336,12 @@ There are 335 tests in 16 files. The initial script is +18.2% over the Phase 0 b
 
 There are 345 tests in 17 files. The initial script is +21.2% over the Phase 0 baseline (limit +25%); Phase G's sensitivity analysis goes entirely into a lazily loaded file. axe: no violations with the dialysis panel open.
 
+## 25. 1.16.0 (Plan V2, Phase G)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Sensitivity analysis in lazily loaded `pk-sens.js`: ±20% on each input, one at a time; tornado chart of AUC24, peak, trough or time in window; a sentence naming the dominant input | Simulator → under the readouts → *Sensitivity* | `sens.test.js` (CL ±20% → AUC24 +25% / −16.7% for five kinds of scenario; dose in proportion; interval like CL; V leaves AUC24 alone and moves the IV peak by the closed form; every sign; the inputs per scenario; F capped; window reading; saturable more than proportional; the sentence and the chart) |
+| Glossary 69 (sensitivity analysis) | Lessons → Glossary | `pk-engine.test.js` |
+
+There are 350 tests in 18 files. The initial script is +21.7% over the Phase 0 baseline (limit +25%). axe: no violations with the sensitivity panel open.
+
