@@ -24,7 +24,7 @@
   // "at" (the level `at` hours after a dose, plus a peak limit), "hartford" (dose per kg and interval band),
   // "choice" (a reasoning question answered from the model).
   const CASES=[
-    {id:"gent", drug:"gent", title:"Gentamicin with reduced kidney function", tag:"Aminoglycoside · peak and trough",
+    {id:"gent", drug:"gent", title:"Gentamicin with reduced kidney function", tag:"Aminoglycoside, peak and trough",
      patient:{age:72, sex:"M", ht:178, wt:70, scr:1.6},
      indication:"A serious Gram-negative infection. Gentamicin is given as a 30-minute infusion.",
      target:{kind:"pt", peak:[5,12], troughMax:2,
@@ -43,7 +43,7 @@
      also:"How sick the patient is and where the infection is, whether the creatinine is stable enough for Cockcroft–Gault to mean anything, other nephrotoxic drugs, hearing and balance, fluid status (gentamicin distributes in extracellular fluid), and when to draw levels to check the model against the patient.",
      refs:["gent","cg"]},
 
-    {id:"gent-lv", drug:"gent", title:"Gentamicin after burns: individualizing from two levels", tag:"Aminoglycoside · Sawchuk–Zaske",
+    {id:"gent-lv", drug:"gent", title:"Gentamicin after burns: individualizing from two levels", tag:"Aminoglycoside, Sawchuk–Zaske",
      patient:{age:28, sex:"M", ht:178, wt:75, scr:0.8}, clMult:1.8, vMult:1.4,   // the case's premise: 1.8× the predicted clearance, 1.4× the volume
      current:{D:130, tau:8}, sample:{after:0.5, second:6},   // a level 30 min after the infusion ends, and one 6 h after it started
      indication:"A serious Gram-negative infection after extensive burns. He has had 130 mg (about 5 mg/kg a day) every 8 h as 30-minute infusions, long enough to be at steady state, and two levels were drawn in one interval (see Levels). In this case (its premise, not a general figure) he clears gentamicin 1.8 times faster than his creatinine suggests, and it spreads through a volume 1.4 times the usual estimate.",
@@ -66,7 +66,7 @@
      also:"Burn care changes gentamicin handling as the wounds, fluids and kidney function change, so levels are repeated. Other points: the infection, other nephrotoxic drugs, hearing and balance, and whether the levels were drawn at the charted times.",
      refs:["zaske1976","sawchukZaske","gent","cg"]},
 
-    {id:"lev-renal", drug:"lev", title:"Levetiracetam with reduced kidney function", tag:"Antiseizure · label renal table",
+    {id:"lev-renal", drug:"lev", title:"Levetiracetam with reduced kidney function", tag:"Antiseizure, label renal table",
      patient:{age:74, sex:"F", ht:160, wt:58, scr:1.4},
      indication:"Partial-onset seizures. She takes 1,500 mg twice daily, the usual maintenance dose, and her kidney function has declined.",
      target:{kind:"table", bsa:true, rows:[{gt:80, tau:12, lo:500, hi:1500}, {ge:50, tau:12, lo:500, hi:1000}, {ge:30, tau:12, lo:250, hi:750}, {ge:0, tau:12, lo:250, hi:500}],
@@ -85,7 +85,7 @@
      also:"Seizure control and side effects (drowsiness, behavioral changes) at the new dose, whether her kidney function is stable, dialysis (the label adds a supplemental dose after it), and the tablet sizes she can split: the tablets are scored.",
      refs:["keppra","cg"]},
 
-    {id:"mero-renal", drug:"mero", title:"Meropenem with reduced kidney function", tag:"Carbapenem · label renal table",
+    {id:"mero-renal", drug:"mero", title:"Meropenem with reduced kidney function", tag:"Carbapenem, label renal table",
      patient:{age:68, sex:"M", ht:175, wt:80, scr:2.0},
      indication:"An intra-abdominal infection. He has been started on the usual 1 g every 8 hours, infused over 30 minutes, and his kidney function is reduced.",
      target:{kind:"table", dose:1000, mic:2, rows:[{gt:50, tau:8, frac:1}, {ge:26, tau:12, frac:1}, {ge:10, tau:12, frac:0.5}, {ge:0, tau:24, frac:0.5}],
@@ -105,7 +105,7 @@
      also:"The infection and its site, the organism's actual MIC, whether kidney function is changing, dialysis (the table doesn't cover it), seizure risk, and interacting drugs such as valproic acid, whose levels meropenem can lower.",
      refs:["meropenem","cg"]},
 
-    {id:"ptz-renal", drug:"pip", title:"Piperacillin-tazobactam with reduced kidney function", tag:"Penicillin · label renal table · fT>MIC",
+    {id:"ptz-renal", drug:"pip", title:"Piperacillin-tazobactam with reduced kidney function", tag:"Penicillin, label renal table, fT>MIC",
      patient:{age:72, sex:"F", ht:160, wt:62, scr:1.6},
      indication:"A complicated intra-abdominal infection, with Pseudomonas aeruginosa among the organisms considered: the MIC is taken as 16 mg/L, the FDA susceptible breakpoint. She was started on the usual 3.375 g every 6 hours, infused over 30 minutes, and her kidney function is reduced.",
      target:{kind:"table", mic:16, unbound:true, rows:[{gt:40, tau:6, D:3000}, {ge:20, tau:6, D:2000}, {ge:0, tau:8, D:2000}],
@@ -126,7 +126,7 @@
      also:"The infection's source and severity, the organism's measured MIC, whether her kidney function is changing, dialysis (hemodialysis removes 30% to 40% of a dose and has its own row in the label), the sodium each dose carries (65 mg per gram of piperacillin), and her other drugs: kidney injury has been reported more often when piperacillin-tazobactam is given with vancomycin.",
      refs:["zosyn","fdaPtz","lodise2007","cg"]},
 
-    {id:"gent-hd", drug:"gent", title:"Gentamicin on hemodialysis", tag:"Aminoglycoside · dose after each session",
+    {id:"gent-hd", drug:"gent", title:"Gentamicin on hemodialysis", tag:"Aminoglycoside, dose after each session",
      patient:{age:64, sex:"M", ht:175, wt:80, scr:7.5},
      hd:{every:48, dur:8, fall:0.5},
      indication:"End-stage kidney disease, on hemodialysis for 8 hours every 48 hours, with a gram-negative infection. He has had a first dose; the next is due at the end of tonight's session.",
@@ -147,7 +147,7 @@
      also:"His residual kidney function, the dialysis method (the label notes that the amount removed varies with it), when levels are drawn (gentamicin returning from the tissues after a session raises the level again; this model has no rebound), the severity of the infection, and hearing and balance, which aminoglycosides can damage, more so with renal impairment.",
      refs:["gent","cg"]},
 
-    {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
+    {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside, Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
      target:{kind:"hartford", perKg:7, bands:[[60,24],[40,36],[20,48]],
@@ -165,7 +165,7 @@
      also:"Who the approach wasn't studied in (for example burns, pregnancy, endocarditis, CrCl below 20 mL/min), dosing weight in obesity, when the single level is drawn for the nomogram, and whether the infection calls for a synergy regimen instead.",
      refs:["nicolau","gent","cg"]},
 
-    {id:"vanc", drug:"vanc", title:"Vancomycin to an AUC target", tag:"Glycopeptide · AUC24",
+    {id:"vanc", drug:"vanc", title:"Vancomycin to an AUC target", tag:"Glycopeptide, AUC24",
      patient:{age:58, sex:"M", ht:178, wt:85, scr:1.2},
      indication:"A serious MRSA infection. The target is an AUC24 of 400–600 mg·h/L, assuming an MIC of 1 mg/L (so AUC24/MIC equals AUC24).",
      target:{kind:"auc", auc:[400,600],
@@ -186,7 +186,7 @@
      also:"This one-compartment model is a teaching simplification: vancomycin distributes in two phases, and practice estimates the AUC from two levels or with Bayesian software. Kidney function trends, other nephrotoxins, the infection site, and whether a loading dose is needed all shape the choice.",
      refs:["rybak","idsaVanc","vanc","cg"]},
 
-    {id:"vanc-lv", drug:"vanc", title:"Vancomycin: the AUC from two levels", tag:"Glycopeptide · two-level AUC",
+    {id:"vanc-lv", drug:"vanc", title:"Vancomycin: the AUC from two levels", tag:"Glycopeptide, two-level AUC",
      patient:{age:52, sex:"M", ht:175, wt:95, scr:0.9},
      current:{D:1000, tau:12}, sample:{after:1},   // the levels: a peak 1 h after the infusion ends, and a trough
      indication:"A serious MRSA infection. He has had 1 g every 12 h long enough to be at steady state, and two levels were drawn in one interval: one an hour after the infusion ended, after distribution, and one just before the next dose (see Levels).",
@@ -210,7 +210,7 @@
      also:"Bayesian software (the guideline's preferred approach, which can work from one or two levels before steady state), whether the levels were drawn at the charted times and truly at steady state, the infusion's actual start and stop times, kidney function trends, and other nephrotoxic drugs.",
      refs:["rybakCid","rybak","idsaVanc","vanc","cg"]},
 
-    {id:"vanc-bayes", drug:"vanc", title:"Vancomycin: two levels an hour apart", tag:"Glycopeptide · Bayesian estimate",
+    {id:"vanc-bayes", drug:"vanc", title:"Vancomycin: two levels an hour apart", tag:"Glycopeptide, Bayesian estimate",
      patient:{age:66, sex:"M", ht:175, wt:82, scr:1.4}, clMult:0.7, vMult:1.1,   // the premise: 0.7× the predicted clearance, 1.1× the volume
      current:{D:750, tau:12}, bayes:{dose:8, times:[2.25, 3.25], errors:[0.05, -0.05]},   // an hour after the infusion ends, and an hour later
      indication:"A serious MRSA infection. He has had 750 mg every 12 hours (each infused over 1.25 hours) since admission, the regimen the patient model suggests for his creatinine. After the eighth dose two levels were drawn, meant as a peak and a trough, but the second was drawn only an hour after the first (see Levels).",
@@ -234,7 +234,7 @@
      also:"When the levels were really drawn (a charted time can differ from the real one), whether the infusion ran on schedule, kidney function trends, other nephrotoxic drugs, and repeating a level after the change. Bayesian programs used in practice have population models built for the drug; the CVs here are teaching assumptions.",
      refs:["sheiner1979","rybakCid","vanc","cg"]},
 
-    {id:"gent-bayes", drug:"gent", title:"Gentamicin: when the second level comes back higher", tag:"Aminoglycoside · Bayesian estimate",
+    {id:"gent-bayes", drug:"gent", title:"Gentamicin: when the second level comes back higher", tag:"Aminoglycoside, Bayesian estimate",
      patient:{age:58, sex:"F", ht:163, wt:70, scr:1.2}, clMult:0.6, vMult:1.2,   // the premise: 0.6× the predicted clearance, 1.2× the volume
      current:{D:120, tau:8}, bayes:{dose:4, times:[1, 2], errors:[-0.05, 0.05]},   // 30 minutes after the infusion ends, and an hour later
      indication:"A serious Gram-negative infection. She has had 120 mg every 8 hours as 30-minute infusions. After the fourth dose two levels were drawn an hour apart, the first 30 minutes after the infusion ended (see Levels).",
@@ -255,7 +255,7 @@
      also:"Levels drawn close together can't show a slope, which is why two-level methods space them several hours apart; Bayesian programs used in practice have population models built for the drug. Also: kidney function trends, hearing and balance, other nephrotoxic drugs, and repeating a level after the change.",
      refs:["sheiner1979","gent","cg"]},
 
-    {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics · albumin",
+    {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics, albumin",
      patient:{age:60, sex:"F", ht:163, wt:60, scr:0.8, alb:2.5},
      measured:{C:8, D:300},
      indication:"Seizure prophylaxis. She takes 300 mg of phenytoin sodium a day, and a steady-state total level comes back at 8 mg/L with albumin at 2.5 g/dL.",
@@ -275,7 +275,7 @@
      also:"Whether an unbound (free) level can be measured instead of adjusting a total one, kidney function (the adjustment changes in end-stage kidney disease), interacting drugs, adherence, and waiting long enough after any change before checking again: near saturation the time to steady state stretches out.",
      refs:["dilantin","sheinerTozer"]},
 
-    {id:"dig", drug:"dig", title:"Digoxin in an older adult", tag:"Narrow window · ng/mL",
+    {id:"dig", drug:"dig", title:"Digoxin in an older adult", tag:"Narrow window, ng/mL",
      patient:{age:82, sex:"F", ht:157, wt:55, scr:1.3},
      indication:"Rate control in atrial fibrillation, starting digoxin tablets once a day.",
      target:{kind:"pt", troughMin:0.5, peak:[0,2],
@@ -293,7 +293,7 @@
      also:"Potassium and magnesium, thyroid function, interacting drugs (many raise digoxin levels), symptoms of toxicity, and drawing levels at least 6 hours after a dose, once the tissue distribution phase this model leaves out is over.",
      refs:["lanoxin","cg"]},
 
-    {id:"theo", drug:"theo", title:"Theophylline in a smoker", tag:"Narrow window · clearance factor",
+    {id:"theo", drug:"theo", title:"Theophylline in a smoker", tag:"Narrow window, clearance factor",
      patient:{age:35, sex:"M", ht:178, wt:70, scr:0.9}, clMult:1.5,
      indication:"Asthma, extended-release theophylline tablets. He smokes, which the label says raises clearance by about 50% in young adults.",
      target:{kind:"pt", peak:[10,20], troughMin:5,
@@ -311,7 +311,7 @@
      also:"What happens if he stops smoking (clearance falls and levels climb over the following week or so), interacting drugs, illness with fever, liver function, and checking a level once he's at steady state.",
      refs:["theo"]},
 
-    {id:"li", drug:"li", title:"Lithium with lower kidney function", tag:"Renal elimination · mEq/L",
+    {id:"li", drug:"li", title:"Lithium with lower kidney function", tag:"Renal elimination, mEq/L",
      patient:{age:68, sex:"M", ht:175, wt:80, scr:1.3},
      indication:"Bipolar I disorder, lithium carbonate. Levels are drawn 12 hours after the last dose.",
      target:{kind:"at", at:12, range:[0.8,1.2], peakMax:1.5,
@@ -662,7 +662,7 @@
   }
   // The case object the grader, walkthrough and page use for a spec.
   function communityCase(spec){
-    const c={id:"community", community:true, spec, drug:spec.drug, title:spec.title, tag:"Community case · unreviewed",
+    const c={id:"community", community:true, spec, drug:spec.drug, title:spec.title, tag:"Community case, unreviewed",
       patient:Object.assign({}, spec.patient), over:spec.over, indication:spec.setting || "Written by an instructor.",
       target:Object.assign({why:"Set by the case's author."}, spec.target), choices:Object.assign({}, spec.choices), start:Object.assign({}, spec.start),
       // the library's own sources for the drug and for Cockcroft–Gault, which the model uses; the author's are listed apart
@@ -850,7 +850,7 @@
   const showList=()=> showOnly(null);
   function panel(html){
     const el=rootEl.querySelector("#csPanel");
-    el.innerHTML=`<p><button class="abtn" type="button" data-back>← All cases</button></p>`+html;
+    el.innerHTML=`<p><button class="abtn" type="button" data-back>All cases</button></p>`+html;
     el.querySelector("[data-back]").addEventListener("click",()=>{ showList(); rootEl.querySelector("#csAuthorBtn").focus(); });
     showOnly(el); el.focus({preventScroll:true}); el.scrollIntoView({block:"start"});
     return el;
@@ -958,7 +958,7 @@
       <div class="cs-actions"><button class="abtn" type="button" id="bmMake">Make the link</button></div>
       <div id="bmOut" class="cs-result" aria-live="polite"></div>`);
     const $=id=>el.querySelector("#"+id);
-    const label=it=> it.kind==="case" ? `Case: ${it.id ? caseById(it.id).title : it.spec.title + " (community)"}` : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"} · ${it.count} problems`;
+    const label=it=> it.kind==="case" ? `Case: ${it.id ? caseById(it.id).title : it.spec.title + " (community)"}` : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"}, ${it.count} problems`;
     const draw=()=>{ $("bmItems").innerHTML=items.map((it,i)=>`<li>${h.esc(label(it))} <button class="bz-del" type="button" data-rm="${i}" aria-label="Remove item ${i+1}">✕</button></li>`).join("") || `<li class="cs-empty">No items yet.</li>`; };
     $("bmItems").addEventListener("click",e=>{ const b=e.target.closest("[data-rm]"); if(b){ items.splice(+b.dataset.rm,1); draw(); } });
     $("bmAddCase").addEventListener("click",()=>{ if(items.length>=BUNDLE_MAX) return; const v=$("bmCase").value; items.push(v==="community" ? {kind:"case", spec:lastSpec} : {kind:"case", id:v}); draw(); });
@@ -987,7 +987,7 @@
       const n=Object.values(p.answers||{}).filter(a=>a.ok).length; return `${n} of ${it.count} right`; };
     const el=panel(`<p class="cs-tag">Assignment</p><h2 class="cs-h">${h.esc(b.title)}</h2>
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
-      <ol class="cs-items">${b.items.map((it,i)=>`<li><span>${h.esc(it.kind==="case" ? (it.id ? caseById(it.id).title : it.spec.title+" (community case)") : `Worksheet · ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"} · ${it.count} problems`)}</span>
+      <ol class="cs-items">${b.items.map((it,i)=>`<li><span>${h.esc(it.kind==="case" ? (it.id ? caseById(it.id).title : it.spec.title+" (community case)") : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"}, ${it.count} problems`)}</span>
         <span class="cs-status">${status(it,i)}</span> <button class="abtn" type="button" data-open="${i}">Open</button></li>`).join("")}</ol>
       <div id="bdWs"></div>
       <section class="cs-code"><p class="cs-sub">Completion code</p>
@@ -1020,7 +1020,7 @@
     box.innerHTML=`<p class="cs-sub">Loading the problems…</p>`;
     h.loadPractice().then(()=>{
       const w=PK.makeWorksheet({topic:it.topic||undefined, count:it.count, seed:it.seed, v:it.v}), pr=(store.get(progressKey(token))||{})[i]||{}, ans=pr.answers||{};
-      box.innerHTML=`<h3 class="cs-h3">Worksheet · ${it.count} problems</h3><ol class="cs-ws">${w.problems.map((p,j)=>`<li><div>${p.q}</div>
+      box.innerHTML=`<h3 class="cs-h3">Worksheet: ${it.count} problems</h3><ol class="cs-ws">${w.problems.map((p,j)=>`<li><div>${p.q}</div>
         <div class="cs-form"><label>Answer (${h.esc(p.unit)})<input data-j="${j}" type="number" step="any" value="${ans[j] ? ans[j].v : ""}"></label><button class="abtn" type="button" data-chk="${j}">Check</button></div>
         <p class="cs-wsr" id="wsr${i}_${j}">${ans[j] ? (ans[j].ok ? "✓ Right" : "✗ Not quite") : ""}</p></li>`).join("")}</ol>`;
       box.onclick=e=>{
@@ -1088,9 +1088,9 @@
       return;
     }
     const g=gradeCase(c, reg), r=gradeRounded(c, reg);
-    let html=`<p class="${g.ok ? "cs-ok" : "cs-no"}">${g.ok ? "✓ On target" : "✗ Off target"} · ${host.esc(regText(c, reg))}</p>`+
+    let html=`<p class="${g.ok ? "cs-ok" : "cs-no"}">${g.ok ? "✓ On target" : "✗ Off target"}: ${host.esc(regText(c, reg))}</p>`+
       (g.ok ? "" : `<p class="cs-hint">${host.esc(g.hintText)}</p>`)+`<table class="cs-tbl"><tbody>${metricsHtml(c, g, reg)}</tbody></table>`;
-    if(r.changed) html+=`<p class="${r.ok ? "cs-ok" : "cs-no"}">Rounded to what the forms give: ${host.esc(regText(c, r.reg))} · ${r.ok ? "✓ on target" : "✗ off target"}</p>`+
+    if(r.changed) html+=`<p class="${r.ok ? "cs-ok" : "cs-no"}">Rounded to what the forms give: ${host.esc(regText(c, r.reg))}: ${r.ok ? "✓ on target" : "✗ off target"}</p>`+
       (r.ok ? "" : `<p class="cs-hint">${host.esc(r.hintText)}</p>`)+`<table class="cs-tbl"><tbody>${metricsHtml(c, r, r.reg)}</tbody></table>`;
     if(c.id==="gent-ext" && g.p){   // the comparison the case asks for
       const conv={D:roundDose(c, 1.7*c.patient.wt), tau:8}, gc=gradeCase(c, conv);
@@ -1119,7 +1119,7 @@
     const refs=c.refs.map(id=>PK.SOURCES[id]).filter(Boolean).map(s=>`<li>${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${h.esc(s.cite)}</a>` : h.esc(s.cite)}</li>`).join("");
     const community=c.community, ov=community && c.over ? Object.entries(c.over) : [], lib=drugOf(c.drug) && PK.drugScenario(drugOf(c.drug));
     const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
-    box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "← Back to the assignment" : "← All cases"}</button></p>
+    box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "Back to the assignment" : "All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
       ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>

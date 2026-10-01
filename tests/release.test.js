@@ -84,8 +84,8 @@ test("every file loaded on demand is named by its content hash in the page and p
 });
 
 test("the page's own scripts parse (a syntax error there would stop the whole app, and no other test runs them)", ()=>{
-  // JavaScript only: plain and module scripts (not the JSON-LD metadata)
-  const js=html=> [...html.matchAll(/<script(?![^>]*src)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+  // JavaScript only: plain and module scripts (not the JSON-LD metadata or the import map, which are JSON)
+  const js=html=> [...html.matchAll(/<script(?![^>]*src)(?![^>]*application\/ld\+json)(?![^>]*importmap)[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
   const page=read("index.html"), scripts=js(page);
   assert.ok(scripts.length>=1);
   scripts.forEach((src,i)=> assert.doesNotThrow(()=> new Function(src), `inline script ${i+1}`));
@@ -95,7 +95,8 @@ test("the page's own scripts parse (a syntax error there would stop the whole ap
 
 test("the initial script payload stays within the plan's budget: +25% over the Phase 0 baseline of 318,996 bytes", ()=>{
   const page=read("index.html");
-  const inline=[...page.matchAll(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g)].reduce((s,m)=>s+Buffer.byteLength(m[1]),0);
+  // the import map is JSON that names Three.js for the 3D stage, which is outside this budget by design (DECISIONS)
+  const inline=[...page.matchAll(/<script(?![^>]*src)(?![^>]*importmap)[^>]*>([\s\S]*?)<\/script>/g)].reduce((s,m)=>s+Buffer.byteLength(m[1]),0);
   const total=inline+fs.statSync(path.join(root,"pk-engine.js")).size;
   assert.ok(total<=Math.floor(318996*1.25), `${total} bytes (${(100*total/318996-100).toFixed(1)}% over the baseline)`);
 });

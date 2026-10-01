@@ -82,3 +82,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 22:29 | 1.16 | Sensitivity analysis (±20%, tornado chart, dominant input) in pk-sens.js; glossary 69 | done | 0dc21be |
 | 2026-09-30 22:39 | 1.17 | Educator page, named tab links, README screenshots, validation page responsiveness, Lighthouse ≥95 everywhere | done | 618c40c |
 | 2026-09-30 22:52 | 1.17.1 | Phase I review fixes (dialysis in population mode and the Bayesian panel, session-edge peaks, sensitivity window AUC, glossary wording); 1,000-seed cross-check; BUILD_REPORT_V2; NEEDS-SAIF reduced | done | 8eddf8a |
+| 2026-10-01 00:45 | 2.0.0 | Redesign stage 1: tokens, IBM Plex (self-hosted), charts from tokens, controls, the 3D stage (Three.js, Effects), the seven-screen opening sequence, top bar and pill, glass, CLS 0 on every link | done | (this release) |

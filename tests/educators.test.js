@@ -20,7 +20,7 @@ test("the page states the app's own numbers, and the disclaimer", ()=>{
   assert.match(page, /<html lang="en">/); assert.match(page, /name="viewport"/);
   assert.ok(!/\b(safe|unsafe|best|recommended?)\b/i.test(page.replace(/<[^>]+>/g," ")), "descriptive wording");
   const version=(fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8").match(/"softwareVersion":"([\d.]+)"/)||[])[1];
-  assert.ok(page.includes(`DoseCurve ${version} ·`), "the page's version is the app's");
+  assert.ok(page.includes(`DoseCurve ${version},`), "the page's version is the app's");
 });
 
 test("every lesson is linked with the share link the app makes for it, and that link opens the lesson", ()=>{

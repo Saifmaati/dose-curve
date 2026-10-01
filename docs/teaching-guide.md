@@ -10,7 +10,9 @@ The [educator page](https://saifmaati.github.io/dose-curve/educators.html) has a
 
 ## In a lecture
 
-For a projector, press **▣ Present** (top right): the chart takes the whole width, the controls fold away and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **light theme** (◐ Light) follows the computer's own light or dark setting until you pick one; the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.
+For a projector, press **Present** (top right): the chart takes the whole width, the controls fold away, the 3D stage and the pinned action button go, and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **Light theme** switch gives the paper version (graphite curves on white); it follows the computer's own light or dark setting until you pick one, the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.
+
+Since 2.0 the curve also appears as a 3D ribbon behind the page, and a first visit to the site's address opens on a short scrolling introduction. Links you share with a `#` part (a lesson, a case, a scenario, `#practice`) skip the introduction and open straight in the app, so use those for a class. On an older classroom computer, or if the motion distracts, switch **Effects** off in the top bar: the page stays the same, without the 3D stage. It starts off by itself on low-memory devices and when the computer asks for reduced motion.
 
 With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, **L** switches to a log scale and **B** sets a baseline, as long as you're not typing in a field; **?** lists every key. These single-key shortcuts can be switched off in that list.
 

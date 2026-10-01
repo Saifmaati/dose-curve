@@ -3,51 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Page not found · DoseCurve</title>
+<title>DoseCurve: page not found</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#05070E">
+<meta name="theme-color" content="#0B0D11">
 <meta name="color-scheme" content="dark">
 <!-- GitHub Pages serves this page for any missing path, so links are absolute. They point at /dose-curve/ (the
      github.io project site); the script below switches them to / when the site is served from its own domain. -->
 <link rel="icon" href="/dose-curve/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/dose-curve/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/dose-curve/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>(function(){ var d=document.documentElement, t=null;
+  try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
+  if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
+  if(t==="light") d.classList.add("light"); })();</script>
 <style>
-  :root{--bg:#05070E;--text:#E8ECF8;--muted:#8B94B0;--muted-2:#7A84A3;--cyan:#3DF2E0;--violet:#7C6BFF;--line:rgba(120,150,255,0.18)}
+  /* the app's tokens and type (docs/DESIGN.md), for its secondary pages */
+  @font-face{font-family:"IBM Plex Sans";src:url(/dose-curve/fonts/plex-sans-latin.woff2) format("woff2");font-weight:100 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+  @font-face{font-family:"IBM Plex Mono";src:url(/dose-curve/fonts/plex-mono-400-latin.woff2) format("woff2");font-weight:100 450;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+  @font-face{font-family:"IBM Plex Mono";src:url(/dose-curve/fonts/plex-mono-500-latin.woff2) format("woff2");font-weight:451 900;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial"),local("ArialMT");font-weight:100 450;size-adjust:101%;ascent-override:101.5%;descent-override:27.2%;line-gap-override:0%}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial"),local("ArialMT");font-weight:451 550;size-adjust:103.1%;ascent-override:99.5%;descent-override:26.7%;line-gap-override:0%}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial Bold"),local("Arial-BoldMT");font-weight:551 900;size-adjust:96.9%;ascent-override:105.8%;descent-override:28.4%;line-gap-override:0%}
+  @font-face{font-family:"Plex Mono Fallback";src:local("Courier New"),local("CourierNewPSMT");font-weight:100 900;size-adjust:100%;ascent-override:102.5%;descent-override:27.5%;line-gap-override:0%}
+  :root{color-scheme:dark;--c-page:#0B0D11;--c-surface:#12151B;--c-raised:#1C2029;--c-line:#2A303B;--c-text:#E8EBF0;--c-muted:#9AA3B2;--c-text-2:#C3C9D4;--c-line-strong:#626B7B;
+    --c-accent:#4CC7EE;--c-on-accent:#0B0D11;--c-accent-soft:rgba(76,199,238,.12);--c-ok:#6FC79B;--c-no:#F2697A;
+    --f-sans:"IBM Plex Sans","Plex Sans Fallback",system-ui,sans-serif;--f-mono:"IBM Plex Mono","Plex Mono Fallback",ui-monospace,monospace}
+  html.light{color-scheme:light;--c-page:#ECEEF1;--c-surface:#FFFFFF;--c-raised:#F4F5F7;--c-line:#D3D8DF;--c-text:#121720;--c-muted:#545E6D;--c-text-2:#2F3744;--c-line-strong:#7D8695;
+    --c-accent:#0670A3;--c-on-accent:#FFFFFF;--c-accent-soft:rgba(6,112,163,.08);--c-ok:#1A7D4E;--c-no:#BE2338}
   *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--text);
-    font-family:Inter,system-ui,sans-serif;
-    background-image:radial-gradient(600px 400px at 15% 10%,rgba(61,242,224,.10),transparent 70%),
-      radial-gradient(700px 500px at 90% 95%,rgba(124,107,255,.14),transparent 70%)}
-  main{max-width:520px;width:100%;text-align:center}
-  .mark{width:72px;height:72px;margin:0 auto 20px}
-  .code{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.14em;color:var(--muted-2)}
-  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(28px,6vw,40px);letter-spacing:-.02em;margin:10px 0 12px}
-  h1 span{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
-  p{color:var(--muted);font-size:15.5px;line-height:1.6;margin:0 0 26px}
-  svg.curve{display:block;width:100%;height:auto;margin:0 0 26px}
-  a.btn{display:inline-block;padding:12px 20px;border-radius:12px;font-weight:600;font-size:15px;text-decoration:none;color:#05070E;
-    background:linear-gradient(90deg,var(--cyan),var(--violet))}
-  a.btn:focus-visible{outline:2px solid var(--text);outline-offset:3px}
-  .note{margin-top:22px;font-size:12.5px;color:var(--muted-2)}
+  body{margin:0;background:var(--c-page);color:var(--c-text-2);font:15px/1.6 var(--f-sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--c-accent);outline-offset:2px}
+  a{color:var(--c-text);text-decoration-color:var(--c-line-strong);text-underline-offset:3px} a:hover{text-decoration-color:currentColor}
+  code,pre,kbd{font-family:var(--f-mono);font-size:13px}
+  .bar{max-width:980px;margin:0 auto;padding:0 16px;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px;color:var(--c-text);text-decoration:none;font-weight:600;font-size:17px}
+  .brand i{width:30px;height:30px;border-radius:6px;display:grid;place-items:center;color:var(--c-accent);background:var(--c-accent-soft)}
+  .brand em{font-style:normal;font-weight:400;color:var(--c-text-2)}
+  .bar>a:last-child{font-size:14px;font-weight:500;color:var(--c-muted)}
+  main{max-width:980px;margin:0 auto;padding:12px 16px 64px}
+  h1{font-size:clamp(28px,1.5vw + 20px,36px);font-weight:600;letter-spacing:-.015em;line-height:1.15;color:var(--c-text);margin:16px 0 10px}
+  h2{font-size:20px;font-weight:600;color:var(--c-text);margin:40px 0 10px;letter-spacing:-.005em} h3{font-size:15px;font-weight:600;color:var(--c-text);margin:20px 0 6px}
+  .muted{color:var(--c-muted)}
+  .note{display:flex;gap:8px;color:var(--c-muted);font-size:14px}
+  .note::before{content:"i";flex:0 0 auto;width:15px;height:15px;margin-top:3px;border-radius:50%;border:1.2px solid currentColor;font:500 10px/13px var(--f-mono);text-align:center}
+  @media print{ html{--c-page:#fff;--c-surface:#fff;--c-line:#bbb;--c-text:#000;--c-text-2:#000;--c-muted:#333;--c-ok:#000;--c-no:#000} }
+  body{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+  main{max-width:520px;width:100%}
+  .code{font:500 13px/1 var(--f-mono);color:var(--c-muted)}
+  h1{margin:12px 0 12px}
+  p{font-size:16px;margin:0 0 24px}
+  svg.curve{display:block;width:100%;height:auto;margin:0 0 28px;color:var(--c-accent)}
+  a.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:6px;font-weight:600;font-size:15px;text-decoration:none;color:var(--c-on-accent);background:var(--c-accent)}
+  .note{margin-top:24px}
 </style>
 </head>
 <body>
 <main>
-  <img class="mark" src="/dose-curve/favicon.svg" alt="">
-  <div class="code">404 · PAGE NOT FOUND</div>
-  <h1>This page has <span>cleared the system.</span></h1>
+    <div class="code">Error 404</div>
+  <h1>This page has cleared the system.</h1>
   <p>There's nothing at this address. The simulator, lessons and practice problems all live on the main page.</p>
   <svg class="curve" viewBox="0 0 520 90" role="img" aria-label="A concentration curve falling back to zero">
-    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#3DF2E0"/><stop offset="1" stop-color="#7C6BFF"/></linearGradient></defs>
-    <line x1="0" y1="84" x2="520" y2="84" stroke="rgba(120,150,255,0.25)"/>
-    <path d="M4 84 C18 84 22 8 44 8 C90 8 120 60 200 74 C280 84 380 84 516 84" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="84" x2="520" y2="84" stroke="currentColor" stroke-opacity="0.3"/>
+    <path d="M4 84 C18 84 22 8 44 8 C90 8 120 60 200 74 C280 84 380 84 516 84" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
   </svg>
   <a class="btn" href="/dose-curve/">Open the simulator</a>
-  <div class="note">DoseCurve · educational model, not for clinical dosing</div>
+  <p class="note">DoseCurve is an educational model, not for clinical dosing.</p>
 </main>
 <script>
   // On a custom domain the site lives at the root rather than under /dose-curve/.

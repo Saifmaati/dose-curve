@@ -2,16 +2,15 @@
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
 // - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), the validation results (by hash too),
-//   icons, manifest and the Google
-//   Fonts files come from the cache and are refreshed in the background. A page and its scripts always match:
+//   icons, manifest and the font files (served from this site since 2.0; older pages' Google Fonts too) come from the cache and are refreshed in the background. A page and its scripts always match:
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v28";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v29";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
-  "./cases.js?v=d11520d83e",
-  "./pk-sens.js?v=3333646d23","./pk-hd.js?v=b96f5ee841","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=87885afef2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=ca97210b0e","./pk-practice.js?v=b7088f3efd","./pk-math.js?v=9864dcbd27","./pk-glossary.js?v=89b9e2c6bf","./pop-worker.js?v=44970c316f","./validation.html","./educators.html","./validation/reference-results.json?v=fee9fced8e"];
+  "./cases.js?v=d0bac531cf",
+  "./pk-sens.js?v=b8300283e3","./pk-hd.js?v=b96f5ee841","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=87885afef2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=ca97210b0e","./pk-practice.js?v=b7088f3efd","./pk-math.js?v=9864dcbd27","./pk-glossary.js?v=89b9e2c6bf","./pop-worker.js?v=44970c316f","./validation.html","./educators.html","./stage.js?v=8bae16cb66","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=fee9fced8e"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

@@ -368,3 +368,19 @@ Lighthouse, mobile, on the gzip preview: app 97–100 in every category (desktop
 
 The cross-check, its results and the plan's summary are in [BUILD_REPORT_V2.md](BUILD_REPORT_V2.md). There are 355 tests in 19 files; the initial script is +21.8% over the baseline.
 
+## 28. 2.0.0 (redesign, stage 1 of 4: shell, tokens, type, stage, opening sequence)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Tokens for a dark and a paper theme; IBM Plex Sans and Mono served from the site with metric-matched fallbacks | everywhere | contrast computed for every text token (docs/DESIGN.md §1); CLS 0 |
+| Charts from the theme's tokens (no invert filter); PNG export and print in the right palette | the simulator, Light theme, Download PNG, Print | screenshots in both themes; print to PDF from dark |
+| Controls: sliding segment thumb and tab indicator, slider fill and bubble, switches, readout tweening, two-line crosshair | the simulator | `a11y.test.js`; axe |
+| The 3D stage (stage.js + Three.js 0.186.1 from cdnjs, import map with sha512); its CSS version | behind the app; Effects in the top bar | `stage.test.js` (pinned, hashed, never precached, loaded by hash) |
+| The opening sequence: seven screens from the engine, the sphere of 584 checks run in the browser | the root address on a first visit | `stage.test.js` (numbers are the engine's; one heading and a 3–5 word caption per screen; disclaimer) |
+| Top bar, pinned main-action pill, glass panels at a computed contrast floor | everywhere | axe in 13 states × 2 themes × 2 widths |
+| Layout held on every link with a # part, the practice problem, the validation summary | `#practice`, `#compare`, a lesson link, `#case=gent`, validation.html | layout-shift trace: 0 on each |
+| Validation, educator and 404 pages restyled | those pages | Lighthouse 100; axe |
+
+Lighthouse on mobile, gzip preview: root 97, `#practice` 98, `#case=gent` 99, validation 100, educators 100 (desktop root 100); accessibility 100 and CLS 0 on each. axe: no violations. 359 tests in 20 files. The initial script is +23.1% over the Phase 0 baseline (limit +25%); the stylesheet is 83 KB (limit 250 KB); stage.js (31 KB) and Three.js load after the first paint.
+
+The brief for this release changed twice while it was being built; DECISIONS 116–117 record how, and that the last brief's reference image wasn't on the machine.

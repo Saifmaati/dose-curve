@@ -2,6 +2,28 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.0.0 (2026-10-01)
+
+DoseCurve's first visual redesign, the first of four 2.x releases (the plan and its storyboards are in [docs/DESIGN.md](docs/DESIGN.md)). The engine, the share links and the default scenario's numbers are unchanged.
+
+| Before (1.17.1) | After (2.0.0) |
+| --- | --- |
+| ![DoseCurve 1.17.1: gradient headline, glassy panels, cyan and violet glow](docs/img/v2-before.png) | ![DoseCurve 2.0.0: the split headline "Dose Curve" with the default curve as a 3D ribbon passing over it](docs/img/v2-after.png) |
+
+- **A 3D stage.** The current scenario's concentration–time curve is a ribbon in space, drawn live from the curve the chart has just computed, with the therapeutic window as a translucent plane and doses as rings that pulse. It glows on dark sections and turns to solid graphite on light ones. The camera moves to a framing for each tab and drifts with the scroll. It renders only when something changes.
+- **An opening sequence** on a first visit to the address itself (no `#` part): seven screens, each with one giant headline and a short caption, built from the engine. The default curve draws itself as its Cmax, AUC and time in the window count up; a regimen's doses pulse as the curve reaches them; 200 virtual patients draw in to their median; a two-compartment drug splits into its two phases; and a sphere of 584 points lights up as the engine is checked against the independent solver in your browser. ![The "Learn" screen: 200 graphite curves around their median on paper](docs/img/v2-after-learn.png) Any link with a `#` part, and any later visit, goes straight into the app; the DoseCurve wordmark brings the sequence back.
+- **Effects** in the top bar switches the 3D stage on or off (remembered in this browser). It starts off with reduced motion, under 4 GB of memory, under 4 processor cores or Save-Data. Without it, or without WebGL, a CSS version stands in: soft light and the same curve as a path in perspective. Phones get the single ribbon. Present mode and print stay plain.
+- **A new shell:** a top bar with the main links on the left, DoseCurve in the middle and the switches on the right, and one pill-shaped main action pinned at the bottom of every screen ("Open the simulator" in the sequence; in the app, the open tab's main action: set the baseline, swap A and B, start a lesson, open a case, check an answer).
+- **Type and colour:** IBM Plex Sans and IBM Plex Mono, served from this site (no request to Google), with fallbacks matched to their metrics so nothing moves when they arrive; tabular figures for every number. New colour tokens for a dark instrument theme and a light paper theme, each designed for its room. Panels are frosted glass over the stage, at an opacity that keeps every text colour at WCAG AA contrast whatever the stage shows.
+- **Charts drawn for the theme:** every chart now takes its colours from the theme, instead of the light theme inverting the dark charts; the PNG export matches the theme on screen, and printing always uses the paper colours. On phones the charts are drawn narrower so their labels stay readable.
+- **Controls:** segmented controls with a sliding thumb, a tab indicator that slides, sliders with a filled track and a value bubble while they move, switches for Effects, Population and the theme, readouts whose numbers run to their new value in 200 ms, a crosshair (both lines) on the chart.
+- **Copy:** sentence case throughout, no arrows appended to buttons, no decorative middle dots.
+- **Stable layout:** no layout shift on the root address or on any link: a link with a `#` part shows the app once it's applied, and the parts that load later (the practice problem, the validation summary) hold their space.
+- **Privacy:** the fonts no longer come from Google. With Effects on, the stage loads Three.js (a pinned copy, checked by hash) from cdnjs.cloudflare.com; the footer says so, and with Effects off it is never requested.
+- The validation, educator and 404 pages use the same type, colours and header.
+
+Lighthouse on mobile (simulated slow 4G): the root address 97, a deep link 98–99, validation 100, educators 100; accessibility 100 and layout shift 0 on every one. axe: no violations in 13 states of the app, in both themes, at 1280 and 390 px, or on the other pages. 359 tests in 20 files.
+
 ## 1.17.1 (2026-09-30)
 
 Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan V2 (see [docs/BUILD_REPORT_V2.md](docs/BUILD_REPORT_V2.md)):

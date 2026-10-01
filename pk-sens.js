@@ -61,25 +61,27 @@
         +(rows.length>1 && span(rows[1][metric])>=0.05 && tied.length===1 ? ` Next is ${rows[1].name.toLowerCase()} (${sg(rows[1][metric].lo)} / ${sg(rows[1][metric].hi)}).` : "");
     return {rows, text, metric:m};
   }
-  // The tornado chart as SVG, drawn for the dark theme like the page's other charts.
-  function svg(rk){
+  // The tornado chart as SVG, in the page's chart colours (k: its theme tokens; the dark theme's when not given).
+  function svg(rk, k){
+    k=k || {line:"#2A303B", text:"#E8EBF0", muted:"#9AA3B2", accent:"#4CC7EE", mic:"#A89BFF"};
     const W=760, row=34, top=28, H=top+rk.rows.length*row+32, mid=W/2+80, half=W-mid-80, pp=rk.metric.kind==="pp";
     const mx=Math.max(1, ...rk.rows.map(r=>span(r[rk.metric.id])));
     const x=v=> mid+(v/mx)*half, fmt=v=> v==null ? "—" : (v>0 ? "+" : v<0 ? "−" : "")+Math.abs(v).toFixed(1)+(pp ? " pp" : "%");
-    let g=`<line x1="${mid}" y1="${top-8}" x2="${mid}" y2="${H-20}" stroke="#C8D2FF" stroke-width="1" opacity="0.6"/>`+
-      `<text x="${mid}" y="${top-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#8B94B0">no change</text>`;
+    const T=(a, txt, f)=> `<text ${a} font-family="IBM Plex ${f||"Sans"}">${txt}</text>`;
+    let g=`<line x1="${mid}" y1="${top-8}" x2="${mid}" y2="${H-20}" stroke="${k.muted}" stroke-width="1"/>`+
+      T(`x="${mid}" y="${top-12}" text-anchor="middle" font-size="12" fill="${k.muted}"`, "no change");
     rk.rows.forEach((r,i)=>{
       const y=top+i*row, v=r[rk.metric.id];
-      g+=`<text x="${mid-half-12}" y="${y+19}" text-anchor="end" font-family="Inter" font-size="15" fill="#C8D2FF">${r.name}${r.capped ? " (capped at 1)" : ""}</text>`;
-      [["lo","#7C6BFF","−20%"],["hi","#3DF2E0","+20%"]].forEach(([k,col],j)=>{
-        const val=v[k]; if(val==null) return;
+      g+=T(`x="${mid-half-12}" y="${y+19}" text-anchor="end" font-size="15" fill="${k.text}"`, r.name+(r.capped ? " (capped at 1)" : ""));
+      [["lo",k.mic],["hi",k.accent]].forEach(([key,col],j)=>{
+        const val=v[key]; if(val==null) return;
         const a=Math.min(x(0), x(val)), w=Math.max(1, Math.abs(x(val)-x(0)));
         g+=`<rect x="${a}" y="${y+3+j*13}" width="${w}" height="12" rx="2" fill="${col}" opacity="0.85"/>`+
-          `<text x="${val>=0 ? a+w+5 : a-5}" y="${y+13+j*13}" text-anchor="${val>=0 ? "start" : "end"}" font-family="JetBrains Mono" font-size="12" fill="${col}">${fmt(val)}</text>`;
+          T(`x="${val>=0 ? a+w+5 : a-5}" y="${y+13+j*13}" text-anchor="${val>=0 ? "start" : "end"}" font-size="12" fill="${col}"`, fmt(val), "Mono");
       });
     });
-    g+=`<rect x="${mid-half}" y="${H-16}" width="12" height="10" fill="#7C6BFF"/><text x="${mid-half+17}" y="${H-7}" font-family="Inter" font-size="13" fill="#8B94B0">input −20%</text>`+
-      `<rect x="${mid-half+120}" y="${H-16}" width="12" height="10" fill="#3DF2E0"/><text x="${mid-half+137}" y="${H-7}" font-family="Inter" font-size="13" fill="#8B94B0">input +20%</text>`;
+    g+=`<rect x="${mid-half}" y="${H-16}" width="12" height="10" fill="${k.mic}"/>`+T(`x="${mid-half+17}" y="${H-7}" font-size="13" fill="${k.muted}"`, "input −20%")+
+      `<rect x="${mid-half+120}" y="${H-16}" width="12" height="10" fill="${k.accent}"/>`+T(`x="${mid-half+137}" y="${H-7}" font-size="13" fill="${k.muted}"`, "input +20%");
     return {markup:g, height:H, width:W};
   }
   return {STEP, METRICS, inputs, outputs, analyse, ranked, svg};

@@ -12,7 +12,7 @@ Merging is blocked for Claude Code by its auto-mode safety check ("Merge Without
 | 1.11.0 | https://github.com/Saifmaati/dose-curve/pull/13 | 1.15.0 | https://github.com/Saifmaati/dose-curve/pull/17 |
 | 1.12.0 | https://github.com/Saifmaati/dose-curve/pull/14 | 1.16.0 | https://github.com/Saifmaati/dose-curve/pull/18 |
 | 1.13.0 | https://github.com/Saifmaati/dose-curve/pull/15 | 1.17.0 | https://github.com/Saifmaati/dose-curve/pull/19 |
-| 1.17.1 | the pull request from branch `v1.17.1` | | |
+| 1.17.1 | https://github.com/Saifmaati/dose-curve/pull/20 | 2.0.0 | the pull request from branch `v2.0.0` |
 
 Each one contains the ones before it. Merging them one by one, oldest first, gives each release its own merge commit to tag:
 
@@ -20,14 +20,14 @@ Each one contains the ones before it. Merging them one by one, oldest first, giv
 for n in 12 13 14 15 16 17 18 19; do /Users/saifmaati/.local/bin/gh pr merge $n --repo Saifmaati/dose-curve --merge; done
 ```
 
-Then merge 1.17.1 the same way. Afterwards Claude Code tags each merge commit, checks the live site byte for byte and runs Lighthouse. To let it merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+Then merge 1.17.1 (#20) and 2.0.0 the same way. Afterwards Claude Code tags each merge commit, checks the live site byte for byte and runs Lighthouse. To let it merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
 
 ## 2. Create the GitHub Releases
 
 Tags `v1.0.0` to `v1.9.0` are pushed; v1.10.0 onward are tagged as they merge. Creating the Releases is blocked for Claude Code ("Create Public Surface"), and Zenodo archives a release, not a tag. From the repository folder, oldest first, each with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0 1.17.1; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0 1.17.1 2.0.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)`.
@@ -88,3 +88,7 @@ Every drug-library value either names its source or is marked "typical textbook 
 - **Sheiner–Tozer:** the CrCl threshold for the end-stage kidney variant. References disagree (under 10 or under 20 mL/min), so it is left to the user.
 
 If you have Winter's *Basic Clinical Pharmacokinetics* or Bauer's *Applied Clinical Pharmacokinetics*, you can confirm the textbook values. Add a reference entry in `pk-engine.js` (`SOURCES` and the drug's `refs`), with chapter or page, and the "unverified" label goes away.
+
+## The 2.0 reference image
+
+The 2.0 brief names `~/Downloads/dosecurve-reference.png` as its reference; it wasn't on the machine when 2.0.0 was built, so the brief's written description was used (DECISIONS 117). If you have the file, put it back in Downloads and the next stage's review will set the screenshots beside it.
