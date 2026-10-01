@@ -119,6 +119,8 @@
      def:"The early, fast fall in level while drug moves from the central volume into the tissues. Levels drawn during it run higher than the terminal phase would predict."},
     {term:"Time above the MIC", sym:"fT>MIC", unit:"%", lesson:"tmic",
      def:"The share of a dosing interval that the unbound level stays above the minimum inhibitory concentration. For β-lactams such as meropenem it is the measure that tracks efficacy most closely, and a longer infusion raises it without changing the AUC."},
+    {term:"Sensitivity analysis", sym:"±20%", unit:"%", lesson:"cl",
+     def:"Moving one input at a time, here by 20% down and up with everything else held, to see which one an output depends on most. Clearance ±20% moves AUC24 by +25% and −16.7% (AUC = F·dose / CL), while volume leaves it unchanged but moves the peak and the trough. The simulator shows it as a tornado chart."},
     {term:"Dialysis clearance", sym:"CLd", unit:"L/h", lesson:"hd",
      def:"The clearance a dialysis session adds while it runs. It adds to the body's own: the rate constant during a session is kₑ + CLd / V, so a session of T hours lowers the level (with no dose during it) by 1 − e^(−(kₑ + CLd/V)·T), and the dialyzer's share of the loss is CLd / (CL + CLd)."},
     {term:"Post-dialysis rebound", sym:"", unit:"", lesson:"hd",
