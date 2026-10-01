@@ -112,13 +112,29 @@
 
     // the clinical patient: creatinine clearance and the renal fraction of clearance
     const dCL=moved(da.CL,db.CL), dV=moved(da.V,db.V), dT=moved(da.thalfEff,db.thalfEff);
-    const clinA=a.pm==="clinical", clinB=b.pm==="clinical";
+    const clinA=a.pm==="clinical", clinB=b.pm==="clinical", kidA=a.pm==="child", kidB=b.pm==="child";
+    // a child: size and renal maturation (Rhodin et al. 2009)
+    if(kidA!==kidB && !clinA){
+      const c=PK.childOf(kidB ? b : a);
+      out.push(kidB ? `<b>Child model</b>: clearance follows size and renal maturation. At ${fmt(c.pma,0)} weeks' postmenstrual age the kidneys filter at ${fmt(100*c.mf,0)}% of the adult rate per 70 kg, and size scales clearance by (weight / 70)^0.75, so this drug's clearance is ${fmt(100*c.rel,0)}% of a 70 kg adult's.`
+        : `<b>${b.pm==="clinical" ? "Clinical" : "Simple"} patient model</b>: clearance no longer follows a child's size and maturation.`);
+    } else if(kidA && kidB){
+      const ca=PK.childOf(a), cb=PK.childOf(b);
+      if(moved(ca.rel,cb.rel)){
+        const why=[];
+        if(moved(ca.pma,cb.pma)) why.push(`postmenstrual age ${fmt(ca.pma,0)} → ${fmt(cb.pma,0)} weeks, so renal maturation ${fmt(100*ca.mf,0)}% → ${fmt(100*cb.mf,0)}%`);
+        if(a.wt!==b.wt) why.push(`weight ${trim(a.wt)} → ${trim(b.wt)} kg, so the size factor (weight / 70)^0.75 ${fmt(ca.size,3)} → ${fmt(cb.size,3)}`);
+        if(a.fe!==b.fe) why.push(`the renal fraction ${fmt(100*a.fe,0)}% → ${fmt(100*b.fe,0)}%`);
+        out.push(`Clearance ${cb.rel>ca.rel ? "rose" : "fell"} from ${fmt(100*ca.rel,0)}% to ${fmt(100*cb.rel,0)}% of a 70 kg adult's (${why.join("; ")}).`);
+      }
+    }
     let clinSaid=false;
     if(clinA!==clinB){
       const pc=PK.patientOf(clinB ? b : a);
       out.push(clinB
         ? `<b>Clinical patient model</b>: clearance now follows creatinine clearance. Cockcroft–Gault gives ${fmt(pc.crcl,0)} mL/min, so this drug (fe ${trim(b.fe)}) keeps ${fmt(100*pc.factor,0)}% of its reference clearance.`
-        : `<b>Simple patient model</b>: clearance follows the organ-function setting (${b.clFn}%) instead of creatinine clearance.`);
+        : b.pm==="simple" ? `<b>Simple patient model</b>: clearance follows the organ-function setting (${b.clFn}%) instead of creatinine clearance.`
+        : `<b>Child model</b>: clearance follows size and renal maturation instead of creatinine clearance.`);
     } else if(clinA && clinB){
       const pa=PK.patientOf(a), pb=PK.patientOf(b), dCr=moved(pa.crcl,pb.crcl);
       if(dCr || a.fe!==b.fe){

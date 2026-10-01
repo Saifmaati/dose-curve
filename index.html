@@ -1273,6 +1273,7 @@
             <div class="seg" id="pmSeg" role="group" aria-label="Patient model">
               <button data-pm="simple" class="on">Simple</button>
               <button data-pm="clinical">Clinical (CrCl)</button>
+              <button data-pm="child">Child</button>
             </div>
             <div id="patientSliders"></div>
             <div id="clinPanel" hidden>
@@ -1301,6 +1302,11 @@
                 <div class="clin-math" id="bzOut" aria-live="polite"></div>
                 <p class="clin-note" id="bzNote">Teaching assumptions: the prior's CVs are the Population settings' (clearance 30%, volume 20% unless changed there); each level's error SD is √((10% of the level)² + (MEC / 10)²); one compartment, first-order elimination. Method: Sheiner et al., Clin Pharmacol Ther 1979. Educational model, not for clinical dosing.</p>
               </details>
+            </div>
+            <div id="childPanel" hidden>
+              <div id="childSliders"></div>
+              <div class="clin-math" id="childMath" aria-live="polite"></div>
+              <p class="clin-note">Renal maturation follows Rhodin et al. (Pediatr Nephrol 2009), from measured filtration rates between 22 weeks' postmenstrual age and adulthood. The drug's non-renal clearance is scaled by size alone: how it matures depends on the enzymes involved, which this model doesn't include. Educational model, not for clinical dosing.</p>
             </div>
             <div class="seg" id="hdSeg" role="group" aria-label="Hemodialysis" style="margin-top:10px">
               <button data-hd="0" class="on">No dialysis</button>
@@ -1790,7 +1796,8 @@
       <div class="eq">
         Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt))<br>IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
         IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay<br>kₑ = ln2/t½ and CL = kₑ·V, with superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
-        Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
+        Two compartments:&nbsp; C(t) = A·e^(−αt) + B·e^(−βt) after an IV bolus, the central volume exchanging with a peripheral one at k12 and k21<br>
+        Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), driven by plasma or, with a delay, by an effect-site level.
       </div>
       <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see Validation.</p>
       <nav class="foot-links" aria-label="Project links">
@@ -1801,6 +1808,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
+        <a href="https://doi.org/10.5281/zenodo.23082408" target="_blank" rel="noopener">Cite: doi:10.5281/zenodo.23082408</a>
         <span>Version 2.9.0, updated 1 October 2026</span>
       </nav>
     </footer>
@@ -1871,7 +1879,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=3056d0e45c" defer></script>
+<script src="pk-engine.js?v=29d9af2bc9" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2002,6 +2010,13 @@
     wt:  {name:"Body weight", sym:"kg", step:1, unit:"kg"},
     clFn:{name:"Organ function (CL)", sym:"%", step:5, unit:"%"}
   };
+  // A child: weight on a log scale (0.5–80 kg), gestational age at birth and postnatal age (maturation), the renal fraction
+  const CHILD_WT={name:"Body weight", sym:"kg", log:true, unit:"kg", range:[0.5,80], fmt:v=>`${trim(v)} kg`};
+  const CHILD={
+    ga:  {name:"Gestational age at birth", sym:"GA", step:1, unit:"weeks", fmt:v=>`${v} weeks`},
+    pnaw:{name:"Postnatal age", sym:"PNA", step:1, unit:"weeks", fmt:v=> v<9 ? `${v} weeks` : `${v} weeks (${trim(+(v*7/30.44).toFixed(1))} months)`},
+    fe:  {name:"Renal fraction", sym:"fe", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% excreted unchanged`}
+  };
   // The clinical patient: Cockcroft–Gault inputs, albumin (used for phenytoin) and the drug's renal fraction.
   const CLIN = {
     age:{name:"Age", sym:"y", step:1, unit:"years"},
@@ -2082,6 +2097,19 @@
   }
 
   // The clinical patient panel's working: IBW, AdjBW, Cockcroft–Gault CrCl and the clearance it gives.
+  // A child: postmenstrual age, renal maturation and filtration (Rhodin et al. 2009), and the drug's clearance
+  function renderChild(){
+    if(state.pm!=="child") return;
+    const p=snapshot(), c=PK.childOf(p), V=PK.vOf(p), ref=Math.LN2/p.thalf*p.V, n1=v=>fmt(v,1), CL=ref*c.rel;
+    byId("childMath").innerHTML=
+      `<div class="cm-h">Postmenstrual age and renal maturation</div>`+
+      `PMA = ${trim(p.ga)} + ${trim(p.pnaw)} = <b>${trim(c.pma)} weeks</b><br>`+
+      `maturation = PMA<sup>3.4</sup> / (47.7<sup>3.4</sup> + PMA<sup>3.4</sup>) = <b>${fmt(100*c.mf,0)}%</b> of the adult filtration rate per 70 kg`+
+      `<div class="cm-h">Filtration rate</div>GFR = ${PK.GFR_STD} × (${trim(p.wt)} / 70)<sup>0.75</sup> × ${fmt(c.mf,3)} = <b>${n1(c.gfr)} mL/min</b>`+
+      `<div class="cm-h">Clearance, against a 70 kg adult's ${fmt(ref,2)} L/h</div>`+
+      `CL = ${fmt(ref,2)} × (${trim(p.wt)} / 70)<sup>0.75</sup> × [(1 − ${trim(p.fe)}) + ${trim(p.fe)} × ${fmt(c.mf,3)}] = <b>${fmt(CL,3)} L/h</b>, `+
+      `${fmt(CL/p.wt,3)} L/h per kg against the adult's ${fmt(ref/70,3)}; the volume is ${n1(V)} L`;
+  }
   function renderClin(){
     if(state.pm!=="clinical") return;
     const p=snapshot(), pt=PK.patientOf(p), f=p.sex==="F", V=PK.vOf(p), ref=Math.LN2/p.thalf*V, n1=v=>fmt(v,1);
@@ -2358,7 +2386,7 @@
   function render(){
     checkWindow();
     syncHep();
-    renderClin();
+    renderClin(); renderChild();
     renderHep();
     renderBayes();
     renderMic();
@@ -2808,7 +2836,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=56c16f5396";
+  const MATH_SRC="pk-math.js?v=9a7a3ea708";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -3062,7 +3090,7 @@
     if(k==="hd") return s.hd ? "on" : "off";
     if(k==="hep") return s.hep ? "liver model" : "half-life";
     if(k==="lv") return s.lv.length ? s.lv.map(l=>`dose ${l.n} + ${trim(l.dt)} h: ${trim(l.c)}`).join("; ") : "none";
-    if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
+    if(k==="pm") return s.pm;
     if(k==="sex") return s.sex==="F" ? "female" : "male";
     if(k==="wtm") return WTM_NAME[s.wtm];
     if(k==="unit") return PK.unitsOf(s).conc;
@@ -3089,7 +3117,7 @@
   // `ref` names the reference side in the text ("the baseline" or "A").
   // The sentences under "What changed" (pk-explain.js): loaded just after the first paint, and awaited by a link
   // that opens with a baseline, so the list is there when the app shows
-  const EXPLAIN_SRC="pk-explain.js?v=4bbeb09405";
+  const EXPLAIN_SRC="pk-explain.js?v=2b162bb1fe";
   let explainLoad=null;
   function loadExplain(){
     if(PK.explainModule) return Promise.resolve();
@@ -3193,6 +3221,7 @@
     if(missedOf(p)) s+=`, dose ${missedOf(p)} missed`;
     s+=`, t½ ${fmt(Math.LN2/keOf(p),1)} h`;
     if(p.pm==="clinical") s+=`, CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
+    if(p.pm==="child") s+=`, a child of ${trim(p.wt)} kg, ${trim(p.pnaw)} weeks old (born at ${trim(p.ga)} weeks), GFR ${fmt(PK.childOf(p).gfr,1)} mL/min (fe ${trim(p.fe)})`;
     if(PK.hdOn(p)) s+=`, hemodialysis ${trim(p.hddur)} h every ${trim(p.hdevery)} h from ${trim(p.hdstart)} h, CLd ${trim(p.hdcl)} L/h`;
     else if(p.clFn!==100) s+=`, organ fn ${p.clFn}%`;
     if(state.pd && p.idr>0) s+=`, ${IDR_NAME[p.idr].toLowerCase()}, EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}, response turnover t½ ${trim(p.tout)} h`;
@@ -3605,8 +3634,11 @@
     const pel=byId("patientSliders"), clinical=state.pm==="clinical";
     pel.innerHTML="";
     // organ function doesn't apply to the clinical patient (CrCl does) or to the liver model (its own settings do)
-    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(key!=="clFn" || PK.isRelevant("clFn", snapshot())) makeSlider(pel,key,cfg); });
+    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(key!=="clFn" || PK.isRelevant("clFn", snapshot())) makeSlider(pel,key,key==="wt" && state.pm==="child" ? CHILD_WT : cfg); });
     byId("clinPanel").hidden=!clinical;
+    const kid=state.pm==="child", kel=byId("childSliders");
+    byId("childPanel").hidden=!kid; kel.innerHTML="";
+    if(kid) Object.entries(CHILD).forEach(([key,cfg])=> makeSlider(kel,key,cfg));
     const cel=byId("clinSliders");
     cel.innerHTML="";
     if(clinical) Object.entries(CLIN).forEach(([key,cfg])=> makeSlider(cel,key,cfg));
@@ -3674,7 +3706,11 @@
     markDrug(); buildSliders(); changed(["dosing","events"]);
   });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
-  seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
+  // an adult's weight isn't a child's: switching between them brings the weight into the other's range
+  seg("pmSeg","pm",v=>{ const was=state.pm; state.pm=v;
+    if(v==="child" && was!=="child" && state.wt>80) state.wt=10;
+    if(v!=="child" && was==="child" && state.wt<40) state.wt=70;
+    buildSliders(); changed(["pm","wt"]); });
   seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
   seg("cmtSeg","cmt",v=>{ state.cmt=+v; state.drug=null; markDrug(); buildSliders(); changed(["cmt"]); });
   seg("hdSeg","hd",v=>{ state.hd=+v; buildSliders(); changed(["hd"]); });

@@ -2,7 +2,7 @@
 
 **An interactive pharmacokinetics and PK/PD simulator for pharmacy education.** Change a drug, a patient or a regimen and watch concentration and effect respond; estimate creatinine clearance, see saturable kinetics, and work graded clinical cases. (Not related to the open-source "dosecurve" package for fitting IC50 dose–response curves.)
 
-[![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml)
+[![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23082408.svg)](https://doi.org/10.5281/zenodo.23082408)
 
 **Live:** https://saifmaati.github.io/dose-curve/ · **Validation:** https://saifmaati.github.io/dose-curve/validation.html · **Teaching guide:** [docs/teaching-guide.md](docs/teaching-guide.md) · **For educators:** https://saifmaati.github.io/dose-curve/educators.html
 
@@ -160,7 +160,9 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.9.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.9.0. 2026. doi:10.5281/zenodo.23082408
+
+Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 
 ## Contributing
 

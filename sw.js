@@ -10,7 +10,7 @@ const CACHE="dosecurve-v38";   // bumped at the end of every v1.0 phase, so a ne
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
   "./cases.js?v=124759dd74",
-  "./pk-sens.js?v=b8300283e3","./pk-explain.js?v=4bbeb09405","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=56c16f5396","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=67b2b76963","./validation.html","./educators.html","./stage.js?v=55e58173ac","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=3e5c9bbc7c"];
+  "./pk-sens.js?v=b8300283e3","./pk-explain.js?v=2b162bb1fe","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=9a7a3ea708","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=67b2b76963","./validation.html","./educators.html","./stage.js?v=55e58173ac","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=3e5c9bbc7c"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

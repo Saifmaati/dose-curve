@@ -100,3 +100,11 @@ test("the initial script payload stays within the plan's budget: +25% over the P
   const total=inline+fs.statSync(path.join(root,"pk-engine.js")).size;
   assert.ok(total<=Math.floor(318996*1.25), `${total} bytes (${(100*total/318996-100).toFixed(1)}% over the baseline)`);
 });
+
+test("the DOI is the same in the README, CITATION.cff and the app's footer (2.10)", ()=>{
+  const DOI="10.5281/zenodo.23082408", cff=read("CITATION.cff"), md=read("README.md"), page=read("index.html");
+  assert.match(cff, new RegExp("^doi: "+DOI.replace(/\./g,"\\.")+"$", "m"));
+  assert.ok(md.includes(`https://zenodo.org/badge/DOI/${DOI}.svg`) && md.includes(`doi:${DOI}`), "the README's badge and citation");
+  assert.ok(page.includes(`href="https://doi.org/${DOI}"`), "the footer links it");
+  assert.ok(!/one-compartment kinetics/.test(cff) && !/one-compartment kinetics/.test(read(".zenodo.json")), "the abstracts describe the current model");
+});

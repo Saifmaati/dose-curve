@@ -1,12 +1,12 @@
 {
   "title": "DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education",
   "upload_type": "software",
-  "description": "<p>DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD. It models one-compartment kinetics (first-order or saturable Michaelis–Menten) for oral, IV bolus and infusion dosing, a clinical patient with Cockcroft–Gault creatinine clearance, a cited drug library, guided lessons, generated practice problems, clinical cases graded by the model, and a public validation against an independent solver.</p><p>Educational model, not for clinical dosing.</p>",
+  "description": "<p>DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD. It models one- and two-compartment kinetics (first-order or saturable Michaelis–Menten) for oral, IV bolus and infusion dosing; a clinical patient with Cockcroft–Gault creatinine clearance; hemodialysis, a liver model, antimicrobial PK/PD indices, effect-site delays and indirect responses; population variability; and Bayesian individualization from measured levels. It has a cited drug library, guided lessons, generated practice problems, clinical cases graded by the model, and a public validation against an independent solver.</p><p>Educational model, not for clinical dosing.</p>",
   "creators": [{"name": "Maati, Saif"}],
   "license": "MIT",
   "access_right": "open",
   "version": "2.9.0",
-  "keywords": ["pharmacokinetics", "pharmacodynamics", "pharmacy education", "simulation", "Cockcroft-Gault", "Michaelis-Menten"],
+  "keywords": ["pharmacokinetics", "pharmacodynamics", "pharmacy education", "simulation", "Cockcroft-Gault", "Michaelis-Menten", "two-compartment", "hemodialysis", "population pharmacokinetics"],
   "related_identifiers": [
     {"identifier": "https://saifmaati.github.io/dose-curve/", "relation": "isDocumentedBy", "scheme": "url"},
     {"identifier": "https://saifmaati.github.io/dose-curve/validation.html", "relation": "isDocumentedBy", "scheme": "url"}
