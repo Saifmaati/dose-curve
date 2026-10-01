@@ -474,3 +474,12 @@ All 36 lesson links CLS 0 at 390 and 1440. 385 tests in 22 files.
 | Remembered window statistics, readouts and profiles | any lesson link | `pk-engine.test.js` (copies; a value changed in place gives the new result; the window is part of the key); Lighthouse on the lesson links |
 
 Lighthouse on mobile: all 36 lesson links measured on 2.7.0 (87–95, the Bayesian lesson 78); on 2.8.0 the seven lowest 89–95, the Bayesian lesson 89; root 99, validation 99. CLS 0 on all 108 links at 390. 386 tests in 22 files.
+
+## 37. 2.9.0 (glossary and README catch up)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Glossary: Terminal half-life, Post-distribution peak (71 terms) | Lessons, glossary | the glossary tests (lesson links, wording) |
+| README: rebound and effect-band images; chart images retaken with whole legends | README | `release.test.js` (every image the README names exists) |
+
+386 tests in 22 files.

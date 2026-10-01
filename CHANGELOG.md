@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.9.0 (2026-10-01)
+
+The glossary and the README catch up with 2.4–2.8.
+
+- **Two glossary terms** (71): *Terminal half-life* (ln 2 / β, longer than the central compartment's own) and *Post-distribution peak* (drawn once distribution is over; When to sample gives the model's time, and the vancomycin guideline's two-level approach draws it 1–2 hours after the infusion, Rybak et al. 2020).
+- **README images:** two new ones, the rebound after a dialysis session and population mode's band on the effect chart. Every chart image is retaken so its legend shows whole; until now each was clipped at the top.
+
+386 tests in 22 files.
+
 ## 2.8.0 (2026-10-01)
 
 Every lesson link scores 89 or more on mobile.
@@ -20,6 +29,7 @@ Hemodialysis with two compartments, and the rebound after each session.
 - **A new lesson, "Rebound after dialysis"** (36 lessons). It compares one compartment with two at the same clearance and total volume. The two-compartment level rises 14% in the 1.6 hours after the session, while the one-compartment level keeps falling. The session also removes less with two compartments (245 mg against 306), because the dialyzer only reaches the blood. The challenge: slow the return from the tissues until the rebound gives back a quarter of the fall. The glossary's "Post-dialysis rebound" now links to it.
 - **Validation:** 3 two-compartment dialysis scenarios added to the SciPy reference (11 in all; 718 comparisons on the validation page). The existing 8 changed by at most 2 parts in 10¹² with the solver's extra state.
 - **Links v12.** A scenario with both dialysis and two compartments makes a v12 link. An older link with both opens as it always did, with dialysis off, because before 2.7 it did nothing with two compartments.
+- The teaching guide's list of one-click comparisons is regenerated from the app (28; it said 18).
 - **Faster dialysis scenarios:** a level now takes a fifth of the time, since each scenario remembers its course while its settings are unchanged. The rebound lesson's link scores 89 on mobile and the dialysis lesson's 86 (83 with a layout shift on 2.4.0).
 - **"What changed" corrections.** It said the total AUC stays the same when only the compartments, the volume or the absorption rate change. With dialysis that's no longer true, because what a session removes follows the level. It now gives the actual difference, for example 9% higher with two compartments.
 

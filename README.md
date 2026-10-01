@@ -41,6 +41,10 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 
 ![Gentamicin on hemodialysis: 120 mg after each 8-hour session, each session (shaded) halving the level, with the clearance on and off dialysis](docs/img/hemodialysis.png)
 
+![A two-compartment drug on dialysis: a 4-hour session (shaded) takes the level from 11.8 to 5.5 mg/L, then it rebounds to 6.3 mg/L as drug returns from the tissues](docs/img/hd-rebound.png)
+
+![Population mode with the effect charts: 200 virtual patients' levels and their effect, each as a 5th–95th percentile band; near the peaks the effect band narrows while the level band stays wide](docs/img/population-effect.png)
+
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
 - Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 28 one-click comparisons.
@@ -55,7 +59,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 **Teach and practise**
 - **36 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **16 clinical cases** (gentamicin conventional, once daily, on hemodialysis, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem, piperacillin-tazobactam and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question), one of them the case of the day, the same for everyone on a given date. The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **42 kinds of generated practice problems** in seven topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 69-term glossary.
+- **42 kinds of generated practice problems** in seven topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 71-term glossary.
 - **For instructors:** write a case (patient, drug, regimen choices and target) and share it as a link, checked for a solution before the link is made and marked as an unreviewed community case; put cases and worksheets in one assignment link; and verify the completion codes (HMAC-SHA256 with a class key) students make at the end. Nothing is sent anywhere.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case, an assignment), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
@@ -156,7 +160,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.8.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.9.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 
