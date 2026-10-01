@@ -16,14 +16,14 @@
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
   // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions.
-  const VERSION=12;
+  const VERSION=13;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu", "idr","tout","imax","smax", "hd","hdcl","hdstart","hddur","hdevery"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu", "idr","tout","imax","smax", "hd","hdcl","hdstart","hddur","hdevery", "ga","pnaw"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
   // effect site's equilibration half-life (0 = the effect follows plasma directly). idr 1–4 replaces the direct effect
   // with an indirect response (pk-idr.js): the drug inhibits or stimulates the production or loss of a response whose
@@ -39,13 +39,13 @@
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
     kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
     hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1, idr:0, tout:12, imax:1, smax:4,
-    hd:0, hdcl:5, hdstart:20, hddur:4, hdevery:48});
+    hd:0, hdcl:5, hdstart:20, hddur:4, hdevery:48, ga:40, pnaw:52});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
-    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1],idr:[0,1,2,3,4],hd:[0,1]};
+    pm:["simple","clinical","child"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1],idr:[0,1,2,3,4],hd:[0,1]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,4000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
-    nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
-    age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
+    nDoses:[2,20],missed:[1,19],wt:[0.5,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
+    age:[18,100],ht:[120,220],ga:[22,42],pnaw:[0,156],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
     qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1],tout:[0.25,240],imax:[0.05,1],smax:[0.1,20],
     hdcl:[0.5,20],hdstart:[0,336],hddur:[1,8],hdevery:[12,168]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
@@ -64,6 +64,8 @@
   const V10_KEYS=["idr","tout","imax","smax"];
   // A v10 page can't hold hemodialysis sessions.
   const V11_KEYS=["hd","hdcl","hdstart","hddur","hdevery"];
+  // A v12 page can't hold a child (gestational and postnatal age), or a weight under 40 kg.
+  const V13_KEYS=["ga","pnaw"];
   const V8_MAX={D:2000};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
@@ -207,7 +209,7 @@
     const oral=s.dosing==="custom" ? s.events.some(e=>e.route==="oral") : s.route==="oral";
     if(k==="F") return oral && !hepOn(s);
     if(k==="ka") return oral;
-    if(k==="hep") return s.kin!=="mm" && s.pm!=="clinical";
+    if(k==="hep") return s.kin!=="mm" && s.pm==="simple";
     if(k==="qh"||k==="fub"||k==="clint") return hepOn(s);
     if(k==="fabs") return oral && hepOn(s);
     if(k==="tinf") return s.dosing!=="custom" && s.route==="inf";   // a custom infusion has its own duration
@@ -215,7 +217,7 @@
     if(k==="D") return s.dosing!=="custom";
     if(k==="events") return s.dosing==="custom";
     if(k==="lv") return s.pm==="clinical" && s.kin!=="mm" && s.cmt!==2;
-    if(k==="clFn") return s.pm!=="clinical" && !hepOn(s);
+    if(k==="clFn") return s.pm==="simple" && !hepOn(s);
     if(k==="thalf") return s.kin!=="mm" && !hepOn(s);
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
@@ -227,7 +229,9 @@
     if(k==="tout") return s.idr>0;
     if(k==="imax") return s.idr===1 || s.idr===2;
     if(k==="smax") return s.idr===3 || s.idr===4;
-    if(["age","sex","ht","scr","alb","wtm","fe"].includes(k)) return s.pm==="clinical";
+    if(["age","sex","ht","scr","alb","wtm"].includes(k)) return s.pm==="clinical";
+    if(k==="fe") return s.pm==="clinical" || s.pm==="child";
+    if(k==="ga"||k==="pnaw") return s.pm==="child";
     return true;
   }
   // Equality that understands schedules (plain === would compare array identity).
@@ -253,8 +257,21 @@
     const crcl=crclCG(p.age, wtUsed, p.scr, p.sex);
     return {heightIn, ibw, adj, wtUsed, crcl, factor:renalFactor(p.fe, crcl)};
   }
-  // How much of the drug's reference clearance this patient has (1 = all of it).
-  const clFactor=p=> hepOn(p) ? 1 : p.pm==="clinical" ? patientOf(p).factor : p.clFn/100;
+  /* ================= CHILD (SIZE AND MATURATION) ================= */
+  // Glomerular filtration from very premature neonates to adults (Rhodin MM, Anderson BJ, et al. Human renal function
+  // maturation: a quantitative description using weight and postmenstrual age. Pediatr Nephrol 2009;24(1):67–76):
+  // GFR = 121.2 mL/min × (weight / 70)^0.75 × PMA^3.40 / (47.7^3.40 + PMA^3.40), PMA the postmenstrual age in weeks
+  // (gestational age at birth + postnatal age). The drug's renal part follows that GFR against the adult's 121.2 mL/min
+  // per 70 kg; its non-renal part is scaled by size alone, (weight / 70)^0.75, because how it matures depends on the
+  // enzymes that clear the drug, which this model doesn't include. The volume scales with weight, as for adults.
+  const GFR_STD=121.2, TM50=47.7, MAT_HILL=3.4;
+  function childOf(p){
+    const pma=p.ga+p.pnaw, mf=Math.pow(pma,MAT_HILL)/(Math.pow(TM50,MAT_HILL)+Math.pow(pma,MAT_HILL)), size=Math.pow(p.wt/70,0.75);
+    const rel=size*((1-p.fe)+p.fe*mf);   // the drug's clearance over a 70 kg adult's
+    return {pma, mf, size, gfr:GFR_STD*size*mf, rel, factor:rel/(p.wt/70)};
+  }
+  // How much of the drug's reference clearance this patient has (1 = all of it), per kg of the 70 kg reference.
+  const clFactor=p=> hepOn(p) ? 1 : p.pm==="clinical" ? patientOf(p).factor : p.pm==="child" ? childOf(p).factor : p.clFn/100;
 
   /* ================= LIVER (WELL-STIRRED MODEL) ================= */
   // With hep on (first-order kinetics, simple patient), clearance comes from the liver instead of a half-life:
@@ -262,7 +279,7 @@
   // extraction ratio E = fu·CLint / (Q + fu·CLint), hepatic clearance CL = Q·E, and the fraction of an oral dose
   // that escapes the liver on its first pass, 1 − E. Oral F is the fraction absorbed times 1 − E. Blood and plasma
   // concentrations are taken as equal. Clearance and volume both scale with weight, so the half-life doesn't.
-  const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm!=="clinical";
+  const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm==="simple";
   // Hemodialysis sessions (pk-hd.js) apply to first-order scenarios, with one or (since 2.7) two compartments.
   const hdOn=p=> p.hd===1 && p.kin!=="mm";   // with one or (since links v12) two compartments
   function wellStirred(p){
@@ -1472,6 +1489,8 @@
     });
     // before links v12, dialysis did nothing with two compartments: such a link opens as it always did
     if(version!==undefined && version<12 && p.cmt===2 && p.hd===1) p.hd=0;
+    // before v13, weight couldn't go under 40 kg
+    if(version!==undefined && version<13 && p.wt<40) p.wt=40;
     return normalizeScenario(p);
   }
   function encodeView(v){
@@ -1505,6 +1524,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV13=scen.some(p=>p.pm==="child" || p.wt<40 || V13_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV12=scen.some(p=>p.cmt===2 && p.hd===1);
     const usesV11=scen.some(p=>V11_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV10=scen.some(p=>V10_KEYS.some(k=>p[k]!==DEFAULTS[k]));
@@ -1514,7 +1534,7 @@
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV13 ? 13 : usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1947,7 +1967,7 @@
     get metricMath(){ if(!mathFn && typeof require==='function') mathFn=require('./pk-math.js'); return mathFn; },
     set metricMath(v){ mathFn=v; },
     PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
-    crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, clFactor, UNITS, unitsOf, convertUnits, saltOf,
+    crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, childOf, GFR_STD, clFactor, UNITS, unitsOf, convertUnits, saltOf,
     get SOURCES(){ const m=sourcesApi(); return m ? m.SOURCES : {}; }, get sourcesModule(){ return srcMod; }, set sourcesModule(m){ attachSources(m); },
     UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, READOUT_KEYS_HD, sheinerTozer};
 });

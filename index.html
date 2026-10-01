@@ -13,11 +13,13 @@
   if(location.hash.length>1) d.classList.add("route-wait");
   // a lesson, a case, a practice problem, a worksheet or a task opens on its paper page: the palette is set now, not after
   if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
-  // the root sequence: only a first, direct visit to the root address with no # part (any link, any return visit
-  // goes straight into the app); its readouts wait for their count unless motion is reduced
+  // the root sequence: every visit to the root address with no # part, the first or the hundredth (a link with a # part,
+  // #app included, opens the app directly); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
-    try{ s=localStorage.getItem("dosecurve.intro"); localStorage.setItem("dosecurve.intro","seen"); }catch(e){}
-    if(!s){ d.classList.add("intro-on"); if(!still) d.classList.add("hero-anim"); }
+    d.classList.add("intro-on"); if(!still){ d.classList.add("hero-anim"); d.classList.add("cold");
+      // the cold open: black, first light on the ribbon, the wordmark revealed; then a quiet scroll cue
+      var end=function(){ if(d.classList.contains("cold")){ d.classList.remove("cold"); d.classList.add("cue"); } };
+      setTimeout(end, 4200); var off=function(){ if(scrollY>8){ end(); removeEventListener("scroll", off); } }; addEventListener("scroll", off, {passive:true}); }
   }
   // the 3D stage's effects: the reader's choice, else off on a weak device (reduced motion, little memory, few cores, Save-Data)
   try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){ s=null; }
@@ -53,7 +55,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.9.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.10.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -240,7 +242,39 @@
   html.present.intro-on .hero{display:block}   /* present mode keeps the hero's heading for screen readers */
   html.intro-on body{padding-top:0}
   html.present .intro,html.embed .intro{display:none !important}
-  .scene{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:96px 40px 200px;overflow:hidden;overflow:clip}
+  /* each scene spans two screens of scroll; its frame stays pinned while the camera plays it (2.10) */
+  .scene{position:relative;height:200vh;height:200svh;overflow:clip}
+  .scene-pin{position:sticky;top:0;height:100vh;height:100svh;display:flex;flex-direction:column;justify-content:center;padding:96px 40px 200px;overflow:clip}
+  .snap{position:absolute;left:0;width:1px;height:1px;pointer-events:none}   /* the resting frames; the stage settles on them gently */
+  .snap:nth-of-type(1){top:18vh} .snap:nth-of-type(2){top:50vh} .snap:nth-of-type(3){top:82vh}
+  .scene[data-scene="1"] .snap:nth-of-type(1){top:0}   /* the sequence starts on its opening frame */
+  /* the stage sets --in, --in2 and --out as the camera arrives and leaves; without it everything simply shows */
+  .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{opacity:calc(var(--in,1) * (1 - var(--out,0)));transform:translateY(calc((1 - var(--in,1)) * 28px - var(--out,0) * 36px));filter:blur(calc((1 - var(--in,1)) * 7px + var(--out,0) * 9px))}
+  .scene-pin>.small>:not(.hero-chip){opacity:calc(var(--in2,1) * (1 - var(--out,0)))}
+  .hero-ro>div{opacity:var(--ro,1);transform:translateY(calc((1 - var(--ro,1)) * 14px))}
+  html.settle .scene-pin>h1,html.settle .scene-pin>h2,html.settle .scene-pin>.cap,html.settle .scene-pin>.small>*,html.settle .hero-ro>div{transition:opacity .35s ease,filter .35s ease,transform .35s ease}
+  .hero-ro>div:nth-child(1){--ro:var(--ro1,1)} .hero-ro>div:nth-child(2){--ro:var(--ro2,1)} .hero-ro>div:nth-child(3){--ro:var(--ro3,1)}
+  /* the cold open: black, first light on the ribbon (the stage), the wordmark revealed by a mask; then a scroll cue */
+  @property --mask{syntax:"<percentage>";inherits:false;initial-value:140%}
+  @keyframes wordmark{from{--mask:-8%}to{--mask:140%}}
+  html.cold:not(.light) .scene[data-scene="1"]{background:#000}   /* the light theme opens on paper */
+  html.cold #scene1{-webkit-mask-image:linear-gradient(100deg,#000 calc(var(--mask) - 34%),transparent var(--mask));mask-image:linear-gradient(100deg,#000 calc(var(--mask) - 34%),transparent var(--mask));animation:wordmark 2.1s 1.15s cubic-bezier(.3,.55,.2,1) both}
+  html.cold .scene[data-scene="1"] .scene-pin>:not(h1){opacity:0}
+  .top{transition:opacity .9s ease} html.cold .top{opacity:0}
+  .scroll-cue{position:absolute;left:50%;bottom:168px;transform:translateX(-50%);margin:0;display:flex;flex-direction:column;align-items:center;gap:12px;font:500 11px/1 var(--f-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--c-text-2);opacity:0;transition:opacity 1.2s ease;pointer-events:none}
+  .scroll-cue::before{content:"Scroll"}
+  .scroll-cue::after{content:"";width:1px;height:46px;background:linear-gradient(var(--c-muted),transparent);transform-origin:top;animation:cue 2.6s cubic-bezier(.5,0,.3,1) infinite}
+  @keyframes cue{0%{transform:scaleY(0);opacity:1}55%{transform:scaleY(1);opacity:1}100%{transform:scaleY(1);opacity:0}}
+  html.cue .scroll-cue{opacity:1} html.cued .scroll-cue{opacity:0;transition-duration:.4s}
+  /* grain and a soft vignette over the sequence's frame (with the 3D stage) */
+  .film{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .8s ease;overflow:hidden}
+  html.stage3d.in-intro .film{opacity:1}
+  .film::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 120% 95% at 50% 46%,transparent 52%,rgba(2,4,10,.5) 100%)}
+  html.tone-light .film::before{background:radial-gradient(ellipse 120% 95% at 50% 46%,transparent 58%,rgba(20,24,32,.14) 100%)}
+  .film::after{content:"";position:absolute;inset:-60px;opacity:.07;mix-blend-mode:overlay;animation:grain .9s steps(6) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  @keyframes grain{0%{transform:translate(0,0)}17%{transform:translate(-22px,14px)}33%{transform:translate(18px,-26px)}50%{transform:translate(-30px,-8px)}67%{transform:translate(26px,22px)}83%{transform:translate(-8px,30px)}100%{transform:translate(0,0)}}
+  @media (prefers-reduced-motion: reduce){ .film::after,.scroll-cue::after{animation:none} }
   .split,.word{position:relative;z-index:1;margin:0;font-weight:600;font-size:clamp(64px,13.5vw,232px);line-height:.86;letter-spacing:-.055em;color:var(--c-text);white-space:nowrap}
   .split{display:flex;justify-content:space-between;gap:.25em}
   .word.bleed{margin-right:-.16em;text-align:right}
@@ -254,7 +288,7 @@
     font-size:13px;line-height:1.55;color:var(--c-muted)}
   .small p{margin:0;max-width:30em} .small b{color:var(--c-text);font-weight:600}
   .small .hero-ro{grid-column:span 2} .small .hero-chip{grid-column:span 2;margin:0}
-  .scene-n{position:absolute;right:0;top:-28px;font-family:var(--f-mono);font-size:12px;color:var(--c-muted)}
+  .scene-n{position:absolute;right:0;top:-28px;font-family:var(--f-mono);font-size:12px;color:var(--c-text-2)}
   .scene-vis{position:absolute;z-index:0;left:50%;top:44%;width:min(62vw,860px);aspect-ratio:600/340;transform:translate(-50%,-50%);opacity:.92}
   .scene-vis svg{display:block;width:100%;height:100%;overflow:visible}
   html.stage3d .scene-vis{visibility:hidden}
@@ -266,7 +300,7 @@
   #heroCmax{min-width:3ch} #heroAuc{min-width:4ch} #heroTin{min-width:2ch}
   .hero-ro small{font-size:13px;font-weight:400;color:var(--c-muted);letter-spacing:0;margin-left:5px}
   /* before the stage starts the count, the numbers wait (and show anyway after 5 s if it never runs) */
-  html.hero-anim .hero-ro dd{opacity:0;animation:heroShow 0s 5s forwards}
+  html.hero-anim .hero-ro dd{animation:none}
   @keyframes heroShow{to{opacity:1}}
   /* the 3D canvas: over the headlines in the sequence, behind the glass in the app */
   .stage-3d{position:fixed;inset:0;z-index:2;pointer-events:none}   /* over the hero and the masthead, under the panels */
@@ -276,7 +310,9 @@
   @media (max-width:760px){ html:not(.in-intro) .stage-3d,html:not(.in-intro) .stage-css svg{opacity:.3} }   /* phones: no margins, so the app's text sits over the stage; it steps back */
   /* phones: each scene stacks, picture first, then the headline, the caption and the small print */
   @media (max-width:760px){
-    .scene{justify-content:flex-start;padding:84px 16px 104px}
+    .scene-pin{justify-content:flex-start;padding:84px 16px 104px}
+    .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{filter:none}
+    .scroll-cue{bottom:118px}
     .scene-vis{position:relative;left:auto;top:auto;transform:none;width:100%;margin:0 0 28px}
     .split,.word{font-size:clamp(52px,17vw,120px)}
     .split{flex-direction:column;gap:0} .split > :last-child{text-align:right}
@@ -303,10 +339,10 @@
   .grid>*{min-width:0}
   /* glass over the stage: the surface at 78% (dark) or 84% (light) and a blur. At these opacities every text colour
      keeps AA contrast even over a stage far brighter than a blurred ribbon (docs/DESIGN.md, section 3) */
-  .panel,.foot{background:color-mix(in srgb,var(--c-surface) var(--glass),transparent);-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
+  .panel{background:color-mix(in srgb,var(--c-surface) var(--glass),transparent);-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
     border:1px solid var(--c-line);border-radius:var(--r-3);box-shadow:var(--shadow-glass);position:relative}
-  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .panel,.foot{background:var(--c-surface)} }
-  @media (max-width:760px){ .panel,.foot{-webkit-backdrop-filter:none;backdrop-filter:none;--glass:94%} }   /* phones: no blur to pay for */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .panel{background:var(--c-surface)} }
+  @media (max-width:760px){ .panel{-webkit-backdrop-filter:none;backdrop-filter:none;--glass:94%} }   /* phones: no blur to pay for */
   .panel-pad{padding:20px 20px 24px}
   .controls{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;scrollbar-width:thin;scrollbar-color:var(--c-line-strong) transparent}
 
@@ -976,18 +1012,16 @@
   .toast.show{opacity:1;transform:translate(-50%,0);transition-duration:var(--t-slow);transition-timing-function:var(--ease)}
 
   /* footer */
-  .foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px 48px;padding:32px;margin:8px 0 40px;
-    color:var(--c-muted);font-size:13.5px;line-height:1.6}
-  .foot .disc{grid-column:1 / -1;display:flex;gap:12px;align-items:flex-start;max-width:54em;color:var(--c-text-2);font-size:14px}
-  .foot .disc b{color:var(--c-text)}
-  .foot .privacy{margin:0}
-  .foot .privacy b{color:var(--c-text-2)}
-  .foot .eq{font-family:var(--f-mono);font-size:12.5px;line-height:1.8;color:var(--c-muted);overflow-wrap:anywhere}
-  .foot p.eq{font-family:var(--f-sans);font-size:13.5px;line-height:1.6}
-  .foot-links{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding-top:20px;border-top:1px solid var(--c-line);font-size:14px}
-  .foot-links a,.foot-keys{color:var(--c-text-2);font-size:14px;text-decoration:underline;text-decoration-color:var(--c-line-strong);text-underline-offset:3px}
-  .foot-links a:hover{color:var(--c-text);text-decoration-color:currentColor}
-  .foot-links span{margin-left:auto;font-family:var(--f-mono);font-size:12.5px;color:var(--c-muted)}
+  /* the footer: four quiet lines on the stage (the mark, the links, the disclaimer, the version) */
+  .foot{display:grid;justify-items:center;gap:14px;padding:72px 16px 120px;margin:0;text-align:center;color:var(--c-muted);font-size:13.5px;line-height:1.6}
+  .foot p{margin:0}
+  .foot-mark{display:flex;align-items:center;gap:8px;color:var(--c-text);font-weight:600;font-size:16px;letter-spacing:-.01em}
+  .foot-mark svg{color:var(--c-accent)} .foot-mark em{font-style:normal;font-weight:400;color:var(--c-text-2)}
+  .foot-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;font-size:14px}
+  .foot-links a{color:var(--c-text-2);text-decoration:none;border-bottom:1px solid var(--c-line-strong);padding-bottom:1px}
+  .foot-links a:hover{color:var(--c-text);border-bottom-color:currentColor}
+  .foot-disc{color:var(--c-text-2)}
+  .foot-ver{font-family:var(--f-mono);font-size:12.5px}
 
   /* layout steps */
   @media (max-width:1100px){ .ro-grid{grid-template-columns:repeat(4,minmax(0,1fr))} .ro-v{font-size:19px} }
@@ -998,14 +1032,12 @@
     .learn-grid,.ls-grid,.gloss-list{grid-template-columns:1fr}
     .ss-stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px}
     .ssw-grid{grid-template-columns:1fr}
-    .foot{grid-template-columns:1fr}
   }
   @media (max-width:640px){
     .ro-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .ro-v{font-size:20px}
     .sc-cards{grid-template-columns:1fr}
     .lock{margin-left:0}
-    .foot-links span{margin-left:0;width:100%}
   }
   @media (max-width:480px){
     :root{--gut:14px}
@@ -1068,11 +1100,11 @@
     @page{margin:12mm}
     body{background:#fff !important;font-size:10.5pt}
     .stage,.stage-3d,.pill,.masthead,.intro,.top,.hero,.embed-bar,aside.controls,.tabbar,#sharedPill,.cmpbar,#lessonBar,#fitBar,#winBar,#quickStart,#evStripWrap,#insp,#cmpEmpty,.learn,#roHint,.rm-x,
-    .foot-links,.foot .eq,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
+    .foot-links,.foot-mark,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
     .wrap{max-width:none;padding:0}
     .grid{display:block}
     .panel{background:#fff !important;box-shadow:none !important;border:0 !important}
-    .foot{display:block;border:0;padding:12px 0 0;background:#fff;box-shadow:none}
+    .foot{display:block;border:0;padding:12px 0 0;background:#fff;box-shadow:none;text-align:left}
     .print-head{display:block;margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid #c9cfdf;font-size:10.5pt;color:#121720;line-height:1.5}
     .print-head b{font-size:13pt;font-weight:600}
     .print-head .ph-meta{font-family:var(--f-mono);font-size:8.5pt;color:#454d68;word-break:break-all}
@@ -1103,6 +1135,7 @@
 </head>
 <body data-mode="sim">
 <a class="skip" href="#app">Skip to the simulator</a>
+<div class="film" aria-hidden="true"></div>
 <!-- the stage behind the page: the scenario's curve as a ribbon in 3D (stage.js), or its CSS version -->
 <div class="stage" id="stage" aria-hidden="true"><div class="stage-css"><svg id="stageSvg" viewBox="0 0 1000 420" preserveAspectRatio="none"><path class="halo"/><path class="core"/></svg></div></div>
 <header class="top" id="topBar">
@@ -1123,54 +1156,76 @@
 <button class="pill" id="pill" type="button">Open the simulator</button>
 <section class="intro" id="intro" aria-label="Introduction">
   <section class="scene" data-scene="1" data-tone="dark" aria-labelledby="scene1">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h1 class="split" id="scene1"><span>Dose</span><span>Curve</span></h1>
-    <p class="cap">Watch a dose move.</p>
-    <div class="small"><dl class="hero-ro" aria-label="The default scenario: 500 mg by mouth, half-life 4 h, window 2 to 12 mg/L">
-        <div><dt>Cmax</dt><dd><span id="heroCmax">9.3</span><small>mg/L</small></dd></div>
-        <div><dt>AUC</dt><dd><span id="heroAuc">74.2</span><small>mg·h/L</small></dd></div>
-        <div><dt>Time in window</dt><dd><span id="heroTin">48</span><small>%</small></dd></div>
-      </dl>
-      <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h1 class="split" id="scene1"><span>Dose</span><span>Curve</span></h1>
+      <p class="cap">Watch a dose move.</p>
+      <div class="small"><dl class="hero-ro" aria-label="The default scenario: 500 mg by mouth, half-life 4 h, window 2 to 12 mg/L">
+          <div><dt>Cmax</dt><dd><span id="heroCmax">9.3</span><small>mg/L</small></dd></div>
+          <div><dt>AUC</dt><dd><span id="heroAuc">74.2</span><small>mg·h/L</small></dd></div>
+          <div><dt>Time in window</dt><dd><span id="heroTin">48</span><small>%</small></dd></div>
+        </dl>
+        <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 07</span></div>
+    <p class="scroll-cue" aria-hidden="true"></p>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="2" data-tone="light" aria-labelledby="scene2">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="split" id="scene2"><span>Every</span> <span>dose</span></h2>
-    <p class="cap">drawn from the model.</p>
-    <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
-      <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
-      <p><b>Learn.</b> 36 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
-      <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="split" id="scene2"><span>Every</span> <span>dose</span></h2>
+      <p class="cap">drawn from the model.</p>
+      <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
+        <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
+        <p><b>Learn.</b> 36 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
+        <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="3" data-tone="dark" aria-labelledby="scene3">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word bleed" id="scene3">Simulate</h2>
-    <p class="cap">Doses arrive as pulses.</p>
-    <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word bleed" id="scene3">Simulate</h2>
+      <p class="cap">Doses arrive as pulses.</p>
+      <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="4" data-tone="light" aria-labelledby="scene4">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word" id="scene4">Learn</h2>
-    <p class="cap">200 patients, one median.</p>
-    <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode.</p><span class="scene-n" aria-hidden="true">04 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word" id="scene4">Learn</h2>
+      <p class="cap">200 patients, one median.</p>
+      <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode.</p><span class="scene-n" aria-hidden="true">04 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="5" data-tone="light" aria-labelledby="scene5">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word right" id="scene5">Cases</h2>
-    <p class="cap">Two phases, one patient.</p>
-    <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale.</p><span class="scene-n" aria-hidden="true">05 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word right" id="scene5">Cases</h2>
+      <p class="cap">Two phases, one patient.</p>
+      <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale.</p><span class="scene-n" aria-hidden="true">05 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="6" data-tone="dark" aria-labelledby="scene6">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word behind" id="scene6">Validated</h2>
-    <p class="cap">Every check within tolerance.</p>
-    <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">06 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word behind" id="scene6">Validated</h2>
+      <p class="cap">Every check within tolerance.</p>
+      <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">06 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="7" data-tone="dark" aria-labelledby="scene7">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="split" id="scene7"><span>Open</span> <span>DoseCurve</span></h2>
-    <p class="cap">Free, in your browser.</p>
-    <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">07 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="split" id="scene7"><span>Open</span> <span>DoseCurve</span></h2>
+      <p class="cap">Free, in your browser.</p>
+      <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">07 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
 </section>
 
@@ -1273,6 +1328,7 @@
             <div class="seg" id="pmSeg" role="group" aria-label="Patient model">
               <button data-pm="simple" class="on">Simple</button>
               <button data-pm="clinical">Clinical (CrCl)</button>
+              <button data-pm="child">Child</button>
             </div>
             <div id="patientSliders"></div>
             <div id="clinPanel" hidden>
@@ -1301,6 +1357,11 @@
                 <div class="clin-math" id="bzOut" aria-live="polite"></div>
                 <p class="clin-note" id="bzNote">Teaching assumptions: the prior's CVs are the Population settings' (clearance 30%, volume 20% unless changed there); each level's error SD is √((10% of the level)² + (MEC / 10)²); one compartment, first-order elimination. Method: Sheiner et al., Clin Pharmacol Ther 1979. Educational model, not for clinical dosing.</p>
               </details>
+            </div>
+            <div id="childPanel" hidden>
+              <div id="childSliders"></div>
+              <div class="clin-math" id="childMath" aria-live="polite"></div>
+              <p class="clin-note">Renal maturation follows Rhodin et al. (Pediatr Nephrol 2009), from measured filtration rates between 22 weeks' postmenstrual age and adulthood. The drug's non-renal clearance is scaled by size alone: how it matures depends on the enzymes involved, which this model doesn't include. Educational model, not for clinical dosing.</p>
             </div>
             <div class="seg" id="hdSeg" role="group" aria-label="Hemodialysis" style="margin-top:10px">
               <button data-hd="0" class="on">No dialysis</button>
@@ -1780,29 +1841,17 @@
     </div>
 
     <footer class="foot">
-      <div class="disc">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
-      </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student's name as an identifier.
-        <br><b>Effects.</b> The fonts come from this site. With Effects on, the 3D stage loads Three.js, a pinned and hash-checked copy, from cdnjs.cloudflare.com; that request is the only one to another site, and it carries nothing you enter. Turn Effects off in the top bar and it is never made.
-        <br><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
-      <div class="eq">
-        Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt))<br>IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
-        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay<br>kₑ = ln2/t½ and CL = kₑ·V, with superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
-        Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), following plasma concentration directly.
-      </div>
-      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see Validation.</p>
+      <p class="foot-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Dose<em>Curve</em></span></p>
       <nav class="foot-links" aria-label="Project links">
-        <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
-        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <a href="methods.html">Model and methods</a>
         <a href="validation.html">Validation</a>
         <a href="educators.html">For educators</a>
-        <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.9.0, updated 1 October 2026</span>
+        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
+      <p class="foot-disc">Educational model, not for clinical dosing.</p>
+      <p class="foot-ver"><span>Version 2.10.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -1871,7 +1920,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=3056d0e45c" defer></script>
+<script src="pk-engine.js?v=29d9af2bc9" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2002,6 +2051,13 @@
     wt:  {name:"Body weight", sym:"kg", step:1, unit:"kg"},
     clFn:{name:"Organ function (CL)", sym:"%", step:5, unit:"%"}
   };
+  // A child: weight on a log scale (0.5–80 kg), gestational age at birth and postnatal age (maturation), the renal fraction
+  const CHILD_WT={name:"Body weight", sym:"kg", log:true, unit:"kg", range:[0.5,80], fmt:v=>`${trim(v)} kg`};
+  const CHILD={
+    ga:  {name:"Gestational age at birth", sym:"GA", step:1, unit:"weeks", fmt:v=>`${v} weeks`},
+    pnaw:{name:"Postnatal age", sym:"PNA", step:1, unit:"weeks", fmt:v=> v<9 ? `${v} weeks` : `${v} weeks (${trim(+(v*7/30.44).toFixed(1))} months)`},
+    fe:  {name:"Renal fraction", sym:"fe", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% excreted unchanged`}
+  };
   // The clinical patient: Cockcroft–Gault inputs, albumin (used for phenytoin) and the drug's renal fraction.
   const CLIN = {
     age:{name:"Age", sym:"y", step:1, unit:"years"},
@@ -2082,6 +2138,19 @@
   }
 
   // The clinical patient panel's working: IBW, AdjBW, Cockcroft–Gault CrCl and the clearance it gives.
+  // A child: postmenstrual age, renal maturation and filtration (Rhodin et al. 2009), and the drug's clearance
+  function renderChild(){
+    if(state.pm!=="child") return;
+    const p=snapshot(), c=PK.childOf(p), V=PK.vOf(p), ref=Math.LN2/p.thalf*p.V, n1=v=>fmt(v,1), CL=ref*c.rel;
+    byId("childMath").innerHTML=
+      `<div class="cm-h">Postmenstrual age and renal maturation</div>`+
+      `PMA = ${trim(p.ga)} + ${trim(p.pnaw)} = <b>${trim(c.pma)} weeks</b><br>`+
+      `maturation = PMA<sup>3.4</sup> / (47.7<sup>3.4</sup> + PMA<sup>3.4</sup>) = <b>${fmt(100*c.mf,0)}%</b> of the adult filtration rate per 70 kg`+
+      `<div class="cm-h">Filtration rate</div>GFR = ${PK.GFR_STD} × (${trim(p.wt)} / 70)<sup>0.75</sup> × ${fmt(c.mf,3)} = <b>${n1(c.gfr)} mL/min</b>`+
+      `<div class="cm-h">Clearance, against a 70 kg adult's ${fmt(ref,2)} L/h</div>`+
+      `CL = ${fmt(ref,2)} × (${trim(p.wt)} / 70)<sup>0.75</sup> × [(1 − ${trim(p.fe)}) + ${trim(p.fe)} × ${fmt(c.mf,3)}] = <b>${fmt(CL,3)} L/h</b>, `+
+      `${fmt(CL/p.wt,3)} L/h per kg against the adult's ${fmt(ref/70,3)}; the volume is ${n1(V)} L`;
+  }
   function renderClin(){
     if(state.pm!=="clinical") return;
     const p=snapshot(), pt=PK.patientOf(p), f=p.sex==="F", V=PK.vOf(p), ref=Math.LN2/p.thalf*V, n1=v=>fmt(v,1);
@@ -2358,7 +2427,7 @@
   function render(){
     checkWindow();
     syncHep();
-    renderClin();
+    renderClin(); renderChild();
     renderHep();
     renderBayes();
     renderMic();
@@ -2808,7 +2877,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=56c16f5396";
+  const MATH_SRC="pk-math.js?v=9a7a3ea708";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -3062,7 +3131,7 @@
     if(k==="hd") return s.hd ? "on" : "off";
     if(k==="hep") return s.hep ? "liver model" : "half-life";
     if(k==="lv") return s.lv.length ? s.lv.map(l=>`dose ${l.n} + ${trim(l.dt)} h: ${trim(l.c)}`).join("; ") : "none";
-    if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
+    if(k==="pm") return s.pm;
     if(k==="sex") return s.sex==="F" ? "female" : "male";
     if(k==="wtm") return WTM_NAME[s.wtm];
     if(k==="unit") return PK.unitsOf(s).conc;
@@ -3089,7 +3158,7 @@
   // `ref` names the reference side in the text ("the baseline" or "A").
   // The sentences under "What changed" (pk-explain.js): loaded just after the first paint, and awaited by a link
   // that opens with a baseline, so the list is there when the app shows
-  const EXPLAIN_SRC="pk-explain.js?v=4bbeb09405";
+  const EXPLAIN_SRC="pk-explain.js?v=2b162bb1fe";
   let explainLoad=null;
   function loadExplain(){
     if(PK.explainModule) return Promise.resolve();
@@ -3193,6 +3262,7 @@
     if(missedOf(p)) s+=`, dose ${missedOf(p)} missed`;
     s+=`, t½ ${fmt(Math.LN2/keOf(p),1)} h`;
     if(p.pm==="clinical") s+=`, CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
+    if(p.pm==="child") s+=`, a child of ${trim(p.wt)} kg, ${trim(p.pnaw)} weeks old (born at ${trim(p.ga)} weeks), GFR ${fmt(PK.childOf(p).gfr,1)} mL/min (fe ${trim(p.fe)})`;
     if(PK.hdOn(p)) s+=`, hemodialysis ${trim(p.hddur)} h every ${trim(p.hdevery)} h from ${trim(p.hdstart)} h, CLd ${trim(p.hdcl)} L/h`;
     else if(p.clFn!==100) s+=`, organ fn ${p.clFn}%`;
     if(state.pd && p.idr>0) s+=`, ${IDR_NAME[p.idr].toLowerCase()}, EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}, response turnover t½ ${trim(p.tout)} h`;
@@ -3605,8 +3675,11 @@
     const pel=byId("patientSliders"), clinical=state.pm==="clinical";
     pel.innerHTML="";
     // organ function doesn't apply to the clinical patient (CrCl does) or to the liver model (its own settings do)
-    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(key!=="clFn" || PK.isRelevant("clFn", snapshot())) makeSlider(pel,key,cfg); });
+    Object.entries(PATIENT).forEach(([key,cfg])=>{ if(key!=="clFn" || PK.isRelevant("clFn", snapshot())) makeSlider(pel,key,key==="wt" && state.pm==="child" ? CHILD_WT : cfg); });
     byId("clinPanel").hidden=!clinical;
+    const kid=state.pm==="child", kel=byId("childSliders");
+    byId("childPanel").hidden=!kid; kel.innerHTML="";
+    if(kid) Object.entries(CHILD).forEach(([key,cfg])=> makeSlider(kel,key,cfg));
     const cel=byId("clinSliders");
     cel.innerHTML="";
     if(clinical) Object.entries(CLIN).forEach(([key,cfg])=> makeSlider(cel,key,cfg));
@@ -3674,7 +3747,11 @@
     markDrug(); buildSliders(); changed(["dosing","events"]);
   });
   seg("loadSeg","load",v=>{ state.loadMult=parseFloat(v); changed(["loadMult"]); });
-  seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
+  // an adult's weight isn't a child's: switching between them brings the weight into the other's range
+  seg("pmSeg","pm",v=>{ const was=state.pm; state.pm=v;
+    if(v==="child" && was!=="child" && state.wt>80) state.wt=10;
+    if(v!=="child" && was==="child" && state.wt<40) state.wt=70;
+    buildSliders(); changed(["pm","wt"]); });
   seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
   seg("cmtSeg","cmt",v=>{ state.cmt=+v; state.drug=null; markDrug(); buildSliders(); changed(["cmt"]); });
   seg("hdSeg","hd",v=>{ state.hd=+v; buildSliders(); changed(["hd"]); });
@@ -5172,7 +5249,7 @@
   byId("printBtn").addEventListener("click",()=>{ fillPrintHead(); window.print(); });
   // The keyboard shortcuts, in a dialog opened from under the chart or the footer; focus goes back where it came from.
   let keysOpener=null;
-  ["keysBtn","keysFoot"].forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
+  ["keysBtn","keysFoot"].filter(id=> byId(id)).forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
   byId("keysClose").addEventListener("click",()=> byId("keysDlg").close());
   // Single-key shortcuts can be switched off (WCAG 2.1.4); they never fire while typing or in a dialog.
   const KEYS_KEY="dosecurve.keys";
@@ -5272,8 +5349,13 @@
   byId("linkBtn").addEventListener("click",copyLink);
   byId("sharedClose").addEventListener("click",()=>{ byId("sharedPill").hidden=true; });
   byId("sharedReset").addEventListener("click",()=>{ history.replaceState(null,"",location.pathname+location.search); location.reload(); });
-  // Pasting a different link into the same tab only changes the hash, so load it properly.
-  window.addEventListener("hashchange",()=>location.reload());
+  // Pasting a different link into the same tab only changes the hash, so load it properly; moving between the root
+  // sequence and the app (#app) by back and forward is the same page, so no reload (see STAGE)
+  window.addEventListener("hashchange",e=>{
+    const was=new URL(e.oldURL).hash, h=location.hash;
+    if(ROOT_PAGE && (was==="" || was==="#app") && (h==="" || h==="#app")){ if(h) toApp(); else showSeq(); return; }
+    location.reload();
+  });
 
   /* ================= BASELINE / EXPORT ================= */
   byId("pinBtn").addEventListener("click",()=>setBaseline());
@@ -5653,7 +5735,8 @@
   /* ================= STAGE ================= */
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
-  const STAGE_SRC="stage.js?v=55e58173ac";
+  const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
+  const STAGE_SRC="stage.js?v=593d70c853";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
@@ -5664,12 +5747,26 @@
     syncFx(); if(stage) stage.fx();
   });
   // the root sequence's way into the app (its skip link and its last scene), and Home, which brings it back
-  const toApp=e=>{ if(e) e.preventDefault(); showTab("sim"); byId("app").scrollIntoView({block:"start"}); byId("app").focus({preventScroll:true}); };
+  function toApp(e){ if(e) e.preventDefault(); showTab("sim"); byId("app").scrollIntoView({block:"start"}); byId("app").focus({preventScroll:true}); }
+  // the sequence starts from its top: the browser's own scroll restoration would put back the app's place
+  function showSeq(){ D.classList.add("intro-on"); history.scrollRestoration="manual"; scrollTo(0,0); if(stage) stage.intro(); }
+  if(ROOT_PAGE && D.classList.contains("intro-on")) history.scrollRestoration="manual";
+  // The URL follows the reader between the sequence and the app: reaching the app (by scrolling, the pill, the skip
+  // link or the top bar) adds one entry, #app, above the sequence's, and later crossings replace it, so the browser's
+  // back from the app returns to the sequence, forward returns to the app, and a reload opens where the reader was.
+  const follow=app=>{
+    if(!ROOT_PAGE || !D.classList.contains("intro-on") || app===(location.hash==="#app") || (location.hash && location.hash!=="#app")) return;
+    const url=location.pathname+location.search+(app ? "#app" : "");
+    if(app && !(history.state && history.state.dc)) history.pushState({dc:1}, "", url); else history.replaceState({dc:1}, "", url);
+  };
+  if(ROOT_PAGE && "IntersectionObserver" in window) new IntersectionObserver(es=> es.forEach(x=>{
+    if(x.isIntersecting) follow(true); else if(x.boundingClientRect.top>0) follow(false); }), {rootMargin:"0px 0px -50% 0px"}).observe(byId("app"));
   // the pill: the screen's main action (stage.js), else into the simulator; the top bar's links open their tab
   byId("pill").addEventListener("click",()=>{ if(!(stage && stage.pill())) toApp(); });
   document.querySelectorAll(".top-links a[data-tab]").forEach(a=> a.addEventListener("click",e=>{
     e.preventDefault(); byId({sim:"tabSim", ls:"tabLs", cs:"tabCs"}[a.dataset.tab]).click(); byId("app").scrollIntoView({block:"start"}); }));
-  byId("homeLink").addEventListener("click",e=>{ e.preventDefault(); D.classList.add("intro-on"); scrollTo(0,0); if(stage) stage.intro(); });
+  // Home: a new entry for the root address (back returns to where the reader was), and the sequence from its start
+  byId("homeLink").addEventListener("click",e=>{ e.preventDefault(); if(location.hash) history.pushState({dc:1}, "", location.pathname+location.search); showSeq(); });
 
   // Visit counting, off unless ANALYTICS_SITE_ID is set to a GoatCounter site code (see docs/NEEDS-SAIF.md).
   // GoatCounter is cookie-free; only the page's path is sent, never the part after # (a scenario's settings)
@@ -5681,7 +5778,7 @@
     gc.async=true; gc.src="https://gc.zgo.at/count.js"; gc.dataset.goatcounter=`https://${ANALYTICS_SITE_ID}.goatcounter.com/count`;
     gc.onload=()=>{ try{ window.goatcounter.count({path:location.pathname}); }catch(e){ /* counting is optional */ } };
     document.head.appendChild(gc);
-    byId("anaState").textContent="on";
+    const as=byId("anaState"); if(as) as.textContent="on";   // the statement is on methods.html
   }
 
   // Offline use: after one visit a service worker (sw.js) keeps a copy of the app, so it opens without a

@@ -15,6 +15,7 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `pk-math.js` | The worked formulas behind each readout | when a readout's working opens |
 | `pk-bayes.js` | Bayesian (MAP) individualization from measured levels | when the clinical panel's Bayesian section or a Bayesian case needs it |
 | `pk-idr.js` | Indirect response models (Dayneka, Garg and Jusko 1993) | when a scenario uses one |
+| `methods.html`, `tools/methods.py` | Model and methods: every equation as MathML, built by the script from validation.html's head and tokens | its own page |
 | `pk-hd.js` | Hemodialysis sessions, exact between events, with one or two compartments (the rebound after each session) | when a scenario uses dialysis |
 | `pk-sens.js` | Sensitivity analysis (±20% on each input) and its tornado chart | when its panel opens |
 | `pk-tdm.js` | When to sample: the dose from which a repeated regimen is within 10% of steady state, and the model's peak and trough times in that interval | when its section opens |
@@ -71,8 +72,13 @@ the curves to the stage, and setting the page's tone (dark simulator, paper page
 `stage.js` exports `start(PK)`, which returns `set(data)`, `view(tab)`, `cursor(t)`, `theme()`, `fx()`, `intro()`
 and `pill()`. With Effects on and WebGL available it imports Three.js through the import map (pinned to one cdnjs
 release, with sha512 integrity for both of its files); otherwise it draws the CSS stage's path and each scene's
-SVG frame. It renders only when something changes. Its camera framings and the opening sequence's storyboard are in
-[DESIGN.md](DESIGN.md).
+SVG frame. Since 2.10 the sequence is one world with one camera: the scenes sit along the x axis, the camera follows a
+Catmull–Rom path through each scene's resting frames, scrubbed by the scroll with inertia, and each scene's beats are
+driven by the same scroll. Tier 2 (a capable desktop with a GPU) renders into its own targets and composites them
+itself (cdnjs carries only Three.js's core, so selective bloom, depth of field, chromatic aberration, ACES and the
+grade are this file's passes); tier 1 renders directly. A governor drops the passes if frames run slow. In the
+sequence it renders continuously (30 fps when only the dust moves); in the app, only when something changes. The
+storyboard and the camera's resting frames are in [DESIGN.md](DESIGN.md).
 
 ## Validation
 

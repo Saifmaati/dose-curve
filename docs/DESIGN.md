@@ -301,9 +301,11 @@ something changes.
 
 ## 10. The root sequence
 
-A first, direct visit to the root address with no `#` part opens on the sequence; any lesson, case, practice,
-worksheet or share link, a return visit, the embed view and present mode go straight into the app. The top bar's
-DoseCurve wordmark (Home) brings it back. The pill reads "Open the simulator" throughout and lands in the simulator.
+Every visit to the root address with no `#` part opens on the sequence, the first or the hundredth (2.10; before,
+only a first visit did). Any lesson, case, practice, worksheet or share link, `#app`, the embed view and present mode
+go straight into the app. Reaching the app from the sequence adds one history entry (`#app`), so the browser's back
+returns to the sequence and forward to the app, without a reload; the top bar's DoseCurve wordmark (Home) brings the
+sequence back from anywhere. The pill reads "Open the simulator" throughout and lands in the simulator.
 
 | # | Section | Headline (split) | Caption | Small print (columns) | Object and camera |
 | --- | --- | --- | --- | --- | --- |
@@ -377,3 +379,22 @@ Compare stay dark; leaving a lesson or task returns them.
 **When to sample** sits under the steady-state chart's four readouts, as a closed accordion with a hairline above it, like the sensitivity panel. Its summary is one line: the title, then "the model's times for this regimen" in the muted tone. Opened, it shows three columns in the readouts' type (a small muted label, the value in Plex Mono with tabular figures, a short sentence under it): *Steady state* (dose n), *Peak* and *Trough* (hours from the first dose). Peak and Trough each have a small **Show** button that moves the time cursor there, and the chart's focus with it. Below them is a note in small muted text, at most 62 em wide. On a phone the columns stack. It takes the panel's tone (dark in the simulator, paper in the light theme) and adds no colour of its own.
 
 **The case of the day** is the first card in the case list, two columns wide, with "Case of the day" in the accent colour above its title. The other cards follow in their usual order.
+
+## 16. Storyboard: 2.10, one world and one camera
+
+**The world.** The scenes sit along x (hero and "Every dose" at 0, Simulate 24, Learn 48, Cases 72, Validated 96, the simulator at 120), close enough that the next comes into view as the camera travels. A thinner strand of the ribbon joins each scene's curve to the next and passes under the sphere to the simulator's own curve. The floor is one plane under everything: a faint grid that recedes into exponential fog and, in tier 2, a blurred mirror.
+
+**The camera.** Three resting frames per scene, at 18%, 50% and 82% of its pinned screen, on one Catmull–Rom path; each segment eases in and out, so the camera dwells where a beat rests. The scroll drives it through an inertia filter (14% of the remaining distance per frame). When scrolling stops within a tenth of a screen of a resting frame, the page settles there. Reduced motion holds each scene's last resting frame.
+
+| Scene | Tone | Beats (by scroll) | Headline |
+| --- | --- | --- | --- |
+| Cold open | black (paper in the light theme) | first light from 0.6 s (or when the stage arrives), the ribbon draws over about 1.9 s with a point of light at its head, the camera pulls back from the peak, the wordmark is unmasked from 1.15 s; the scroll cue at 4.2 s | "Dose ··· Curve" |
+| Hero | dark | the window rises (28–56%), the readouts land one by one (60–94%) | in at once |
+| Every dose | paper | a low glide along the graphite ribbon | in as it arrives |
+| Simulate | dark | one dose (to 8 h), a second stacking on the ghost of the first (to 16 h), the climb to steady state (to 48 h) with the camera following | right, bleeding |
+| Learn | paper | 200 patients appear one by one (points), then condense into the band and the bronze median | left |
+| Cases | paper | the camera dives in, the axis turns logarithmic (32–62%), the two phases separate (68–95%) | right |
+| Validated | dark | the checks light one by one as the camera stays close, then it pulls back to the sphere | centred, behind |
+| Open | dark | the camera flies to the simulator's place; its curve is there | split |
+
+**The look.** Dark scenes: deep blue-black, a warm key and a cool rim, one warm accent (the shafts and the dust), the ribbon's core emissive and blooming. Paper scenes: near-white, graphite with clearcoat, bronze for the median, no bloom, almost no aberration. Grain and the vignette are a CSS layer over the whole frame. The focus pulls to the headline as it arrives or leaves and racks back onto the ribbon as the camera settles.

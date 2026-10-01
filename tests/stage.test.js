@@ -34,11 +34,15 @@ test("the stage is loaded after the first paint by its content hash, precached b
   assert.ok(stage.includes(`validation/reference-results.json?v=${hash("validation/reference-results.json")}`));
 });
 
-test("the root sequence shows only on a first, direct visit to the root address, and Effects start off on weak devices", ()=>{
+test("the root sequence plays on every visit to the root address; #app and content links open the app; Effects start off on weak devices", ()=>{
   const head=page.slice(0, page.indexOf("</head>"));
-  assert.match(head, /!location\.hash && \/\\\/\(index\\\.html\)\?\$\/\.test\(location\.pathname\)/);
-  assert.match(head, /localStorage\.setItem\("dosecurve\.intro","seen"\)/);
-  assert.match(head, /if\(!s\)\{ d\.classList\.add\("intro-on"\)/);
+  assert.match(head, /!location\.hash && \/\\\/\(index\\\.html\)\?\$\/\.test\(location\.pathname\)\)\{\n\s+d\.classList\.add\("intro-on"\)/);
+  assert.ok(!/dosecurve\.intro/.test(page), "no remembered 'seen' skip (2.10)");
+  // back from the app returns to the sequence: one #app entry, pushed once and replaced after; back and forward between
+  // the two never reload; Home adds an entry for the root address and replays the sequence
+  assert.match(page, /history\.pushState\(\{dc:1\}, "", url\); else history\.replaceState\(\{dc:1\}, "", url\)/);
+  assert.match(page, /\(was==="" \|\| was==="#app"\) && \(h==="" \|\| h==="#app"\)\)\{ if\(h\) toApp\(\); else showSeq\(\); return; \}\n\s+location\.reload\(\);/);
+  assert.match(page, /byId\("homeLink"\)\.addEventListener\("click",e=>\{ e\.preventDefault\(\); if\(location\.hash\) history\.pushState/);
   assert.match(head, /n\.deviceMemory<4 \|\| n\.hardwareConcurrency<4/);
   assert.match(head, /localStorage\.getItem\("dosecurve\.effects"\)/);
   assert.match(page, /id="fxBtn" aria-pressed/);
@@ -102,4 +106,31 @@ test("2.3: link previews state the app's own counts; the validation page's spher
   assert.match(v, /word\.textContent=window\.dcDone \? "Validated" : "Checked"/, "the word says Validated only when every check passed");
   assert.match(v, /<section class="vhero" aria-hidden="true"><p class="vword" id="vWord">Validating<\/p>/);
   assert.ok(v.includes(page.match(/<script type="importmap">[\s\S]*?<\/script>/)[0]), "the same pinned Three.js");
+});
+
+test("2.10: one world, one camera: pinned scenes, the cold open's rules, tiers, a governor, and shaders without undefined steps", ()=>{
+  // each scene spans two screens with a pinned frame and three resting frames; no CSS snapping (it fought slow scrolling)
+  const intro=page.slice(page.indexOf('<section class="intro"'), page.indexOf('<div class="wrap">'));
+  assert.equal((intro.match(/<div class="scene-pin">/g)||[]).length, 7);
+  assert.equal((intro.match(/<span class="snap" aria-hidden="true"><\/span>/g)||[]).length, 21);
+  assert.match(page, /\.scene\{position:relative;height:200vh;height:200svh;overflow:clip\}/);
+  assert.ok(!/scroll-snap-type/.test(page), "no CSS scroll snapping");
+  // the cold open: first direct visits only, never under reduced motion, ending after 4.2 s or at a real scroll
+  const head=page.slice(0, page.indexOf("</head>"));
+  assert.match(head, /if\(!still\)\{ d\.classList\.add\("hero-anim"\); d\.classList\.add\("cold"\);/);
+  assert.match(head, /setTimeout\(end, 4200\)/); assert.match(head, /if\(scrollY>8\)\{ end\(\);/);
+  // the grain and vignette are decorative
+  assert.match(page, /<div class="film" aria-hidden="true"><\/div>/);
+  assert.match(page, /@media \(prefers-reduced-motion: reduce\)\{ \.film::after,\.scroll-cue::after\{animation:none\} \}/);
+  // tiers: the full passes need a capable desktop with a GPU; a governor drops them if frames run slow; pixel ratio ≤ 1.5
+  assert.match(stage, /swiftshader\|llvmpipe\|software/);
+  assert.match(stage, /if\(avg>45\)\{ post=false;/);
+  assert.match(stage, /renderer\.setPixelRatio\(Math\.min\(devicePixelRatio, 1\.5\)\)/);
+  assert.match(stage, /document\.addEventListener\("visibilitychange"/);
+  assert.match(stage, /const restOf=Pv=>/, "reduced motion holds a resting frame");
+  // GLSL leaves smoothstep(a, b, x) undefined when a ≥ b (it gave NaN on some GPUs): none in the shaders
+  [...stage.matchAll(/smoothstep\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,/g)].forEach(m=> assert.ok(parseFloat(m[1])<parseFloat(m[2]), m[0]));
+  // the sequence's numbers still come from the engine (the scenes' builders), and Three.js stays pinned in one place
+  assert.match(stage, /sc\.c2one=sample\(S\(\{\}\), sc\.T2, 320\)/);
+  assert.ok((stage.match(/import\("three"\)/g)||[]).length===1);
 });

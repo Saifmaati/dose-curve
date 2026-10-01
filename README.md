@@ -2,7 +2,7 @@
 
 **An interactive pharmacokinetics and PK/PD simulator for pharmacy education.** Change a drug, a patient or a regimen and watch concentration and effect respond; estimate creatinine clearance, see saturable kinetics, and work graded clinical cases. (Not related to the open-source "dosecurve" package for fitting IC50 dose–response curves.)
 
-[![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml)
+[![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23082408.svg)](https://doi.org/10.5281/zenodo.23082408)
 
 **Live:** https://saifmaati.github.io/dose-curve/ · **Validation:** https://saifmaati.github.io/dose-curve/validation.html · **Teaching guide:** [docs/teaching-guide.md](docs/teaching-guide.md) · **For educators:** https://saifmaati.github.io/dose-curve/educators.html
 
@@ -10,7 +10,7 @@
 
 ![The opening screen: the word DoseCurve split across the screen, with the default curve as a 3D ribbon drawn from the model passing between the halves, and its Cmax, AUC and time in the window](docs/img/opening.png)
 
-Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. A first visit opens on a short scrolling introduction; any shared link goes straight to what it names. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
+Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. The site's address opens on a short scrolling introduction on every visit (back from the app returns to it); `#app` and any shared link go straight to what they name. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
 
 | A lesson, on paper | 200 virtual patients around their median |
 | --- | --- |
@@ -27,6 +27,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 - A **liver model** (optional): hepatic clearance and first-pass bioavailability from liver blood flow, the unbound fraction and intrinsic clearance (the well-stirred model), E = fu·CLint / (Q + fu·CLint), CL = Q·E and F = fabs·(1 − E), with the working shown.
 - **Individualize from levels** (Bayesian, in Clinical mode): measured levels, each tied to a dose, weighed against the patient model (maximum a posteriori, the approach of Sheiner et al. 1979), give the patient's own clearance, volume and half-life with 95% intervals, how much uncertainty the levels removed, the two-level estimate beside it, and the dose for an AUC24 or trough target.
 - **Hemodialysis:** sessions (their clearance, length and timing) add the dialyzer's clearance while they run. A table gives each session's level before and after, the amount removed and the IV dose that would restore the level. The readouts show the clearance on and off dialysis and the fall per session. With two compartments the level rebounds after each session as drug returns from the tissues, and the table gives the rebound's height and timing; the solution stays exact between events.
+- A **child** (since 2.10): weight, gestational age at birth and postnatal age give renal maturation and size by Rhodin et al. (2009): GFR = 121.2 × (WT/70)^0.75 × PMA^3.4 / (47.7^3.4 + PMA^3.4); the drug's renal part follows it, its non-renal part scales with size alone.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of 12 teaching profiles (gentamicin, vancomycin, meropenem, piperacillin-tazobactam, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop. **Indirect responses** (the four types of Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production or loss of something the body makes, and the response, as a percentage of its baseline, follows that turnover, with a lag set by its half-life.
@@ -143,7 +144,8 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge, with one or two compartments), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
-| `stage.js` | The 3D stage and the opening sequence (since 2.0), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
+| `stage.js` | The 3D stage and the opening sequence (since 2.0; one world and one camera, with its own post-processing, since 2.10), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
+| `methods.html` | Model and methods: every equation the simulator solves (MathML), how routes and schedules are modelled, what the tests cover, the disclaimer and the privacy statements; built by `tools/methods.py` |
 | `fonts/` | IBM Plex Sans and Mono, served from the site |
 | `tools/stamp.js` | Restamps the content hashes of the files loaded on demand (`node tools/stamp.js`) |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
@@ -160,7 +162,9 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.9.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.10.0. 2026. doi:10.5281/zenodo.23082408
+
+Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 
 ## Contributing
 

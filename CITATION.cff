@@ -5,8 +5,13 @@ type: software
 authors:
   - family-names: Maati
     given-names: Saif
-version: 2.9.0
+version: 2.10.0
 date-released: 2026-10-01
+doi: 10.5281/zenodo.23082408
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23082408
+    description: "All versions (resolves to the newest)"
 url: "https://saifmaati.github.io/dose-curve/"
 repository-code: "https://github.com/Saifmaati/dose-curve"
 license: MIT
@@ -19,8 +24,10 @@ keywords:
   - Michaelis-Menten
 abstract: >-
   DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD.
-  It models one-compartment kinetics (first-order or saturable Michaelis-Menten) for oral,
-  IV bolus and infusion dosing with regular, loading, missed and custom schedules, a clinical
-  patient with Cockcroft-Gault creatinine clearance, a cited drug library, guided lessons,
-  generated practice problems, clinical cases graded by the model, and a public validation
-  against an independent solver. It is an educational model, not for clinical dosing.
+  It models one- and two-compartment kinetics (first-order or saturable Michaelis-Menten) for
+  oral, IV bolus and infusion dosing with regular, loading, missed and custom schedules; a clinical
+  patient with Cockcroft-Gault creatinine clearance; hemodialysis, a liver model, antimicrobial
+  PK/PD indices, effect-site delays and indirect responses; population variability; and Bayesian
+  individualization from measured levels. It has a cited drug library, guided lessons, generated
+  practice problems, clinical cases graded by the model, and a public validation against an
+  independent solver. It is an educational model, not for clinical dosing.

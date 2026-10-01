@@ -8,7 +8,7 @@
   else if(root && root.PK) root.PK.metricMath=factory(root.PK);
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
-  const {keOf, vOf, windowStats, missedOf, ssConc, doseEvents, conc, derived, unitsOf, saltOf, clFactor, patientOf, CRCL_REF,
+  const {keOf, vOf, windowStats, missedOf, ssConc, doseEvents, conc, derived, unitsOf, saltOf, clFactor, patientOf, childOf, CRCL_REF,
     vmaxOf, mmCss, mmHalfAt, MM_STEP, disposition, hepOn, wellStirred, fOf, hdOn}=PK;
   const nf=(v,dp)=> String(+v.toFixed(dp));          // a number to dp decimals, without trailing zeros
   const twoCmt=p=> p.cmt===2 && p.kin!=="mm";
@@ -99,6 +99,12 @@
       case "thalf": if(hep) return {title:"Effective half-life", value:th, steps:[
           t(`Clearance comes from the liver model (well-stirred):`), ...hepSteps(),
           m(`kₑ = CL / V = ${n2(CL)} / ${n1(V)} = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = ${n1(th)} h`)]};
+        if(p.pm==="child"){ const c=childOf(p);
+        return {title:"Effective half-life", value:th, steps:[
+          t(`Size scales clearance by (weight / 70)^0.75, and its renal part fe also matures with postmenstrual age (Rhodin et al. 2009); the volume scales with weight:`),
+          m(`PMA = ${nf(p.ga,0)} + ${nf(p.pnaw,0)} = ${nf(c.pma,0)} weeks; maturation = PMA^3.4 / (47.7^3.4 + PMA^3.4) = ${n3(c.mf)}`),
+          m(`CL / CL(70 kg adult) = (${nf(p.wt,2)} / 70)^0.75 × [(1 − ${nf(p.fe,2)}) + ${nf(p.fe,2)} × ${n3(c.mf)}] = ${n3(c.rel)}`),
+          m(`kₑ = (0.693 / ${nf(p.thalf,2)}) × ${n3(c.rel)} / (${nf(p.wt,2)} / 70) = ${nk(k)} h⁻¹`), m(`t½ eff = 0.693 / kₑ = 0.693 / ${nk(k)} = ${n1(th)} h`)]}; }
         if(p.pm==="clinical"){ const pt=patientOf(p);
         return {title:"Effective half-life", value:th, steps:[
           t(`Clearance keeps its non-renal part (1 − fe) and scales its renal part fe by creatinine clearance, against a reference CrCl of ${CRCL_REF} mL/min:`),

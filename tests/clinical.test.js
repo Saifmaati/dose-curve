@@ -326,3 +326,33 @@ test("practice: Cockcroft–Gault with the ideal, adjusted or actual weight is n
   const seen9=new Set(); for(let seed=1;seed<=40;seed++) PK.makeWorksheet({topic:"rep", count:10, seed}).problems.forEach(p=>seen9.add(p.id));
   assert.ok(seen9.has("crclwt"), "version 9 sheets include it");
 });
+
+test("child: renal maturation and size (Rhodin et al. 2009), continuous with the adult model, in v13 links", ()=>{
+  const C=o=> PK.normalizeScenario(PK.scenario(Object.assign({pm:"child", fe:1}, o)));
+  // half the adult filtration rate per 70 kg at 47.7 weeks' postmenstrual age; about 90% one year after a term birth
+  near(PK.childOf(C({ga:40, pnaw:7.7})).mf, 0.5, 1e-12);
+  near(PK.childOf(C({ga:40, pnaw:52})).mf, 0.903, 0.001);
+  const c=C({wt:10, ga:40, pnaw:52}), k=PK.childOf(c);
+  near(k.gfr, 121.2*Math.pow(10/70,0.75)*k.mf, 1e-9, "GFR = 121.2 × (WT/70)^0.75 × maturation");
+  // the drug's clearance: renal part with maturation, non-renal by size alone, against a 70 kg adult's
+  const adult=PK.normalizeScenario(PK.scenario({fe:1})), CLa=PK.derived(adult).CL;
+  near(PK.derived(c).CL/CLa, Math.pow(10/70,0.75)*k.mf, 1e-9);
+  const half=C({wt:10, ga:40, pnaw:52, fe:0.5}), kh=PK.childOf(half);
+  near(PK.derived(half).CL/CLa, Math.pow(10/70,0.75)*(0.5+0.5*kh.mf), 1e-9);
+  near(PK.vOf(c), PK.DEFAULTS.V*10/70, 1e-12, "the volume scales with weight");
+  // a 70 kg child, fully mature: the adult's clearance
+  near(PK.derived(C({wt:70, ga:42, pnaw:156})).CL/CLa, 1, 0.01);   // maturation 0.992 at 198 weeks
+  // a preterm newborn: far less
+  const r=Math.pow(28/47.7,3.4); near(PK.childOf(C({wt:1, ga:28, pnaw:0})).mf, r/(1+r), 1e-12);   // 14% at 28 weeks
+  // links: v13, round trip; an older link can't hold a child or a weight under 40 kg
+  const link=PK.encodeLink({mode:"sim", s:c, view:PK.VIEW_DEFAULTS});
+  assert.ok(link.startsWith("v=13&"), link);
+  const back=PK.decodeLink(link).s; ["pm","wt","ga","pnaw","fe"].forEach(x=> assert.equal(back[x], c[x], x));
+  assert.equal(PK.decodeLink("v=12&s=wt:10").s.wt, 40); assert.equal(PK.decodeLink("v=12&s=pm:child").s.pm, "child");
+  // what applies
+  assert.equal(PK.isRelevant("ga", c), true); assert.equal(PK.isRelevant("scr", c), false); assert.equal(PK.isRelevant("clFn", c), false);
+  assert.equal(PK.isRelevant("hep", c), false); assert.equal(PK.isRelevant("fe", c), true); assert.equal(PK.isRelevant("ga", adult), false);
+  // the default scenario is untouched
+  const d=PK.derived(PK.normalizeScenario(PK.scenario({})));
+  assert.equal(d.cmax.toFixed(1), "9.3"); assert.equal(d.auc.toFixed(1), "74.2");
+});

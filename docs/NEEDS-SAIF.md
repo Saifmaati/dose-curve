@@ -4,62 +4,45 @@ Only these steps need your accounts or your judgment; everything else in Build P
 
 ## 1. Merge the release pull requests
 
-Merging is blocked for Claude Code by its auto-mode safety check ("Merge Without Review"). Each release is a pull request with green CI. On 2026-09-30 GitHub showed all of these open and `main` at 1.9.0 (da05093); a merge only counts once the pull request page says **Merged**.
+**Done to 2.9.0.** On 2026-10-01 the stack of release pull requests (#12–#30, 1.10.0 to 2.9.0) was merged through #30, and the live site serves 2.9.0. Later releases are pull requests again, each with green CI before it is merged. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
 
-| Release | Pull request | Release | Pull request |
-| --- | --- | --- | --- |
-| 1.10.0 | https://github.com/Saifmaati/dose-curve/pull/12 | 1.14.0 | https://github.com/Saifmaati/dose-curve/pull/16 |
-| 1.11.0 | https://github.com/Saifmaati/dose-curve/pull/13 | 1.15.0 | https://github.com/Saifmaati/dose-curve/pull/17 |
-| 1.12.0 | https://github.com/Saifmaati/dose-curve/pull/14 | 1.16.0 | https://github.com/Saifmaati/dose-curve/pull/18 |
-| 1.13.0 | https://github.com/Saifmaati/dose-curve/pull/15 | 1.17.0 | https://github.com/Saifmaati/dose-curve/pull/19 |
-| 1.17.1 | https://github.com/Saifmaati/dose-curve/pull/20 | 2.0.0 | https://github.com/Saifmaati/dose-curve/pull/21 |
-| 2.1.0 | https://github.com/Saifmaati/dose-curve/pull/22 | 2.2.0 | https://github.com/Saifmaati/dose-curve/pull/23 |
-| 2.3.0 | https://github.com/Saifmaati/dose-curve/pull/24 | 2.4.0 | https://github.com/Saifmaati/dose-curve/pull/25 |
-| 2.5.0 | https://github.com/Saifmaati/dose-curve/pull/26 | 2.6.0 | https://github.com/Saifmaati/dose-curve/pull/27 |
-| 2.7.0 | https://github.com/Saifmaati/dose-curve/pull/28 | 2.8.0 | https://github.com/Saifmaati/dose-curve/pull/29 |
-| 2.9.0 | the pull request from branch `v2.9.0` | | |
+| Release | Pull request |
+| --- | --- |
+| 2.10.0 | the pull request from branch `v2.10.0` |
+| 2.11.0 | the pull request from branch `v2.11.0` (after 2.10.0) |
+| 2.12.0 | the pull request from branch `v2.12.0` (after 2.11.0) |
 
-Each one contains the ones before it. Merging them one by one, oldest first, gives each release its own merge commit to tag:
+## 2. GitHub Releases
+
+**Done for 1.10.0 to 2.9.0** (2026-10-01): each is tagged on its release's commit (2.9.0 on #30's merge commit), with its CHANGELOG section as the notes, and 2.9.0 is marked as the latest. Tags v1.0.0 to v1.9.0 exist but have no Release. To add them too (Zenodo archives each one, with its own DOI), from the repository folder:
 
 ```bash
-for n in 12 13 14 15 16 17 18 19; do /Users/saifmaati/.local/bin/gh pr merge $n --repo Saifmaati/dose-curve --merge; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --latest=false --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
-Then merge 1.17.1 (#20), 2.0.0 (#21), 2.1.0 (#22), 2.2.0 (#23), 2.3.0 (#24), 2.4.0 (#25), 2.5.0 (#26), 2.6.0 (#27), 2.7.0 (#28), 2.8.0 (#29) and 2.9.0 the same way. Each contains the ones before it, so merging only the last one also works, at the cost of one merge commit for all of them. Afterwards Claude Code tags each merge commit, checks the live site byte for byte and runs Lighthouse. To let it merge after green CI in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+## 3. Zenodo DOI
 
-## 2. Create the GitHub Releases
-
-Tags `v1.0.0` to `v1.9.0` are pushed; v1.10.0 onward are tagged as they merge. Creating the Releases is blocked for Claude Code ("Create Public Surface"), and Zenodo archives a release, not a tag. From the repository folder, oldest first, each with its CHANGELOG section as the notes:
-
-```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0 1.17.1 2.0.0 2.1.0 2.2.0 2.3.0 2.4.0 2.5.0 2.6.0 2.7.0 2.8.0 2.9.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
-```
-
-To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)`.
-
-## 3. Zenodo: DOI expected with the first release
-
-**Status:** Zenodo is enabled for the repository (Saif, 2026-09-30). The repository id is 1343327284; `https://zenodo.org/badge/latestdoi/1343327284` returned 404 on 2026-09-30 because no Release exists yet. Once the Releases exist, Zenodo archives each release and mints a DOI; each later release checks the badge again and, when it resolves, adds the DOI badge and a "Cite" section to the README and the app footer, and a `doi:` line to `CITATION.cff`.
+**Minted.** The Releases gave DoseCurve its concept DOI, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), which covers all versions and resolves to the newest; each release also has its own version DOI on that page. 2.10.0 adds it to the README (a badge and How to cite), `CITATION.cff` and the app's footer. Nothing to do.
 
 ## 4. Turn on visit counting (optional)
 
 **Why:** it needs a GoatCounter account.
 
 1. Sign up at https://www.goatcounter.com and choose a site code, for example `dosecurve`.
-2. In `index.html`, set `const ANALYTICS_SITE_ID="dosecurve";` (search for `ANALYTICS_SITE_ID`).
+2. In `index.html` and `methods.html`, set `const ANALYTICS_SITE_ID="dosecurve";` (search for `ANALYTICS_SITE_ID`; in `tools/methods.py` too, so a rebuild keeps it).
 3. Commit the change.
 
-The footer then says "Visit counting: on". GoatCounter is cookie-free and receives only the page's path, never a link's settings. The privacy note in the footer already describes what is counted and what isn't.
+Model and methods then says "Visit counting: on". GoatCounter is cookie-free and receives only the page's path, never a link's settings. The privacy note in the footer already describes what is counted and what isn't.
 
 ## 5. Delete the merged branches
 
-Blocked for Claude Code ("Git Destructive"). These are fully merged into `main`:
+Blocked for Claude Code ("Git Destructive"). All 30 release branches (and `two-compartment`) are merged into `main`, and every release's commit is kept by its tag. This deletes them on GitHub and then deletes the local branches that are fully merged (`git branch -d` refuses any that aren't):
 
 ```bash
-git push origin --delete two-compartment v1.0 v1.2 v1.3 v1.4 v1.4.1 v1.5.0 v1.6.0 v1.7.0 v1.8.0 v1.9.0
+cd /Users/saifmaati/Desktop/dose-curve && git push origin --delete two-compartment v1.0 v1.2 v1.3 v1.4 v1.4.1 v1.5.0 v1.6.0 v1.7.0 v1.8.0 v1.9.0 v1.10.0 v1.11.0 v1.12.0 v1.13.0 v1.14.0 v1.15.0 v1.16.0 v1.17.0 v1.17.1 v2.0.0 v2.1.0 v2.2.0 v2.3.0 v2.4.0 v2.5.0 v2.6.0 v2.7.0 v2.8.0 v2.9.0 && git fetch --prune && git switch main && git pull --ff-only && git branch -d $(git branch --format='%(refname:short)' | sed 's#^heads/##' | grep -vxE 'main|v2\.10\.0')
 ```
 
-After step 1, the release branches `v1.10.0` to `v1.17.1` can go the same way. To let Claude Code delete them after each merge, allow `Bash(git push origin --delete:*)`.
+To let Claude Code delete a release branch after its merge in future runs, allow `Bash(git push origin --delete:*)`.
 
 ## 6. The build plan files on `main`
 
