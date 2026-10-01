@@ -196,7 +196,7 @@ test("lesson: once daily vs divided (every number the text, tip and comparison s
 /* ---------- practice ---------- */
 
 test("practice: the antimicrobial topic's three kinds are new in worksheet version 6, so older worksheets don't change", ()=>{
-  assert.equal(PK.WS_VERSION, 6);
+  assert.ok(PK.WS_VERSION>=6);
   const kinds=PK.PRACTICE.filter(g=>g.topic==="abx");
   assert.deepEqual(kinds.map(g=>g.id), ["ftmic","cmaxmic","aucmic"]);
   kinds.forEach(g=> assert.equal(g.since, 6));

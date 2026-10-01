@@ -1676,7 +1676,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=1c318470a2" defer></script>
+<script src="pk-engine.js?v=ad34452205" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1871,6 +1871,19 @@
     });
     return idrLoad;
   }
+  const SOURCES_SRC="pk-sources.js?v=6b5fbf7ff9";
+  let srcLoad=null;
+  function loadSources(){
+    if(PK.sourcesModule) return Promise.resolve();
+    if(!srcLoad) srcLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=SOURCES_SRC;
+      sc.onload=()=> PK.sourcesModule ? res() : rej(new Error("no sources"));
+      sc.onerror=()=>{ srcLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return srcLoad;
+  }
   const IDR_NAME=["Direct (Emax model)","Inhibits production","Inhibits loss","Stimulates production","Stimulates loss"];
   const BAYES_SRC="pk-bayes.js?v=49979aea6b";
   let bayesLoad=null, bzCache={key:"", est:null};
@@ -1966,7 +1979,9 @@
     const drugs=[...new Set(curves.filter(cv=>!cv.ghost).map(cv=>pkpdDrug(cv.p)))];
     h+=`<div class="cm-h">Index and target</div>`+drugs.map(d=>{
       if(!d) return "No library drug matches this scenario, so no index or target is named: published targets differ by drug class, organism and infection model, and DoseCurve shows one only where a cited source gives it.";
-      const P=d.pkpd, src=PK.SOURCES[P.src], cite=`<a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite.split(".")[0])}</a>`;
+      const P=d.pkpd, src=PK.SOURCES[P.src];
+      if(!src) loadSources().then(render).catch(()=>{});
+      const cite=src ? `<a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite.split(".")[0])}</a>` : "loading the source";
       let t=`${esc(d.name)}: ${INDEX_NAME[P.index]}. Its source: ${esc(P.note)} (${cite}).`;
       if(P.lo!=null){
         const m=rows.find(r=>!r.cv.ghost && pkpdDrug(r.cv.p)===d).m, v=m.aucMic;
@@ -4218,7 +4233,8 @@
       (d.S!==1 ? `<dt>S</dt><dd>${trim(+d.S.toPrecision(5))} ${d.units==="meq" ? "mEq of lithium per mg" : "active drug per mg of salt"}</dd>` : "")+
       `<dt>Units</dt><dd>dose in ${u.dose}, levels in ${u.conc}</dd><dt>Forms</dt><dd>${esc(forms)}</dd></dl>`+
       `<details><summary>Where these values come from</summary><ol>`+
-      d.refs.map(r=>{ const src=r.src && PK.SOURCES[r.src];
+      (d.refs ? "" : (loadSources().then(renderDrugInfo).catch(()=>{}), "<li>Loading the sources…</li>"))+
+      (d.refs||[]).map(r=>{ const src=r.src && PK.SOURCES[r.src];
         return `<li><b>${REF_NAME[r.k]||esc(r.k)}</b> ${esc(r.v)}: `+(src
           ? `${esc(r.note)}. <a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite)}</a>`
           : `<span class="unv">${esc(r.note)}</span>`)+`</li>`; }).join("")+
@@ -5392,7 +5408,7 @@
       sc.src=CASES_SRC; sc.onload=()=> window.DCCases ? res(window.DCCases) : rej(new Error("no cases"));
       sc.onerror=()=> rej(new Error("load"));
       document.head.appendChild(sc);
-    }), loadBayes()]).then(([C])=>C).catch(err=>{ casesReady=null; throw err; });
+    }), loadBayes(), loadSources()]).then(([C])=>C).catch(err=>{ casesReady=null; throw err; });
     return casesReady;
   }
   const casesHost={esc, fmt, toast, copyHash, loadPractice:()=>loadPractice(),
