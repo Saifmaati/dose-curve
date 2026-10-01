@@ -2,6 +2,25 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.13.0 (2026-09-30)
+
+- **Antimicrobial PK/PD.** Under the therapeutic window, enter the organism's MIC and the drug's unbound fraction (fu):
+  - **fT>MIC**, the share of each steady-state interval that the unbound level (fu × the total, taken as constant) stays above the MIC; **Cmax/MIC** and **AUC24/MIC** on the total level, with the unbound versions beside them. A single dose or a custom schedule is read over the time window, with the AUC over the first 24 hours.
+  - The chart draws the MIC line and the unbound level (dotted), and Compare lists the three indices for A and B.
+  - Each library antimicrobial names its index from a cited source: time above the MIC for piperacillin and meropenem (their labels), the peak ratio for gentamicin (Moore et al. 1987), AUC24/MIC for vancomycin (the 2020 guideline). A numeric target appears only where the source gives one (vancomycin's 400–600); otherwise the panel says why there is none.
+- **Piperacillin-tazobactam** joins the library (12 drugs), from its DailyMed label: half-life 0.84 h, volume 15.1 L (clearance 208 mL/min against the label's 207, and an AUC of 241 against 242 per 3 g), 30% bound, 68% excreted unchanged. Doses are the piperacillin in each: 3,000 mg in 3.375 g. Loading it sets the MIC to 16 mg/L, the FDA susceptible breakpoint for *Pseudomonas aeruginosa*. The dose range now reaches 4,000 mg; the slider stops at 2,000 unless a dose needs more.
+- **Two lessons (32 in all), in a new group, *Antimicrobial PK/PD*:**
+  - *Extended infusion:* the same 12 g a day keeps the unbound level above 16 mg/L for 47% of each interval as 30-minute infusions, 69% over 3 hours, and 100% as a continuous infusion, with the same AUC24/MIC of 60. The tip tries the extended-infusion scheme of Lodise et al. (2007): 57% on 9 g a day.
+  - *Once daily vs divided:* the same 480 mg of gentamicin a day gives a Cmax/MIC of 24.9 once daily against 9.3 divided, and an fT>MIC of 48% against 99.5%, with the same AUC24/MIC.
+  - Each has a matching comparison (25), and every number they state is tested.
+- **A practice topic, *Antimicrobial PK/PD* (40 kinds):** fT>MIC for an IV bolus at steady state, Cmax/MIC for an intermittent infusion, and AUC24/MIC. Worksheet pools are at version 6; version-5 links rebuild exactly.
+- **A case (15 in all):** *Piperacillin-tazobactam with reduced kidney function* reads the label's renal table (CrCl 31 mL/min: 2.25 g every 6 hours), then compares fT>MIC for 30-minute and 3-hour infusions and the extended-infusion scheme.
+- **Community cases** can set an fT>MIC target: the author's MIC and the least share of each interval. The solvability check stays exact (fT>MIC rises with the dose, so the grid is bisected).
+- **Five glossary terms (63):** minimum inhibitory concentration, unbound fraction, Cmax/MIC, AUC24/MIC, and extended infusion.
+- **Validated independently:** 12 regimens run to steady state in the SciPy solver agree on fT>MIC within 0.01 percentage points and on Cmax/MIC and AUC24/MIC within 0.01% (in practice about one part in a billion); the validation page shows them (660 comparisons in all). The tests also hold fT>MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.
+- Links that carry fu, an MIC or a dose above 2,000 mg are version 9. Every older link opens as before, including the 2,000 mg dose limit its page had.
+- The share card says 32 lessons.
+
 ## 1.12.0 (2026-09-30)
 
 - **Write a case.** Under *Cases → For instructors*, an instructor describes a patient (age, sex, height, weight, serum creatinine), chooses a first-order drug from the library (optionally with their own half-life, volume or bioavailability, shown beside the library's), the regimens students may pick, and a target at steady state (a peak range with a trough limit, or an AUC24 range), with the setting, the task, notes and references (shown as author-provided).

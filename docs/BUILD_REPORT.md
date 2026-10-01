@@ -291,3 +291,20 @@ There are 308 tests in 13 files. The initial script is +14.7% over the Phase 0 b
 
 There are 314 tests in 14 files. The initial script is +14.8% over the Phase 0 baseline (limit +25%); the instructor tools live in the lazily loaded cases.js.
 
+## 22. 1.13.0 (Plan V2, Phase D)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Antimicrobial indices (`PK.micStats`): fT>MIC on the unbound level, Cmax/MIC, AUC24/MIC; steady state for a regular regimen, the window otherwise | Simulator → Antimicrobial PK/PD; the MIC line and dotted unbound level on the chart; Compare rows | `pkpd.test.js` (IV-bolus closed form over 200 random regimens; continuous infusion exactly 100% and 0%; both infusion crossings in closed form; MIC and fu scaling; loading and missed doses; window reading) |
+| SciPy reference: 12 regimens run to steady state | validation.html | `pkpd.test.js` (fT>MIC within 0.01 pp, ratios within 0.01%; observed ~1e-9) |
+| Each antimicrobial's index from its source; a numeric target only where cited (vancomycin) | the panel's *Index and target* | `pkpd.test.js` |
+| Piperacillin-tazobactam from its label (CL 208 vs 207 mL/min, AUC 241 vs 242) | Drug library | `pkpd.test.js`, `clinical.test.js` (every value sourced) |
+| v9 links: fu, the MIC, doses to 4,000 mg; older links clamp as before | Copy link | `pkpd.test.js`, `pk-engine.test.js` |
+| Lessons 30–31 (*Extended infusion*, *Once daily vs divided*), two comparisons | Lessons → Antimicrobial PK/PD | `pkpd.test.js` (every number the text, tip and comparison state; challenges hold their conditions) |
+| Practice topic (fT>MIC, Cmax/MIC, AUC24/MIC), worksheet pools v6 | Practice → Antimicrobial PK/PD | `pk-engine.test.js` (every answer against the model), `pkpd.test.js` (v5 sheets unchanged) |
+| Case 15: piperacillin-tazobactam with reduced kidney function | Cases tab | `cases.test.js` |
+| Community cases: an fT>MIC target, solved by bisection | Write a case | `instructor.test.js` (count equals grading every regimen, four drugs) |
+| Glossary 63 | Lessons → Glossary | `pk-engine.test.js` |
+
+There are 327 tests in 15 files. The initial script is +19.6% over the Phase 0 baseline (limit +25%). axe: no violations on the simulator with the panel open.
+

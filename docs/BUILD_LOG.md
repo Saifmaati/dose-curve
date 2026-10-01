@@ -72,3 +72,5 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 18:14 | 1.12 | Instructor tools: write a case, assignments, completion codes and verification; class guide; privacy notes | done | 8813e6f |
 | 2026-09-30 18:14 | 1.12 | Assignment builder selects labelled (axe clean in both themes) | done | df5c499 |
 
+| 2026-09-30 20:19 | 1.13 | Antimicrobial PK/PD: MIC and fu, fT>MIC / Cmax/MIC / AUC24/MIC panel, chart and Compare; piperacillin-tazobactam; two lessons; practice topic; reduced-CrCl case; glossary 63; SciPy PK/PD reference; v9 links | done | c6ae185 |
+| 2026-09-30 20:22 | 1.13 | Community cases: fT>MIC target, solved by bisection | done | f242195 |

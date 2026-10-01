@@ -8,7 +8,10 @@ A few steps need your accounts or your judgment. Each one says why it wasn't don
 
 - 1.10.0: https://github.com/Saifmaati/dose-curve/pull/12 (branch `v1.10.0`)
 - 1.11.0: https://github.com/Saifmaati/dose-curve/pull/13 (branch `v1.11.0`)
-- 1.12.0: the pull request from branch `v1.12.0` (it includes 1.10.0 and 1.11.0 until those merge)
+- 1.12.0: https://github.com/Saifmaati/dose-curve/pull/14 (branch `v1.12.0`)
+- 1.13.0: the pull request from branch `v1.13.0` (it includes 1.10.0–1.12.0 until those merge)
+
+Each pull request contains the ones before it, so merging only the newest (1.13.0) also brings in the rest; GitHub then marks the older ones merged. Merging them one by one, oldest first, keeps one merge commit per release for the tags.
 
 ```bash
 /Users/saifmaati/.local/bin/gh pr merge 12 --repo Saifmaati/dose-curve --merge
@@ -27,12 +30,12 @@ To let Claude Code merge after green CI in future runs, allow `Bash(/Users/saifm
 | v1.2.0 | 2d50c74 | v1.7.0 | b1ae2f3 |
 | v1.3.0 | e178f31 | v1.8.0 | b31ff5e |
 | v1.4.0 | 36e3abf | v1.9.0 | da05093 |
-| v1.4.1 | fadf6bd | v1.10.0 – v1.12.0 | their merge commits (tagged when they merge) |
+| v1.4.1 | fadf6bd | v1.10.0 – v1.13.0 | their merge commits (tagged when they merge) |
 
 From the repository folder, this creates each one with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)` in `~/.claude/settings.json`.
@@ -71,6 +74,7 @@ Every drug-library value either names its source or is marked "typical textbook 
   - The convention of rounding IV doses to 10 mg (gentamicin) and 250 mg (vancomycin).
 - **Bayesian panel:** the prior's CVs (30% on clearance, 20% on volume) and the level error model (10% proportional plus a tenth of the MEC) are teaching assumptions; drug-specific values would need a cited population model.
 - **Liver model:** hepatic blood flow of 90 L/h in the glossary and the model's defaults (fu 0.5, CLint 20 L/h), teaching values.
+- **Antimicrobial MICs:** meropenem's 2 mg/L and the gentamicin lesson's 1 mg/L are illustrative (flagged); piperacillin's 16 mg/L is the FDA breakpoint for *P. aeruginosa* (cited). No numeric fT>MIC or Cmax/MIC target is shown because none was verified (the abstracts of Craig 1998 and Moore 1987 state none); if you have the full papers or a textbook table, the targets can be added with their citation.
 - **Sheiner–Tozer:** the CrCl threshold for the end-stage kidney variant. References disagree (under 10 or under 20 mL/min), so it is left to the user.
 
 If you have Winter's *Basic Clinical Pharmacokinetics* or Bauer's *Applied Clinical Pharmacokinetics*, you can confirm the textbook values. Add a reference entry in `pk-engine.js` (`SOURCES` and the drug's `refs`), with chapter or page, and the "unverified" label goes away.
@@ -92,6 +96,8 @@ Later release branches (`v1.10.0` onward) are listed in the build log as they me
 ```bash
 cp ~/Downloads/DOSECURVE-BUILD-PLAN-V2.md docs/BUILD_PLAN_V2.md && cp ~/Downloads/DOSECURVE-OUTREACH-EMAILS.md docs/OUTREACH.md && git add docs/BUILD_PLAN_V2.md docs/OUTREACH.md && git commit -m "docs: build plan v2 and outreach drafts" && git push origin main
 ```
+
+The outreach drafts in Downloads describe DoseCurve as of 1.9 ("10 clinical cases", "29 guided lessons"). Before sending, update the numbers: as of 1.13.0 there are 15 clinical cases, 32 guided lessons, 40 kinds of practice problems and 12 library drugs, plus antimicrobial PK/PD (fT>MIC, Cmax/MIC, AUC24/MIC), Bayesian individualization from levels, and instructor tools (write a case, assignments, completion codes).
 
 ## 8. After merging
 

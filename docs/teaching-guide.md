@@ -63,7 +63,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (30)
+## Guided lessons (32)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
@@ -75,13 +75,14 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
 | PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
 | Liver and first pass | Hepatic extraction · First pass and induction · Liver blood flow |
+| Antimicrobial PK/PD | Extended infusion (fT>MIC) · Once daily vs divided (Cmax/MIC) |
 | Levels and individualization | One level and a prior |
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
-The **glossary** under the lessons defines 58 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 63 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
-## Clinical cases (14)
+## Clinical cases (15)
 
 The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
 
@@ -104,6 +105,7 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | Gentamicin: when the second level comes back higher | Assay error larger than the fall between two close levels breaks the two-level method outright (a negative elimination rate); the Bayesian estimate still gives a regimen on target |
 | Levetiracetam with reduced kidney function | A renal table set by creatinine clearance per 1.73 m² (body surface area, Mosteller); choosing a dose within the label's range by matching exposure to normal kidneys |
 | Meropenem with reduced kidney function | Reading a label's renal table (Cockcroft–Gault rows); why the interval stretches; the unadjusted regimen nearly doubles exposure, the adjusted one stays near normal while keeping most of each interval above the MIC |
+| Piperacillin-tazobactam with reduced kidney function | The label's renal table (CrCl 20–40 mL/min: 2.25 g every 6 hours); fT>MIC on the unbound level against the FDA breakpoint for *P. aeruginosa* (16 mg/L); reduced clearance keeps each dose above the MIC longer; the same regimen over 3 hours, and an extended-infusion scheme (Lodise 2007), compared |
 | Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
 | Digoxin in an older adult | ng/mL targets, a long half-life, and the loading dose |
 | Theophylline in a smoker | A cited clearance factor (about +50%) and a narrow window |
@@ -112,15 +114,25 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 
 No case stores an answer: every target check, hint, walkthrough number and reference regimen is worked out from the model when the case opens, and the tests check that each case's reference regimen passes and that a deliberately wrong one gets the expected hint. The cases teach reasoning; they are not prescribing instructions.
 
+## Antimicrobial PK/PD
+
+Under the therapeutic window, **Antimicrobial PK/PD** takes the organism's MIC and the drug's unbound fraction (fu), and reads three indices for the scenario on the chart (and for the baseline, or for A and B):
+
+- **fT>MIC:** the share of each steady-state interval that the unbound level, fu × the total, stays above the MIC. The chart draws the MIC line and the unbound level, dotted, so students can see where they cross.
+- **Cmax/MIC** and **AUC24/MIC**, on the total level, as the 2020 vancomycin guideline reads AUC24/MIC; the unbound versions are shown beside them.
+
+A repeated regimen is read at steady state over one interval; a single dose or a custom schedule over the time window. Loading a library antimicrobial sets its MIC and fu: piperacillin-tazobactam starts at 16 mg/L (the FDA susceptible breakpoint for *P. aeruginosa*), meropenem at an illustrative 2 mg/L, vancomycin at the 1 mg/L the guideline assumes. The panel names each drug's index from its label or guideline (time above the MIC for piperacillin and meropenem, the peak ratio for gentamicin, AUC24/MIC for vancomycin). It shows a numeric target only where the cited source gives one, vancomycin's 400–600, and otherwise says why there is none: published targets differ by drug class, organism and infection model. Compare lists the three indices for A and B. Two lessons, a practice topic and the piperacillin case use it. A good class exercise: give the same daily dose of piperacillin as 30-minute, 3-hour and continuous infusions (47%, 69% and 100% of each interval above 16 mg/L, with the same AUC24), then do the same with gentamicin's peak ratio and watch the two indices pull in opposite directions.
+
 ## Practice and assessment
 
-- **Practice problems.** There are 37 kinds of calculation problem in six topics:
+- **Practice problems.** There are 40 kinds of calculation problem in seven topics:
   - single dose (12 kinds, including clearance from a two-compartment fit)
   - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
   - infusions (6, including the AUC from two measured levels)
   - concentration–effect (5, including the time of the peak effect with an effect-site delay)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
   - liver and first pass (3): hepatic clearance by the well-stirred model, oral bioavailability after the first pass, and what induction does to IV exposure
+  - antimicrobial PK/PD (3): fT>MIC for an IV bolus at steady state (on the unbound level), Cmax/MIC for an intermittent infusion, and AUC24/MIC
 
   Each has a worked solution. **Visualize on curve** opens the problem's scenario with the cursor on the moment the question asks about. Answers within 2% count, so working with 0.693 for ln 2 is fine.
 - **One problem for everyone.** **Copy link to this problem** gives a link that rebuilds exactly the same numbers.
@@ -215,7 +227,7 @@ The drug presets use typical textbook values and are not prescribing information
 
 ## Run a class in ten minutes
 
-1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, or an AUC24 range. You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, DoseCurve checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
+1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, an AUC24 range, or a time above the MIC (your MIC and the least share of each interval the unbound level must stay above it). You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, DoseCurve checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
 2. **Make an assignment.** In **Make an assignment**, add up to 12 items in order: built-in cases, the case you just wrote, and worksheets (a topic and 5, 10 or 15 problems). Copy the one link and post it.
 3. **Choose a class key** and tell your class separately; it isn't in the link. Give each student an identifier that isn't their name (a seat or roster number).
 4. **Students work through the assignment** in the browser: each case is graded as they check a regimen, and worksheet answers are checked as they go. Their progress stays in their own browser.

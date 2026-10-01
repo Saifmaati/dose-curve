@@ -19,23 +19,24 @@
 - A **liver model** (optional): hepatic clearance and first-pass bioavailability from liver blood flow, the unbound fraction and intrinsic clearance (the well-stirred model), E = fu·CLint / (Q + fu·CLint), CL = Q·E and F = fabs·(1 − E), with the working shown.
 - **Individualize from levels** (Bayesian, in Clinical mode): measured levels, each tied to a dose, weighed against the patient model (maximum a posteriori, the approach of Sheiner et al. 1979), give the patient's own clearance, volume and half-life with 95% intervals, how much uncertainty the levels removed, the two-level estimate beside it, and the dose for an AUC24 or trough target.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
-- A **drug library** of 11 teaching profiles (gentamicin, vancomycin, meropenem, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
+- A **drug library** of 12 teaching profiles (gentamicin, vancomycin, meropenem, piperacillin-tazobactam, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop.
+- **Antimicrobial PK/PD:** enter the organism's MIC (and the drug's unbound fraction) to read fT>MIC on the unbound level, Cmax/MIC and AUC24/MIC at steady state, with the MIC line and the unbound level drawn on the chart. Each antimicrobial in the library names the index its label or guideline gives; a numeric target appears only where a cited source states one (vancomycin's AUC24/MIC of 400–600).
 - A **population**: 50–1,000 virtual patients with log-normal variability on clearance (or Vmax, for a saturable drug) and volume, drawn as a 5th–95th percentile band. With saturable elimination it also reports the share whose input exceeds their own Vmax, so they never reach a steady state. It reports the probability of target attainment at steady state (and for an AUC24 range), is computed in a Web Worker, and reproduces from its seed.
 
 ![One or two compartments: vancomycin with the same clearance, a higher peak and the same AUC24](docs/img/two-compartments.png)
 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
-- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 23 one-click comparisons.
+- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 25 one-click comparisons.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 
 ![An effect-site delay: the effect lags the plasma level, peaks later and lower, and traces a counterclockwise loop against it](docs/img/effect-delay.png)
 
 **Teach and practise**
-- **30 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
-- **14 clinical cases** (gentamicin conventional, once daily, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
-- **37 kinds of generated practice problems** in six topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 58-term glossary.
+- **32 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
+- **15 clinical cases** (gentamicin conventional, once daily, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem, piperacillin-tazobactam and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
+- **40 kinds of generated practice problems** in seven topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 63-term glossary.
 - **For instructors:** write a case (patient, drug, regimen choices and target) and share it as a link, checked for a solution before the link is made and marked as an unreviewed community case; put cases and worksheets in one assignment link; and verify the completion codes (HMAC-SHA256 with a class key) students make at the end. Nothing is sent anywhere.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case, an assignment), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
 
@@ -61,6 +62,8 @@ The test suite and the [validation page](https://saifmaati.github.io/dose-curve/
 - the Cockcroft–Gault and Devine hand values
 
 It also checks the Bayesian estimates: on 20 scenarios with one to three measured levels, an independent SciPy implementation of the same objective agrees on clearance and volume within 0.5% (in practice to within 0.00003%).
+
+And the antimicrobial indices: 12 regimens (piperacillin by 30-minute, extended and continuous infusion, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; oral; IV bolus; two compartments) run to steady state in the ODE solver. fT>MIC agrees within 0.01 percentage points and Cmax/MIC and AUC24/MIC within 0.01% (in practice to about one part in a billion). The tests also hold fT>MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.
 
 A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect (with and without an effect-site delay) are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
 
