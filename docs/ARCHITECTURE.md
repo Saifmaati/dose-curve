@@ -21,6 +21,7 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `pk-tdm.js` | When to sample: the dose from which a repeated regimen is within 10% of steady state, and the model's peak and trough times in that interval | when its section opens |
 | `ui-chartfx.js` | The concentration chart's motion: particles along the curve, the curve drawing itself, the doses' pulses, lit doses and intervals, the plane's tilt (2.13) | just after the first paint |
 | `ui-effect.js` | The effect charts: effect over time and the concentration–effect curve (2.13) | when the Effect switch is first on, or a link opens with it |
+| `ui-worksheet.js` | A practice worksheet's view and print (2.15) | with the first worksheet |
 | `pk-explain.js` | The sentences under "What changed" and in Compare: what moved between two scenarios and why, with the model's numbers | just after the first paint; a link that opens with a baseline waits for it |
 | `pk-sources.js` | The drug library's citations | when a drug's sources or a case's references show |
 | `cases.js` | The clinical cases, their grading, the case and assignment writers | when Cases or a case link opens |

@@ -41,7 +41,8 @@ test("the root sequence plays on every visit to the root address; #app and conte
   // back from the app returns to the sequence: one #app entry, pushed once and replaced after; back and forward between
   // the two never reload; Home adds an entry for the root address and replays the sequence
   assert.match(page, /history\.pushState\(\{dc:1\}, "", url\); else history\.replaceState\(\{dc:1\}, "", url\)/);
-  assert.match(page, /\(was==="" \|\| was==="#app"\) && \(h==="" \|\| h==="#app"\)\)\{ if\(h\) toApp\(\); else showSeq\(\); return; \}\n\s+location\.reload\(\);/);
+  assert.match(page, /\(was==="" \|\| was==="#app"\) && \(h==="" \|\| h==="#app"\)\)\{ if\(h\) toApp\(\); else showSeq\(\); return; \}/);
+  assert.match(page, /if\(inPage\(was\) && h in TAB_OF\)\{[^\n]*\}\n\s+location\.reload\(\);/);   // (2.15: the tabs' own addresses too; anything else reloads)
   assert.match(page, /byId\("homeLink"\)\.addEventListener\("click",e=>\{ e\.preventDefault\(\); if\(location\.hash\) history\.pushState/);
   assert.match(head, /n\.deviceMemory<4 \|\| n\.hardwareConcurrency<4/);
   assert.match(head, /localStorage\.getItem\("dosecurve\.effects"\)/);
@@ -124,7 +125,7 @@ test("2.10: one world, one camera: pinned scenes, the cold open's rules, tiers, 
   assert.match(page, /@media \(prefers-reduced-motion: reduce\)\{ \.film::after,\.scroll-cue::after\{animation:none\} \}/);
   // tiers: the full passes need a capable desktop with a GPU; a governor drops them if frames run slow; pixel ratio ≤ 1.5
   assert.match(stage, /swiftshader\|llvmpipe\|software/);
-  assert.match(stage, /if\(avg>45\)\{ post=false;/);
+  assert.match(stage, /if\(avg>45\) dropPasses\(\);/); assert.match(stage, /const dropPasses=\(\)=>\{ post=false;/);
   assert.match(stage, /renderer\.setPixelRatio\(Math\.min\(devicePixelRatio, 1\.5\)\)/);
   assert.match(stage, /document\.addEventListener\("visibilitychange"/);
   assert.match(stage, /const restOf=Pv=>/, "reduced motion holds a resting frame");
@@ -279,4 +280,37 @@ test("2.14: the workspace: the chart fills a desktop screen, the controls are a 
   assert.match(stage, /drift\.x=clamp\(r0\.userData\.xs\[bi\]\*0\.32, -2\.4, 2\.4\)/);
   // phones keep the stacked layout: the workspace rules are inside the desktop media query only
   assert.ok(!/@media \(max-width:760px\)\{[^}]*\.rail\{display:flex/.test(page));
+});
+
+test("2.15: motion and tabs: one virtual scroll for camera, objects and headlines; crossfades of opacity and transform; tab history; preloads; glass sheets", ()=>{
+  // the virtual scroll: eased toward the real one each frame (lerp 0.1) and handed to the 3D stage, which no longer
+  // smooths on its own
+  assert.match(stage, /else vP\+=\(vTarget-vP\)\*0\.1;/);
+  assert.match(stage, /sceneState\(vP\); if\(three\) three\.setP\(vP\);/);
+  assert.match(stage, /setP:v=>\{ Psm=Ptg=Math\.max\(0,v\); vSetAt=performance\.now\(\); frame\(\); \}/);
+  assert.ok(!/Psm\+=d\*\.14/.test(stage), "no second smoothing in the stage");
+  // headlines: classes the stylesheet turns into 0.8 s transitions of opacity and transform alone, with the brief's
+  // easing; no blur filter; without the script everything shows; reduced motion: no transitions
+  assert.match(page, /html\.seq-js \.scene-pin>h1,html\.seq-js \.scene-pin>h2,html\.seq-js \.scene-pin>\.cap,html\.seq-js \.scene-pin>\.small>:not\(\.hero-chip\),html\.seq-js \.hero-ro>div\{\n\s+opacity:0;transform:translateY\(26px\);transition:opacity \.8s cubic-bezier\(\.22,1,\.36,1\),transform \.8s cubic-bezier\(\.22,1,\.36,1\)\}/);
+  assert.ok(!/filter:blur\(calc\(\(1 - var\(--in/.test(page), "no blur on the headlines");
+  assert.match(page, /@media \(prefers-reduced-motion: reduce\)\{ html\.seq-js \.scene-pin>\*/);
+  // the snap waits for a trackpad's momentum; the frame budget: the governor gives up the passes (and the glass's
+  // transmission) after three frames over 20 ms in 4 s of motion
+  assert.match(stage, /\}, 320\);   \/\/ \(after a trackpad's momentum has run out\)/);
+  assert.match(stage, /if\(moving && dt>21\)\{ slowHits\.push\(now\); slowHits=slowHits\.filter\(t=> now-t<4000\); if\(slowHits\.length>=3\)\{ dropPasses\(\); return; \} \}/);
+  // tabs: their own addresses are pushed and walked in the page (back and forward), anything else reloads; a 0.5 s
+  // crossfade; the top nav's hairline; the other tabs' files preloaded; a content link's files asked for at once
+  assert.match(page, /const TAB_OF=\{"#app":"sim", "#compare":"cmp", "#lessons":"ls", "#cases":"cs", "#practice":"pr"\}/);
+  assert.match(page, /history\.pushState\(\{dc:1, tab:which\}, "", location\.pathname\+location\.search\+h\);/);
+  assert.match(page, /\.tab-in\{animation:tabIn \.5s cubic-bezier\(\.22,1,\.36,1\)\}/);
+  assert.match(page, /\.top-links::after\{content:"";position:absolute;/);
+  assert.match(page, /loadLessons\(\)\.catch\(\(\)=>\{\}\); loadPractice\(\)\.catch\(\(\)=>\{\}\); loadCases\(\)\.catch\(\(\)=>\{\}\);/);
+  const head=page.slice(0, page.indexOf("</head>"));
+  [["pk-lessons.js",/\[#&\]l=/],["cases.js",/case\|bundle/],["pk-practice.js",/practice\$\|p=\|ws=/]].forEach(([f,rx])=>{ assert.ok(head.includes(`pre("${f}?v=${hash(f)}")`), f+" preloaded by its stamp"); assert.match(head, rx); });
+  // dialogs are glass sheets; a jump to the app leaves the top bar clear of its tabs; the effect box never shows empty
+  assert.match(page, /dialog\.lib\[open\]\{animation:sheetIn \.45s cubic-bezier\(\.22,1,\.36,1\)\}/);
+  assert.match(page, /#app,#lsView,#tplList,#wsView\{scroll-margin-top:72px\}/);
+  assert.match(page, /byId\("pdBox"\)\.hidden=!state\.pd \|\| !effectUI;/);
+  // the worksheet's view is ui-worksheet.js, stamped and precached
+  assert.ok(page.includes(`"ui-worksheet.js?v=${hash("ui-worksheet.js")}"`) && read("sw.js").includes(`"./ui-worksheet.js?v=${hash("ui-worksheet.js")}"`));
 });

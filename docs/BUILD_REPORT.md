@@ -559,3 +559,22 @@ Lighthouse: the root mobile 97, `#app` mobile 97 and desktop 100; accessibility 
 `#app`, `#compare`, `#lessons`, a case and an effect link at 390, 1180 and 1440 (0.0003 on the root). axe: no
 violations. 395 tests.
 
+## 43. 2.15.0 (motion and tabs)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| One virtual scroll (lerp 0.1) driving the camera, the objects and the headlines; 0.8 s crossfades | the landing | `stage.test.js` (2.15); a frame capture of a full scroll |
+| A stricter governor (three frames over 20 ms within 4 s drops the passes and the glass's transmission) | the landing on a slower GPU | `stage.test.js`; the frame capture |
+| Tabs with their own addresses; back and forward in the page; 0.5 s crossfade; the nav's hairline | the top nav | `stage.test.js`; a browser run (five tabs, back and forward, one page load, the line under the open tab) |
+| Lesson, case and practice links ask for their files from the head; idle preload of the other tabs | a lesson link in a new tab | `stage.test.js` (the hints stamped); a browser run (a lesson ready in 184 ms) |
+| Glass sheets for the library and the Keys dialog; no empty effect box | Keys (K); Effect | `stage.test.js`; screenshots |
+| The worksheet as a lazy file | a worksheet link | a browser run (made in the app and opened from its link) |
+
+Frames over a full scroll (headless Chrome on this machine, 1440 × 900): with the 3D stage off, 3 of 1,722 over
+20 ms (single 33 ms frames). With the tier-2 stage, about 14 of 1,700 (0.8%), all single 33 ms frames except, in some
+runs, one 50 ms frame at the hand-off into the app. With tier 1, 2 to 4. The brief's "no frame over 20 ms" is not
+reached with the tier-2 stage here; see DECISIONS 198 and 199.
+
+Lighthouse: the root mobile 94, `#app` mobile 95 and desktop 100; accessibility 100 and CLS 0. Layout shift 0 on
+twelve entry points at 390 and 1440 (0.0003 on the root). axe: no violations in either theme at 1280 or 390. 396
+tests.

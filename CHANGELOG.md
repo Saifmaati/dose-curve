@@ -2,6 +2,30 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.15.0 (2026-10-01)
+
+Motion and tabs (the final brief, part 3).
+
+- **One virtual scroll on the landing:**
+  - A single value eases toward the real scroll each frame (lerp 0.1), and the camera, the objects and the headlines all share it.
+  - Headlines crossfade as each scene arrives and leaves: 0.8 s transitions of opacity and transform only, eased cubic-bezier(0.22, 1, 0.36, 1). The focus pulls in 3D at each hand-off.
+  - The blur on headlines is gone. Native scrolling is left alone, and the gentle snap waits until a trackpad's momentum has run out.
+- **The frame budget:**
+  - The cloud of 200 patients re-sorts only when the camera rests, and the second theme's shaders compile only once the reader pauses.
+  - The globe's glass is hidden once it has cleared, the validation checks pre-run in idle time, and the floor's reflection redraws every other frame while moving.
+  - A stricter governor drops the post-processing passes and the glass's transmission after three frames over 20 ms in 4 s of motion.
+  - Measured over a full scroll in this machine's headless Chrome: with the 3D stage off, 3 of 1,722 frames over 20 ms (all single 33 ms frames). With the tier-2 stage, about 14 of 1,700 (0.8%), all single 33 ms frames except, in some runs, one 50 ms frame at the hand-off into the app. The brief's "none" is not reached on the tier-2 stage on this machine.
+- **Tabs:**
+  - Each tab has its own address (`#app`, `#compare`, `#lessons`, `#cases`, `#practice`). A switch adds it to the history, so back and forward walk through the tabs in the page, without a reload.
+  - The content crossfades in 0.5 s, and the top nav's hairline slides to the open tab.
+  - Once the page is idle, the other tabs' files (lessons, cases, practice) arrive ahead of a click.
+  - A lesson, case or practice link asks for its files from the page's first lines, so it opens without waiting (a lesson link was ready in 184 ms).
+  - A jump to the app leaves the fixed top bar clear of the chart's tabs (before, they sat underneath it).
+- **Polish:**
+  - The library and the Keys dialog open as glass sheets.
+  - The effect box stays closed until its charts can draw, so it never shows empty.
+  - The worksheet's view is a lazy file (`ui-worksheet.js`).
+
 ## 2.14.0 (2026-10-01)
 
 The simulator becomes a workspace on a desktop (the final brief, part 2).
