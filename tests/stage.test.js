@@ -176,3 +176,43 @@ test("2.11: the objects in the scenes state the engine's numbers, and every moti
   // reduced motion: each object shows its final state
   ["t=still ? sc.tmax1", "tA=still ? sc.T6", "const t=still ? span"].forEach(k=> assert.ok(stage.includes(k), k));
 });
+
+test("2.12: the app as an instrument panel: two families with tabular figures, one accent, glass and hairlines, AA contrast, no pill in the app", ()=>{
+  // no monospace: Inter for words and numbers, Newsreader for display; served from the site, preloaded, licensed
+  assert.match(page, /--f-sans:"Inter","Inter Fallback",system-ui,sans-serif; --f-display:"Newsreader","Newsreader Fallback",Georgia,serif; --f-mono:var\(--f-sans\)/);
+  ["index.html","validation.html","methods.html","educators.html","404.html","stage.js","pk-sens.js"].forEach(f=> assert.ok(!/IBM Plex|plex-/.test(read(f)), f+": no Plex"));
+  ["inter-latin.woff2","newsreader-latin.woff2"].forEach(f=>{ assert.ok(fs.existsSync(path.join(root,"fonts",f)), f); assert.ok(read("sw.js").includes(`"./fonts/${f}"`), "precached: "+f); });
+  assert.match(page, /<link rel="preload" href="fonts\/inter-latin\.woff2" as="font"/);
+  assert.match(read("fonts/OFL.txt"), /The Inter Project Authors[\s\S]*The Newsreader Project Authors/);
+  assert.match(page, /body\{[^}]*font-variant-numeric:tabular-nums lining-nums/);
+  // one restrained accent: champagne on the dark instrument, brass on paper; sky blue retired
+  assert.match(page, /--c-accent:#D8C29D;/); assert.match(page, /--c-accent:#7A5B24;/); assert.ok(!/#4CC7EE/i.test(page), "no sky blue");
+  // AA: every text colour against the page and the opaque surface, in both themes; the accent's own text on it
+  const L=h=>{ const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=> v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4)); return .2126*c[0]+.7152*c[1]+.0722*c[2]; };
+  const cr=(a,b)=>{ const x=L(a), y=L(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+  const tok=(block,n)=> (block.match(new RegExp("--c-"+n+":(#[0-9A-Fa-f]{6})"))||[])[1];
+  const dark=page.slice(page.indexOf(":root{color-scheme:dark;"), page.indexOf("html.light{color-scheme:light;")), light=page.slice(page.indexOf("html.light{color-scheme:light;"), page.indexOf("*{box-sizing"));
+  [[dark,"dark"],[light,"light"]].forEach(([b,name])=>{
+    ["text","text-2","muted"].forEach(t=> ["page","surface","raised"].forEach(bg=> assert.ok(cr(tok(b,t),tok(b,bg))>=4.5, `${name}: ${t} on ${bg} ${cr(tok(b,t),tok(b,bg)).toFixed(2)}`)));
+    assert.ok(cr(tok(b,"on-accent"),tok(b,"accent"))>=4.5, name+": text on the accent");
+    ["mec","mtc","band","b","mic"].forEach(t=> assert.ok(cr(tok(b,t),tok(b,"page"))>=3, `${name}: ${t} reads against the page`));
+  });
+  // glass: the faint fill over the page's own colour at 80% (the AA base), a 20 px blur, a hairline, a top highlight
+  assert.match(page, /\.panel\{background:linear-gradient\(var\(--glass-fill\),var\(--glass-fill\)\),var\(--glass-base\);border:1px solid var\(--hair\);border-radius:16px;\s*-webkit-backdrop-filter:blur\(20px\)/);
+  assert.match(page, /--glass-base:color-mix\(in srgb,var\(--c-page\) 80%,transparent\)/);
+  // the pill is the landing's; the chart's toolbar carries baseline, compare and share
+  assert.match(page, /html:not\(\.in-intro\) \.pill\{display:none\}/);
+  ["tbBase","tbCmp","tbShare"].forEach(id=> assert.ok(page.includes(`id="${id}"`), id));
+  assert.match(page, /byId\("tbBase"\)\.addEventListener\("click",\(\)=> byId\(baseline \? "clearPinBtn" : "pinBtn"\)\.click\(\)\);/);
+  // sliders: an editable value, clamped to the slider's range, Escape restoring it
+  assert.match(page, /<input class="ctrl-in" type="text" inputmode="decimal"/);
+  assert.match(page, /let x=Math\.min\(hi, Math\.max\(range\[0\], v\)\);/);
+  assert.match(page, /e\.key==="Escape"\)\{ fld\.value=trim\(state\[key\]\)/);
+  // the chart: hairline axes, a glow, a 2 px stroke and a 1 px core, solid MEC and MTC rules with their values, a 300 ms
+  // morph that reduced motion skips
+  assert.match(page, /stroke-width="2" stroke-linejoin="round" stroke-linecap="round"\/>`\+\n\s+`<path d="\$\{d\}" fill="none" stroke="\$\{core\}" stroke-width="1"/);
+  assert.match(page, /MEC \$\{trim\(state\.mec\)\}/); assert.match(page, /MTC \$\{trim\(state\.mtc\)\}/);
+  assert.match(page, /if\(!prev \|\| !quiet \|\| noMotion\(\)\) return;/); assert.match(page, /Math\.min\(1,\(t-now\)\/300\)/);
+  // the ids the tests, links and lessons rely on are all still there
+  ["plot","mainCurve","readouts","pinBtn","clearPinBtn","linkBtn","routeSeg","doseSeg","sliders","tabSim","tabCmp","pill"].forEach(id=> assert.ok(page.includes(`id="${id}"`) || page.includes(`id="\${id}"`) || page.includes(`"${id}"`), id));
+});

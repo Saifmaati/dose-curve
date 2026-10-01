@@ -514,3 +514,19 @@ Lighthouse on the root: mobile 95, desktop 99, accessibility 100, CLS 0 (and 0 o
 open in the stall check (2.10.0 on the same machine: a dozen, the worst 517 ms); the 20-second capture, with its
 screencast running, had 11 of 1,468 frames over 34 ms (worst 83 ms). 392 tests in 22 files.
 
+## 40. 2.12.0 (the app as an instrument panel)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Inter and Newsreader, no monospace, tabular figures | everywhere | `stage.test.js` (2.12: the font stacks, no Plex left on any page or script, the files precached and licensed) |
+| Champagne and brass, desaturated thresholds, AA everywhere | both themes | `stage.test.js` (every text colour against page, surface and raised in both themes at 4.5:1 or more; the thresholds at 3:1) |
+| Glass panels, hairlines, text tabs and hairline pills, slim toggles, the hairline drug list | the controls and panels | screenshots of the simulator, compare, a lesson and a case at 1440 and 390 in both themes, before and after |
+| Editable slider values | any slider | a browser check: typing 750 into Dose gives Cmax 13.9 mg/L; out of range clamps; junk restores |
+| The chart: hairline axes, glow, stroke and core, labelled MEC and MTC, the peak's leader, the time chip, the 300 ms morph | the simulator | `stage.test.js`; the browser check (a route change morphs; a drag doesn't) |
+| The pill only on the landing; Baseline, Compare and Share at the chart | the app | `stage.test.js`; the browser check |
+
+Lighthouse: the root mobile 95 and desktop 98; `#app` mobile 91; accessibility 100 and CLS 0 on all three. Layout shift
+0 on `#app`, `#lessons` and a case at 390 and 1440 (0.0003 on the root, the giant headline's font swap, as in 2.11).
+axe: no violations in either theme at 1280 and 390, nor on the other pages. 393 tests. The README's opening, Learn
+and lesson images are retaken; its chart images follow the 2.13 chart.
+
