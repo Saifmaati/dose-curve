@@ -55,7 +55,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.12.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.13.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1193,6 +1193,31 @@
   .ss-when{border-top:1px solid var(--hair)}
   .ro-k{font-size:11.5px}
   @media (max-width:560px){ .tb{border-right:0;padding-right:0;margin-right:0;width:100%} }
+  /* the chart as an object (2.13): one family with tabular figures; a plane that tilts toward the pointer while its grid
+     moves in parallax; particles on a canvas over it; each dose's own curve lit from its tick or its row */
+  #plot text{font-family:var(--f-sans);font-variant-numeric:tabular-nums lining-nums}
+  .plot-box{perspective:1600px}
+  #plot,#plotFx{transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transform-origin:50% 55%;will-change:transform}
+  #plot .grid{transform:translate(var(--gx,0px),var(--gy,0px))}
+  #plotFx{position:absolute;left:12px;top:6px;width:0;height:0;pointer-events:none}   /* placed where the chart is from the start: only its size changes when the motion arrives, never its place */
+  #plot .dose-c{transition:opacity var(--t-base) var(--ease)}
+  #plot .dose-c.lit path{fill-opacity:.16;stroke-opacity:.95;stroke-width:1.4}
+  #plot .dtick{transform-box:fill-box;transform-origin:50% 100%}
+  #plot .dtick.pulse{animation:dpulse .7s var(--ease)}
+  @keyframes dpulse{0%{transform:scaleY(2.6);stroke-opacity:1;stroke-width:2.5}100%{transform:scaleY(1)}}
+  #plot .regrid{animation:regrid .45s var(--ease) both}
+  @keyframes regrid{from{opacity:0}to{opacity:1}}
+  @media (prefers-reduced-motion: reduce){ #plot,#plotFx{transform:none} #plot .dtick.pulse,#plot .regrid{animation:none} }
+  @media print{ #plotFx{display:none} #plot{transform:none} }
+  /* the legend speaks the chart's grammar: the curve's key runs cool, luminous, hot; the baseline a 1 px ghost; the window
+     glass; the thresholds hairlines */
+  .legend .lk.c{height:2px;background:linear-gradient(90deg,#7f9ab0,var(--c-accent) 45%,#F2785E)}
+  html.light .legend .lk.c,html.ed-app .legend .lk.c{background:linear-gradient(90deg,#5d6f80,var(--c-accent) 45%,#A8432E)}
+  .legend .lk.g{height:1px;background:color-mix(in srgb,var(--c-text) 45%,transparent)}
+  .legend .lk.band{height:10px;width:14px;border-radius:2px;border:0;background:color-mix(in srgb,var(--c-text) 8%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--c-text) 28%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--c-text) 28%,transparent)}
+  .legend .lk.tox{height:1px;background:var(--c-mtc)}
+  .legend .lk.mic{height:1px;background:var(--c-mic)}
+  .legend .lk.popb{height:10px;width:14px;border-radius:2px;background:linear-gradient(color-mix(in srgb,var(--c-accent) 14%,transparent),color-mix(in srgb,var(--c-accent) 14%,transparent)) center/100% 50% no-repeat,color-mix(in srgb,var(--c-accent) 9%,transparent)}
   /* the pill belongs to the landing; in the app the toolbar in the chart's head carries its actions */
   html:not(.in-intro) .pill{display:none}
 
@@ -1820,7 +1845,8 @@
 
         <div class="plot-box">
           <p class="sr-only" id="plotSummary" aria-live="off"></p>
-          <svg id="plot" viewBox="0 0 760 430" tabindex="0" role="slider" aria-describedby="plotSummary" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
+          <svg id="plot" viewBox="0 0 760 430" font-family="Inter, Arial, sans-serif" tabindex="0" role="slider" aria-describedby="plotSummary" aria-label="Time cursor. Click or drag on the chart, or use the arrow keys; Shift moves 5 hours, Escape clears, Space plays." aria-valuemin="0"></svg>
+          <canvas id="plotFx" aria-hidden="true"></canvas>
           <div id="tooltip"></div>
         </div>
         <div class="ev-strip" id="evStripWrap" hidden>
@@ -2054,7 +2080,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.12.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.13.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2302,6 +2328,7 @@
   let plotCurves=[], sx, sy, PW, PH;
   function chartSize(){
     PW=narrowQ.matches ? 440 : 760; PH=narrowQ.matches ? 380 : 430;
+    M.r=narrowQ.matches ? 46 : 56;   // the right margin carries the MEC, MTC and MIC labels (2.13)
     [["plot",PH],["effPlot",220],["ssPlot",240]].forEach(([id,h])=> byId(id).setAttribute("viewBox",`0 0 ${PW} ${h}`));
   }
   chartSize();
@@ -2334,16 +2361,6 @@
     let s="M "+pts[0].x+" "+pts[0].y;
     for(let i=1;i<pts.length;i++) s+=" L "+pts[i].x+" "+pts[i].y;
     return s;
-  }
-  // a marked point (2.12): a ring on the curve and a hairline leader out to its label and value, turned away from
-  // the chart's edges
-  function marker(x,y,color,label,anchor){
-    const left=anchor==="end" || x>PW-M.r-150, up=y>M.t+34, dx=left ? -1 : 1, dy=up ? -1 : 1;
-    const x1=x+dx*5, y1=y+dy*5, x2=x+dx*16, y2=y+dy*18, x3=x2+dx*14;
-    return `<circle cx="${x}" cy="${y}" r="5.5" fill="${K.page}" stroke="${color}" stroke-width="1.4"/>`+
-      `<circle cx="${x}" cy="${y}" r="1.8" fill="${color}"/>`+
-      `<path d="M ${x1} ${y1} L ${x2} ${y2} L ${x3} ${y2}" fill="none" stroke="${color}" stroke-width="1" opacity="0.7"/>`+
-      `<text x="${x3+dx*4}" y="${y2+3.5}" text-anchor="${left ? "end" : "start"}" font-family="Inter" font-size="11" font-weight="500" fill="${K.text}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${label}</text>`;
   }
 
   // The clinical patient panel's working: IBW, AdjBW, Cockcroft–Gault CrCl and the clearance it gives.
@@ -2686,243 +2703,227 @@
     curves.forEach(cv=> cv.pts=cv.raw.map(q=>({t:q.t,c:q.c,x:sx(q.t),y:sy(q.c)})));
     plotCurves=curves;
 
-    let g="";
+    // ===== the chart (2.13): an object, not a plot =====
+    // Layers, back to front: the grid (in parallax), the window as glass, shading, the doses' own contributions, the
+    // difference from a baseline, the curves (glow, a 2 px stroke coloured by state, a 1 px core, a gradient fill with
+    // grain, a reflection under the baseline), the thresholds, labels placed so none collides, the axes, the cursor.
+    const paper=paperK(), y0=PH-M.b, live=curves.filter(cv=>!cv.ghost), lead=live[0], lin=!isLog;
+    const placed=[], fitsBox=b=> b.x>=M.l-4 && b.x+b.w<=PW-M.r+4 && b.y>=M.t-16 && b.y+b.h<=y0-2 && !placed.some(o=> b.x<o.x+o.w && o.x<b.x+b.w && b.y<o.y+o.h && o.y<b.y+b.h);
+    const textW=(s,size)=> s.length*size*0.56+4;
+    let defs="", g="", late="", margin=[];
+    // each curve's colour by state: cool and dim below the MEC, luminous in the window, hot toward and past the MTC
+    const oOf=c=> Math.min(1, Math.max(0, (sy(Math.max(c, isLog ? yFloor : 0))-M.t)/ih));
+    const oMtc=state.mtc<yTop ? oOf(state.mtc) : 0, oMec=oOf(state.mec);
+    function stateGrad(id, col){
+      const S=chartStates(col, paper), stops=[[0,S.hot],[Math.max(0,oMtc-0.002),S.hot],[oMtc,S.warm],[oMtc+(oMec-oMtc)*0.38,S.lum],[Math.max(oMtc,oMec-0.004),col],[Math.min(1,oMec+0.018),S.cool],[1,S.dim]];
+      const one=(gid, f)=> `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${M.t}" x2="0" y2="${y0}">`+stops.map(([o,c])=>`<stop offset="${o.toFixed(4)}" stop-color="${f(c)}"/>`).join("")+`</linearGradient>`;
+      defs+=one(id, c=>c)+one(id+"c", c=> paper ? c : mixHex(c, "#ffffff", 0.32));
+      return {stroke:`url(#${id})`, core:`url(#${id}c)`};
+    }
+    defs+=`<filter id="cGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="${PW}" height="${PH}"><feGaussianBlur stdDeviation="4.5"/></filter>`+
+      `<filter id="cSoft" filterUnits="userSpaceOnUse" x="0" y="0" width="${PW}" height="${PH}"><feGaussianBlur stdDeviation="2.5"/></filter>`+
+      `<pattern id="cGrain" patternUnits="userSpaceOnUse" width="96" height="96"><image href="${grainURI()}" width="96" height="96"/></pattern>`+
+      `<linearGradient id="reflFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`+
+      `<mask id="reflMask" maskUnits="userSpaceOnUse" x="${M.l}" y="${y0}" width="${iw}" height="30"><rect x="${M.l}" y="${y0}" width="${iw}" height="26" fill="url(#reflFade)"/></mask>`+
+      `<radialGradient id="cVig" cx="50%" cy="46%" r="72%"><stop offset="62%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="${paper ? 0 : 0.32}"/></radialGradient>`+
+      `<clipPath id="plotClip"><rect x="${M.l}" y="${M.t-8}" width="${iw}" height="${ih+8}"/></clipPath>`+
+      `<clipPath id="drawClip"><rect id="drawRect" x="0" y="0" width="${PW}" height="${PH}"/></clipPath>`;
 
-    // therapeutic band
+    // the grid, in parallax: hairlines at 4–6%, major ticks with labels and minor ticks between them
+    let grid="";
+    const yt=[];
+    if(lin){ const tk=ticksRange(0,yTop,6); tk.forEach((v,i)=>{ yt.push({v, y:sy(v), major:true}); if(i<tk.length-1) yt.push({v:(v+tk[i+1])/2, y:sy((v+tk[i+1])/2), major:false}); }); }
+    else { const dMin=Math.ceil(Math.log10(yFloor)), dMax=Math.floor(Math.log10(yTop));
+      for(let e=dMin;e<=dMax;e++){ const v=Math.pow(10,e); yt.push({v, y:sy(v), major:true, lbl:v>=1?String(v):v.toPrecision(1)}); for(let m=2;m<10;m++){ const vm=m*v; if(vm<yTop) yt.push({v:vm, y:sy(vm), major:false}); } } }
+    yt.forEach(k=>{ if(k.y<M.t-1 || k.y>y0+0.5) return;
+      if(k.major && k.y<y0-0.5) grid+=`<line x1="${M.l}" y1="${k.y}" x2="${PW-M.r}" y2="${k.y}" stroke="${K.text}" stroke-opacity="${paper ? 0.07 : 0.055}"/>`;
+      else if(!k.major && isLog) grid+=`<line x1="${M.l}" y1="${k.y}" x2="${PW-M.r}" y2="${k.y}" stroke="${K.text}" stroke-opacity="0.025"/>`;
+      late+=`<line x1="${M.l-(k.major ? 5 : 3)}" y1="${k.y}" x2="${M.l}" y2="${k.y}" stroke="${K.text}" stroke-opacity="${k.major ? 0.4 : 0.22}"/>`;
+      if(k.major) late+=`<text class="ax" x="${M.l-9}" y="${k.y+3.5}" text-anchor="end" font-size="10" fill="${K.muted}">${k.lbl||fmtAxis(k.v)}</text>`; });
+    const xt=ticksRange(T0,T1,7), xm=[]; xt.forEach((v,i)=>{ if(i<xt.length-1) xm.push((v+xt[i+1])/2); });
+    xt.forEach(v=>{ const x=sx(v); if(x<M.l-0.5 || x>PW-M.r+0.5) return;
+      if(x>M.l+1) grid+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${y0}" stroke="${K.text}" stroke-opacity="${paper ? 0.06 : 0.045}"/>`;
+      late+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0+5}" stroke="${K.text}" stroke-opacity="0.4"/>`+`<text class="ax" x="${x}" y="${y0+19}" text-anchor="middle" font-size="10" fill="${K.muted}">${fmtAxis(v)}</text>`; });
+    xm.forEach(v=>{ const x=sx(v); if(x>M.l && x<PW-M.r) late+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0+3}" stroke="${K.text}" stroke-opacity="0.22"/>`; });
+    g+=`<g id="gridG" class="grid${scaleWas!==null && scaleWas!==state.scale ? " regrid" : ""}">${grid}</g>`;
+    scaleWas=state.scale;
+
+    // the window: a band of glass with soft edges, a lighter hairline at each boundary, and a slow shimmer
     const bandTop=Math.min(state.mtc,yTop), bandBot=isLog?Math.max(state.mec,yFloor):Math.min(state.mec,yTop);
     if(bandTop>bandBot){
-      g+=`<rect x="${M.l}" y="${sy(bandTop)}" width="${iw}" height="${Math.max(0,sy(bandBot)-sy(bandTop))}" fill="${K.text}" fill-opacity="${paperK() ? 0.035 : 0.04}"/>`;
+      const yA=sy(bandTop), h=Math.max(0, sy(bandBot)-yA), f=paper ? 0.06 : 0.07;
+      defs+=`<linearGradient id="winG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${K.text}" stop-opacity="${f*0.35}"/><stop offset=".07" stop-color="${K.text}" stop-opacity="${f}"/><stop offset=".93" stop-color="${K.text}" stop-opacity="${f}"/><stop offset="1" stop-color="${K.text}" stop-opacity="${f*0.35}"/></linearGradient>`+
+        `<linearGradient id="winS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${K.text}" stop-opacity="0"/><stop offset=".5" stop-color="${K.text}" stop-opacity="${paper ? 0.05 : 0.07}"/><stop offset="1" stop-color="${K.text}" stop-opacity="0"/></linearGradient>`+
+        `<clipPath id="winClip"><rect x="${M.l}" y="${yA}" width="${iw}" height="${h}"/></clipPath>`;
+      g+=`<rect class="win" x="${M.l}" y="${yA}" width="${iw}" height="${h}" fill="url(#winG)"/>`;
+      if(!noMotion()) g+=`<g clip-path="url(#winClip)"><rect x="${M.l}" y="${yA}" width="${iw*0.3}" height="${h}" fill="url(#winS)"><animateTransform attributeName="transform" type="translate" from="${-iw*0.3} 0" to="${iw} 0" dur="11s" repeatCount="indefinite"/></rect></g>`;
+      g+=`<line x1="${M.l}" y1="${yA+0.5}" x2="${PW-M.r}" y2="${yA+0.5}" stroke="${K.text}" stroke-opacity="${paper ? 0.16 : 0.2}"/><line x1="${M.l}" y1="${yA+h-0.5}" x2="${PW-M.r}" y2="${yA+h-0.5}" stroke="${K.text}" stroke-opacity="${paper ? 0.16 : 0.2}"/>`;
     }
+    // a faint vignette over the plot's edges, so the curve reads as lit
+    if(!paper) g+=`<rect x="${M.l}" y="${M.t}" width="${iw}" height="${ih}" fill="url(#cVig)" pointer-events="none"/>`;
 
-    // infusion shading, one block per infusion actually given, for as long as it runs
+    // infusions and dialysis sessions, shaded where they run
     curves.filter(cv=>!cv.ghost).forEach(cv=>{
-      doseEvents(cv.p).forEach(e=>{
-        if(e.route!=="inf") return;
-        const a=Math.max(e.t,T0), b=Math.min(e.t+e.dur,T1);
-        if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${cv.col?cv.col.line:K.accent}" fill-opacity="0.06"/>`;
-      });
-    });
-
-    let lateLabels="";   // labels drawn after the curves, with a dark halo
-    // dialysis sessions: a band across the chart for each, labelled once
+      doseEvents(cv.p).forEach(e=>{ if(e.route!=="inf") return; const a=Math.max(e.t,T0), b=Math.min(e.t+e.dur,T1);
+        if(b>a) g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${cv.col?cv.col.line:K.accent}" fill-opacity="0.05"/>`; }); });
     curves.filter(cv=>!cv.ghost && PK.hdOn(cv.p) && PK.hdModule).forEach((cv,row)=>{
-      PK.hd.sessions(cv.p, T1).forEach((s,i)=>{
-        const a=Math.max(s.start,T0), b=Math.min(s.end,T1);
-        if(b<=a) return;
+      PK.hd.sessions(cv.p, T1).forEach((s,i)=>{ const a=Math.max(s.start,T0), b=Math.min(s.end,T1); if(b<=a) return;
         g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="${K.mec}" fill-opacity="0.08"/>`;
-        if(i<12) lateLabels+=`<text x="${sx(a)+3}" y="${M.t+11+row*12}" font-family="Inter" font-size="9" fill="${K.mec}">${cv.tag ? cv.tag+" " : ""}HD</text>`;
-      });
-    });
+        if(i<12) late+=`<text x="${sx(a)+3}" y="${M.t+11+row*12}" font-size="9" fill="${K.mec}">${cv.tag ? cv.tag+" " : ""}HD</text>`; }); });
+    // the interval a dose row is pointing at (filled by the page when a row is hovered)
+    g+=`<rect id="ivHi" x="0" y="${M.t}" width="0" height="${ih}" fill="${K.text}" fill-opacity="${paper ? 0.05 : 0.06}" style="display:none"/>`;
 
-    // population mode: each scenario's 5th–95th percentile band, shaded, with its median dotted
+    // population: the middle 90% and the middle 50% as layered glass, the median luminous
     bands.forEach(({cv,r})=>{
-      const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9);
-      if(idx.length<2) return;
-      const up=idx.map(i=>`${sx(r.t[i])},${sy(r.q95[i])}`), dn=idx.slice().reverse().map(i=>`${sx(r.t[i])},${sy(r.q05[i])}`);
-      const col=cv.col ? cv.col.line : K.accent;
-      g+=`<polygon points="${up.concat(dn).join(" ")}" fill="${col}" fill-opacity="0.13" stroke="none"/>`;
-      g+=`<path d="${polyline(idx.map(i=>({x:sx(r.t[i]), y:sy(r.q50[i])})))}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/>`;
+      const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9); if(idx.length<2) return;
+      const col=cv.col ? cv.col.line : K.accent, poly=(hi,lo)=> idx.map(i=>`${sx(r.t[i])},${sy(hi[i])}`).concat(idx.slice().reverse().map(i=>`${sx(r.t[i])},${sy(lo[i])}`)).join(" ");
+      const edge=a=> polyline(idx.map(i=>({x:sx(r.t[i]), y:sy(a[i])})));
+      g+=`<polygon points="${poly(r.q95,r.q05)}" fill="${col}" fill-opacity="${paper ? 0.07 : 0.07}"/>`+`<path d="${edge(r.q95)}" fill="none" stroke="${col}" stroke-opacity=".28"/><path d="${edge(r.q05)}" fill="none" stroke="${col}" stroke-opacity=".28"/>`;
+      if(r.q25 && r.q75) g+=`<polygon points="${poly(r.q75,r.q25)}" fill="${col}" fill-opacity="${paper ? 0.09 : 0.1}"/>`;
+      const md=edge(r.q50);
+      if(!paper) g+=`<path d="${md}" fill="none" stroke="${col}" stroke-width="4" stroke-opacity=".5" filter="url(#cGlow)"/>`;
+      g+=`<path d="${md}" fill="none" stroke="${paper ? col : mixHex(col,"#ffffff",0.35)}" stroke-width="1.4" stroke-opacity=".95"/>`;
     });
 
-    // with the effect charts on: the concentration that gives the target effect, for each scenario shown. The
-    // labels go on after the curves, with a dark halo, so a curve crossing the start of the line can't hide them.
+    // the effect target's concentration, one line per distinct value
     if(state.pd){
-      const lines=[];   // one per distinct concentration: scenarios with the same PD settings share a line
-      curves.filter(cv=>!cv.ghost && !(cv.p.idr>0)).forEach(cv=>{
-        const ct=PK.concForEffect(cv.p,state.etgt);
-        if(ct===null || !(ct>0) || ct>=yTop) return;
-        const same=lines.find(l=>l.ct===ct);
-        if(same){ same.tags.push(cv.tag); same.col=K.text; }
-        else lines.push({ct, y:sy(ct), tags:[cv.tag], col:cv.col?cv.col.line:K.band});
-      });
-      // two lines close together: the lower one's label goes under its line
+      const lines=[];
+      curves.filter(cv=>!cv.ghost && !(cv.p.idr>0)).forEach(cv=>{ const ct=PK.concForEffect(cv.p,state.etgt); if(ct===null || !(ct>0) || ct>=yTop) return;
+        const same=lines.find(l=>l.ct===ct); if(same){ same.tags.push(cv.tag); same.col=K.text; } else lines.push({ct, y:sy(ct), tags:[cv.tag], col:cv.col?cv.col.line:K.band}); });
       const close=lines.length===2 && Math.abs(lines[0].y-lines[1].y)<14, lowest=Math.max(...lines.map(l=>l.y));
-      lines.forEach(l=>{
-        const tag=l.tags.filter(Boolean).join(" & "), ly=close && l.y===lowest ? l.y+12 : l.y-5;
+      lines.forEach(l=>{ const tag=l.tags.filter(Boolean).join(" & "), ly=close && l.y===lowest ? l.y+12 : l.y-5, txt=`${tag?tag+": ":""}${state.etgt}% effect at ${fmt(l.ct,2)}`;
         g+=`<line x1="${M.l}" y1="${l.y}" x2="${PW-M.r}" y2="${l.y}" stroke="${l.col}" stroke-width="1" stroke-dasharray="1 4" opacity="0.8"/>`;
-        lateLabels+=`<text x="${M.l+6}" y="${ly}" font-family="Inter" font-size="9.5" fill="${l.col}" stroke="${K.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${tag?tag+": ":""}${state.etgt}% effect at ${fmt(l.ct,2)} ${U().conc}</text>`;
-      });
+        late+=`<text x="${M.l+6}" y="${ly}" font-size="9.5" fill="${l.col}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${txt}</text>`;
+        placed.push({x:M.l+6, y:ly-10, w:textW(txt,9.5), h:13}); }); }
+
+    // superposition: in a repeated regimen or a schedule, each dose's own curve, faint, under the total
+    // (on a log axis each dose's decay is a straight line to the floor: a field of stripes, so they show on a linear one)
+    const lp=lead && lead.p, superOK=mode==="sim" && lin && lp && lp.dosing!=="single" && lp.kin==="linear" && !PK.hdOn(lp);
+    let doseRows=[];
+    if(superOK){
+      const ev=doseEvents(lp).filter(e=> e.t<=T1), terms=PK.disposition(lp), S=chartStates(K.accent, paper);
+      if(ev.length>1 && ev.length<=60) ev.forEach((e,j)=>{
+        const a=Math.max(T0, e.t), n=Math.max(24, Math.round(160*(T1-a)/span)), pts=[];
+        for(let i=0;i<=n;i++){ const t=a+(T1-a)*i/n; pts.push({x:sx(t), y:sy(PK.singleConc(lp, t-e.t, e.mg, e, terms))}); }
+        const d=polyline(pts);
+        g+=`<g class="dose-c" data-dose="${j}"><path d="${d} L ${pts[pts.length-1].x} ${y0} L ${pts[0].x} ${y0} Z" fill="${S.lum}" fill-opacity="${paper ? 0.035 : 0.04}"/><path d="${d}" fill="none" stroke="${S.lum}" stroke-opacity="${paper ? 0.3 : 0.26}" stroke-width="1"/></g>`;
+        doseRows.push(e.t); });
     }
 
-    // grid + labels
-    if(!isLog){
-      ticksRange(0,yTop,6).forEach(v=>{
-        const y=sy(v);
-        if(v>0) g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${K.text}" stroke-opacity="0.05" stroke-width="1"/>`;
-        g+=`<text x="${M.l-10}" y="${y+3.5}" text-anchor="end" font-family="Inter" font-size="10" fill="${K.muted}">${fmtAxis(v)}</text>`;
-      });
-    } else {
-      const dMin=Math.ceil(Math.log10(yFloor)), dMax=Math.floor(Math.log10(yTop));
-      for(let e=dMin;e<=dMax;e++){
-        const v=Math.pow(10,e), y=sy(v);
-        g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${K.text}" stroke-opacity="0.06" stroke-width="1"/>`;
-        g+=`<text x="${M.l-10}" y="${y+3.5}" text-anchor="end" font-family="Inter" font-size="10" fill="${K.muted}">${v>=1?v:v.toPrecision(1)}</text>`;
-        for(let m=2;m<10;m++){
-          const vm=m*v; if(vm>=yTop) break;
-          g+=`<line x1="${M.l}" y1="${sy(vm)}" x2="${PW-M.r}" y2="${sy(vm)}" stroke="${K.text}" stroke-opacity="0.03" stroke-width="1"/>`;
-        }
+    // the difference from the baseline (or A from B): a soft region, its largest gap labelled where it happens
+    if(curves.length===2 && lin){
+      const [c0,c1]=mode==="cmp" ? [curves.find(c=>c.id==="a"), curves.find(c=>c.id==="b")] : [curves.find(c=>c.ghost), lead];
+      let fill=polyline(c1.pts); for(let i=c0.pts.length-1;i>=0;i--) fill+=` L ${c0.pts[i].x} ${c0.pts[i].y}`;
+      g+=`<path d="${fill} Z" fill="${mode==="cmp" ? K.text : K.accent}" fill-opacity="${mode==="cmp" ? 0.07 : 0.12}" filter="url(#cSoft)"/>`;
+      let bi=0; c1.pts.forEach((q,i)=>{ if(Math.abs(q.c-c0.pts[i].c)>Math.abs(c1.pts[bi].c-c0.pts[bi].c)) bi=i; });
+      const dc=c1.pts[bi].c-c0.pts[bi].c;
+      if(Math.abs(dc)>yTop*0.02){
+        const x=c1.pts[bi].x, ya=c1.pts[bi].y, yb=c0.pts[bi].y, txt=`${mode==="cmp" ? "B − A " : ""}${dc>0 ? "+" : "−"}${fmt(Math.abs(dc),cdp(1))}`;
+        late+=`<line x1="${x}" y1="${ya}" x2="${x}" y2="${yb}" stroke="${K.text}" stroke-opacity=".45"/><circle cx="${x}" cy="${ya}" r="2" fill="${K.text}"/><circle cx="${x}" cy="${yb}" r="2" fill="${K.text}" fill-opacity=".5"/>`;
+        const w=textW(txt,10.5), cand=[[x+8,(ya+yb)/2+4],[x-8-w,(ya+yb)/2+4],[x+8,Math.min(ya,yb)-8],[x-8-w,Math.min(ya,yb)-8]];
+        const at=cand.find(([cx,cy])=> fitsBox({x:cx, y:cy-11, w, h:14})) || cand[0];
+        placed.push({x:at[0], y:at[1]-11, w, h:14});
+        late+=`<text x="${at[0]}" y="${at[1]}" font-size="10.5" font-weight="500" fill="${K.text}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${txt}</text>`;
       }
     }
-    ticksRange(T0,T1,7).forEach(v=>{
-      const x=sx(v);
-      if(x>M.l+1) g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="${K.text}" stroke-opacity="0.045" stroke-width="1"/>`;
-      g+=`<line x1="${x}" y1="${PH-M.b}" x2="${x}" y2="${PH-M.b+4}" stroke="${K.text}" stroke-opacity="0.3" stroke-width="1"/>`;
-      g+=`<text x="${x}" y="${PH-M.b+19}" text-anchor="middle" font-family="Inter" font-size="10" fill="${K.muted}">${fmtAxis(v)}</text>`;
-    });
 
-    // MEC/MTC
-    if(state.mec<=yTop && (!isLog || state.mec>=yFloor)){
-      const y=sy(state.mec);
-      g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${K.mec}" stroke-width="1" opacity="0.75"/>`;
-      g+=`<text x="${PW-M.r-4}" y="${y+13}" text-anchor="end" font-family="Inter" font-size="10" font-weight="500" fill="${K.mec}">MEC ${trim(state.mec)}</text>`;
-    }
-    if(state.mtc<=yTop){
-      const y=sy(state.mtc);
-      g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${K.mtc}" stroke-width="1" opacity="0.75"/>`;
-      g+=`<text x="${PW-M.r-4}" y="${y-6}" text-anchor="end" font-family="Inter" font-size="10" font-weight="500" fill="${K.mtc}">MTC ${trim(state.mtc)}</text>`;
-    }
-    // the MIC, labelled at the left (the MEC's label is at the right, and the two are often the same level)
-    if(state.mic>0 && state.mic<=yTop && (!isLog || state.mic>=yFloor)){
-      const y=sy(state.mic);
-      g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${K.mic}" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.9"/>`;
-      lateLabels+=`<text x="${M.l+6}" y="${y-6}" font-family="Inter" font-size="9.5" fill="${K.mic}" stroke="${K.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">MIC ${trim(state.mic)} ${U().conc}</text>`;
-    }
-
-    // dose events (repeated regimens and custom schedules). Simulator: ticks under the axis with D-labels, LD
-    // for a loading dose, a cross for a missed dose. Compare: A's ticks sit just above the axis and B's just
-    // below, each in its own colour.
-    curves.filter(cv=>!cv.ghost && scheduleOf(cv.p).length).forEach((cv,row)=>{
-      const p=cv.p, list=scheduleOf(p), color=cv.col?cv.col.line:K.muted;
-      const [y0,y1]=mode==="cmp" ? (cv.id==="a" ? [PH-M.b-6, PH-M.b] : [PH-M.b, PH-M.b+6]) : [PH-M.b, PH-M.b+6];
-      list.forEach((dose,j)=>{
-        const t=dose.t;
-        if(!inView(t)) return;
-        const x=sx(t), n=dose.n, next=list[j+1];
-        const gap=iw*(next ? next.t-t : p.dosing==="repeated" ? p.tau : span)/span;   // room for a D-label
-        if(dose.missed){
-          const lc=mode==="cmp"?color:K.mtc, tc=mode==="cmp"?color:K.mtc;
-          g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${PH-M.b}" stroke="${lc}" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`;
-          g+=`<text x="${x+5}" y="${M.t+13+row*13}" font-family="Inter" font-size="9.5" fill="${tc}">${cv.tag?cv.tag+": ":""}D${n} missed</text>`;
-          g+=`<path d="M ${x-4} ${(y0+y1)/2-4} L ${x+4} ${(y0+y1)/2+4} M ${x+4} ${(y0+y1)/2-4} L ${x-4} ${(y0+y1)/2+4}" stroke="${lc}" stroke-width="1.6"/>`;
-          return;
-        }
-        g+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y1}" stroke="${color}" stroke-width="1.2"/>`;
-        if(mode==="sim"){
-          const lbl=dose.loading ? "LD" : (gap>=26 ? "D"+n : "");
-          if(lbl) g+=`<text x="${x+3}" y="${PH-M.b-5}" font-family="Inter" font-size="8.5" fill="${K.muted}">${lbl}</text>`;
-        }
-      });
-    });
-
-    // the gap between two curves (baseline vs current, or A vs B), shaded
-    if(curves.length===2 && !isLog){
-      let fill=polyline(curves[0].pts);
-      const back=curves[1].pts;
-      for(let i=back.length-1;i>=0;i--) fill+=` L ${back[i].x} ${back[i].y}`;
-      g+=`<path d="${fill} Z" fill="${mode==="cmp"?K.text:K.accent}" fill-opacity="${mode==="cmp"?0.05:0.08}"/>`;
-    }
-
-    // curves: baseline first, then the live curve on top. In compare mode the side being edited is drawn last.
+    // the curves: the baseline a ghost (1 px, 35%, no glow); every other curve a glow, a 2 px stroke coloured by its
+    // state, a 1 px core, and for the live one a gradient fill with grain and a faint reflection under the baseline
     const order=mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse();
-    order.forEach(cv=>{
+    let curvesSvg="";
+    order.forEach((cv,k)=>{
       const path=polyline(cv.pts);
-      if(cv.ghost){
-        g+=`<path d="${path}" fill="none" stroke="${K.ghost}" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75" stroke-linejoin="round"/>`;
-      } else if(cv.primary){
-        if(!isLog && !baseline){
-          let area=`M ${cv.pts[0].x} ${sy(0)}`;
-          cv.pts.forEach(q=> area+=` L ${q.x} ${q.y}`);
-          area+=` L ${cv.pts[cv.pts.length-1].x} ${sy(0)} Z`;
-          g+=`<path id="mainArea" d="${area}" fill="url(#gFill)"/>`;
-        }
-        g+=`<g data-cv="${cv.id}">`+curveLines(path, K.accent, "mainCurve")+`</g>`;
-      } else {
-        g+=`<g data-cv="${cv.id}">`+curveLines(path, cv.col.line)+`</g>`;
+      if(cv.ghost){ curvesSvg+=`<g data-cv="${cv.id}"><path data-k="line" d="${path}" fill="none" stroke="${K.text}" stroke-opacity="0.35" stroke-width="1" stroke-linejoin="round"/></g>`; return; }
+      const col=cv.col ? cv.col.line : K.accent, sg=stateGrad("sg"+cv.id, col), top=Math.min(...cv.pts.map(q=>q.y));
+      const area=lin ? `M ${cv.pts[0].x} ${y0} L`+path.slice(1)+` L ${cv.pts[cv.pts.length-1].x} ${y0} Z` : null;
+      let s=`<g data-cv="${cv.id}">`;
+      if(area && (cv.primary || mode==="cmp")){
+        defs+=`<linearGradient id="fill${cv.id}" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${y0}"><stop offset="0" stop-color="${col}" stop-opacity="${cv.primary ? 0.25 : 0.12}"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient>`;
+        s+=`<path data-k="area" ${cv.primary ? 'id="mainArea" ' : ""}d="${area}" fill="url(#fill${cv.id})"/>`;
+        if(cv.primary) s+=`<path data-k="area" d="${area}" fill="url(#cGrain)" opacity="${paper ? 0.25 : 0.4}"/>`;
+        s+=`<g mask="url(#reflMask)" opacity="0.1"><g transform="translate(0 ${2*y0}) scale(1 -1)"><path data-k="area" d="${area}" fill="${col}" fill-opacity=".35"/><path data-k="line" d="${path}" fill="none" stroke="${sg.stroke}" stroke-width="2"/></g></g>`;
       }
+      if(!paper) s+=`<path data-k="line" d="${path}" fill="none" stroke="${sg.stroke}" stroke-width="4" stroke-opacity=".9" filter="url(#cGlow)" stroke-linejoin="round"/>`;
+      s+=`<path data-k="line"${cv.primary ? ' id="mainCurve"' : ""} d="${path}" fill="none" stroke="${sg.stroke}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`+
+        `<path data-k="line" d="${path}" fill="none" stroke="${sg.core}" stroke-width="1" stroke-opacity="${paper ? 0.55 : 0.9}" stroke-linejoin="round" stroke-linecap="round"/></g>`;
+      curvesSvg+=s;
     });
+    g+=`<g id="curvesG" clip-path="url(#drawClip)">${curvesSvg}</g>`;
+    if(!paper) g+=`<circle id="drawHead" r="3.2" fill="#fff" filter="url(#cGlow)" style="display:none"/>`;
 
-    // an effect-site delay: the level at the effect site, dashed, in the effect colour (it never exceeds plasma's peak)
+    // an effect-site delay, the unbound level against an MIC: thin companions to the curve
     curves.filter(cv=>cv.delay && !cv.ghost).forEach(cv=>{
       const col=cv.col ? cv.col.line : K.band, pts=cv.raw.map(q=>({x:sx(q.t), y:sy(q.ce)}));
-      g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.7" stroke-dasharray="5 3" opacity="0.9" stroke-linejoin="round"/>`;
-      // labelled where it runs furthest above plasma (after its peak), just above the dashes: free space
+      g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.4" stroke-dasharray="5 3" opacity="0.85" stroke-linejoin="round"/>`;
       const at=cv.raw.reduce((m,q,i)=> q.ce-q.c>cv.raw[m].ce-cv.raw[m].c ? i : m, 0), q=cv.raw[at];
-      if(q.ce>q.c) lateLabels+=`<text x="${Math.min(Math.max(sx(q.t), M.l+40), PW-M.r-40)}" y="${sy(q.ce)-7}" text-anchor="middle" font-family="Inter" font-size="9.5" fill="${col}" stroke="${K.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+": ":""}effect site</text>`;
-    });
-    // with an MIC and a bound drug: the unbound level, dotted, which is what fT>MIC reads against the MIC line
+      if(q.ce>q.c) late+=`<text x="${Math.min(Math.max(sx(q.t), M.l+40), PW-M.r-40)}" y="${sy(q.ce)-7}" text-anchor="middle" font-size="9.5" fill="${col}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+": ":""}effect site</text>`; });
     if(state.mic>0) curves.filter(cv=>!cv.ghost && cv.p.fu<1).forEach(cv=>{
       const col=cv.col ? cv.col.line : K.mic, pts=cv.raw.map(q=>({x:sx(q.t), y:sy(cv.p.fu*q.c)}));
-      g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.95"/>`;
-      const at=cv.raw.reduce((m,q,i)=> q.c>cv.raw[m].c ? i : m, 0), q=cv.raw[at];
-      const lx=sx(q.t), right=lx+150<PW-M.r;   // the label sits right of the peak, or left of it near the chart's edge
-      lateLabels+=`<text x="${right ? Math.max(lx+8, M.l+40) : lx-8}" text-anchor="${right ? "start" : "end"}" y="${sy(cv.p.fu*q.c)+14}" font-family="Inter" font-size="9.5" fill="${col}" stroke="${K.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+": ":""}unbound (fu ${trim(cv.p.fu)})</text>`;
-    });
+      g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.9"/>`;
+      const at=cv.raw.reduce((m,q,i)=> q.c>cv.raw[m].c ? i : m, 0), q=cv.raw[at], lx=sx(q.t), right=lx+150<PW-M.r;
+      late+=`<text x="${right ? Math.max(lx+8, M.l+40) : lx-8}" text-anchor="${right ? "start" : "end"}" y="${sy(cv.p.fu*q.c)+14}" font-size="9.5" fill="${col}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+": ":""}unbound (fu ${trim(cv.p.fu)})</text>`; });
 
-    g+=lateLabels;
+    // MEC, MTC and the MIC: hairline rules, never dashed, with small quiet labels in the right margin
+    const rule=(c,col,name)=>{ if(c>yTop || (isLog && c<yFloor)) return; const y=sy(c);
+      g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="${col}" stroke-width="1" stroke-opacity="${paper ? 0.7 : 0.6}"/>`;
+      margin.push({y, txt:`${name} ${trim(c)}`, col}); };
+    rule(state.mtc, K.mtc, "MTC"); rule(state.mec, K.mec, "MEC"); if(state.mic>0) rule(state.mic, K.mic, "MIC");
+    if(mode==="cmp") curves.forEach(cv=> margin.push({y:cv.pts[cv.pts.length-1].y, txt:cv.tag, col:cv.col.line, strong:true}));
+    margin.sort((a,b)=>a.y-b.y).forEach((m,i,arr)=>{ if(i && m.y<arr[i-1].y+11) m.y=arr[i-1].y+11; });
+    margin.forEach(m=> late+=`<text x="${PW-M.r+7}" y="${m.y+3.5}" font-size="${m.strong ? 11 : 9.5}" font-weight="${m.strong ? 600 : 500}" fill="${m.col}">${m.txt}</text>`);
 
-    // the Bayesian estimate (dashed) through the measured levels
+    // doses: small ticks on the baseline (they pulse as the play head crosses them); a cross for a missed dose
+    curves.filter(cv=>!cv.ghost && scheduleOf(cv.p).length).forEach((cv,row)=>{
+      const p=cv.p, list=scheduleOf(p), color=cv.col?cv.col.line:K.text, ya=mode==="cmp" && cv.id==="b" ? y0+1 : y0-7, yb=mode==="cmp" && cv.id==="b" ? y0+7 : y0-1;
+      list.forEach((dose,j)=>{ const t=dose.t; if(!inView(t)) return; const x=sx(t), n=dose.n, next=list[j+1], gap=iw*(next ? next.t-t : p.dosing==="repeated" ? p.tau : span)/span;
+        if(dose.missed){ const lc=mode==="cmp"?color:K.mtc;
+          g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${y0}" stroke="${lc}" stroke-width="1" stroke-opacity=".45"/>`;
+          late+=`<text x="${x+5}" y="${M.t+13+row*13}" font-size="9.5" fill="${lc}">${cv.tag?cv.tag+": ":""}D${n} missed</text>`;
+          late+=`<path d="M ${x-3.5} ${y0-7} L ${x+3.5} ${y0} M ${x+3.5} ${y0-7} L ${x-3.5} ${y0}" stroke="${lc}" stroke-width="1.4"/>`; return; }
+        late+=`<line class="dtick" data-t="${t}" x1="${x}" y1="${ya}" x2="${x}" y2="${yb}" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>`;
+        if(mode==="sim"){ const lbl=dose.loading ? "LD" : (gap>=26 ? "D"+n : ""); if(lbl) late+=`<text x="${x+3}" y="${y0-10}" font-size="8.5" fill="${K.muted}">${lbl}</text>`; } }); });
+
+    // the Bayesian estimate and measured levels; a fit's measured points
     if(bz){
-      g+=`<path d="${polyline(bz.raw.map(q=>({x:sx(q.t), y:sy(q.c)})))}" fill="none" stroke="${K.mec}" stroke-width="1.8" stroke-dasharray="7 4" opacity="0.95"/>`;
-      bz.est.obs.forEach(o=>{ if(inView(o.t)) g+=`<circle cx="${sx(o.t)}" cy="${sy(o.y)}" r="4.5" fill="${K.surface}" stroke="${K.mec}" stroke-width="2"><title>Measured ${trim(o.dt)} h after dose ${o.n} (${trim(o.t)} h): ${o.y} ${U().conc}</title></circle>`; });
+      g+=`<path d="${polyline(bz.raw.map(q=>({x:sx(q.t), y:sy(q.c)})))}" fill="none" stroke="${K.mec}" stroke-width="1.6" stroke-dasharray="7 4" opacity="0.95"/>`;
+      bz.est.obs.forEach(o=>{ if(inView(o.t)) late+=`<circle cx="${sx(o.t)}" cy="${sy(o.y)}" r="4.5" fill="${K.page}" stroke="${K.mec}" stroke-width="1.6"><title>Measured ${trim(o.dt)} h after dose ${o.n} (${trim(o.t)} h): ${o.y} ${U().conc}</title></circle>`; });
       const e=bz.raw[Math.floor(bz.raw.length*0.72)];
-      if(e) g+=`<text x="${Math.min(sx(e.t), PW-M.r-110)}" y="${sy(e.c)-9}" font-family="Inter" font-size="9.5" fill="${K.mec}" stroke="${K.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Bayesian estimate</text>`;
+      if(e) late+=`<text x="${Math.min(sx(e.t), PW-M.r-110)}" y="${sy(e.c)-9}" font-size="9.5" fill="${K.mec}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Bayesian estimate</text>`;
     }
-    // the measured points, while fitting
-    if(fitting) fit.obs.forEach(o=>{
-      if(inView(o.t)) g+=`<circle cx="${sx(o.t)}" cy="${sy(o.c)}" r="4.3" fill="${K.surface}" stroke="${K.text}" stroke-width="1.7"><title>Measured at ${trim(o.t)} h: ${o.c} mg/L</title></circle>`;
-    });
+    if(fitting) fit.obs.forEach(o=>{ if(inView(o.t)) late+=`<circle cx="${sx(o.t)}" cy="${sy(o.c)}" r="4.3" fill="${K.page}" stroke="${K.text}" stroke-width="1.6"><title>Measured at ${trim(o.t)} h: ${o.c} mg/L</title></circle>`; });
 
-    // direct labels at the right end of each compared curve, nudged apart if they would collide
-    if(mode==="cmp"){
-      const ends=curves.map(cv=>({cv, y:cv.pts[cv.pts.length-1].y}));
-      if(Math.abs(ends[0].y-ends[1].y)<13){
-        const mid=(ends[0].y+ends[1].y)/2, up=ends[0].y<=ends[1].y?0:1;
-        ends[up].y=mid-7; ends[1-up].y=mid+7;
-      }
-      ends.forEach(e=> g+=`<text x="${PW-M.r+5}" y="${e.y+4}" font-family="Inter" font-size="11" font-weight="600" fill="${e.cv.col.line}">${e.cv.tag}</text>`);
-    }
-
-    // simulator markers: Cmax for a single dose; final-interval peak and trough for a regimen
+    // the peak (and a regimen's trough): a small ring and a thin leader to its value, placed so no label collides
     if(mode==="sim"){
-      const p=curves[0].p, d=derived(p);
-      if(p.dosing==="single"){
-        if(d.tmax>0 && inView(d.tmax)){
-          const cx=sx(d.tmax), cy=sy(d.cmax);
-          g+=`<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${PH-M.b}" stroke="${K.accent}" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>`;
-          g+=marker(cx,cy,K.accent,"Cmax");
-        }
-      } else if(p.dosing==="custom"){
-        // no regular interval to take a final peak and trough from: mark the highest point in view
-        const top=curves[0].pts.reduce((m,q)=> q.c>m.c ? q : m, curves[0].pts[0]);
-        if(top.c>0) g+=marker(top.x,top.y,K.accent,"peak");
-      } else {
-        if(inView(d.tmaxSS)) g+=marker(sx(d.tmaxSS),sy(d.cmaxSS),K.accent,"peak");
-        const tt=p.nDoses*p.tau;
-        if(inView(tt)) g+=marker(sx(tt),sy(d.cminSS),K.mic,"trough","end");
-      }
+      const p=curves[0].p, d=derived(p), mk=[];
+      if(p.dosing==="single"){ if(d.tmax>0 && inView(d.tmax)) mk.push([sx(d.tmax), sy(d.cmax), "Cmax", d.cmax, K.accent]); }
+      else if(p.dosing==="custom"){ const top=curves[0].pts.reduce((m,q)=> q.c>m.c ? q : m, curves[0].pts[0]); if(top.c>0) mk.push([top.x, top.y, "peak", top.c, K.accent]); }
+      else { if(inView(d.tmaxSS)) mk.push([sx(d.tmaxSS), sy(d.cmaxSS), "peak", d.cmaxSS, K.accent]); const tt=p.nDoses*p.tau; if(inView(tt)) mk.push([sx(tt), sy(d.cminSS), "trough", d.cminSS, K.text]); }
+      mk.forEach(([x,y,name,v,col])=> late+=markRing(x, y, `${name} ${fmt(v,cdp(1))}`, col, placed, fitsBox, textW));
     }
 
-    // axis titles
-    g+=`<text x="${M.l+iw/2}" y="${PH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="${K.muted}" font-weight="500">Time (h)</text>`;
-    g+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="${K.muted}" font-weight="500">Concentration (${AXIS_UNIT[U().id]})${isLog?", log":""}</text>`;
+    // the axes: hairlines; the titles carry the units
+    late+=`<path d="M ${M.l} ${M.t-6} L ${M.l} ${y0} L ${PW-M.r} ${y0}" fill="none" stroke="${K.text}" stroke-opacity="${paper ? 0.35 : 0.28}" stroke-width="1"/>`;
+    late+=`<text x="${M.l+iw/2}" y="${PH-4}" text-anchor="middle" font-size="11" fill="${K.muted}" font-weight="500">Time (h)</text>`;
+    late+=`<text transform="translate(15 ${M.t+ih/2}) rotate(-90)" text-anchor="middle" font-size="11" fill="${K.muted}" font-weight="500">Concentration (${AXIS_UNIT[U().id]})${isLog?", log":""}</text>`;
 
-    const dots=curves.filter(cv=>!cv.ghost).map((cv,i)=>
-      `<circle id="chDot${i}" r="4.5" fill="${cv.col?cv.col.line:K.accent}" stroke="${K.surface}" stroke-width="2"/>`).join("");
-    plotEl.innerHTML=`<defs><linearGradient id="gFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${K.accent}" stop-opacity="${paperK() ? 0.16 : 0.2}"/><stop offset="1" stop-color="${K.accent}" stop-opacity="0"/></linearGradient></defs>
-    ${g}
-    <path d="M ${M.l} ${M.t} L ${M.l} ${PH-M.b} L ${PW-M.r} ${PH-M.b}" fill="none" stroke="${K.text}" stroke-opacity="0.24" stroke-width="1"/>
+    const dots=live.map((cv,i)=> `<circle id="chDot${i}" r="4" fill="${K.page}" stroke="${cv.col?cv.col.line:K.accent}" stroke-width="1.8"/>`).join("");
+    plotEl.innerHTML=`<defs>${defs}</defs>${g}<g class="late">${late}</g>
     <g id="cursorG" style="display:none">
-      <line id="curLine" y1="${M.t}" y2="${PH-M.b}" stroke="${K.text}" stroke-width="1.4" opacity="0.7"/>
-      <rect id="curHandle" y="${M.t-4}" width="10" height="8" rx="2" fill="${K.text}"/>
-      <text id="curLbl" y="${M.t+12}" font-family="Inter" font-size="10" fill="${K.text}"></text>
-      ${curves.map((cv,i)=>`<circle class="curDot" data-i="${i}" r="4.5" fill="${cv.ghost?K.ghost:cv.col?cv.col.line:K.accent}" stroke="${K.surface}" stroke-width="2"/>`).join("")}
+      <rect id="curWake" y="${M.t}" width="0" height="${ih}" fill="url(#wakeG)"/>
+      <line id="curLine" y1="${M.t}" y2="${y0}" stroke="${K.text}" stroke-width="1" stroke-opacity="0.6"/>
+      <rect id="curHandle" y="${M.t-5}" width="10" height="5" rx="2.5" fill="${K.text}"/>
+      <text id="curLbl" y="${M.t+12}" font-size="10" font-weight="500" fill="${K.text}"></text>
+      ${curves.map((cv,i)=>`<circle class="curDot" data-i="${i}" r="4" fill="${K.page}" stroke="${cv.ghost?K.ghost:cv.col?cv.col.line:K.accent}" stroke-width="1.8"/>`).join("")}
     </g>
+    <defs><linearGradient id="wakeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${K.accent}" stop-opacity="0"/><stop offset="1" stop-color="${K.accent}" stop-opacity="${paper ? 0.08 : 0.14}"/></linearGradient></defs>
     <g id="crosshair" style="opacity:0">
-      <line id="chLine" y1="${M.t}" y2="${PH-M.b}" stroke="${K.text}" stroke-opacity="0.35" stroke-width="1"/>
-      <line id="chH" x1="${M.l}" x2="${PW-M.r}" stroke="${K.text}" stroke-opacity="0.2" stroke-width="1"/>
+      <line id="chLine" y1="${M.t}" y2="${y0}" stroke="${K.text}" stroke-opacity="0.4" stroke-width="1"/>
+      <line id="chH" x1="${M.l}" x2="${PW-M.r}" stroke="${K.text}" stroke-opacity="0.18" stroke-width="1"/>
       ${dots}
-      <g id="chT"><rect y="${PH-M.b+5}" width="44" height="17" rx="8.5" fill="${K.raised}" stroke="${K.text}" stroke-opacity="0.18"/><text y="${PH-M.b+17}" text-anchor="middle" font-family="Inter" font-size="10" font-weight="500" fill="${K.text}"></text></g>
+      <g id="chT"><rect y="${y0+5}" width="44" height="17" rx="8.5" fill="${K.raised}" stroke="${K.text}" stroke-opacity="0.2"/><text y="${y0+17}" text-anchor="middle" font-size="10" font-weight="500" fill="${K.text}"></text></g>
     </g>`;
+    chartDoses=doseRows;
+    fxSet(lead && !isLog ? lead : (lead||null), lead && lead.col ? lead.col.line : K.accent, paper);
 
     morphCurves(curves, sy(0));
     renderStrip(T0,T1);
@@ -2938,37 +2939,79 @@
     mast();
   }
 
-  // A discrete change (a choice, a typed value, a drug, a template) eases each curve from its old shape to its new one
-  // in 300 ms (2.12); a slider's drag, which renders every frame, draws it as it is, and so does reduced motion
+  // A discrete change (a choice, a typed value, a drug, a template, the scale) eases each curve from its old shape to
+  // its new one in 300 ms (2.12); a slider's drag, which renders every frame, draws it as it is, and so does reduced
+  // motion. Every layer of a curve (glow, stroke, core, fill, reflection) moves together.
   let lastRenderAt=0, lastShapes=null, morphRaf=0;
   function morphCurves(curves, y0){
     const now=performance.now(), shapes={};
-    curves.forEach(cv=>{ if(!cv.ghost) shapes[cv.id]=cv.pts.map(q=>[q.x,q.y]); });
+    curves.forEach(cv=>{ shapes[cv.id]=cv.pts.map(q=>[q.x,q.y]); });
     const prev=lastShapes, quiet=now-lastRenderAt>160;
     lastRenderAt=now; lastShapes=shapes; cancelAnimationFrame(morphRaf);
     if(!prev || !quiet || noMotion()) return;
     const ids=Object.keys(shapes).filter(id=> prev[id] && prev[id].length===shapes[id].length && prev[id].some((p,i)=> Math.abs(p[1]-shapes[id][i][1])>0.5 || Math.abs(p[0]-shapes[id][i][0])>0.5));
     if(!ids.length) return;
-    const parts=ids.map(id=>({from:prev[id], to:shapes[id], paths:[...plotEl.querySelectorAll(`g[data-cv="${id}"] path`)], area:id==="cur" ? plotEl.querySelector("#mainArea") : null}));
+    const parts=ids.map(id=>({from:prev[id], to:shapes[id], lines:[...plotEl.querySelectorAll(`g[data-cv="${id}"] path[data-k="line"]`)], areas:[...plotEl.querySelectorAll(`g[data-cv="${id}"] path[data-k="area"]`)]}));
     const step=t=>{
       const u=Math.min(1,(t-now)/300), e=1-Math.pow(1-u,3);
-      parts.forEach(({from,to,paths,area})=>{
+      parts.forEach(({from,to,lines,areas})=>{
         let d="";
         for(let i=0;i<to.length;i++){ const x=from[i][0]+(to[i][0]-from[i][0])*e, y=from[i][1]+(to[i][1]-from[i][1])*e; d+=(i ? " L " : "M ")+x.toFixed(2)+" "+y.toFixed(2); }
-        paths.forEach(el=> el.setAttribute("d", d));
-        if(area) area.setAttribute("d", `M ${to[0][0]} ${y0} L`+d.slice(1)+` L ${to[to.length-1][0]} ${y0} Z`);
+        lines.forEach(el=> el.setAttribute("d", d));
+        if(areas.length){ const ad=`M ${to[0][0]} ${y0} L`+d.slice(1)+` L ${to[to.length-1][0]} ${y0} Z`; areas.forEach(el=> el.setAttribute("d", ad)); }
       });
       if(u<1) morphRaf=requestAnimationFrame(step);
     };
     morphRaf=requestAnimationFrame(step);
   }
-  // A curve as an instrument draws it (2.12): a soft glow, a 2 px stroke, and a 1 px core a little lighter than it
-  function curveLines(d, color, id){
-    const core=paperK() ? color : mixHex(color, "#ffffff", 0.45);
-    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="7" stroke-opacity="${paperK() ? 0.07 : 0.14}" stroke-linejoin="round" stroke-linecap="round"/>`+
-      `<path${id ? ` id="${id}"` : ""} d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`+
-      `<path d="${d}" fill="none" stroke="${core}" stroke-width="1" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>`;
+  /* ---------- the chart's materials and motion (2.13) ---------- */
+  // A curve's colours by state, from its own colour: cool and dim below the MEC, luminous inside the window, warm toward
+  // the MTC and hot past it. On paper, ink: the same order without the glow.
+  function chartStates(col, paper){
+    return paper ? {dim:mixHex(col,"#8a8f98",0.7), cool:mixHex(col,"#5d6f80",0.6), lum:col, warm:mixHex(col,"#b4532f",0.55), hot:"#A8432E"}
+      : {dim:mixHex(col,"#4e6478",0.72), cool:mixHex(col,"#7f9ab0",0.62), lum:mixHex(col,"#ffffff",0.28), warm:mixHex(col,"#f3a06c",0.6), hot:"#F2785E"};
   }
+  // a faint grain for the fill under the curve: a tile of noise, made once
+  let grainTile=null;
+  function grainURI(){
+    if(grainTile) return grainTile;
+    try{ const c=document.createElement("canvas"); c.width=c.height=96; const x=c.getContext("2d"), im=x.createImageData(96,96), R=PK.seededRandom(3);
+      for(let i=0;i<im.data.length;i+=4){ const v=R()*255; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=R()<0.5 ? 26 : 0; }
+      x.putImageData(im,0,0); grainTile=c.toDataURL("image/png"); }catch(e){ grainTile="data:,"; }
+    return grainTile;
+  }
+  // a marked point: a ring on the curve and a thin leader to its value, in the first place its label fits
+  function markRing(x, y, label, col, placed, fits, textW){
+    const w=textW(label,11), cands=[[1,-1],[-1,-1],[1,1],[-1,1],[1,-2],[-1,-2]];
+    let pick=null;
+    for(const [dx,dy] of cands){ const x2=x+dx*16, y2=y+dy*18, x3=x2+dx*12, lx=dx>0 ? x3+4 : x3-4-w, box={x:lx, y:y2-9, w, h:14};
+      if(fits(box)){ pick={dx,dy,x2,y2,x3,lx,box}; break; } }
+    if(!pick){ const dx=x>PW-M.r-140 ? -1 : 1, x2=x+dx*16, y2=y-18, x3=x2+dx*12; pick={dx, dy:-1, x2, y2, x3, lx:dx>0 ? x3+4 : x3-4-w, box:{x:0,y:0,w:0,h:0}}; }
+    placed.push(pick.box);
+    const {dx,dy,x2,y2,x3,lx}=pick;
+    return `<circle cx="${x}" cy="${y}" r="5" fill="${K.page}" stroke="${col}" stroke-width="1.3"/><circle cx="${x}" cy="${y}" r="1.6" fill="${col}"/>`+
+      `<path d="M ${x+dx*4} ${y+dy*4} L ${x2} ${y2} L ${x3} ${y2}" fill="none" stroke="${col}" stroke-width="1" stroke-opacity=".7"/>`+
+      `<text x="${lx}" y="${y2+3.5}" font-size="11" font-weight="500" fill="${K.text}" stroke="${K.page}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${label}</text>`;
+  }
+  let scaleWas=null, chartDoses=[];
+  // the chart's place inside its box (an SVG element has no offsetLeft): the box's own padding
+  const plotOffset=()=>{ const cs=getComputedStyle(plotEl.parentElement); return {x:parseFloat(cs.paddingLeft)||0, y:parseFloat(cs.paddingTop)||0}; };
+
+  // The chart's motion (the drug's particles, the curve drawing itself, the doses' pulses, lit doses and intervals, the
+  // plane's tilt) is ui-chartfx.js, loaded just after the first paint; until it arrives the chart is simply still
+  const CHARTFX_SRC="ui-chartfx.js?v=fbac72551a";
+  let chartFx=null, fxLast=null;
+  const fxSet=(...a)=>{ fxLast=a; if(chartFx) chartFx.set(...a); };
+  const drawTo=(x,h)=>{ if(chartFx) chartFx.drawTo(x,h); };
+  const pulseDoses=t=>{ if(chartFx) chartFx.pulse(t); };
+  const lightDose=j=>{ if(chartFx) chartFx.lightDose(j); };
+  const lightInterval=(a,b)=>{ if(chartFx) chartFx.lightInterval(a,b); };
+  addEventListener("load",()=> setTimeout(()=>{ const sc=document.createElement("script"); sc.src=CHARTFX_SRC;
+    sc.onload=()=>{ if(!window.DCChartFx) return;
+      chartFx=window.DCChartFx({plot:plotEl, get PW(){ return PW; }, get PH(){ return PH; }, M, get state(){ return state; }, noMotion, get curves(){ return plotCurves; },
+        get viewT(){ return viewT; }, sx:t=>sx(t), states:chartStates, rand:k=>PK.seededRandom(k), offset:plotOffset});
+      if(fxLast) chartFx.set(...fxLast); };
+    document.head.appendChild(sc); }, 80));
   const mixHex=(a,b,u)=>{ const h=x=>{ const m=x.trim().replace("#",""); return [0,2,4].map(i=>parseInt(m.length===3 ? m[i/2]+m[i/2] : m.slice(i,i+2),16)); };
     try{ const p=h(a), q=h(b); if(p.some(isNaN)||q.some(isNaN)) return a; return "#"+p.map((v,i)=> Math.round(v+(q[i]-v)*u).toString(16).padStart(2,"0")).join(""); }catch(e){ return a; } };
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
@@ -3609,6 +3652,10 @@
     if(!g) return;
     const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
     g.style.display=show ? "" : "none";
+    if(playing && show && !reduceMotion()){ drawTo(sx(cursorT), true); pulseDoses(cursorT); } else if(!playing && !(chartFx && chartFx.drawing)){ pulseDoses(null); drawTo(PW, false); }
+    const wake=g.querySelector("#curWake"); if(wake){ const x=show ? sx(cursorT) : 0, w=playing && show ? Math.min(70, x-M.l) : 0; wake.setAttribute("x", x-w); wake.setAttribute("width", Math.max(0,w)); }
+    // scrubbing with the keys keeps the hover's crosshair and chip
+    if(show && document.activeElement===plotEl && !playing){ const P=plotCurves.find(cv=>!cv.ghost); if(P){ let bi=0, bd=1e9; P.pts.forEach((q,i)=>{ const d=Math.abs(q.t-cursorT); if(d<bd){ bd=d; bi=i; } }); crossAt(bi); } }
     if(show){
       const x=sx(cursorT), right=x>PW-M.r-70;
       g.querySelector("#curLine").setAttribute("x1",x); g.querySelector("#curLine").setAttribute("x2",x);
@@ -3738,6 +3785,7 @@
     if(!playing) return;
     playing=false;
     cancelAnimationFrame(playRaf); clearInterval(playTimer);
+    drawTo(PW, false); pulseDoses(null); updateCursor();   // the whole curve again, and no wake
     setPlayUI(); renderInspector();
   }
   byId("playBtn").addEventListener("click",()=> playing ? pause() : play());
@@ -3785,15 +3833,25 @@
 
   /* ================= CROSSHAIR ================= */
   const tip=byId("tooltip");
+  let crossRaf=0, crossEvt=null;
   function moveCross(evt){
     if(dragging){ hideCross(); return; }
+    crossEvt={x:evt.touches?evt.touches[0].clientX:evt.clientX, y:evt.touches?evt.touches[0].clientY:evt.clientY};
+    if(!crossRaf) crossRaf=requestAnimationFrame(()=>{ crossRaf=0; if(crossEvt) crossFrom(crossEvt); });
+  }
+  function crossFrom(pt){
     const rect=plotEl.getBoundingClientRect();
-    const px=(evt.touches?evt.touches[0].clientX:evt.clientX)-rect.left;
-    const svgX=px/rect.width*PW;
+    const svgX=(pt.x-rect.left)/rect.width*PW, svgY=(pt.y-rect.top)/rect.height*PH;
     if(svgX<M.l||svgX>PW-M.r){ hideCross(); return; }
+    // near the baseline, a dose tick lights that dose's own curve
+    if(chartDoses.length && svgY>PH-M.b-16 && svgY<PH-M.b+10){ let j=-1, bd=8; chartDoses.forEach((t,k)=>{ const d=Math.abs(sx(t)-svgX); if(d<bd){ bd=d; j=k; } }); lightDose(j); } else lightDose(-1);
     const lead=plotCurves[0].pts;
     let bi=0, bd=1e9;
     lead.forEach((q,i)=>{ const dd=Math.abs(q.x-svgX); if(dd<bd){bd=dd;bi=i;} });
+    crossAt(bi);
+  }
+  function crossAt(bi){
+    const rect=plotEl.getBoundingClientRect(), lead=plotCurves[0].pts;
     const ch=plotEl.querySelector("#crosshair");
     if(!ch) return;
     ch.style.opacity=1;
@@ -3809,8 +3867,9 @@
     });
     const topY=Math.min(...live.map(cv=>cv.pts[bi].y));
     plotEl.querySelector("#chH").setAttribute("y1",live[0].pts[bi].y); plotEl.querySelector("#chH").setAttribute("y2",live[0].pts[bi].y);
-    tip.style.left=(x/PW*rect.width+plotEl.offsetLeft)+"px";
-    tip.style.top=(topY/PH*rect.height+plotEl.offsetTop)+"px";
+    const o=plotOffset();
+    tip.style.left=(x/PW*rect.width+o.x)+"px";
+    tip.style.top=(topY/PH*rect.height+o.y)+"px";
     const status=c=> c>state.mtc ? '<span class="tt-hi">toxic</span>'
       : c>=state.mec ? '<span class="tt-in">therapeutic</span>' : '<span class="tt-lo">sub-therapeutic</span>';
     let html=`<span class="tt-t">t = ${lead[bi].t.toFixed(1)} h</span>`;
@@ -3826,11 +3885,20 @@
     tip.style.opacity=1;
   }
   function hideCross(){
+    crossEvt=null; lightDose(-1);
     tip.style.opacity=0;
     const ch=plotEl.querySelector("#crosshair"); if(ch) ch.style.opacity=0;
   }
   plotEl.addEventListener("mousemove",moveCross);
   plotEl.addEventListener("mouseleave",hideCross);
+  plotEl.addEventListener("blur",hideCross);
+  // a row of the dose schedule lights its interval and its dose's own curve on the chart
+  byId("evList").addEventListener("pointerover",e=>{
+    const row=e.target.closest(".ev-row"); if(!row) return;
+    const ev=doseEvents(snapshot()), i=ev.findIndex(d=> String(d.id)===row.dataset.id); if(i<0){ lightInterval(null); return; }
+    lightInterval(ev[i].t, i+1<ev.length ? ev[i+1].t : viewT[1]); lightDose(i);
+  });
+  byId("evList").addEventListener("pointerleave",()=>{ lightInterval(null); lightDose(-1); });
   plotEl.addEventListener("touchstart",moveCross,{passive:true});
   plotEl.addEventListener("touchmove",moveCross,{passive:true});
   plotEl.addEventListener("touchend",hideCross);
@@ -4400,7 +4468,7 @@
   /* ================= POPULATION ================= */
   // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
   // is kept with the key of what it was computed for; the chart uses it only while that still matches.
-  const POP_SRC="pop-worker.js?v=67b2b76963";
+  const POP_SRC="pop-worker.js?v=6f14268429";
   let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
   const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
     auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null, pd:state.pd ? 1 : 0});
@@ -4496,7 +4564,7 @@
   // the main chart already computed, through each scenario's own Emax curve.
   const effEl=byId("effPlot"), ecEl=byId("ecPlot");
   const EH=220, EM={l:M.l, r:M.r, t:14, b:36}, EW=380, ECH=250, ECM={l:46, r:14, t:14, b:40};
-  let effY=null, ecMap=null, effDragging=false;
+  let effDragging=false;
   const pdKey=p=> PK.PD_KEYS.map(k=>p[k]).join(",");
   const effColor=cv=> cv.ghost ? K.ghost : cv.col ? cv.col.line : K.band;
   function syncPd(){
@@ -4510,195 +4578,27 @@
   });
   byId("pdBtn").addEventListener("click",()=>{ state.pd=!state.pd; syncPd(); render(); });
 
-  // With an indirect response the effect chart shows the response as a % of its baseline, from pk-idr.js.
-  const respOf=(cv,t,ce)=> cv.p.idr>0 ? PK.idr.at(cv.p, state.duration, t) : PK.effectOf(cv.p, ce);
-  let effTop=100;
+  // The two charts themselves are ui-effect.js, loaded when the switch is first on or a link opens with it
+  const EFFECT_SRC="ui-effect.js?v=be4a964029";
+  let effectUI=null, effectLoad=null;
+  function loadEffect(){
+    if(effectUI) return Promise.resolve();
+    if(!effectLoad) effectLoad=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=EFFECT_SRC;
+      sc.onload=()=>{ if(!window.DCEffect) return rej(new Error("no effect"));
+        effectUI=window.DCEffect({byId, PK, K, U, fmt, fmtAxis, trim, ticksRange, polyline, conc, effColor, pdKey, popBands, loadIdr, render, IDR_NAME, effEl, ecEl, EH, EM, EW, ECH, ECM, state, cdp, esc,
+          get cursorT(){ return cursorT; }, get plotCurves(){ return plotCurves; }, get viewT(){ return viewT; }, sx:t=>sx(t), get PW(){ return PW; }, get mode(){ return mode; }, get cmp(){ return cmp; }});
+        res(); };
+      sc.onerror=()=>{ effectLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc); });
+    return effectLoad;
+  }
   function renderPd(curves, T0, T1){
     byId("pdBox").hidden=!state.pd; byId("pdRow").hidden=!state.pd;
     if(!state.pd) return;
-    const resp=curves.some(cv=>cv.p.idr>0);
-    if(resp && !PK.idrModule){
-      effEl.innerHTML=`<text x="${PW/2}" y="${EH/2}" text-anchor="middle" font-family="Inter" font-size="12" fill="${K.muted}">Loading the response model…</text>`;
-      byId("pdStats").innerHTML=""; ecEl.innerHTML="";
-      loadIdr().then(render).catch(()=>{ effEl.innerHTML=`<text x="${PW/2}" y="${EH/2}" text-anchor="middle" font-family="Inter" font-size="12" fill="${K.muted}">The response model couldn't load. Check the connection.</text>`; });
-      return;
-    }
-    // the response's own scale: 0 to a round number above the highest value (100 for direct effects)
-    let top=100;
-    if(resp) curves.forEach(cv=> cv.raw.forEach(q=>{ const v=respOf(cv,q.t,q.ce); if(v>top) top=v; }));
-    effTop=resp ? Math.max(120, Math.ceil(top*1.1/20)*20) : 100;
-    const iw=PW-EM.l-EM.r, ih=EH-EM.t-EM.b, x=t=> EM.l+((t-T0)/(T1-T0))*iw, y=e=> EM.t+ih-(e/effTop)*ih;
-    effY=y;
-    let g=`<rect x="${EM.l}" y="${EM.t}" width="${iw}" height="${ih}" fill="none" stroke="${K.line}"/>`+
-      (resp ? "" : `<rect x="${EM.l}" y="${y(100)}" width="${iw}" height="${y(state.etgt)-y(100)}" fill="${K.band}" fill-opacity="0.1"/>`);
-    (resp ? ticksRange(0,effTop,5) : [0,25,50,75,100]).forEach(v=>{
-      g+=`<line x1="${EM.l}" y1="${y(v)}" x2="${PW-EM.r}" y2="${y(v)}" stroke="${K.line}"/>`+
-        `<text x="${EM.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="Inter" font-size="10" fill="${K.muted}">${v}</text>`;
-    });
-    ticksRange(T0,T1,7).forEach(v=>{
-      g+=`<line x1="${x(v)}" y1="${EM.t}" x2="${x(v)}" y2="${EH-EM.b}" stroke="${K.line}"/>`+
-        `<text x="${x(v)}" y="${EH-EM.b+16}" text-anchor="middle" font-family="Inter" font-size="10" fill="${K.muted}">${fmtAxis(v)}</text>`;
-    });
-    if(resp) g+=`<line x1="${EM.l}" y1="${y(100)}" x2="${PW-EM.r}" y2="${y(100)}" stroke="${K.text}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.7"/>`+
-      `<text x="${PW-EM.r-4}" y="${y(100)-5}" text-anchor="end" font-family="Inter" font-size="9.5" fill="${K.text}">baseline 100%</text>`;
-    else g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${K.band}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
-      `<text x="${PW-EM.r-4}" y="${y(state.etgt)-5}" text-anchor="end" font-family="Inter" font-size="9.5" fill="${K.band}">target ${state.etgt}%</text>`;
-    // population mode: the effect's 5th–95th percentile band across the same virtual patients, its median dotted
-    popBands(curves).forEach(({cv,r})=>{
-      if(!r.e05) return;
-      const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9);
-      if(idx.length<2) return;
-      const yc=e=> y(Math.min(e, effTop)), col=effColor(cv);
-      g+=`<polygon points="${idx.map(i=>`${x(r.t[i])},${yc(r.e95[i])}`).concat(idx.slice().reverse().map(i=>`${x(r.t[i])},${yc(r.e05[i])}`)).join(" ")}" fill="${col}" fill-opacity="0.13" stroke="none"/>`+
-        `<path d="${polyline(idx.map(i=>({x:x(r.t[i]), y:yc(r.e50[i])})))}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/>`;
-    });
-    const order=mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse();
-    order.forEach(cv=>{
-      const d="M "+cv.raw.map(q=>`${x(q.t)} ${y(respOf(cv,q.t,q.ce))}`).join(" L ");
-      g+=cv.ghost ? `<path d="${d}" fill="none" stroke="${K.ghost}" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>`
-        : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    });
-    g+=`<text x="${EM.l+iw/2}" y="${EH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="${K.muted}" font-weight="500">Time (h)</text>`+
-      `<text transform="translate(15 ${EM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="${K.muted}" font-weight="500">${resp ? (curves.every(cv=>cv.p.idr>0) ? "Response (% of baseline)" : "Effect or response (%)") : "Effect (% of max)"}</text>`+
-      `<g id="effCursor" style="display:none"><line id="effCurLine" y1="${EM.t}" y2="${EH-EM.b}" stroke="${K.text}" stroke-width="1.4" opacity="0.7"/>`+
-      curves.map((cv,i)=>`<circle class="effDot" data-i="${i}" r="4.5" fill="${effColor(cv)}" stroke="${K.surface}" stroke-width="2"/>`).join("")+`</g>`;
-    effEl.innerHTML=g;
-    const primary=curves.find(cv=>mode==="cmp" ? cv.id===cmp.edit : cv.primary);
-    const pp=primary.p;
-    byId("pdSub").textContent=pp.idr>0 ? `Indirect, ${IDR_NAME[pp.idr].toLowerCase()}, EC50 ${trim(pp.ec50)} ${U().conc}, ${pp.idr<3 ? `Imax ${fmt(100*pp.imax,0)}%` : `Smax ${trim(pp.smax)}`}, n ${trim(pp.hill)}, response turnover t½ ${trim(pp.tout)} h`
-      : `EC50 ${trim(pp.ec50)} ${U().conc}, Emax ${trim(pp.emax)}%, n ${trim(pp.hill)}${pp.e0?`, E₀ ${trim(pp.e0)}%`:""}${PK.keqOf(pp)>0?`, effect-site t½ ${trim(pp.teq)} h`:""}`;
-    effEl.setAttribute("aria-label", resp ? "Response over time, as a percentage of its baseline. Click or drag to move the time cursor." : "Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor.");
-    renderSigmoid(curves, primary);
-    renderPdStats(curves);
+    if(!effectUI){ loadEffect().then(render).catch(()=>{ byId("pdSub").textContent="The effect charts couldn't load. Check the connection."; }); return; }
+    effectUI.renderPd(curves, T0, T1);
   }
-
-  // Effect against log concentration: 2 decades either side of EC50, the target line, EC50 and the
-  // concentration that reaches the target marked for the scenario being edited.
-  function renderSigmoid(curves, primary){
-    const iw=EW-ECM.l-ECM.r, ih=ECH-ECM.t-ECM.b, ecs=curves.map(cv=>cv.p.ec50);
-    const lo=Math.floor(Math.log10(Math.min(...ecs))-2), hi=Math.ceil(Math.log10(Math.max(...ecs))+2);
-    const X=c=> ECM.l+((Math.log10(Math.min(Math.max(c,10**lo),10**hi))-lo)/(hi-lo))*iw, Y=e=> ECM.t+ih-(e/effTop)*ih;
-    ecMap={X,Y};
-    let g=`<rect x="${ECM.l}" y="${ECM.t}" width="${iw}" height="${ih}" fill="none" stroke="${K.line}"/>`;
-    for(let k=lo;k<=hi;k++){
-      const v=10**k, xx=X(v);
-      g+=`<line x1="${xx}" y1="${ECM.t}" x2="${xx}" y2="${ECM.t+ih}" stroke="${K.line}"/>`+
-        `<text x="${xx}" y="${ECM.t+ih+15}" text-anchor="middle" font-family="Inter" font-size="9.5" fill="${K.muted}">${v>=1?v:v.toPrecision(1)}</text>`;
-    }
-    (effTop>100 ? ticksRange(0,effTop,4) : [0,50,100]).forEach(v=>{
-      g+=`<line x1="${ECM.l}" y1="${Y(v)}" x2="${EW-ECM.r}" y2="${Y(v)}" stroke="${K.line}"/>`+
-        `<text x="${ECM.l-7}" y="${Y(v)+3.5}" text-anchor="end" font-family="Inter" font-size="9.5" fill="${K.muted}">${v}</text>`;
-    });
-    if(primary.p.idr>0) return renderResponseLoop(curves, primary, g, {X, Y, lo, hi, iw, ih});
-    g+=`<line x1="${ECM.l}" y1="${Y(state.etgt)}" x2="${EW-ECM.r}" y2="${Y(state.etgt)}" stroke="${K.band}" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
-    const p=primary.p, col=effColor(primary), top=p.e0+p.emax, ct=PK.concForEffect(p,state.etgt);
-    g+=`<line x1="${ECM.l}" y1="${Y(top)}" x2="${EW-ECM.r}" y2="${Y(top)}" stroke="${col}" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`+
-      `<text x="${EW-ECM.r-4}" y="${Y(top)+(top>90?12:-5)}" text-anchor="end" font-family="Inter" font-size="9" fill="${col}">Emax ${trim(top)}%</text>`+
-      `<line x1="${X(p.ec50)}" y1="${Y(PK.effectOf(p,p.ec50))}" x2="${X(p.ec50)}" y2="${ECM.t+ih}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>`+
-      `<text x="${X(p.ec50)+5}" y="${ECM.t+ih-6}" font-family="Inter" font-size="9" fill="${col}">EC50 ${trim(p.ec50)}</text>`;
-    if(ct!==null && ct>0) g+=`<line x1="${X(ct)}" y1="${Y(state.etgt)}" x2="${X(ct)}" y2="${ECM.t+ih}" stroke="${K.band}" stroke-width="1" stroke-dasharray="1 3" opacity="0.8"/>`;
-    // one curve per distinct concentration–effect relationship (A and B share one when only the PK differs)
-    const seen=new Set();
-    (mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse()).forEach(cv=>{
-      const key=pdKey(cv.p);
-      if(seen.has(key) && cv.ghost) return;
-      seen.add(key);
-      let d="";
-      for(let i=0;i<=160;i++){ const u=lo+(hi-lo)*i/160; d+=(i?" L ":"M ")+`${X(10**u)} ${Y(PK.effectOf(cv.p,10**u))}`; }
-      g+=cv.ghost ? `<path d="${d}" fill="none" stroke="${K.ghost}" stroke-width="1.6" stroke-dasharray="6 5" opacity="0.75"/>`
-        : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.2"/>`;
-    });
-    // an effect-site delay: the effect against the plasma level over the window traces a loop around the curve
-    // (hysteresis), with an arrowhead on the rising limb showing it runs counterclockwise
-    const loops=curves.filter(cv=>cv.delay && !cv.ghost);
-    loops.forEach(cv=>{
-      const col=effColor(cv), P=cv.raw.map(q=>[X(q.c), Y(PK.effectOf(cv.p,q.ce))]);
-      g+=`<path d="M ${P.map(xy=>xy.join(" ")).join(" L ")}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.85" stroke-linejoin="round"/>`;
-      const iPk=cv.raw.reduce((m,q,i)=> q.c>cv.raw[m].c ? i : m, 0), i=Math.floor(iPk/2);
-      if(iPk>=4 && cv.raw[i].c>0){
-        const [x0,y0]=P[i-1], [x1,y1]=P[i+1], a=Math.atan2(y1-y0, x1-x0), [cx,cy]=P[i], r=6;
-        const pt=d=>`${cx+r*Math.cos(a+d)} ${cy+r*Math.sin(a+d)}`;
-        g+=`<polygon points="${pt(0)} ${pt(2.5)} ${pt(-2.5)}" fill="${col}"/>`;
-      }
-    });
-    byId("ecSub").textContent=loops.length ? "Effect against plasma level on a log scale: a counterclockwise loop (delay)" : "Sigmoid Emax on a log scale; the dot follows the time cursor";
-    ecEl.setAttribute("aria-label", loops.length ? "Concentration–effect curve on a log scale. With an effect-site delay, the effect plotted against the plasma level traces a counterclockwise loop around the curve: lower while the level rises, higher while it falls. A dot marks the time cursor."
-      : "Concentration–effect curve: effect against concentration on a log scale, with a dot at the time cursor.");
-    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="${K.muted}">Concentration (${U().conc}, log scale)</text>`+
-      `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="${K.muted}">Effect (%)</text>`+
-      curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="${K.surface}" stroke-width="2" style="display:none"/>`).join("");
-    ecEl.innerHTML=g;
-  }
-
-  // An indirect response against the plasma level: the curve where it would settle if each level were held (the
-  // plateau), and the path it takes over the window, a loop that runs behind the level.
-  function renderResponseLoop(curves, primary, g, S){
-    const {X, Y, lo, hi, iw, ih}=S, seen=new Set();
-    g+=`<line x1="${ECM.l}" y1="${Y(100)}" x2="${EW-ECM.r}" y2="${Y(100)}" stroke="${K.text}" stroke-width="1" stroke-dasharray="5 4" opacity="0.6"/>`;
-    curves.filter(cv=>cv.p.idr>0).forEach(cv=>{
-      const key=PK.PD_KEYS.filter(k=>k!=="tout").map(k=>cv.p[k]).join(",");
-      if(seen.has(key)) return; seen.add(key);
-      let d=""; for(let i=0;i<=160;i++){ const u=lo+(hi-lo)*i/160, v=Math.min(PK.idr.plateau(cv.p,10**u), effTop); d+=(i?" L ":"M ")+`${X(10**u)} ${Y(v)}`; }
-      g+=`<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="1.2" stroke-dasharray="2 4" opacity="${cv.ghost?0.5:0.8}"/>`;
-    });
-    curves.filter(cv=>cv.p.idr>0 && !cv.ghost).forEach(cv=>{
-      const col=effColor(cv), P=cv.raw.filter(q=>q.c>0).map(q=>[X(q.c), Y(respOf(cv,q.t,q.ce))]);
-      if(P.length>1) g+=`<path d="M ${P.map(xy=>xy.join(" ")).join(" L ")}" fill="none" stroke="${col}" stroke-width="2" opacity="0.9" stroke-linejoin="round"/>`;
-    });
-    byId("ecSub").textContent="Response against plasma level on a log scale; dotted, where it would settle at a steady level";
-    ecEl.setAttribute("aria-label", "Response against plasma level on a log scale. The dotted curve is where the response would settle if each level were held; the solid path is the response over the window, which lags behind the level and loops around that curve. A dot marks the time cursor.");
-    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="${K.muted}">Concentration (${U().conc}, log scale)</text>`+
-      `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="${K.muted}">Response (%)</text>`+
-      curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="${K.surface}" stroke-width="2" style="display:none"/>`).join("");
-    ecEl.innerHTML=g;
-  }
-
-  // Peak effect, when it comes, when the target is first reached and for how long, over the whole window. With an
-  // indirect response: its largest change from baseline, when that comes, and how long after the plasma peak.
-  function renderPdStats(curves){
-    const T=state.duration, tg=state.etgt, live=curves.filter(cv=>!cv.ghost);
-    if(live.some(cv=>cv.p.idr>0)){
-      const st=live.map(cv=> cv.p.idr>0 ? PK.idr.stats(cv.p,T) : null);
-      const val=(f,dp)=> st.map(e=> e==null ? "—" : fmt(f(e),dp)).join(" / "), who=mode==="cmp" ? "A / B: " : "";
-      byId("pdStats").innerHTML=[
-        {k:`${who}Largest change`, hot:1, v:val(e=>e.change,0), u:"% pts"},
-        {k:`${who}When`, v:val(e=>e.tExt,1), u:"h"},
-        {k:`${who}Plasma peak`, v:val(e=>e.tCmax,1), u:"h"},
-        {k:`${who}Lag behind it`, hot:1, v:val(e=>e.lag,1), u:"h"}
-      ].map(c=>`<div class="ro${c.hot?" hot":""}"><div class="ro-k">${c.k}</div><div class="ro-v">${c.v}<small>${c.u}</small></div></div>`).join("");
-      return;
-    }
-    const st=live.map(cv=>PK.effectStats(cv.p,T,tg));
-    const val=(f,dp)=> st.map(e=>{ const v=f(e); return v==null ? "never" : fmt(v,dp); }).join(" / ");
-    const who=mode==="cmp" ? "A / B: " : "";
-    byId("pdStats").innerHTML=[
-      {k:`${who}Peak effect`, hot:1, v:val(e=>e.peak,0), u:"%"},
-      {k:`${who}Time of peak`, v:val(e=>e.tPeak,1), u:"h"},
-      {k:`${who}Reaches ${tg}%`, v:val(e=>e.onset,1), u:st.every(e=>e.onset==null)?"":"h"},
-      {k:`${who}At or above ${tg}%`, hot:1, v:val(e=>e.tAbove,1), u:"h"}
-    ].map(c=>`<div class="ro${c.hot?" hot":""}"><div class="ro-k">${c.k}</div><div class="ro-v">${c.v}<small>${c.u}</small></div></div>`).join("");
-  }
-
-  function updatePdCursor(){
-    if(!state.pd || !effY || !ecMap) return;
-    const g=effEl.querySelector("#effCursor");
-    if(!g) return;
-    const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
-    g.style.display=show ? "" : "none";
-    ecEl.querySelectorAll(".ecDot").forEach(d=>{ d.style.display=show ? "" : "none"; });
-    if(!show) return;
-    const x=sx(cursorT);   // same width and side margins as the concentration chart
-    g.querySelector("#effCurLine").setAttribute("x1",x); g.querySelector("#effCurLine").setAttribute("x2",x);
-    g.querySelectorAll(".effDot").forEach(d=>{
-      const cv=plotCurves[+d.dataset.i], e=respOf(cv, cursorT, PK.ceConc(cv.p,cursorT));
-      d.setAttribute("cx",x); d.setAttribute("cy",effY(e));
-    });
-    // the dot sits at the plasma level and the effect: on the curve, or with a delay, on the loop
-    ecEl.querySelectorAll(".ecDot").forEach(d=>{
-      const cv=plotCurves[+d.dataset.i], c=conc(cv.p,cursorT);
-      d.setAttribute("cx",ecMap.X(c)); d.setAttribute("cy",ecMap.Y(respOf(cv, cursorT, PK.ceConc(cv.p,cursorT))));
-    });
-  }
+  function updatePdCursor(){ if(effectUI) effectUI.updatePdCursor(); }
   effEl.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
     const t=timeAt(e,false,effEl);
@@ -5995,6 +5895,7 @@
   if((caseLink || bundleLink || curTab==="cs") && casesReady) waits.push(casesReady);   // and #cases, for its list
   if((baseline || mode==="cmp") && !PK.explainModule) waits.push(loadExplain());
   if(lesson && lessonPending) waits.push(lessonPending);   // a lesson link shows with its texts in place
+  if(state.pd && !effectUI) waits.push(loadEffect());   // a link that opens with the effect charts, with them drawn
   if(waits.length) Promise.all(waits.map(w=> w.catch(()=>{}))).then(unwait); else unwait();
   // the sliding parts follow any change of the chosen segment or tab, a resize, and the fonts arriving
   new MutationObserver(ms=>{ if(ms.some(m=> m.target.parentElement && m.target.parentElement.matches(".seg,.mini-seg,.tabbar"))) queuePlace(); })

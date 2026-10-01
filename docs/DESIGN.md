@@ -466,3 +466,28 @@ its number, divided by hairlines; on narrow screens the row wraps into a grid wi
 machine at any point during 2.12, so the release follows the brief's words; screenshots before and after (simulator,
 compare, a lesson, a case; 1440 and 390; both themes) are in the release's pull request.
 
+## 19. 2.13: the chart as an object
+
+Back to front: the grid (in parallax), the window as glass, infusion and dialysis shading, the population's glass, each
+dose's own curve, the difference from a baseline, the curves, the thresholds, labels, the axes, the cursor and the
+crosshair; particles on a canvas above.
+
+| Element | Dark | Paper |
+| --- | --- | --- |
+| Curve | 2 px, coloured along its length by state: dim steel below the MEC, champagne lifting to luminous in the window, apricot toward the MTC, coral (#F2785E) past it; a 1 px core 32% toward white; a 4 px glow blurred 4.5 | the same order in ink: slate, brass, rust (#A8432E); no glow |
+| Fill | the curve's colour at 25% fading to nothing at the baseline, with a grain tile at 40% | at 25%, grain at 25% |
+| Reflection | the curve and fill mirrored under the baseline at 10%, masked to 26 px | the same |
+| Particles | 72 points, a 4 px halo at 22% and a 1.1 px white core, coloured by state, one pass every 7.5 s | ink dots, 1.3 px at 45% |
+| Window | text colour at 7% with soft 7% edges, 1 px hairlines at 20%, a highlight crossing it every 11 s | 6%, hairlines at 16% |
+| Grid | major lines at 5.5%, major and minor ticks on the axes at 40% and 22% | 7% |
+| Thresholds | solid 1 px rules at 60%, labelled in the right margin (MTC, MEC, MIC with their values), at least 11 px apart | 70% |
+| Doses | 6 px ticks on the baseline that pulse (scale 2.6, 0.7 s) when the play head crosses them; each dose's own curve at 4% fill and 26% line, lit to 16% and 95% | 3.5% and 30% |
+| Peak | a 5 px ring with a 1.6 px centre, a 1 px leader (16 px out, 12 px across) to "Cmax 9.3", in the first of six places that fits | the same |
+| Baseline | 1 px at 35% of the text colour, no glow; the difference a 12% region blurred 2.5, its largest gap marked and labelled | the same |
+| Population | the middle 90% at 7% with 28% edges, the middle 50% at 10%, the median luminous | 7% and 9% |
+| Depth | the plane tilts up to 2.2° and 2.8° toward the pointer, the grid moves up to 5 px; a vignette inside the plot only | no vignette |
+
+Motion: the first view draws the curve in 1.3 s (ease-out cubic) with a glowing head; Play reveals it up to the play
+head with a 70 px wake; discrete changes morph every layer in 300 ms; the grid crossfades in 0.45 s when the scale
+changes. Reduced motion: none of it, and the chart is simply there.
+

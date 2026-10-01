@@ -210,9 +210,47 @@ test("2.12: the app as an instrument panel: two families with tabular figures, o
   assert.match(page, /e\.key==="Escape"\)\{ fld\.value=trim\(state\[key\]\)/);
   // the chart: hairline axes, a glow, a 2 px stroke and a 1 px core, solid MEC and MTC rules with their values, a 300 ms
   // morph that reduced motion skips
-  assert.match(page, /stroke-width="2" stroke-linejoin="round" stroke-linecap="round"\/>`\+\n\s+`<path d="\$\{d\}" fill="none" stroke="\$\{core\}" stroke-width="1"/);
-  assert.match(page, /MEC \$\{trim\(state\.mec\)\}/); assert.match(page, /MTC \$\{trim\(state\.mtc\)\}/);
+  assert.match(page, /stroke="\$\{sg\.stroke\}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"\/>`\+\n\s+`<path data-k="line" d="\$\{path\}" fill="none" stroke="\$\{sg\.core\}" stroke-width="1"/);
+  assert.match(page, /rule\(state\.mtc, K\.mtc, "MTC"\); rule\(state\.mec, K\.mec, "MEC"\);/);
   assert.match(page, /if\(!prev \|\| !quiet \|\| noMotion\(\)\) return;/); assert.match(page, /Math\.min\(1,\(t-now\)\/300\)/);
   // the ids the tests, links and lessons rely on are all still there
   ["plot","mainCurve","readouts","pinBtn","clearPinBtn","linkBtn","routeSeg","doseSeg","sliders","tabSim","tabCmp","pill"].forEach(id=> assert.ok(page.includes(`id="${id}"`) || page.includes(`id="\${id}"`) || page.includes(`"${id}"`), id));
 });
+
+test("2.13: the chart as an object: colour by state, the doses' own curves, glass, labels that never collide, motion that reduced motion skips", ()=>{
+  const fx=read("ui-chartfx.js"), eff=read("ui-effect.js");
+  // the curve's colour runs by state along its length: a vertical gradient on the chart's own y, with stops at the MTC
+  // and the MEC (so the colour is the level's), a 1 px core inside the 2 px stroke, a glow only in the dark
+  assert.match(page, /<linearGradient id="\$\{gid\}" gradientUnits="userSpaceOnUse" x1="0" y1="\$\{M\.t\}" x2="0" y2="\$\{y0\}">/);
+  assert.match(page, /const oMtc=state\.mtc<yTop \? oOf\(state\.mtc\) : 0, oMec=oOf\(state\.mec\);/);
+  assert.match(page, /if\(!paper\) s\+=`<path data-k="line" d="\$\{path\}" fill="none" stroke="\$\{sg\.stroke\}" stroke-width="4"[^`]*filter="url\(#cGlow\)"/);
+  // a gradient fill from the curve's colour at 25% with grain, and a reflection at 10% that fades within 26 px
+  assert.match(page, /stop-color="\$\{col\}" stop-opacity="\$\{cv\.primary \? 0\.25 : 0\.12\}"/);
+  assert.match(page, /<g mask="url\(#reflMask\)" opacity="0\.1">/);
+  // superposition: each dose's own curve is the engine's single-dose solution, and their sum is the total
+  assert.match(page, /PK\.singleConc\(lp, t-e\.t, e\.mg, e, terms\)/);
+  [{dosing:"repeated", nDoses:3, loadMult:2}, {dosing:"repeated", nDoses:4, route:"inf", tinf:1}, {dosing:"repeated", cmt:2, route:"iv", k12:.8, k21:.4}].forEach(o=>{
+    const p=PK.normalizeScenario(PK.scenario(o)), ev=PK.doseEvents(p), terms=PK.disposition(p);
+    [5,20,30].forEach(t=>{ let sum=0; ev.forEach(e=>{ if(t>=e.t) sum+=PK.singleConc(p, t-e.t, e.mg, e, terms); }); assert.ok(Math.abs(sum-PK.conc(p,t,ev))<1e-9*Math.max(1,sum), JSON.stringify(o)+" at "+t); }); });
+  // the window as glass with soft edges and a lighter hairline at each boundary; a shimmer only without reduced motion
+  assert.match(page, /if\(!noMotion\(\)\) g\+=`<g clip-path="url\(#winClip\)">/);
+  // MEC, MTC and the MIC: solid hairlines, labelled in the right margin, the labels kept apart
+  assert.match(page, /const rule=\(c,col,name\)=>/);
+  assert.match(page, /margin\.sort\(\(a,b\)=>a\.y-b\.y\)\.forEach\(\(m,i,arr\)=>\{ if\(i && m\.y<arr\[i-1\]\.y\+11\) m\.y=arr\[i-1\]\.y\+11; \}\);/);
+  // a marked point's label goes in the first place it fits without touching another
+  assert.match(page, /function markRing\(x, y, label, col, placed, fits, textW\)/);
+  // population as layered glass: the middle 90% and the middle 50% (the worker gives the quartiles)
+  const W=require("../pop-worker.js"), r=W.population(PK, PK.normalizeScenario(PK.scenario({})), {n:60, cvCL:30, cvV:20, seed:1, T:24});
+  assert.ok(r.q25 && r.q75 && r.q25.every((v,i)=> v>=r.q05[i]-1e-12 && v<=r.q50[i]+1e-12) && r.q75.every((v,i)=> v>=r.q50[i]-1e-12 && v<=r.q95[i]+1e-12), "quartiles inside the band");
+  // particles spaced by the cumulative area (density follows the level); the draw-on, pulses and tilt; none of it
+  // under reduced motion; loaded after the first paint by content hash
+  assert.match(fx, /cdf\.push\(cdf\[i-1\]\+\(pts\[i\]\.c\+pts\[i-1\]\.c\)\/2\*\(pts\[i\]\.t-pts\[i-1\]\.t\)\)/);
+  assert.match(fx, /if\(!cv \|\| ctx\.noMotion\(\) \|\| ctx\.state\.scale==="log"\)/);
+  assert.match(fx, /if\(drewOnce \|\| ctx\.noMotion\(\) \|\| !ctx\.curves\.length\) return;/);
+  ["ui-chartfx.js","ui-effect.js"].forEach(f=>{ assert.ok(page.includes(`"${f}?v=${hash(f)}"`), f+" stamped"); assert.ok(read("sw.js").includes(`"./${f}?v=${hash(f)}"`), f+" precached"); });
+  assert.match(page, /@media \(prefers-reduced-motion: reduce\)\{ #plot,#plotFx\{transform:none\}/);
+  // the effect charts load with the switch, and a link that opens with them waits for them
+  assert.match(page, /if\(state\.pd && !effectUI\) waits\.push\(loadEffect\(\)\);/);
+  assert.match(eff, /return \{renderPd, updatePdCursor\};/);
+});
+

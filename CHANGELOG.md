@@ -2,6 +2,37 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.13.0 (2026-10-01)
+
+The concentration chart rebuilt as an object rather than a plot. Its data, ids and tests are unchanged.
+
+- **The curve:**
+  - A 2 px line whose colour runs along its length by state: cool and dim below the MEC, luminous inside the window, warm toward the MTC and hot past it. Time above the toxic threshold is the curve itself going hot.
+  - A 1 px brighter core, and a soft glow in the dark theme.
+  - Underneath, a gradient from the curve's colour at 25% to nothing, with a faint grain, and a 10% reflection under the baseline that fades within 26 px.
+- **The drug, flowing:** luminous points travel along the curve, spaced evenly in its cumulative area, so a high peak is crowded and a low trough sparse.
+- **Drawing and morphing:**
+  - The curve draws itself left to right with a glowing head the first time the chart comes into view, and while Play runs, up to the play head, which leaves a wake.
+  - Any discrete change morphs every layer over 300 ms. Switching to a log scale morphs the curve while the grid crossfades.
+- **Superposition:**
+  - In a repeated regimen or a schedule, each dose's own curve (the engine's single-dose solution) is drawn faint under the total, so the doses visibly stack into steady state.
+  - Pointing at a dose's tick lights its curve, and pointing at a schedule row lights its interval.
+  - Ticks pulse as the play head crosses them.
+- **The window and thresholds:**
+  - The window is a band of glass: soft edges, a 7% fill, a lighter hairline at each boundary and a slow shimmer.
+  - MEC, MTC and the MIC are solid hairlines with small labels in the right margin, kept apart.
+  - Axes are hairlines with major and minor ticks. Labels use tabular figures, and units appear only in the axis titles.
+- **Labels:** the peak (and a regimen's trough) is a small ring with a thin leader to its value. Labels are placed where they collide with nothing.
+- **Depth:** the plot plane tilts two or three degrees toward the pointer while its grid moves in parallax, with a faint vignette inside the plot.
+- **The crosshair:** a hairline, a dot riding each curve, a time chip on the axis and a glass value chip, updated at most once a frame. Keyboard scrubbing shows the same crosshair.
+- **Compare:** a baseline is a ghost (1 px, 35%, no glow). The difference is a soft shaded region, and its largest gap is marked and labelled where it happens.
+- **Population:** the middle 90% and the middle 50% (the worker now gives the quartiles) as layered glass, with the median luminous.
+- **Light theme:** ink on warm paper, the same grammar, no glow.
+- **Reduced motion:** no particles, draw-on, shimmer or tilt.
+- **Two new lazy files keep the first load within its budget:**
+  - `ui-chartfx.js`, the chart's motion, loaded just after the first paint.
+  - `ui-effect.js`, the effect charts, loaded with the Effect switch. A link that opens with them waits for them.
+
 ## 2.12.0 (2026-10-01)
 
 The app rebuilt as an instrument panel: two typefaces with tabular figures, one restrained accent, glass and hairlines instead of boxes, and a chart drawn like an instrument.

@@ -76,9 +76,10 @@
       if(p.kin==="mm"){ const st=PK.mmIntegrate(q, ev, T+PK.MM_STEP), V=PK.vOf(q); for(let i=0;i<G;i++) cols[i][j]=PK.mmAmount(st, t[i])/V; }
       else for(let i=0;i<G;i++) cols[i][j]=PK.conc(q, t[i], ev);
     });
-    const q05=[], q50=[], q95=[];
-    cols.forEach(c=>{ const s=Array.from(c).sort((a,b)=>a-b); q05.push(quantile(s,0.05)); q50.push(quantile(s,0.5)); q95.push(quantile(s,0.95)); });
-    const out={n, t, q05, q50, q95, cvCL:o.cvCL, cvV:o.cvV, seed:o.seed};
+    // the 5th, 25th, 50th, 75th and 95th percentiles (the chart layers the middle 90% and the middle 50%, 2.13)
+    const q05=[], q25=[], q50=[], q75=[], q95=[];
+    cols.forEach(c=>{ const s=Array.from(c).sort((a,b)=>a-b); q05.push(quantile(s,0.05)); q25.push(quantile(s,0.25)); q50.push(quantile(s,0.5)); q75.push(quantile(s,0.75)); q95.push(quantile(s,0.95)); });
+    const out={n, t, q05, q25, q50, q75, q95, cvCL:o.cvCL, cvV:o.cvV, seed:o.seed};
     if(o.pd) Object.assign(out, effectBand(PK, p, list, ev, t, cols));
     if(p.dosing==="repeated"){
       let hit=0, hitAuc=0, noSS=0, troughs=[], peaks=[];
