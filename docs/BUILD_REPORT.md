@@ -308,3 +308,17 @@ There are 314 tests in 14 files. The initial script is +14.8% over the Phase 0 b
 
 There are 327 tests in 15 files. The initial script is +19.6% over the Phase 0 baseline (limit +25%). axe: no violations on the simulator with the panel open.
 
+## 23. 1.14.0 (Plan V2, Phase E)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Indirect responses, types 1–4 (Dayneka, Garg and Jusko 1993), in lazily loaded `pk-idr.js` (RK4 on dose-aligned steps, Hermite interpolation) | Simulator → Effect → *How the effect is produced*; response chart in % of baseline; response-vs-level loop with the plateau curve; readouts; Compare; What changed; inspector; CSV | `idr.test.js` (no drug: exactly 100; constant level: analytic plateau and time constant 1/kout or 1/(kout·(1 ∓ D)) to 1e-7; directions and lag of all four types; limits) |
+| SciPy reference: 12 indirect-response scenarios | validation.html (696 comparisons) | `idr.test.js` (0.01% at five times and the largest change, 0.01 h on its time; observed ~1e-8) |
+| v10 links with idr, tout, imax, smax; Vary only holds the turnover | Copy link | `idr.test.js`, `pk-engine.test.js` |
+| Lesson 27, *Indirect response* (warfarin-like, from the label), comparison 26 | Lessons → PK/PD concepts | `idr.test.js` (every number the text, tip and comparison state; the challenge's conditions) |
+| Practice kind *Indirect response · steady state* (worksheet pools v7) | Practice → Concentration–effect | `pk-engine.test.js` (every answer against the simulated response) |
+| Glossary 66 (indirect response, response turnover, baseline response; the effect compartment's 1979 origin) | Lessons → Glossary | `idr.test.js` |
+| The drug library's sources and notes in lazily loaded `pk-sources.js` | Drug information; antimicrobial panel; cases | `release.test.js` (stamped and precached), `clinical.test.js` |
+
+There are 335 tests in 16 files. The initial script is +18.2% over the Phase 0 baseline (limit +25%), down from +19.6% in 1.13.0. axe: no violations with the indirect-response charts open.
+

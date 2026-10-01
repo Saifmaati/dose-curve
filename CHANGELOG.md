@@ -2,6 +2,19 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.14.0 (2026-09-30)
+
+- **Indirect responses.** Under *Pharmacodynamics → How the effect is produced*, choose one of the four basic indirect response models (Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production (kin) or the loss (kout) of something the body makes. Set the response's turnover half-life, the maximum inhibition (Imax) or stimulation (Smax), EC50 and the Hill slope; with Imax = 1 and n = 1 the equations are the paper's.
+  - The effect chart shows the response as a percentage of its baseline (kin / kout = 100%), with the baseline marked. The concentration–effect chart shows the path the response takes against the level, around a dotted curve where it would settle if each level were held.
+  - The readouts give the largest change from baseline, when it comes, the plasma peak and the lag between them. Compare, What changed, the inspector and the CSV export show the response too. **Vary only** can hold the turnover apart.
+  - The response is integrated by the classical Runge–Kutta method on steps that meet every dose and infusion end, in its own file loaded only when a scenario uses it. The first page load doesn't grow.
+- **Lesson 27, *Indirect response*** (33 in all), with a comparison (26). A drug with warfarin's half-life (40 h), volume (0.14 L/kg) and absorption, acting the way warfarin acts on the synthesis of clotting factors, with the turnovers its label lists for factor VII (5 h) and factor II (60 h). After one dose the fast response bottoms out at 24 h (37% of baseline); the slow one only at 96 h (67%), the pattern the label describes. It uses no INR values. The challenge: reach 40% of baseline with the slow turnover and 25 mg doses, which takes daily doses, not a larger one.
+- **A practice problem (41 kinds):** where an indirect response settles under a constant infusion, R = R₀·(1 − Imax·f), checked against the simulated response after a week. Worksheet pools are at version 7; version-6 links rebuild exactly.
+- **Three glossary terms (66):** indirect response, response turnover and baseline response. The effect compartment's entry now cites its origin (Sheiner, Stanski and colleagues, 1979).
+- **Validated independently:** 12 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient), integrated with the drug in one SciPy ODE system, agree within 0.01% at five times and at the largest change (in practice to about one part in 10⁸), and on its time within 0.01 h; the validation page shows them (696 comparisons in all). The tests also check that the response stays at baseline exactly without drug, and that at a constant level it reaches the analytic plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).
+- Links with an indirect response are version 10. Every older link opens as before.
+- The share card says 33 lessons.
+
 ## 1.13.0 (2026-09-30)
 
 - **Antimicrobial PK/PD.** Under the therapeutic window, enter the organism's MIC and the drug's unbound fraction (fu):

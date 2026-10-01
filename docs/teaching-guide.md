@@ -63,7 +63,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (32)
+## Guided lessons (33)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
@@ -73,14 +73,14 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
-| PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) |
+| PK/PD concepts | Potency (EC50) · Efficacy (Emax) · Hill slope · Dose vs duration of effect · Effect delay (hysteresis) · Indirect response |
 | Liver and first pass | Hepatic extraction · First pass and induction · Liver blood flow |
 | Antimicrobial PK/PD | Extended infusion (fT>MIC) · Once daily vs divided (Cmax/MIC) |
 | Levels and individualization | One level and a prior |
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
-The **glossary** under the lessons defines 63 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 66 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
 ## Clinical cases (15)
 
@@ -114,6 +114,15 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 
 No case stores an answer: every target check, hint, walkthrough number and reference regimen is worked out from the model when the case opens, and the tests check that each case's reference regimen passes and that a deliberately wrong one gets the expected hint. The cases teach reasoning; they are not prescribing instructions.
 
+## Effects that lag the level
+
+Two models make the effect come after the level, for different reasons, and the charts show both:
+
+- **Effect-site delay** (Sheiner, Stanski and colleagues, 1979): the drug has to reach the site of action, so the effect follows an effect-site level that equilibrates with plasma. The concentration–effect chart shows a counterclockwise loop.
+- **Indirect response** (Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production or loss of something the body makes, and the response can only change as fast as that is replaced. In **Pharmacodynamics → How the effect is produced**, choose one of the four types, then set the response's turnover half-life and the drug's maximum inhibition or stimulation. The effect chart shows the response as a percentage of its baseline. The concentration–effect chart shows the path it takes against the level, around the dotted curve where it would settle if each level were held. The readouts give its largest change, when it comes, and how far it lags the plasma peak.
+
+The lesson *Indirect response* uses a drug with warfarin's half-life and volume, acting like warfarin on the production of clotting factors, with turnovers of 5 h (factor VII) and 60 h (factor II) from warfarin's label. After one dose, the fast response bottoms out at 24 h; the slow one at 96 h, much as the label describes: an effect within 24 hours, with the peak delayed 72 to 96 hours. It uses no INR values. A good question for a class: why does four times the single dose (100 mg) still leave the slow response at 45% of baseline, while 25 mg every day takes it to 29% within the week?
+
 ## Antimicrobial PK/PD
 
 Under the therapeutic window, **Antimicrobial PK/PD** takes the organism's MIC and the drug's unbound fraction (fu), and reads three indices for the scenario on the chart (and for the baseline, or for A and B):
@@ -125,11 +134,11 @@ A repeated regimen is read at steady state over one interval; a single dose or a
 
 ## Practice and assessment
 
-- **Practice problems.** There are 40 kinds of calculation problem in seven topics:
+- **Practice problems.** There are 41 kinds of calculation problem in seven topics:
   - single dose (12 kinds, including clearance from a two-compartment fit)
   - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
   - infusions (6, including the AUC from two measured levels)
-  - concentration–effect (5, including the time of the peak effect with an effect-site delay)
+  - concentration–effect (6, including the time of the peak effect with an effect-site delay, and where an indirect response settles under a constant infusion)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level
   - liver and first pass (3): hepatic clearance by the well-stirred model, oral bioavailability after the first pass, and what induction does to IV exposure
   - antimicrobial PK/PD (3): fT>MIC for an IV bolus at steady state (on the unbound level), Cmax/MIC for an intermittent infusion, and AUC24/MIC

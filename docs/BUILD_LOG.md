@@ -74,3 +74,6 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 
 | 2026-09-30 20:19 | 1.13 | Antimicrobial PK/PD: MIC and fu, fT>MIC / Cmax/MIC / AUC24/MIC panel, chart and Compare; piperacillin-tazobactam; two lessons; practice topic; reduced-CrCl case; glossary 63; SciPy PK/PD reference; v9 links | done | c6ae185 |
 | 2026-09-30 20:22 | 1.13 | Community cases: fT>MIC target, solved by bisection | done | f242195 |
+| 2026-09-30 21:41 | 1.14 | Indirect responses (types 1–4) in pk-idr.js; response charts, readouts, Compare, What changed; lesson 27 (warfarin-like); comparison 26; practice idrss (pools v7); glossary 66; links v10 | done | 073456f |
+| 2026-09-30 21:45 | 1.14 | Drug sources and notes moved to lazily loaded pk-sources.js (initial script +18.2%) | done | edb3153 |
+| 2026-09-30 21:45 | 1.14 | SciPy indirect-response reference, 12 scenarios (696 comparisons) | done | bd9d1da |
