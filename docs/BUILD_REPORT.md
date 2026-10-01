@@ -545,3 +545,17 @@ Lighthouse: the root mobile 98, `#app` mobile 97 and desktop 100; accessibility 
 `#app`, `#lessons`, an effect link, a regimen link and a population link at 390 and 1440 (0.0003 on the root). axe:
 no violations. The first load is back within its +25% budget. 394 tests.
 
+## 42. 2.14.0 (the workspace)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The chart fills a desktop screen, one unit to a pixel | the simulator at 1100 px and wider | `stage.test.js` (2.14); at 1440 × 900 the plot is 1294 × 528, the panel 92% of the width |
+| The rail: icons, opening over the chart on hover, focus or a click; the pin; Escape | the controls | `stage.test.js`; screenshots (closed, open, after a slider) |
+| The HUD under the chart; focus mode (F, Escape) | the simulator | `stage.test.js`; screenshots |
+| The figure beside the live ribbon; the camera's drift; centred behind the chart | Effects on | `stage.test.js`; the focus screenshot shows the 3D scene through the glass |
+| Phones and paper pages unchanged | 390 px; lessons and cases | screenshots |
+
+Lighthouse: the root mobile 97, `#app` mobile 97 and desktop 100; accessibility 100 and CLS 0. Layout shift 0 on
+`#app`, `#compare`, `#lessons`, a case and an effect link at 390, 1180 and 1440 (0.0003 on the root). axe: no
+violations. 395 tests.
+
