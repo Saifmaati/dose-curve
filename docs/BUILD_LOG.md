@@ -80,3 +80,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 22:25 | 1.15 | Hemodialysis in pk-hd.js (exact between events): session table, chart bands, readouts, What changed; case 16 (gentamicin on hemodialysis); lesson Hemodialysis sessions; comparison 27; practice hdfall (pools v8); glossary 68; links v11 | done | 73ce289 |
 | 2026-09-30 22:25 | 1.15 | SciPy dialysis reference, 8 scenarios (712 comparisons) | done | 24bbdde |
 | 2026-09-30 22:29 | 1.16 | Sensitivity analysis (±20%, tornado chart, dominant input) in pk-sens.js; glossary 69 | done | 0dc21be |
+| 2026-09-30 22:39 | 1.17 | Educator page, named tab links, README screenshots, validation page responsiveness, Lighthouse ≥95 everywhere | done | 618c40c |

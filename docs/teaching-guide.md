@@ -6,6 +6,8 @@ There is nothing to install and no sign-in. It works on laptops and phones, and 
 
 This guide collects ways to use it in a course.
 
+The [educator page](https://saifmaati.github.io/dose-curve/educators.html) has a link to every lesson and case on one page, ready to paste into a syllabus or a course site.
+
 ## In a lecture
 
 For a projector, press **▣ Present** (top right): the chart takes the whole width, the controls fold away and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **light theme** (◐ Light) follows the computer's own light or dark setting until you pick one; the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.

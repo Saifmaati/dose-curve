@@ -2,6 +2,14 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.17.0 (2026-09-30)
+
+- **A page for educators** (`educators.html`, linked from the footer and the README): what DoseCurve covers, how to run a class in ten minutes (pick material, write a case, make an assignment, collect completion codes), a link to every lesson (the same share link the app makes, which opens the lesson with its scenario and challenge) and every case, the practice topics, and privacy. Its numbers come from the app itself, and a test checks every link still opens what it says.
+- Links like `#practice`, `#lessons`, `#cases` and `#compare` open that tab.
+- **README screenshots** for the antimicrobial comparison, an indirect response, hemodialysis and the sensitivity chart, and a fresh one of the validation page (712 comparisons).
+- **The validation page** loads its scripts without blocking the first paint and hands the page back between each check, so it stays responsive while it runs; its summary keeps its size as the results arrive. Lighthouse on mobile: app 97–100, validation 97, educators 100 (desktop 100).
+- On the chart, an unbound-level label near the right edge sits left of its peak instead of being cut off.
+
 ## 1.16.0 (2026-09-30)
 
 - **Sensitivity: which input matters most?** Under the readouts, each input is moved 20% down and 20% up, one at a time with everything else held: clearance (with the volume held, so the half-life follows), volume (with clearance held), F (capped at 1), kₐ, the dose and the dosing interval, plus k12 and k21 with two compartments and Vmax and Km for a saturable drug. The liver model sets clearance and F itself, so they aren't moved there.

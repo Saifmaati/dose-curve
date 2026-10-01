@@ -345,3 +345,14 @@ There are 345 tests in 17 files. The initial script is +21.2% over the Phase 0 b
 
 There are 350 tests in 18 files. The initial script is +21.7% over the Phase 0 baseline (limit +25%). axe: no violations with the sensitivity panel open.
 
+## 26. 1.17.0 (Plan V2, Phase H)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Educator landing page, built from the engine: counts, run a class, every lesson's share link and every case's link | educators.html (footer: For educators) |  (counts are the app's; each lesson link equals the app's own and opens the lesson; each case link opens its case; the version) |
+| Named tab links (#practice, #lessons, #cases, #compare) | any page |  |
+| README screenshots: antimicrobial, indirect response, hemodialysis, sensitivity, validation | README |  (images exist) |
+| Validation page: deferred scripts, checks yield between tasks, reserved space | validation.html |  (its scripts parse) |
+
+Lighthouse, mobile, on the gzip preview: app 97–100 in every category (desktop 100), validation 97 (TBT 0–190 ms, CLS 0.026), educators 100. There are 354 tests in 19 files; the initial script is +21.7% over the baseline.
+
