@@ -306,3 +306,23 @@ test("lesson: which weight for CrCl (ideal, adjusted, actual) and the trough eac
   near(PK.derived(at("ibw")).cminSS/PK.derived(at("actual")).cminSS, 2.7, 0.01, "a 2.7-fold spread");
   near(130/70.5, 1.8, 0.05, "actual is 1.8 times ideal");
 });
+
+test("practice: Cockcroft–Gault with the ideal, adjusted or actual weight is new in worksheet version 9, and earlier sheets don't change", ()=>{
+  const g=PK.PRACTICE.find(x=>x.id==="crclwt"); assert.equal(g.since, 9); assert.equal(g.topic, "rep");
+  const seen=new Set();
+  for(let s=1;s<=200;s++){
+    const p=PK.makeProblem({id:"crclwt", seed:s}), sc=PK.practiceScenario(p), pt=PK.patientOf(sc);
+    // independently: Devine, then the adjusted weight, then Cockcroft–Gault
+    const inch=sc.ht/2.54, ibw=(sc.sex==="F" ? 45.5 : 50)+2.3*(inch-60), adj=ibw+0.4*(sc.wt-ibw), w={ibw, adj, actual:sc.wt}[sc.wtm];
+    const cg=(140-sc.age)*w/(72*sc.scr)*(sc.sex==="F" ? 0.85 : 1);
+    near(p.ans, cg, 1e-9, `seed ${s}`); near(pt.crcl, cg, 1e-9, `seed ${s}: the simulator's own patient`);
+    assert.ok(sc.wt>=1.3*ibw && p.ans>=20 && p.ans<=180, `seed ${s}`);
+    seen.add(sc.wtm);
+  }
+  assert.deepEqual([...seen].sort(), ["actual","adj","ibw"], "all three weights come up");
+  // version-8 links (shared from 2.0 to 2.9) rebuild exactly: made with the 2.9.0 engine, before this kind
+  const V8={"all.15.99.8":["efft:3012898485","cmaxmic:3259124632","hepcl:1190380853","mmt90:2544774965","mmhalf:3300014323","ldinf:1953322744","auc2:679820681","effdur:89614955","tbelow:2776120598","mmdose:4252340193","cavg:2337938745","rate:1273533708","hepiv:3100495693","ct:3525797621","taumax:2145540502"]};
+  Object.entries(V8).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
+  const seen9=new Set(); for(let seed=1;seed<=40;seed++) PK.makeWorksheet({topic:"rep", count:10, seed}).problems.forEach(p=>seen9.add(p.id));
+  assert.ok(seen9.has("crclwt"), "version 9 sheets include it");
+});

@@ -1668,10 +1668,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=8;
+  const WS_VERSION=9;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","hdfall","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","idrss","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","hdfall","t90","rac","cavg","mdose","trough","taumax","renaladj","crclwt","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","idrss","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};

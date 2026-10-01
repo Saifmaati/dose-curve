@@ -10,7 +10,8 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {PRACTICE_TOPICS, VIEW_DEFAULTS, WORKSHEET_SIZES, WS_VERSION, conc, derived, disposition, doseEvents, effectOf, effectStats, keOf,
-    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf, micStats}=PK;
+    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf, micStats,
+    cmToIn, ibwDevine, adjBW, patientOf}=PK;
   const {drawFrom, evenUp, nf, sig4, until}=PK.practiceHelpers;
 
   const step=s=>`<span class="step">${s}</span>`;
@@ -265,6 +266,25 @@
         viz:{route:"iv", dosing:"repeated", D:+D.toFixed(1), tau, nDoses:n, thalf:th, V, pm:"clinical", age, sex, wt, ht:170, scr, fe, wtm:"actual"},
         view:{duration:evenUp(n*tau), zoom:"last"},
         check:p=> Dref*derived(p).CL/(Math.LN2/p.thalf*vOf(p))};
+    }},
+    {id:"crclwt", topic:"rep", since:9, gen(d){
+      // Cockcroft–Gault with the weight it is asked for: ideal (Devine), adjusted (ideal + 0.4 × the excess) or actual,
+      // in a heavy adult, where the three differ most
+      const x=until(()=>{ const sex=d(0,1,1) ? "F" : "M", ht=d(152,190,1), age=d(25,80,1), scr=d(0.6,2,0.1), ibw=ibwDevine(sex, cmToIn(ht));
+        const wt=d(Math.ceil(1.3*ibw), Math.min(200, Math.ceil(2.2*ibw)), 1), wtm=["ibw","adj","actual"][d(0,2,1)], adj=adjBW(ibw, wt);
+        const used=wtm==="ibw" ? ibw : wtm==="adj" ? adj : wt;
+        return {sex, ht, age, scr, ibw, wt, wtm, adj, used, crcl:crclCG(age, used, scr, sex)}; }, x=> x.ibw>=40 && x.wt>=1.3*x.ibw && x.crcl>=20 && x.crcl<=180);
+      const {sex, ht, age, scr, ibw, wt, wtm, adj, used, crcl}=x, inch=cmToIn(ht), they=sex==="F" ? "her" : "his";
+      const name={ibw:"<b>ideal body weight</b> (Devine)", adj:"<b>adjusted body weight</b> (ideal + 0.4 × the excess)", actual:"<b>actual body weight</b>"}[wtm];
+      const other=wtm==="actual" ? crclCG(age, ibw, scr, sex) : crclCG(age, wt, scr, sex);
+      return {type:"Creatinine clearance and body weight", unit:"mL/min", dp:0, ans:crcl,
+        q:`A <b>${age}-year-old ${sex==="F" ? "woman" : "man"}</b>, <b>${ht} cm</b> tall and weighing <b>${wt} kg</b>, has a serum creatinine of <b>${scr} mg/dL</b>. With ${they} ${name} in the Cockcroft–Gault equation, what is ${they} estimated creatinine clearance?`,
+        sol:[...(wtm==="actual" ? [] : [step(`Height ${ht} / 2.54 = ${nf(inch,1)} in, so the ideal body weight is ${sex==="F" ? "45.5" : "50"} + 2.3 × (${nf(inch,1)} − 60) = <b>${nf(ibw,1)} kg</b>`)]),
+          ...(wtm==="adj" ? [step(`Adjusted body weight = ${nf(ibw,1)} + 0.4 × (${wt} − ${nf(ibw,1)}) = <b>${nf(adj,1)} kg</b>`)] : []),
+          step(`<b>CrCl = (140 − age) × weight / (72 × SCr)</b>${sex==="F" ? " × 0.85" : ""} = (140 − ${age}) × ${nf(used,1)} / (72 × ${scr})${sex==="F" ? " × 0.85" : ""} = <b>${nf(crcl,0)} mL/min</b>`),
+          step(`With ${wtm==="actual" ? "the ideal weight" : "the actual weight"} instead it would be ${nf(other,0)} mL/min: the weight chosen moves the estimate ${nf(Math.max(other,crcl)/Math.min(other,crcl),1)}-fold, which is why dosing references say which weight they used.`)],
+        viz:{route:"iv", dosing:"single", D:500, V:30, thalf:4, pm:"clinical", age, sex, wt, ht, scr, fe:0.9, wtm}, view:{duration:24},
+        check:p=> patientOf(p).crcl};
     }},
     /* ----- infusions ----- */
     {id:"rate", topic:"inf", gen(d){

@@ -91,4 +91,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-10-01 02:22 | 2.6.0 | Population band on the effect chart (direct, delayed, indirect), spread sentence, faster indirect-response solver | done | (this release) |
 | 2026-10-01 02:53 | 2.7.0 | Hemodialysis with two compartments (exact), the rebound, lesson Rebound after dialysis (36 lessons), links v12, 3 SciPy dialysis scenarios (718 comparisons), What changed AUC sentences with dialysis | done | (this release) |
 | 2026-10-01 03:05 | 2.8.0 | Engine remembers window statistics, readouts and profiles; Bayesian lesson link 78 to 89, every lesson link 89+ on mobile | done | (this release) |
-| 2026-10-01 03:10 | 2.9.0 | Glossary 71 (terminal half-life, post-distribution peak); README rebound and effect-band images; chart images retaken with whole legends | done | (this release) |
+| 2026-10-01 03:10 | 2.9.0 | Glossary 71 (terminal half-life, post-distribution peak); README rebound and effect-band images; chart images retaken with whole legends; practice kind Cockcroft–Gault by weight (43, worksheet v9) | done | (this release) |

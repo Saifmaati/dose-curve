@@ -1871,7 +1871,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=504180907f" defer></script>
+<script src="pk-engine.js?v=3056d0e45c" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -5368,7 +5368,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=b7088f3efd";
+  const PRACTICE_SRC="pk-practice.js?v=71d1ec1677";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();

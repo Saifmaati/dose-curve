@@ -157,9 +157,9 @@ A repeated regimen is read at steady state over one interval; a single dose or a
 
 ## Practice and assessment
 
-- **Practice problems.** There are 42 kinds of calculation problem in seven topics:
+- **Practice problems.** There are 43 kinds of calculation problem in seven topics:
   - single dose (13 kinds, including clearance from a two-compartment fit and the fall over a dialysis session)
-  - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
+  - repeated dosing (8, including a renal dose adjustment from age, weight and serum creatinine, and Cockcroft–Gault with the ideal, adjusted or actual weight of a heavy adult)
   - infusions (6, including the AUC from two measured levels)
   - concentration–effect (6, including the time of the peak effect with an effect-site delay, and where an indirect response settles under a constant infusion)
   - saturable (Michaelis–Menten) elimination (4): Css, the dose for a target level, the time to 90% of steady state, and the half-life at a level

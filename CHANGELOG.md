@@ -4,12 +4,13 @@ What changed in DoseCurve, newest first. Every release keeps older share links w
 
 ## 2.9.0 (2026-10-01)
 
-The glossary and the README catch up with 2.4–2.8.
+The glossary, the README and the practice problems catch up with 2.4–2.8.
 
 - **Two glossary terms** (71): *Terminal half-life* (ln 2 / β, longer than the central compartment's own) and *Post-distribution peak* (drawn once distribution is over; When to sample gives the model's time, and the vancomycin guideline's two-level approach draws it 1–2 hours after the infusion, Rybak et al. 2020).
+- **A practice problem kind** (43): Cockcroft–Gault with the ideal (Devine), adjusted or actual weight of a heavy adult, worked step by step, ending with what the other weight would have given. It is new in worksheet version 9, so every worksheet link shared before keeps its exact problems (a test rebuilds a version-8 sheet).
 - **README images:** two new ones, the rebound after a dialysis session and population mode's band on the effect chart. Every chart image is retaken so its legend shows whole; until now each was clipped at the top.
 
-386 tests in 22 files.
+Every link kind, the new problem's included, opens with zero layout shift at 390 px. 387 tests in 22 files.
 
 ## 2.8.0 (2026-10-01)
 
