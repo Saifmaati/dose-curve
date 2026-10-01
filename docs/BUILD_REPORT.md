@@ -496,3 +496,21 @@ CLS 0 on all 75 practice, worksheet, task, case and tab links at 390. 387 tests 
 | DOI in README, CITATION, methods | README badge | `release.test.js` |
 
 Lighthouse mobile: root 93; desktop 89 (Speed Index, the cold open). Accessibility 100, CLS 0 on the root and all 111 link kinds. 391 tests in 22 files.
+
+## 39. 2.11.0 (objects in the scenes; Exposure and Rebound)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| A dissolving capsule and its particles (ka), the glass figure (C(t)), a capsule per dose | the hero, "Every dose", Simulate | `stage.test.js` (2.11: each motion's formula in the code); screenshots at 1440 and 390 |
+| 200 vials at 4 hours, sorted to the median and the band | Learn | `stage.test.js` (the text's median, 7.0 mg/L, and band, 5.2 to 9.4 mg/L, from the same 200 patients) |
+| Two chambers, A₁(t) and A₂(t), exchanging at k₁₂ and k₂₁ | Cases | `stage.test.js` (A₂ against pk-hd.js's state at 0.5, 2 and 6 h) |
+| Exposure: culture dishes and fT>MIC counters (47% and 69%) | scene 6 | `stage.test.js` (micStats; the counters' final values in the HTML; the library's piperacillin; "a visual cue, not a model of bacterial killing") |
+| Rebound: a dialyzer at CLd·C(t), the fall (53%), the rebound (6.3 mg/L after 1.6 h), 245 mg removed | scene 7 | `stage.test.js` (sessionTable and stateAt) |
+| The checks in a glass globe on a brass stand; the fly-through to the simulator | Validated, Open | screenshots of the transition |
+| Phones: capsule, figure, vials; SVG frames for the rest | 390 px | screenshots |
+
+Lighthouse on the root: mobile 95, desktop 99, accessibility 100, CLS 0 (and 0 on `#app` and `#lessons` at 390 and
+1440). axe: no violations in either theme. A scroll through the whole sequence had no frame over 34 ms after the cold
+open in the stall check (2.10.0 on the same machine: a dozen, the worst 517 ms); the 20-second capture, with its
+screencast running, had 11 of 1,468 frames over 34 ms (worst 83 ms). 392 tests in 22 files.
+

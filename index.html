@@ -55,7 +55,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.10.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.11.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -292,12 +292,12 @@
   .scene-vis{position:absolute;z-index:0;left:50%;top:44%;width:min(62vw,860px);aspect-ratio:600/340;transform:translate(-50%,-50%);opacity:.92}
   .scene-vis svg{display:block;width:100%;height:100%;overflow:visible}
   html.stage3d .scene-vis{visibility:hidden}
-  @media (max-width:760px){ html.stage3d .scene:not([data-scene="1"]) .scene-vis{visibility:visible} }   /* phones: 3D for the first scene only */
+  @media (max-width:760px){ html.stage3d .scene:not([data-scene="1"]):not([data-scene="2"]):not([data-scene="4"]) .scene-vis{visibility:visible} }   /* phones: 3D for the hero, the figure and the vials */
   .hero-ro{display:grid;grid-template-columns:repeat(3,minmax(0,max-content));gap:0 32px;margin:0}
   .hero-ro dt{font-size:12.5px;font-weight:500;color:var(--c-muted)}
   .hero-ro dd{margin-top:4px;font-family:var(--f-mono);font-size:clamp(22px,1vw + 14px,30px);line-height:1.05;font-weight:500;letter-spacing:-.02em;white-space:nowrap;color:var(--c-text)}
   .hero-ro dd span{display:inline-block;text-align:right}   /* each number keeps its final width while it counts */
-  #heroCmax{min-width:3ch} #heroAuc{min-width:4ch} #heroTin{min-width:2ch}
+  #heroCmax{min-width:3ch} #heroAuc{min-width:4ch} #heroTin{min-width:2ch} #ftA,#ftB{min-width:2ch} #hdRm{min-width:3ch}
   .hero-ro small{font-size:13px;font-weight:400;color:var(--c-muted);letter-spacing:0;margin-left:5px}
   /* before the stage starts the count, the numbers wait (and show anyway after 5 s if it never runs) */
   html.hero-anim .hero-ro dd{animation:none}
@@ -1165,7 +1165,7 @@
           <div><dt>AUC</dt><dd><span id="heroAuc">74.2</span><small>mg·h/L</small></dd></div>
           <div><dt>Time in window</dt><dd><span id="heroTin">48</span><small>%</small></dd></div>
         </dl>
-        <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 07</span></div>
+        <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 09</span></div>
     <p class="scroll-cue" aria-hidden="true"></p>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
@@ -1178,7 +1178,7 @@
       <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
         <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
         <p><b>Learn.</b> 36 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
-        <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
+        <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
@@ -1187,7 +1187,7 @@
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
       <h2 class="word bleed" id="scene3">Simulate</h2>
       <p class="cap">Doses arrive as pulses.</p>
-      <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 07</span></div>
+      <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
@@ -1196,7 +1196,7 @@
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
       <h2 class="word" id="scene4">Learn</h2>
       <p class="cap">200 patients, one median.</p>
-      <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode.</p><span class="scene-n" aria-hidden="true">04 / 07</span></div>
+      <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode. Each vial holds one patient's level at 4 hours; sorted, the middle two give the median, 7.0 mg/L, and the middle 90% runs from 5.2 to 9.4 mg/L.</p><span class="scene-n" aria-hidden="true">04 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
@@ -1205,25 +1205,50 @@
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
       <h2 class="word right" id="scene5">Cases</h2>
       <p class="cap">Two phases, one patient.</p>
-      <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale.</p><span class="scene-n" aria-hidden="true">05 / 07</span></div>
+      <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale. The two glass chambers hold the amounts in the central and peripheral compartments, which exchange at <i>k</i><sub>12</sub> and <i>k</i><sub>21</sub>.</p><span class="scene-n" aria-hidden="true">05 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="6" data-tone="dark" aria-labelledby="scene6">
     <div class="scene-pin">
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-      <h2 class="word behind" id="scene6">Validated</h2>
-      <p class="cap">Every check within tolerance.</p>
-      <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">06 / 07</span></div>
+      <h2 class="word" id="scene6">Exposure</h2>
+      <p class="cap">Time above the MIC, counted.</p>
+      <div class="small"><dl class="hero-ro" aria-hidden="true">
+          <div><dt>30-minute infusion</dt><dd><span id="ftA">47</span><small>% fT&gt;MIC</small></dd></div>
+          <div><dt>3-hour infusion</dt><dd><span id="ftB">69</span><small>% fT&gt;MIC</small></dd></div>
+        </dl>
+        <p>Piperacillin 3 g every 6 hours against an MIC of 16 mg/L, 70% unbound. Over a steady-state interval the unbound level is above the MIC for 47% of the time as a 30-minute infusion and 69% as a 3-hour infusion, the same 12 g a day. Each dish dims by its share of time above the MIC: a visual cue, not a model of bacterial killing.</p><span class="scene-n" aria-hidden="true">06 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
-  <section class="scene" data-scene="7" data-tone="dark" aria-labelledby="scene7">
+  <section class="scene ed" data-scene="7" data-tone="light" aria-labelledby="scene7">
     <div class="scene-pin">
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-      <h2 class="split" id="scene7"><span>Open</span> <span>DoseCurve</span></h2>
+      <h2 class="word right" id="scene7">Rebound</h2>
+      <p class="cap">The level returns after dialysis.</p>
+      <div class="small"><dl class="hero-ro" aria-hidden="true">
+          <div><dt>Removed by the dialyzer</dt><dd><span id="hdRm">245</span><small>mg</small></dd></div>
+        </dl>
+        <p>A two-compartment drug, 1000 mg IV, through a 4-hour hemodialysis session from 6 hours (the app's rebound lesson). The level falls 53% while the dialyzer clears the blood, then rises again to 6.3 mg/L within 1.6 hours as drug returns from the peripheral compartment: 13% of the fall. The course is shown from 4 hours.</p><span class="scene-n" aria-hidden="true">07 / 09</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
+  </section>
+  <section class="scene" data-scene="8" data-tone="dark" aria-labelledby="scene8">
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word behind" id="scene8">Validated</h2>
+      <p class="cap">Every check within tolerance.</p>
+      <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">08 / 09</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
+  </section>
+  <section class="scene" data-scene="9" data-tone="dark" aria-labelledby="scene9">
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="split" id="scene9"><span>Open</span> <span>DoseCurve</span></h2>
       <p class="cap">Free, in your browser.</p>
-      <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">07 / 07</span></div>
+      <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">09 / 09</span></div>
     </div>
     <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
@@ -1851,7 +1876,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.10.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.11.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -5736,7 +5761,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=593d70c853";
+  const STAGE_SRC="stage.js?v=dc6415b0ba";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
