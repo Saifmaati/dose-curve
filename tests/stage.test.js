@@ -62,3 +62,18 @@ test("every number the sequence states is the engine's own, and each scene has o
   assert.ok(/Educational model, not for clinical dosing/.test(scenes[0]) && /Educational model, not for clinical dosing/.test(scenes[6]), "the disclaimer opens and closes it");
   assert.ok(!/\b(safe|unsafe|best|recommended?)\b/i.test(intro.replace(/<[^>]+>/g," ")), "descriptive wording");
 });
+
+test("2.1: the stage follows the instrument: the cursor, the population settings, and the same patients as population mode", ()=>{
+  assert.match(page, /function updateCursor\(\)\{\n    if\(stage\) stage\.cursor\(cursorT\);/);
+  assert.match(page, /pop:state\.pop \? \{n:state\.popn, cvCL:state\.pcl, cvV:state\.pv, seed:state\.pseed\} : null/);
+  // the cloud's patients: the worker's sampler (seeded normals, ηCL then ηV, CL·e^ηCL and V·e^ηV through the half-life)
+  const worker=read("pop-worker.js");
+  assert.match(worker, /const eCL=wCL\*z\(\), eV=wV\*z\(\);/);
+  assert.match(worker, /thalf:p\.thalf\*Math\.exp\(eV-eCL\)/);
+  assert.match(stage, /z=normals\(PK\.seededRandom\(o\.seed>>>0\)\)/);
+  assert.match(stage, /const eCL=wCL\*z\(\), eV=wV\*z\(\), q=Object\.assign\(\{\}, p, \{V:p\.V\*Math\.exp\(eV\), thalf:p\.thalf\*Math\.exp\(eV-eCL\)\}\)/);
+  // the same ω: √ln(1 + CV²), with the CV in percent
+  const DC=require("../pop-worker.js");
+  assert.ok(Math.abs(DC.omega(30)-Math.sqrt(Math.log(1+30*30/1e4)))<1e-15);
+  assert.match(stage, /w=cv=> Math\.sqrt\(Math\.log\(1\+cv\*cv\/1e4\)\)/);
+});

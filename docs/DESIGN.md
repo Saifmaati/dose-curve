@@ -325,3 +325,21 @@ Captions are three to five words; small print is 13 px in columns. Every number 
 | 2.1.0 | Simulator and Compare as dark scenes: instrument panels over the stage, the time cursor on the ribbon, the population cloud, the pill's actions |
 | 2.2.0 | Lessons, Cases, Practice, Fit the data, Hit the window as light editorial pages with split headlines and accordions |
 | 2.3.0 | Validation (the sphere), Educators, README, screenshots, OG image |
+
+## 12. Storyboard: 2.1 simulator and compare
+
+The simulator is a dark scene: the glass instrument panels sit over the stage, and the stage answers what the
+instrument does. The 2D chart stays the precision instrument; the ribbon is its shadow in space.
+
+| Moment | On the instrument (2D) | On the stage (3D) | Camera |
+| --- | --- | --- | --- |
+| A setting changes (slider, segment, drug) | The chart redraws | The ribbon eases into its new shape over about 250 ms instead of jumping; the window plane and dose rings follow | Holds the simulator framing |
+| A new schedule (repeated, custom, a dose moved) | Dose ticks move | Each dose ring sends out a pulse, in the order the doses are given | Holds |
+| The time cursor (drag, arrow keys, Play) | The cursor line and its readout | A marker rides the ribbon at the same time: a bright point on the curve, a thin line down to the floor, a ring where it meets the floor | Holds; Play keeps the marker moving with the cursor |
+| Population on | Bands of the middle 90% | A cloud of the virtual patients' curves (up to 150 drawn, from the same sampler and seed as the app's population mode) around the ribbon | Holds |
+| Baseline set | Dashed ghost curve | A dim ghost ribbon behind the live one | Holds |
+| Compare | A and B curves, What changed | Two ribbons in their own colours, B in front of A; the window plane between | Pulls back and up to separate them |
+| Present mode, print | Plain | No stage | — |
+
+On phones the stage keeps the single ribbon (no cloud, rings or plane); the marker still rides it. With reduced
+motion, shapes and the marker jump instead of easing.

@@ -384,3 +384,15 @@ The cross-check, its results and the plan's summary are in [BUILD_REPORT_V2.md](
 Lighthouse on mobile, gzip preview: root 97, `#practice` 98, `#case=gent` 99, validation 100, educators 100 (desktop root 100); accessibility 100 and CLS 0 on each. axe: no violations. 359 tests in 20 files. The initial script is +23.1% over the Phase 0 baseline (limit +25%); the stylesheet is 83 KB (limit 250 KB); stage.js (31 KB) and Three.js load after the first paint.
 
 The brief for this release changed twice while it was being built; DECISIONS 116–117 record how, and that the last brief's reference image wasn't on the machine.
+
+## 29. 2.1.0 (redesign, stage 2 of 4: simulator and compare)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The ribbon eases into each new curve; rebuilt only when the set of curves changes | the simulator, any slider | screenshots; no script errors over 17 states |
+| The time cursor on the ribbon (drag, keys, Play) | the simulator | `stage.test.js` (the page hands the cursor over) |
+| The population cloud from the worker's sampler and seed | Population | `stage.test.js` (same sampler, ω and order) |
+| Compare: two ribbons separated in depth | Compare | screenshots |
+| Phones: the stage at 30% under the app's text | 390 px | axe; screenshots |
+
+Lighthouse on mobile: root 97, `#compare` 97; accessibility 100 and CLS 0. axe: no violations. 360 tests in 20 files.

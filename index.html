@@ -51,7 +51,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.0.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.1.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -256,6 +256,7 @@
   html.in-intro .stage-3d{z-index:3}
   .stage-3d canvas{display:block;width:100%;height:100%}
   html.present .stage-3d,html.embed .stage-3d{display:none}
+  @media (max-width:760px){ html:not(.in-intro) .stage-3d,html:not(.in-intro) .stage-css svg{opacity:.3} }   /* phones: no margins, so the app's text sits over the stage; it steps back */
   /* phones: each scene stacks, picture first, then the headline, the caption and the small print */
   @media (max-width:760px){
     .scene{justify-content:flex-start;padding:84px 16px 104px}
@@ -1757,7 +1758,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.0.0, updated 1 October 2026</span>
+        <span>Version 2.1.0, updated 1 October 2026</span>
       </nav>
     </footer>
   </div>
@@ -1868,7 +1869,8 @@
   }
   readK();
   let stage=null, curTab="sim";   // the stage behind the page, once stage.js has loaded (see STAGE), and the open tab
-  const D=document.documentElement, toStage=()=>{ if(stage) stage.set({curves:plotCurves, mec:state.mec, mtc:state.mtc, T:viewT, mode}); };
+  const D=document.documentElement, toStage=()=>{ if(stage) stage.set({curves:plotCurves, mec:state.mec, mtc:state.mtc, T:viewT, mode,
+    pop:state.pop ? {n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed} : null}); };
   const noMotion=()=> matchMedia("(prefers-reduced-motion: reduce)").matches;
   // The sliding parts, placed after every change: each segmented control's thumb under its chosen segment (when its
   // segments sit on one row), the tab bar's indicator under the chosen tab, each slider's filled track and bubble.
@@ -3397,6 +3399,7 @@
   }
 
   function updateCursor(){
+    if(stage) stage.cursor(cursorT);   // the marker on the stage's ribbon
     const g=plotEl.querySelector("#cursorG");
     if(!g) return;
     const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
@@ -5728,7 +5731,7 @@
   /* ================= STAGE ================= */
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
-  const STAGE_SRC="stage.js?v=8bae16cb66";
+  const STAGE_SRC="stage.js?v=ce291ac987";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); stage.view(curTab); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));

@@ -204,10 +204,39 @@ export function start(PK){
         const pos=new Float32Array(n*6), idx=[];
         pts.forEach((q,i)=>{ const x=X(q.t,T), yy=y(q.c), z=(o.z||0)-0.16; pos.set([x,yy,z, x,0,z], i*6); if(i) idx.push(2*i-2,2*i-1,2*i, 2*i-1,2*i+1,2*i); });
         const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setIndex(idx);
-        g.add(new THREE.Mesh(geo, basic(lit ? GRAPHITE : color, .06, false)));
+        const cm=new THREE.Mesh(geo, basic(lit ? GRAPHITE : color, .06, false)); cm.userData.curtain=true; g.add(cm);
       }
       g.userData.setDraw=u=> g.children.forEach(m=> m.geometry.setDrawRange(0, Math.max(0, Math.round((n-1)*clamp(u,0,1)))*6));
+      // the shape in place (for easing into a new curve): each point's height
+      g.userData.z=o.z||0; g.userData.ys=Float32Array.from(pts, q=> y(q.c));
+      g.userData.writeY=ys=>{ g.children.forEach(m=>{ const a=m.geometry.attributes.position.array;
+        for(let i=0;i<n;i++){ a[i*6+1]=ys[i]; if(!m.userData.curtain) a[i*6+4]=ys[i]; }
+        m.geometry.attributes.position.needsUpdate=true; if(lit) m.geometry.computeVertexNormals(); }); g.userData.ys.set(ys); };
       return g;
+    }
+    // the time cursor on the ribbon: a point on the curve, a line down to the floor, a ring where it meets it
+    function cursorMark(){
+      const g=new THREE.Group(); g.visible=false;
+      const dot=new THREE.Mesh(new THREE.SphereGeometry(.11,24,16), new THREE.MeshBasicMaterial({color:col(lightTone() ? GRAPHITE : P.text)}));
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)]), new THREE.LineBasicMaterial({color:col(P.muted), transparent:true, opacity:.8}));
+      const ring=new THREE.Mesh(new THREE.RingGeometry(.13,.19,36), new THREE.MeshBasicMaterial({color:col(lightTone() ? GRAPHITE : P.text), transparent:true, opacity:.6, side:THREE.DoubleSide, depthWrite:false}));
+      ring.rotation.x=-Math.PI/2; ring.position.y=.012; dot.name="dot"; line.name="line"; g.add(dot, line, ring);
+      return g;
+    }
+    // the virtual patients, as the population mode makes them (the same sampler and seed): up to 150 drawn
+    let popKey="", popPos=null;
+    function popCloud(p, T0, T, top){
+      const o=live.pop, key=[PK.encodeScenario(p), o.n, o.cvCL, o.cvV, o.seed, T0, T, top].join("|");
+      if(key!==popKey){
+        const n=Math.min(150, Math.max(50, Math.round(o.n))), z=normals(PK.seededRandom(o.seed>>>0)), w=cv=> Math.sqrt(Math.log(1+cv*cv/1e4)), wCL=w(o.cvCL), wV=w(o.cvV), N=80, ev=PK.doseEvents(p);
+        popPos=new Float32Array(n*N*6);
+        for(let j=0;j<n;j++){ const eCL=wCL*z(), eV=wV*z(), q=Object.assign({}, p, {V:p.V*Math.exp(eV), thalf:p.thalf*Math.exp(eV-eCL)}), zz=(j%15-7)*.04; let px=0, py=0;
+          for(let i=0;i<=N;i++){ const t=T*i/N, x=X(t,T), yy=YH*Math.min(PK.conc(q, T0+t, ev), top*1.25)/top; if(i) popPos.set([px,py,zz, x,yy,zz], (j*N+i-1)*6); px=x; py=yy; } }
+        popKey=key;
+      }
+      const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(popPos,3));
+      return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({color:col(lightTone() ? GRAPHITE : P.accent), transparent:true, opacity:lightTone() ? .1 : .13,
+        blending:lightTone() ? THREE.NormalBlending : THREE.AdditiveBlending, depthWrite:false}));
     }
     function plane(top, mec, mtc, z=-0.75){
       const g=new THREE.Group(), y=c=> YH*Math.min(c,top)/top;
@@ -231,23 +260,46 @@ export function start(PK){
       return g;
     }
 
-    /* the live scenario: what the chart shows */
-    let liveKey="", pulseAt=0;
+    /* the live scenario: what the chart shows. The same curves with new numbers ease into their new shape; a new
+       set of curves (a baseline, Compare, another theme) is built afresh */
+    let liveKey="", pulseAt=0, morph=null, curT=null;
     function setLive(){
       if(!live) return;
-      disposeGroup(groups.live); const g=groups.live=new THREE.Group(); scene.add(g);
       const [T0,T1]=live.T, T=T1-T0, cvs=live.curves, phone=phoneQ.matches;
       const top=Math.max(live.mtc, ...cvs.map(cv=> Math.max(...cv.pts.map(q=>q.c))))*1.1 || 1;
-      cvs.forEach(cv=>{ const pts=cv.pts.filter((q,i)=> i%2===0).map(q=>({t:q.t-T0, c:q.c}));
-        g.add(ribbon(pts, T, top, cv.ghost ? P.ghost : cv.id==="b" ? P.b : P.accent, {ghost:cv.ghost, keep:cv.id==="b", z:cv.id==="b" ? 1.1 : cv.ghost ? -0.35 : 0, curtain:!phone && !cv.ghost})); });
+      const sets=cvs.map(cv=> cv.pts.filter((q,i)=> i%2===0).map(q=>({t:q.t-T0, c:q.c})));
+      const sig=[cvs.map((cv,i)=>(cv.ghost ? "g" : "")+(cv.id||"")+sets[i].length).join(","), T, phone, tone].join("|");
+      let g=groups.live;
+      if(!g || g.userData.sig!==sig){
+        disposeGroup(g); g=groups.live=new THREE.Group(); scene.add(g); g.userData.sig=sig; morph=null;
+        g.userData.ribbons=cvs.map((cv,i)=>{ const r=ribbon(sets[i], T, top, cv.ghost ? P.ghost : cv.id==="b" ? P.b : P.accent, {ghost:cv.ghost, keep:cv.id==="b", z:cv.id==="b" ? 1.1 : cv.ghost ? -0.35 : 0, curtain:!phone && !cv.ghost}); g.add(r); return r; });
+        if(!phone) g.add(floor());
+        const deco=new THREE.Group(); deco.name="deco"; g.add(deco);
+        const cm=cursorMark(); cm.name="cur"; g.add(cm);
+      } else {
+        const tg=sets.map(pts=> Float32Array.from(pts, q=> YH*q.c/top));
+        if(stillQ.matches) g.userData.ribbons.forEach((r,i)=> r.userData.writeY(tg[i])); else morph=tg;
+      }
+      g.userData.T=T;
+      // the window, the doses and the population follow at once (they are cheap to redraw)
+      const deco=g.getObjectByName("deco"); deco.children.slice().forEach(disposeGroup);
+      const lead=cvs.find(cv=>!cv.ghost);
       if(!phone){
-        g.add(plane(top, live.mec, live.mtc)); g.add(floor());
-        const lead=cvs.find(cv=>!cv.ghost), sched=lead && lead.p && lead.p.dosing!=="single" ? PK.doseSchedule(lead.p).filter(d=>!d.missed).map(d=>d.t-T0) : [];
-        const r=rings(sched, T, P.accent); r.name="rings"; g.add(r);
+        deco.add(plane(top, live.mec, live.mtc));
+        const sched=lead && lead.p && lead.p.dosing!=="single" ? PK.doseSchedule(lead.p).filter(d=>!d.missed).map(d=>d.t-T0) : [];
+        const r=rings(sched, T, P.accent); r.name="rings"; deco.add(r);
         const keyNow=sched.join(","); if(keyNow!==liveKey){ liveKey=keyNow; if(sched.length && !stillQ.matches) pulseAt=performance.now(); }
+        if(live.pop && lead && lead.p && lead.p.kin!=="mm") deco.add(popCloud(lead.p, T0, T, top));
       }
       g.visible=mode!=="intro";
-      frame();
+      placeCursor(); frame();
+    }
+    function placeCursor(){
+      const g=groups.live, m=g && g.getObjectByName("cur"); if(!m) return;
+      const i0=live.curves.findIndex(cv=>!cv.ghost), r=g.userData.ribbons[i0], T=g.userData.T, t=curT===null ? -1 : curT-live.T[0];
+      if(!r || t<0 || t>T){ m.visible=false; return; }
+      const ys=r.userData.ys, f=t/T*(ys.length-1), i=Math.min(ys.length-2, Math.floor(f)), u=f-i, y=ys[i]*(1-u)+ys[i+1]*u;
+      m.visible=true; m.position.set(X(t,T), 0, r.userData.z); m.getObjectByName("dot").position.y=y; m.getObjectByName("line").scale.y=Math.max(.001, y);
     }
 
     /* the sequence's objects, placed along the x axis; the camera travels between them */
@@ -353,6 +405,11 @@ export function start(PK){
         camNow.p.copy(camFrom.p).lerp(camTo.p,e); camNow.l.copy(camFrom.l).lerp(camTo.l,e); if(u<1) busy=true; else camFrom=null; }
       else if(camTo){ const a=stillQ.matches ? 1 : .2; camNow.p.lerp(camTo.p,a); camNow.l.lerp(camTo.l,a); if(camNow.p.distanceTo(camTo.p)>1e-3) busy=true; }
       camera.position.copy(camNow.p); camera.lookAt(camNow.l);
+      if(morph && groups.live){   // the ribbon eases into its new shape
+        let left=0; groups.live.userData.ribbons.forEach((r,i)=>{ const ys=r.userData.ys, tg=morph[i], nx=new Float32Array(ys.length);
+          for(let k=0;k<ys.length;k++){ const d=tg[k]-ys[k]; nx[k]=Math.abs(d)<1e-4 ? tg[k] : ys[k]+d*.3; left=Math.max(left, Math.abs(d)); } r.userData.writeY(nx); });
+        placeCursor(); if(left>1e-3) busy=true; else morph=null;
+      }
       const rg=groups.live && groups.live.getObjectByName("rings");   // the app: the new schedule's doses pulse in order
       if(rg && pulseAt){ const e=(now-pulseAt)/1000; rg.children.forEach((r,i)=>{ const a=clamp(e-i*0.12,0,1), s=a<1 ? 1+a*1.8 : 1; r.scale.set(s,s,s); r.material.opacity=a<1 ? .95-.6*a : .95; });
         if(e<rg.children.length*0.12+1) busy=true; else pulseAt=0; }
@@ -378,6 +435,7 @@ export function start(PK){
     if(D.classList.contains("intro-on")) buildIntro();
     return {
       setLive, scroll:w=>scroll(w), frame, light6,
+      cursor:t=>{ curT=t; placeCursor(); frame(); },
       draw1:u=>{ if(groups.s1) groups.s1.getObjectByName("r").userData.setDraw(u); frame(); },
       view:()=>{ if(mode==="app") moveTo(); },
       intro:()=>{ buildIntro(); },
@@ -397,6 +455,7 @@ export function start(PK){
 
   return {
     set(data){ live=data; cssPath(); if(three) three.setLive(); setPill(); },
+    cursor(t){ if(three) three.cursor(t); },
     view(t){ tab=t; if(three) three.view(); setPill(); },
     pill(){ setPill(); if(!action || !action.el) return false; action.el.click(); setTimeout(setPill, 50); return true; },
     theme(){ K=tokensOf(D); cssPath(); scenes.forEach(s=>{ const v=s.querySelector(".scene-vis svg"); if(v) v.textContent=""; }); prep(); lastTop=null; onScroll(); if(three) three.retheme(); },

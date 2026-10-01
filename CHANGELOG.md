@@ -2,6 +2,18 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.1.0 (2026-10-01)
+
+The redesign's second stage: the simulator and Compare on the 3D stage (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 12).
+
+- **The ribbon eases into a new shape** when a setting changes, over about a quarter of a second, instead of jumping; the window plane and the dose rings follow at once. With reduced motion it jumps.
+- **The time cursor rides the ribbon:** dragging across the chart, the arrow keys or Play move a marker along the 3D curve at the same moment (a point on the curve, a line down to the floor, a ring where it meets it).
+- **Population mode on the stage:** a cloud of the virtual patients' curves around the ribbon (up to 150 drawn), from the same sampler and seed as the app's population mode, so the cloud and the chart's bands describe the same patients.
+- **Compare:** A and B as two ribbons in their own colours, separated in depth.
+- On a phone, the stage steps back behind the app's text (it has no margins to sit in); the opening sequence is unchanged.
+
+Lighthouse on mobile: the root address 97, `#compare` 97; accessibility 100 and layout shift 0. axe: no violations. 360 tests in 20 files.
+
 ## 2.0.0 (2026-10-01)
 
 DoseCurve's first visual redesign, the first of four 2.x releases (the plan and its storyboards are in [docs/DESIGN.md](docs/DESIGN.md)). The engine, the share links and the default scenario's numbers are unchanged.
