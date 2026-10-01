@@ -1123,12 +1123,12 @@
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
       ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
-      <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
+      <details class="cs-more cs-dossier" open><summary>Case facts</summary><dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
-        ${c.bayes ? (b=>`<dt>Levels</dt><dd>On ${nf(c.current.D,0)} mg every ${c.current.tau} h (each infused over ${nf(b.T,2)} h), after dose ${c.bayes.dose}: ${b.lv.map(l=>`<b>${nf(l.c,2)} mg/L</b> at ${nf(l.dt,2)} h`).join(" and ")} after that dose started.</dd>`)(bayesOf(c))
-          : c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
-        <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl>
+        ${c.bayes ? (b=>`<dt>Levels</dt><dd class="cs-lv">On ${nf(c.current.D,0)} mg every ${c.current.tau} h (each infused over ${nf(b.T,2)} h), after dose ${c.bayes.dose}: ${b.lv.map(l=>`<b>${nf(l.c,2)} mg/L</b> at ${nf(l.dt,2)} h`).join(" and ")} after that dose started.</dd>`)(bayesOf(c))
+          : c.current ? (L=>`<dt>Levels</dt><dd class="cs-lv">On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
+        <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl></details>
       <p class="cs-task"><b>Task.</b> ${h.esc(c.task)}</p>
       <form id="csForm" novalidate>${form}<div class="cs-actions"><button class="abtn" type="submit">Check regimen</button>
         ${c.drug ? `<button class="abtn" type="button" id="csSim">Open in simulator</button>` : ""}
@@ -1136,7 +1136,7 @@
       <div id="csResult" class="cs-result" aria-live="polite"></div>
       <details class="cs-more"><summary>Walkthrough</summary><ol>${walkthrough(c).map(s=>`<li>${s}</li>`).join("")}</ol></details>
       <details class="cs-more"><summary>What a pharmacist also weighs</summary><p>${h.esc(c.also)}</p></details>
-      <div class="cs-refs"><p class="cs-sub">Sources</p><ol>${refs}${(c.authorRefs||[]).map(r=>`<li>${h.esc(r)} <span class="cs-flag">(author-provided)</span></li>`).join("")}${community && !(c.authorRefs||[]).length ? "<li>The author gave no references.</li>" : ""}</ol></div>`;
+      <details class="cs-more cs-refs"><summary>Sources</summary><ol>${refs}${(c.authorRefs||[]).map(r=>`<li>${h.esc(r)} <span class="cs-flag">(author-provided)</span></li>`).join("")}${community && !(c.authorRefs||[]).length ? "<li>The author gave no references.</li>" : ""}</ol></details>`;
     showOnly(box);
     box.querySelector("#csBack").addEventListener("click",()=>{
       if(current.from){ const b=current.from; openBundle(b.bundle, b.token); return; }

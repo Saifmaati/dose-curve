@@ -2,6 +2,20 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.2.0 (2026-10-01)
+
+The redesign's third stage: Lessons, Cases, Practice, Fit the data and Hit the window as paper pages (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 13).
+
+- **Paper pages.** Opening Lessons, Cases or Practice, or starting a lesson, a fit or a regimen task, turns the app to its paper palette: the top bar, the panels, the charts and the 3D ribbon, now solid graphite. The simulator and Compare stay dark. With the light theme everything is paper, as before.
+- **A masthead** over each one: a giant split headline with a short caption ("Guided ··· lessons, predict first, then check"; a lesson's own title, split, with "Lesson n of 34"; "Clinical ··· cases"; "Practice"; "Fit the ··· data"; "Hit the ··· window"). The ribbon crosses it, over the words and under the caption. The tab's own heading is unchanged for screen readers.
+- **Each case is a dossier:** the case facts in an open accordion, the measured levels in a dark panel, then the task, the walkthrough, what a pharmacist also weighs and the sources as accordions.
+- **The pill** follows these screens too: Start a lesson, Next lesson, Open a case, Check regimen, Check the answer, Next problem, New data set, New drug.
+- On a phone the page's own panel comes before the controls on these screens.
+- Links to a lesson, a case, a practice problem, a worksheet or a task open straight on their paper page, decided before the first paint; a case link shows the app once the case is on screen. Layout shift stays 0.
+- Faster: the lit graphite uses a lighter material, the sliding parts are placed once per frame, and the opening sequence's scenes are computed only when it is shown.
+
+Lighthouse on mobile: the root address 99, `#lessons` 97, a case link 96; accessibility 100 and layout shift 0. axe: no violations. 361 tests in 20 files.
+
 ## 2.1.0 (2026-10-01)
 
 The redesign's second stage: the simulator and Compare on the 3D stage (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 12).

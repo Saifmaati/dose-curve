@@ -343,3 +343,22 @@ instrument does. The 2D chart stays the precision instrument; the ribbon is its 
 
 On phones the stage keeps the single ribbon (no cloud, rings or plane); the marker still rides it. With reduced
 motion, shapes and the marker jump instead of easing.
+
+## 13. Storyboard: 2.2 lessons, cases, practice, fit and hit the window
+
+These are the paper pages. Opening one turns the app's palette to paper (the top bar, the panels, the charts and the
+stage's ribbon, now graphite), and a masthead above the panels carries the screen's giant split headline and its
+caption. The ribbon crosses the masthead, over the words and under the caption; the panels sit over the ribbon.
+
+| Screen | Masthead (split) | Caption | The page | Pill |
+| --- | --- | --- | --- | --- |
+| Lessons | Guided ··· lessons | Predict first, then check. | The list, in groups, as rows | Start a lesson (the first not yet done) |
+| A lesson (in the simulator) | its title, split at the middle word | Lesson n of 34 | The lesson bar (goal, predict, try this, challenge) over the chart | Next lesson |
+| Cases | Clinical ··· cases | The patient's own numbers. | Case tiles; a case is a dossier: the facts as an open accordion, the levels in a dark panel, the task and its form, the walkthrough, what a pharmacist also weighs and the sources as accordions | Open a case, then Check regimen |
+| Practice | Practice | Generated, checked, explained. | A console: topics, the problem, the answer, the worked solution | Check the answer, then Next problem |
+| Fit the data | Fit the ··· data | Estimate from the measurements. | The fit bar over the chart | New data set |
+| Hit the window | Hit the ··· window | Choose a dose and an interval. | The task bar over the chart | New drug |
+
+Camera: high, so the ribbon runs across the masthead above the panels' top edge (Cases a little to the right,
+Practice further and dimmer). On narrow screens the page's panel comes before the controls. The simulator and
+Compare stay dark; leaving a lesson or task returns them.

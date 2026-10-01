@@ -396,3 +396,15 @@ The brief for this release changed twice while it was being built; DECISIONS 116
 | Phones: the stage at 30% under the app's text | 390 px | axe; screenshots |
 
 Lighthouse on mobile: root 97, `#compare` 97; accessibility 100 and CLS 0. axe: no violations. 360 tests in 20 files.
+
+## 30. 2.2.0 (redesign, stage 3 of 4: lessons, cases, practice, fit and hit the window)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Paper palette for the paper pages, set before the first paint on their links | Lessons, Cases, Practice, a lesson, Fit, Hit the window | layout-shift trace: 0 on `#lessons`, `#practice`, `#p=…`, `#case=…`; screenshots in both themes |
+| Mastheads with split headlines and 3–5 word captions | the same | `stage.test.js` (captions, decorative masthead, the lesson title stays the heading) |
+| Case dossier: facts and sources as accordions, levels in a dark panel | a case | `stage.test.js` (markup); `cases.test.js` |
+| The pill on the paper pages | the same | screenshots |
+| Lambert graphite, placement once per frame, the sequence's scenes only when shown | — | Lighthouse (below) |
+
+Lighthouse on mobile: root 99, `#lessons` 97, `#case=vanc-lv` 96; accessibility 100 and CLS 0. (A run while a preview tab kept animating in the background read 57–84 for the same build and for 2.1.0; with the tab closed both read 99.) axe: no violations. 361 tests in 20 files.

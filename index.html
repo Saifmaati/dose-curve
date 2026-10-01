@@ -11,6 +11,8 @@
   // a link with a # part (a tab by name, a lesson, a case, a shared scenario): the app shows once the link is applied,
   // so no control moves under the reader
   if(location.hash.length>1) d.classList.add("route-wait");
+  // a lesson, a case, a practice problem, a worksheet or a task opens on its paper page: the palette is set now, not after
+  if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
   // the root sequence: only a first, direct visit to the root address with no # part (any link, any return visit
   // goes straight into the app); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
@@ -51,7 +53,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.1.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.2.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -183,7 +185,7 @@
   .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   html.stage3d .stage-css svg,html.in-intro .stage-css svg{opacity:0}
   .stage-css svg{transition:opacity var(--t-slow) var(--ease)}
-  @media (prefers-reduced-motion:no-preference){ html:not(.fx-off) .stage-css{animation:drift 48s ease-in-out infinite alternate} }
+  @media (prefers-reduced-motion:no-preference){ html:not(.fx-off):not(.stage3d) .stage-css{animation:drift 48s ease-in-out infinite alternate} }   /* the CSS version only; the 3D stage moves with the visitor */
   @keyframes drift{to{transform:translate3d(-1.5%,1.2%,0) scale(1.03)}}
   html.light .stage canvas,html.light .stage-css{opacity:.5}   /* the classroom: the stage dimmed, not removed */
   html.present .stage,html.embed .stage{display:none}
@@ -208,10 +210,25 @@
   @media (max-width:480px){ .hero{min-height:0;padding:28px 0 40px} .hero-cta .cta{flex:1 1 auto} .hero-cta .cta.primary{flex-basis:100%} }
 
   /* editorial sections: near-paper, ink text, the same type; dark sections keep the theme's tokens */
-  .ed,html.light .scene{--c-page:#F2F3F1; --c-surface:#FFFFFF; --c-raised:#F7F7F5; --c-line:#D6D9DC; --c-text:#14181F; --c-muted:#555D69;
+  .ed,html.light .scene,html.ed-app{--c-page:#F2F3F1; --c-surface:#FFFFFF; --c-raised:#F7F7F5; --c-line:#D6D9DC; --c-text:#14181F; --c-muted:#555D69;
     --c-well:#F6F6F4; --c-text-2:#2E3540; --c-line-strong:#7D8590; --c-thumb:#FFFFFF; --c-accent:#0670A3; --c-on-accent:#FFFFFF;
     --c-accent-soft:rgba(6,112,163,.08); --c-band:#1A7D4E; --c-mec:#985600; --c-mtc:#BE2338; --c-mic:#5847C7; --c-b:#A3368F; --c-ghost:#6B7383;
     background:var(--c-page);color:var(--c-text)}
+  html.ed-app{color-scheme:light; --glass:84%; --shadow-glass:0 1px 2px rgba(18,23,32,.06),0 16px 40px rgba(18,23,32,.08); --shadow-1:0 1px 2px rgba(18,23,32,.06);
+    --shadow-2:0 8px 24px rgba(18,23,32,.14); --shadow-3:0 24px 64px rgba(18,23,32,.22); --scrim:rgba(18,23,32,.4); --c-thumb:#FFFFFF}
+  /* the masthead: a giant split headline over the paper page; the stage's ribbon passes over it, under the panels */
+  .masthead{display:none;position:relative;padding:36px 0 40px}
+  .masthead .split{position:relative;z-index:1}   /* under the ribbon */
+  .masthead .cap{position:relative;z-index:3;width:fit-content;text-shadow:0 0 2px var(--c-page),0 0 8px var(--c-page),0 0 14px var(--c-page)}   /* over it, kept legible */
+  html.ed-app .masthead{display:block}
+  html.ed-app .hero{display:none}
+  .masthead .split{font-size:clamp(56px,10vw,176px)}
+  .masthead .cap{margin:14px auto 0}
+  .masthead .split:has(span:last-child:empty){justify-content:flex-start}
+  html.ed-app #lsTitle{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}   /* the masthead shows it; it stays the lesson's heading */
+  .hero{z-index:1} .app,.foot{position:relative;z-index:3}
+  @media (max-width:960px){ html.ed-app .grid>.panel:not(.controls){order:-1} }   /* narrow screens: the lesson, case or problem comes before the controls */
+  @media (max-width:760px){ .masthead{padding:20px 0 24px} .masthead .split{font-size:clamp(44px,14vw,96px)} }
   html.tone-light .top{--c-page:#F2F3F1; --c-raised:#E9EAE7; --c-line:#D6D9DC; --c-text:#14181F; --c-text-2:#2E3540; --c-line-strong:#7D8590; --c-surface:#FFFFFF}
   html.tone-light .pill{--c-accent:#14181F; --c-on-accent:#FFFFFF; --c-text:#14181F}
 
@@ -252,7 +269,7 @@
   html.hero-anim .hero-ro dd{opacity:0;animation:heroShow 0s 5s forwards}
   @keyframes heroShow{to{opacity:1}}
   /* the 3D canvas: over the headlines in the sequence, behind the glass in the app */
-  .stage-3d{position:fixed;inset:0;z-index:-1;pointer-events:none}
+  .stage-3d{position:fixed;inset:0;z-index:2;pointer-events:none}   /* over the hero and the masthead, under the panels */
   html.in-intro .stage-3d{z-index:3}
   .stage-3d canvas{display:block;width:100%;height:100%}
   html.present .stage-3d,html.embed .stage-3d{display:none}
@@ -652,7 +669,7 @@
   .pr-type{font-size:13px;font-weight:600;color:var(--c-muted);margin-bottom:8px}
   .pr-type{min-height:20px}
   #prView:has(#prQ:empty) > :not(.pr-top){visibility:hidden}   /* until the first problem arrives from its own file */
-  html.route-wait #app{visibility:hidden;animation:routeShow 0s 3s forwards}
+  html.route-wait #app,html.route-wait .hero,html.route-wait .masthead{visibility:hidden;animation:routeShow 0s 3s forwards}
   @keyframes routeShow{to{visibility:visible}}
   #prQ{min-height:calc(1.65em * 3)}   /* the problem arrives from its own file: its usual height is held, so nothing shifts */
   @media (max-width:560px){ #prQ{min-height:calc(1.65em * 6)} }
@@ -717,6 +734,10 @@
   .cs-list[hidden],.cs-intro[hidden],.cs-case[hidden]{display:none}
   .cs-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:14px 0;padding:14px 16px;border-radius:var(--r-2);background:var(--c-well);border:1px solid var(--c-line);font-size:14px;line-height:1.5}
   .cs-facts dt{color:var(--c-muted);font-weight:500} .cs-facts dd{color:var(--c-text)} .cs-why{color:var(--c-text-2)}
+  /* the dossier's levels: a dark panel, like the instrument they came from */
+  .cs-facts dd.cs-lv{padding:10px 14px;border-radius:var(--r-2);background:#12151B;color:#C3C9D4;line-height:1.6}
+  .cs-facts dd.cs-lv b{color:#E8EBF0;font-family:var(--f-mono);font-weight:500}
+  .cs-dossier > .cs-facts{margin-top:10px}
   .cs-task{font-size:15px;line-height:1.6;color:var(--c-text);margin:10px 0 14px;max-width:42em}
   .cs-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
   .cs-form label,.cs-choice label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--c-muted)}
@@ -1155,6 +1176,8 @@
     </div>
   </section>
 
+  <!-- the paper pages' giant headline (Lessons, Cases, Practice, a lesson or task); the tab's own title says it too -->
+  <div class="masthead" id="masthead" aria-hidden="true"><p class="split"><span id="mastL"></span> <span id="mastR"></span></p><p class="cap" id="mastCap"></p></div>
   <div class="app" id="app" tabindex="-1">
     <div class="grid">
 
@@ -1758,7 +1781,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.1.0, updated 1 October 2026</span>
+        <span>Version 2.2.0, updated 1 October 2026</span>
       </nav>
     </footer>
   </div>
@@ -1868,8 +1891,12 @@
     COL.a.line=K.accent; COL.b.line=K.b;
   }
   readK();
-  let stage=null, curTab="sim";   // the stage behind the page, once stage.js has loaded (see STAGE), and the open tab
-  const D=document.documentElement, toStage=()=>{ if(stage) stage.set({curves:plotCurves, mec:state.mec, mtc:state.mtc, T:viewT, mode,
+  let stage=null, curTab="sim", edWas=null;   // the stage behind the page, once stage.js has loaded (see STAGE), and the open tab
+  const D=document.documentElement;
+  edWas=D.classList.contains("ed-app");
+  // the tab a link opens, known before the first render so its masthead is ready when the app shows
+  curTab=/^#(cases$|case=|bundle=)/.test(location.hash) ? "cs" : /^#(practice$|p=|ws=)/.test(location.hash) ? "pr" : location.hash==="#lessons" ? "ls" : "sim";
+  const toStage=()=>{ if(stage) stage.set({curves:plotCurves, mec:state.mec, mtc:state.mtc, T:viewT, mode,
     pop:state.pop ? {n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed} : null}); };
   const noMotion=()=> matchMedia("(prefers-reduced-motion: reduce)").matches;
   // The sliding parts, placed after every change: each segmented control's thumb under its chosen segment (when its
@@ -1888,6 +1915,8 @@
       if(v) c.dataset.b=v.textContent;
     });
   }
+  let placing=0;
+  const queuePlace=()=>{ if(!placing) placing=requestAnimationFrame(()=>{ placing=0; placeUI(); }); };
   // A readout's number runs from its old value to its new one in 200 ms (at once with reduced motion).
   const shownNum=new Map(), DEC=(1.5).toLocaleString().charAt(1);
   function tweenNums(root){
@@ -2600,8 +2629,9 @@
     renderChallenge();
     renderFit();
     renderWindow();
-    placeUI();
+    queuePlace();   // once per frame, however many renders a change makes
     toStage();
+    mast();
   }
 
   // Doses to mark: every scheduled dose of a repeated regimen or custom schedule, missed ones included.
@@ -5637,8 +5667,19 @@
     $("plot").focus({preventScroll:true});
   });
 
+  // Lessons, Cases and Practice (and a lesson, a fit or a regimen task in the simulator) are paper pages under a
+  // giant headline; the simulator and Compare stay dark. The charts take the new palette.
+  function mast(){
+    const task=lesson||fit||win, ed=!["sim","cmp"].includes(curTab) || !!(task && curTab==="sim");
+    const half=t=>{ const w=t.split(" "), k=Math.ceil(w.length/2); return [w.slice(0,k).join(" "), w.slice(k).join(" ")]; };
+    const m=curTab==="ls" ? ["Guided","lessons","Predict first, then check."] : curTab==="cs" ? ["Clinical","cases","The patient's own numbers."] : curTab==="pr" ? ["Practice","","Generated, checked, explained."]
+      : lesson ? [...half(lesson.title), byId("lsNum").textContent] : fit ? ["Fit the","data","Estimate from the measurements."] : win ? ["Hit the","window","Pick a dose and interval."] : null;
+    if(m){ byId("mastL").textContent=m[0]; byId("mastR").textContent=m[1]; byId("mastCap").textContent=m[2]; }
+    if(ed!==edWas){ edWas=ed; D.classList.toggle("ed-app", ed); readK(); render(); }
+    if(stage) stage.view(curTab==="sim" && task ? (lesson ? "lesson" : fit ? "fit" : "win") : curTab);
+  }
   function showTab(which){
-    pause(); curTab=which; if(stage) stage.view(which);
+    pause(); curTab=which; mast();
     if(which==="sim"||which==="cmp") setMode(which);
     $("simView").style.display=(which==="sim"||which==="cmp")?"block":"none";
     $("lsView").className="lsv"+(which==="ls"?" show":"");
@@ -5659,7 +5700,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=d0bac531cf";
+  const CASES_SRC="cases.js?v=03c14857cf";
   let casesReady=null, casesMounted=false;
   // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){
@@ -5719,10 +5760,10 @@
   else if(task) startFit(PK.makeFit({kind:task.kind, seed:task.seed}), true);
   else if(/^#(practice|lessons|cases|compare)$/.test(location.hash)){ render(); $({practice:"tabPr", lessons:"tabLs", cases:"tabCs", compare:"tabCmp"}[location.hash.slice(1)]).click(); }   // a tab, by name
   else render();
-  D.classList.remove("route-wait");
+  // the app shows once the link is applied; a case or an assignment waits for cases.js and its page
+  const unwait=()=> requestAnimationFrame(()=> D.classList.remove("route-wait"));
+  if((caseLink || bundleLink) && casesReady) casesReady.then(unwait, unwait); else unwait();
   // the sliding parts follow any change of the chosen segment or tab, a resize, and the fonts arriving
-  let placing=0;
-  const queuePlace=()=>{ if(!placing) placing=requestAnimationFrame(()=>{ placing=0; placeUI(); }); };
   new MutationObserver(ms=>{ if(ms.some(m=> m.target.parentElement && m.target.parentElement.matches(".seg,.mini-seg,.tabbar"))) queuePlace(); })
     .observe(document.body, {subtree:true, attributes:true, attributeFilter:["class"]});
   addEventListener("resize", queuePlace);
@@ -5731,9 +5772,9 @@
   /* ================= STAGE ================= */
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
-  const STAGE_SRC="stage.js?v=ce291ac987";
+  const STAGE_SRC="stage.js?v=e469dd8aca";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
-    .then(m=>{ stage=m.start(PK); toStage(); stage.view(curTab); }).catch(()=>{}), 60));
+    .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
   syncFx();
   byId("fxBtn").addEventListener("click",()=>{

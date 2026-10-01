@@ -26,7 +26,11 @@ export function start(PK){
   /* ---------- the engine's scenes ---------- */
   const S=o=> PK.normalizeScenario(PK.scenario(o)), V0=PK.VIEW_DEFAULTS;
   const sample=(p,T,n)=>{ const ev=PK.doseEvents(p), out=[]; for(let i=0;i<=n;i++){ const t=T*i/n; out.push({t, c:PK.conc(p,t,ev)}); } return out; };
+  // computed only when the sequence is shown: a deep link or a return visit never pays for it
   const sc={};
+  function normals(rand){ let spare=null; return ()=>{ if(spare!==null){ const s=spare; spare=null; return s; } let u=0; while(u<=1e-300) u=rand(); const v=rand(), r=Math.sqrt(-2*Math.log(u)); spare=r*Math.sin(2*Math.PI*v); return r*Math.cos(2*Math.PI*v); }; }
+  function prepScenes(){
+    if(sc.c1) return;
   // the default scenario, and the three readouts read off its curve as it is drawn: Cmax as it climbs; the AUC
   // observed so far plus C(t)/kₑ, the usual extrapolation to infinity; the time in the window so far
   sc.p1=S({}); sc.T1=V0.duration; sc.c1=sample(sc.p1, sc.T1, 240);
@@ -37,7 +41,6 @@ export function start(PK){
   // the same drug every 8 hours, six doses, over 48 h
   sc.p2=S({dosing:"repeated", tau:8, nDoses:6}); sc.T2=48; sc.c2=sample(sc.p2, sc.T2, 320); sc.d2=PK.doseSchedule(sc.p2).map(x=>x.t);
   // 200 virtual patients as the app's population mode makes them (clearance CV 30%, volume CV 20%, seed 1)
-  function normals(rand){ let spare=null; return ()=>{ if(spare!==null){ const s=spare; spare=null; return s; } let u=0; while(u<=1e-300) u=rand(); const v=rand(), r=Math.sqrt(-2*Math.log(u)); spare=r*Math.sin(2*Math.PI*v); return r*Math.cos(2*Math.PI*v); }; }
   { const p=sc.p1, z=normals(PK.seededRandom(1)), w=cv=> Math.sqrt(Math.log(1+cv*cv)), wCL=w(.3), wV=w(.2), n=80;
     sc.pop=[]; for(let i=0;i<200;i++){ const eCL=wCL*z(), eV=wV*z(); sc.pop.push(sample(Object.assign({}, p, {V:p.V*Math.exp(eV), thalf:p.thalf*Math.exp(eV-eCL)}), 24, n)); }
     sc.med=[]; for(let i=0;i<=n;i++){ const v=sc.pop.map(c=>c[i].c).sort((a,b)=>a-b); sc.med.push({t:24*i/n, c:(v[99]+v[100])/2}); } }
@@ -45,6 +48,7 @@ export function start(PK){
   { const p=S({route:"iv", cmt:2, D:500, V:20, thalf:3, k12:0.9, k21:0.35}), d=PK.derived(p), C0=PK.conc(p,1e-9), a=d.alpha, b=d.beta;
     const A=C0*(a-p.k21)/(a-b), B=C0*(p.k21-b)/(a-b);
     sc.T4=24; sc.c4=sample(p, 24, 240); sc.pa=sc.c4.map(q=>({t:q.t, c:A*Math.exp(-a*q.t)})); sc.pb=sc.c4.map(q=>({t:q.t, c:B*Math.exp(-b*q.t)})); }
+  }
   // the validation checks, filled as the engine's values are compared with the independent solver's
   sc.checks=[]; sc.nChecks=584;
   let checking=null;
@@ -126,10 +130,10 @@ export function start(PK){
       if(y<top+h) return {g:i+clamp((y-top)/h,0,1), inIntro:y>=intro.offsetTop, scene:s}; }
     return {g:scenes.length, inIntro:false};
   }
-  const toneAt=w=> D.classList.contains("light") || (w && w.inIntro && w.scene && w.scene.dataset.tone==="light") ? "light" : "dark";
+  const toneAt=w=> D.classList.contains("light") || (w && w.inIntro ? w.scene && w.scene.dataset.tone==="light" : D.classList.contains("ed-app")) ? "light" : "dark";
   let drawn1=false;
   function countUp(){   // scene 1: the curve draws itself once and the readouts count with it (1.2 s)
-    if(drawn1) return; drawn1=true;
+    if(drawn1) return; drawn1=true; prepScenes();
     const ro=["heroCmax","heroAuc","heroTin"].map($), at=u=>{ drawU=u; const r=sc.cum[Math.round(u*240)]; ro.forEach((el,j)=>{ if(el) el.textContent=u<1 ? fmt(r[j], j<2 ? 1 : 0) : sc.final[j]; }); paintFrame(1); if(three) three.draw1(u); };
     if(stillQ.matches || !D.classList.contains("hero-anim")){ at(1); D.classList.remove("hero-anim"); return; }
     at(0); D.classList.remove("hero-anim");
@@ -151,8 +155,11 @@ export function start(PK){
     sim:()=> ({label:$("pinBtn").textContent, el:$("pinBtn")}),
     cmp:()=> ({label:"Swap A and B", el:$("swapAB")}),
     ls:()=> ({label:"Start a lesson", el:document.querySelector(".ls-card:not(.done)")||document.querySelector(".ls-card")}),
-    cs:()=>{ const b=document.querySelector("#csView .cs-actions .abtn"); return b && b.offsetParent ? {label:b.textContent, el:b} : {label:"Open a case", el:document.querySelector(".cs-card")}; },
-    pr:()=> $("prVerdict") && $("prVerdict").textContent ? {label:"Next problem", el:$("prNext")} : {label:"Check the answer", el:$("prCheck")}
+    cs:()=>{ const b=document.querySelector("#csForm button[type=submit]"); return b && b.offsetParent ? {label:b.textContent, el:b} : {label:"Open a case", el:document.querySelector(".cs-card")}; },
+    pr:()=> $("prVerdict") && $("prVerdict").textContent ? {label:"Next problem", el:$("prNext")} : {label:"Check the answer", el:$("prCheck")},
+    lesson:()=> ({label:$("lsNext").textContent, el:$("lsNext")}),
+    fit:()=> ({label:"New data set", el:$("fitNew")}),
+    win:()=> ({label:"New drug", el:$("winNew")})
   };
   let action=null;
   function setPill(){
@@ -196,7 +203,7 @@ export function start(PK){
         return new THREE.Mesh(geo, mat);
       };
       const basic=(c,op,add)=> new THREE.MeshBasicMaterial({color:col(c), transparent:true, opacity:op, side:THREE.DoubleSide, depthWrite:false, blending:add ? THREE.AdditiveBlending : THREE.NormalBlending});
-      const solid=c=> new THREE.MeshStandardMaterial({color:col(c), roughness:.42, metalness:.35, side:THREE.DoubleSide});
+      const solid=c=> new THREE.MeshLambertMaterial({color:col(c), side:THREE.DoubleSide});   // lit, and quick to compile on a slow phone
       const lit=lightTone(), c=lit && !o.keep ? (o.ghost ? P.ghost : GRAPHITE) : color;
       g.add(strip(o.w||0.3, o.ghost ? basic(c, .45, false) : lit ? solid(c) : basic(c, .95, true), o.z||0));
       if(!o.ghost && !lit) g.add(strip(1.15, basic(color, .16, true), o.z||0));
@@ -305,6 +312,7 @@ export function start(PK){
     /* the sequence's objects, placed along the x axis; the camera travels between them */
     const SX=[0,40,80,120,160];
     function buildIntro(){
+      prepScenes();
       ["s1","s3","s4","s5","s6"].forEach(k=>{ disposeGroup(groups[k]); delete groups[k]; });
       const g1=groups.s1=new THREE.Group(); scene.add(g1);
       const r1=ribbon(sc.c1, sc.T1, 14, P.accent, {curtain:!phoneQ.matches}); r1.name="r"; g1.add(r1); r1.userData.setDraw(drawU);
@@ -349,8 +357,10 @@ export function start(PK){
       [[V(SX[3]-7,3.4,18),V(SX[3]+1.7,2.3,0)],[V(SX[3]+4.5,5.2,18),V(SX[3]+1.5,2.1,0)]],
       [[V(SX[4],2.6,11.5),V(SX[4],2.3,0)],[V(SX[4],3.6,10),V(SX[4],2.3,0)]],
       [[V(-2,2.4,24),V(0,-2.3,0)],[V(-2,2.4,24),V(0,-2.3,0)]]];
-    const FR={sim:[V(-7.5,4.6,16),V(-0.6,2.6,0)], cmp:[V(-9.5,6.2,17),V(-0.8,1.5,0.4)], ls:[V(-5.2,1.4,10.5),V(0,2,0)],
-      cs:[V(0.6,16,4.5),V(0.6,0,-0.3)], pr:[V(-3,2.6,26),V(0,1.4,0)]};
+    // the paper pages: the ribbon crosses the masthead, high in the frame, above the panels' top edge
+    const FR={sim:[V(-7.5,4.6,16),V(-0.6,2.6,0)], cmp:[V(-9.5,6.2,17),V(-0.8,1.5,0.4)], ls:[V(-3.6,2.4,19),V(0.6,-2.1,0)],
+      cs:[V(1.5,3.4,19),V(1,-2.2,0)], pr:[V(-2.5,2.2,24),V(0.4,-2.8,0)]};
+    FR.lesson=FR.fit=FR.win=FR.ls;
     // a phone in portrait sees a narrow slice: the camera stands back so the whole ribbon shows
     const PH=[V(0,3.4,42),V(0,-3.6,0)];
     let mode="app", camFrom=null, camTo=null, camT0=0, camDur=900, scrollS=0, lastW=null;
@@ -446,8 +456,9 @@ export function start(PK){
 
   /* ---------- wiring ---------- */
   let scrollRaf=0;
+  document.addEventListener("click",()=> setTimeout(setPill, 80));   // a case opened, an answer checked: the pill follows
   addEventListener("scroll",()=>{ if(!scrollRaf) scrollRaf=requestAnimationFrame(()=>{ scrollRaf=0; onScroll(); }); }, {passive:true});
-  const prep=()=>{ if(D.classList.contains("intro-on")){ paintFrames(); if(!D.classList.contains("fx-off") && !phoneQ.matches) setTimeout(runChecks, 2500); } };
+  const prep=()=>{ if(D.classList.contains("intro-on")){ prepScenes(); paintFrames(); if(!D.classList.contains("fx-off") && !phoneQ.matches) setTimeout(runChecks, 2500); } };
   prep(); onScroll(); setPill();
   // scene 1 draws itself once, in 3D when Three.js arrives within 2.5 s, else in its SVG frame
   const loading=load3d();
@@ -456,7 +467,7 @@ export function start(PK){
   return {
     set(data){ live=data; cssPath(); if(three) three.setLive(); setPill(); },
     cursor(t){ if(three) three.cursor(t); },
-    view(t){ tab=t; if(three) three.view(); setPill(); },
+    view(t){ if(t===tab && lastTop!==null) return setPill(); tab=t; lastTop=null; onScroll(); if(three) three.view(); setPill(); },
     pill(){ setPill(); if(!action || !action.el) return false; action.el.click(); setTimeout(setPill, 50); return true; },
     theme(){ K=tokensOf(D); cssPath(); scenes.forEach(s=>{ const v=s.querySelector(".scene-vis svg"); if(v) v.textContent=""; }); prep(); lastTop=null; onScroll(); if(three) three.retheme(); },
     fx(){ if(can3d()) load3d(); else if(three){ three.dispose(); three=null; D.classList.remove("stage3d"); if(D.classList.contains("intro-on")) paintFrames(); } },

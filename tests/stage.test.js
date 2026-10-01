@@ -77,3 +77,16 @@ test("2.1: the stage follows the instrument: the cursor, the population settings
   assert.ok(Math.abs(DC.omega(30)-Math.sqrt(Math.log(1+30*30/1e4)))<1e-15);
   assert.match(stage, /w=cv=> Math\.sqrt\(Math\.log\(1\+cv\*cv\/1e4\)\)/);
 });
+
+test("2.2: the paper pages: a decorative masthead per screen, short captions, the case as a dossier with accordions", ()=>{
+  assert.match(page, /<div class="masthead" id="masthead" aria-hidden="true">/);
+  const m=page.match(/const m=curTab==="ls" \? (\[[^\]]+\]) : curTab==="cs" \? (\[[^\]]+\]) : curTab==="pr" \? (\[[^\]]+\])[\s\S]*?fit \? (\[[^\]]+\]) : win \? (\[[^\]]+\])/);
+  assert.ok(m, "a masthead for Lessons, Cases, Practice, Fit and Hit the window");
+  m.slice(1).forEach(a=>{ const cap=JSON.parse(a)[2], n=cap.split(/\s+/).length; assert.ok(n>=3 && n<=5, `"${cap}" is ${n} words`); });
+  assert.match(page, /lesson \? \[\.\.\.half\(lesson\.title\), byId\("lsNum"\)\.textContent\]/, "a lesson's masthead is its own title");
+  assert.match(page, /html\.ed-app #lsTitle\{position:absolute/, "the lesson's title stays its heading for screen readers");
+  const C=read("cases.js");
+  assert.match(C, /<details class="cs-more cs-dossier" open><summary>Case facts<\/summary><dl class="cs-facts">/);
+  assert.match(C, /<details class="cs-more cs-refs"><summary>Sources<\/summary>/);
+  assert.equal((C.match(/<dt>Levels<\/dt><dd class="cs-lv">/g)||[]).length, 2);
+});
