@@ -77,3 +77,5 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 21:41 | 1.14 | Indirect responses (types 1–4) in pk-idr.js; response charts, readouts, Compare, What changed; lesson 27 (warfarin-like); comparison 26; practice idrss (pools v7); glossary 66; links v10 | done | 073456f |
 | 2026-09-30 21:45 | 1.14 | Drug sources and notes moved to lazily loaded pk-sources.js (initial script +18.2%) | done | edb3153 |
 | 2026-09-30 21:45 | 1.14 | SciPy indirect-response reference, 12 scenarios (696 comparisons) | done | bd9d1da |
+| 2026-09-30 22:25 | 1.15 | Hemodialysis in pk-hd.js (exact between events): session table, chart bands, readouts, What changed; case 16 (gentamicin on hemodialysis); lesson Hemodialysis sessions; comparison 27; practice hdfall (pools v8); glossary 68; links v11 | done | 73ce289 |
+| 2026-09-30 22:25 | 1.15 | SciPy dialysis reference, 8 scenarios (712 comparisons) | done | 24bbdde |

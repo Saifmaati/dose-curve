@@ -322,3 +322,17 @@ There are 327 tests in 15 files. The initial script is +19.6% over the Phase 0 b
 
 There are 335 tests in 16 files. The initial script is +18.2% over the Phase 0 baseline (limit +25%), down from +19.6% in 1.13.0. axe: no violations with the indirect-response charts open.
 
+## 24. 1.15.0 (Plan V2, Phase F)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Hemodialysis sessions in lazily loaded `pk-hd.js`: the dialysis clearance added while a session runs, solved exactly between events, with the area and the amount removed | Simulator → Patient → Hemodialysis; session bands on the chart; session table; readouts and worked formulas; What changed | `hd.test.js` (closed form before, during and after a session; mass balance for every route and schedule to 1e-9; removal = ∫CLd·C to 1e-8; no sessions in reach = no dialysis) |
+| SciPy reference: 8 dialysis scenarios | validation.html (712 comparisons) | `hd.test.js` (0.01%; observed ~1e-12) |
+| No steady state on dialysis: dose table off the curve, readouts switch | Steady-state panel; readouts | `hd.test.js` |
+| v11 links with hd, hdcl, hdstart, hddur, hdevery | Copy link | `hd.test.js`, `pk-engine.test.js` |
+| Case 16, *Gentamicin on hemodialysis* (label: 50% per 8-hour session, 1–1.7 mg/kg after each) | Cases tab | `hd.test.js`, `cases.test.js` |
+| Lesson 10, *Hemodialysis sessions*, comparison 27 | Lessons → PK fundamentals | `hd.test.js` (every number the text, tip and comparison state) |
+| Practice kind *fall over a session* (pools v8); glossary 68 | Practice → Single dose; Glossary | `pk-engine.test.js`, `hd.test.js` |
+
+There are 345 tests in 17 files. The initial script is +21.2% over the Phase 0 baseline (limit +25%); Phase G's sensitivity analysis goes entirely into a lazily loaded file. axe: no violations with the dialysis panel open.
+

@@ -63,13 +63,13 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (33)
+## Guided lessons (34)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Hemodialysis sessions · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
@@ -80,9 +80,9 @@ Each lesson opens a ready-made scenario next to a baseline. It sets a goal and a
 
 To assign a lesson, open it and use **Copy link**. The link opens that lesson for anyone. The lessons' texts load with the Lessons tab or the first lesson a student opens, so the simulator itself appears sooner; after one visit they are saved for offline use with the rest of the app.
 
-The **glossary** under the lessons defines 66 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
+The **glossary** under the lessons defines 68 terms, each with its symbol, unit and formula, and links to the lesson that shows it. It includes creatinine clearance, the Cockcroft–Gault equation, fe, ideal and adjusted body weight, and the salt factor. It also notes why dosing references state renal adjustments as Cockcroft–Gault CrCl in mL/min, while laboratories report eGFR per 1.73 m².
 
-## Clinical cases (15)
+## Clinical cases (16)
 
 The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
 
@@ -106,6 +106,7 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | Levetiracetam with reduced kidney function | A renal table set by creatinine clearance per 1.73 m² (body surface area, Mosteller); choosing a dose within the label's range by matching exposure to normal kidneys |
 | Meropenem with reduced kidney function | Reading a label's renal table (Cockcroft–Gault rows); why the interval stretches; the unadjusted regimen nearly doubles exposure, the adjusted one stays near normal while keeping most of each interval above the MIC |
 | Piperacillin-tazobactam with reduced kidney function | The label's renal table (CrCl 20–40 mL/min: 2.25 g every 6 hours); fT>MIC on the unbound level against the FDA breakpoint for *P. aeruginosa* (16 mg/L); reduced clearance keeps each dose above the MIC longer; the same regimen over 3 hours, and an extended-infusion scheme (Lodise 2007), compared |
+| Gentamicin on hemodialysis | The label's figures: an 8-hour session lowers the level by about 50%, and 1 to 1.7 mg/kg is given at the end of each session. The model shows the levels before and after each session and the amount removed, and why the dose after a session is a full dose that rebuilds the peak, not a top-up of what was removed |
 | Phenytoin: a low level and low albumin | Albumin adjustment, Vmax from one level, and how steep the dose–level curve is near saturation |
 | Digoxin in an older adult | ng/mL targets, a long half-life, and the loading dose |
 | Theophylline in a smoker | A cited clearance factor (about +50%) and a narrow window |
@@ -113,6 +114,10 @@ A **Walkthrough** works the textbook route with the patient's own numbers: Cockc
 | A late dose: which drug minds? | Reasoning from half-life |
 
 No case stores an answer: every target check, hint, walkthrough number and reference regimen is worked out from the model when the case opens, and the tests check that each case's reference regimen passes and that a deliberately wrong one gets the expected hint. The cases teach reasoning; they are not prescribing instructions.
+
+## Hemodialysis
+
+Under the patient, **Hemodialysis** adds sessions: the dialyzer's clearance, how long each session lasts, when the first starts and how often they repeat. While a session runs, the clearances add, so the level falls faster. The chart marks each session, and the panel lists, for each session in the window, the level as it starts and as it ends, the amount removed (the dialysis clearance times the area under the curve during the session) and the IV dose that would bring the level back to where the session found it. Regimens on dialysis have no single steady state, so those readouts give way to the clearance on and off dialysis and the fall per session. One compartment means there is no post-dialysis rebound, and the panel says so. The default dialysis clearance is a typical value, flagged unverified; the gentamicin case and the lesson set it from the gentamicin label's statement that an 8-hour session lowers the level by about 50%. A question that works well: why does the label give 1 to 1.7 mg/kg after each session when each session in the case removes only 15 to 18 mg?
 
 ## Effects that lag the level
 
@@ -134,8 +139,8 @@ A repeated regimen is read at steady state over one interval; a single dose or a
 
 ## Practice and assessment
 
-- **Practice problems.** There are 41 kinds of calculation problem in seven topics:
-  - single dose (12 kinds, including clearance from a two-compartment fit)
+- **Practice problems.** There are 42 kinds of calculation problem in seven topics:
+  - single dose (13 kinds, including clearance from a two-compartment fit and the fall over a dialysis session)
   - repeated dosing (7, including a renal dose adjustment from age, weight and serum creatinine)
   - infusions (6, including the AUC from two measured levels)
   - concentration–effect (6, including the time of the peak effect with an effect-site delay, and where an indirect response settles under a constant infusion)

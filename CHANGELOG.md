@@ -2,6 +2,21 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.15.0 (2026-09-30)
+
+- **Hemodialysis.** Under the patient, **Hemodialysis** adds sessions: the dialysis clearance, the session length, when the first starts and how often they repeat. While a session runs, the dialyzer's clearance adds to the body's own.
+  - Between any two events (a dose, an infusion's end, a session's start or end) the model is solved exactly, and the state is carried from one to the next, so the curve, the area and the amount each session removes (the dialysis clearance times the area under the concentration during it) are exact. It lives in its own file, loaded when dialysis is on.
+  - The chart marks each session. The panel lists, for each session in the window, the level as it starts and ends, the fall, the amount removed and the IV dose right after it that would restore the level, rounded.
+  - The readouts show the clearance off and on dialysis and the fall per session (each with its worked formula). The steady-state readouts give way, because sessions don't repeat with the doses.
+  - What changed, Compare, the inspector and links (version 11) include it. One compartment: there is no post-dialysis rebound, and the panel says so. The default dialysis clearance is a typical value, flagged unverified.
+- **A case (16 in all), *Gentamicin on hemodialysis*,** from the gentamicin label: an 8-hour session may lower the level by about 50% (the model's dialysis clearance is set to match), and the dose at the end of each session is 1 to 1.7 mg/kg. With 120 mg after each session, each session halves the level, from about 2.5 to 1.25 mg/L, and removes 15 to 18 mg. The walkthrough shows why the dose after a session is a full dose that rebuilds the peak, not a top-up of what the session removed.
+- **Lesson 10, *Hemodialysis sessions*** (34 in all), with a comparison (27): one dose in the same patient, with and without sessions. A session halves the level, the dialyzer doing 70% of the work while it runs; over all the sessions dialysis removes 18 of the 120 mg.
+- **A practice problem (42 kinds):** the fall over a dialysis session, 1 − e^(−(kₑ + CLd/V)·T). Worksheet pools are at version 8; version-7 links rebuild exactly.
+- **Two glossary terms (68):** dialysis clearance, and post-dialysis rebound (which the model doesn't show).
+- **Validated independently:** 8 dialysis scenarios in a SciPy ODE system with the dialysis clearance switched on during sessions agree within 0.01% on the level at six times and on each session's levels and amount removed (in practice to about one part in 10¹²); the validation page shows them (712 comparisons in all). The tests hold the model to mass balance (what the body clears plus what the dialyzer removes equals what was given), to the closed form during and between sessions, and to removal = ∫CLd·C dt.
+- A missing value in a readout now shows "—" instead of stopping the page.
+- The share card says 34 lessons.
+
 ## 1.14.0 (2026-09-30)
 
 - **Indirect responses.** Under *Pharmacodynamics → How the effect is produced*, choose one of the four basic indirect response models (Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production (kin) or the loss (kout) of something the body makes. Set the response's turnover half-life, the maximum inhibition (Imax) or stimulation (Smax), EC50 and the Hill slope; with Imax = 1 and n = 1 the equations are the paper's.
