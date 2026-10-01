@@ -349,10 +349,10 @@ There are 350 tests in 18 files. The initial script is +21.7% over the Phase 0 b
 
 | Feature | Where to see it | Tests |
 | --- | --- | --- |
-| Educator landing page, built from the engine: counts, run a class, every lesson's share link and every case's link | educators.html (footer: For educators) |  (counts are the app's; each lesson link equals the app's own and opens the lesson; each case link opens its case; the version) |
-| Named tab links (#practice, #lessons, #cases, #compare) | any page |  |
-| README screenshots: antimicrobial, indirect response, hemodialysis, sensitivity, validation | README |  (images exist) |
-| Validation page: deferred scripts, checks yield between tasks, reserved space | validation.html |  (its scripts parse) |
+| Educator landing page, built from the engine: counts, run a class, every lesson's share link and every case's link | educators.html (footer: For educators) | `educators.test.js` (counts are the app's; each lesson link equals the app's own and opens the lesson; each case link opens its case; the version) |
+| Named tab links (#practice, #lessons, #cases, #compare) | any page | `educators.test.js` |
+| README screenshots: antimicrobial, indirect response, hemodialysis, sensitivity, validation | README | `release.test.js` (images exist) |
+| Validation page: deferred scripts, checks yield between tasks, reserved space | validation.html | `release.test.js` (its scripts parse) |
 
 Lighthouse, mobile, on the gzip preview: app 97–100 in every category (desktop 100), validation 97 (TBT 0–190 ms, CLS 0.026), educators 100. There are 354 tests in 19 files; the initial script is +21.7% over the baseline.
 

@@ -12,9 +12,10 @@ A few steps need your accounts or your judgment. Each one says why it wasn't don
 - 1.13.0: https://github.com/Saifmaati/dose-curve/pull/15 (branch `v1.13.0`)
 - 1.14.0: https://github.com/Saifmaati/dose-curve/pull/16 (branch `v1.14.0`)
 - 1.15.0: https://github.com/Saifmaati/dose-curve/pull/17 (branch `v1.15.0`)
-- 1.16.0: the pull request from branch `v1.16.0` (it includes 1.10.0–1.15.0 until those merge)
+- 1.16.0: https://github.com/Saifmaati/dose-curve/pull/18 (branch `v1.16.0`)
+- 1.17.0: the pull request from branch `v1.17.0` (it includes 1.10.0–1.16.0 until those merge)
 
-On 2026-09-30 at 21:45, after "merged 12 through 15", GitHub still showed #12–#15 open and `main` at 1.9.0 (da05093): the merges hadn't gone through. A merge only counts once the pull request page says **Merged**. Each pull request contains the ones before it, so merging only the newest (1.16.0) also brings in the rest; GitHub then marks the older ones merged. Merging them one by one, oldest first, keeps one merge commit per release for the tags.
+On 2026-09-30 at 21:45, after "merged 12 through 15", GitHub still showed #12–#15 open and `main` at 1.9.0 (da05093): the merges hadn't gone through. A merge only counts once the pull request page says **Merged**. Each pull request contains the ones before it, so merging only the newest (1.17.0) also brings in the rest; GitHub then marks the older ones merged. Merging them one by one, oldest first, keeps one merge commit per release for the tags.
 
 ```bash
 /Users/saifmaati/.local/bin/gh pr merge 12 --repo Saifmaati/dose-curve --merge
@@ -33,12 +34,12 @@ To let Claude Code merge after green CI in future runs, allow `Bash(/Users/saifm
 | v1.2.0 | 2d50c74 | v1.7.0 | b1ae2f3 |
 | v1.3.0 | e178f31 | v1.8.0 | b31ff5e |
 | v1.4.0 | 36e3abf | v1.9.0 | da05093 |
-| v1.4.1 | fadf6bd | v1.10.0 – v1.16.0 | their merge commits (tagged when they merge) |
+| v1.4.1 | fadf6bd | v1.10.0 – v1.17.0 | their merge commits (tagged when they merge) |
 
 From the repository folder, this creates each one with its CHANGELOG section as the notes:
 
 ```bash
-for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
+for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0 1.10.0 1.11.0 1.12.0 1.13.0 1.14.0 1.15.0 1.16.0 1.17.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
 ```
 
 To let Claude Code do it in future runs, allow `Bash(/Users/saifmaati/.local/bin/gh release create:*)` in `~/.claude/settings.json`.
@@ -102,7 +103,7 @@ Later release branches (`v1.10.0` onward) are listed in the build log as they me
 cp ~/Downloads/DOSECURVE-BUILD-PLAN-V2.md docs/BUILD_PLAN_V2.md && cp ~/Downloads/DOSECURVE-OUTREACH-EMAILS.md docs/OUTREACH.md && git add docs/BUILD_PLAN_V2.md docs/OUTREACH.md && git commit -m "docs: build plan v2 and outreach drafts" && git push origin main
 ```
 
-The outreach drafts in Downloads describe DoseCurve as of 1.9 ("10 clinical cases", "29 guided lessons"). Before sending, update the numbers: as of 1.16.0 there are 16 clinical cases, 34 guided lessons, 42 kinds of practice problems and 12 library drugs, plus antimicrobial PK/PD (fT>MIC, Cmax/MIC, AUC24/MIC), indirect response models, hemodialysis, sensitivity analysis, Bayesian individualization from levels, and instructor tools (write a case, assignments, completion codes).
+The outreach drafts in Downloads describe DoseCurve as of 1.9 ("10 clinical cases", "29 guided lessons"). The educator page, https://saifmaati.github.io/dose-curve/educators.html (live once the releases are merged), is a good link to send instead of the app itself. Before sending, update the numbers: as of 1.17.0 there are 16 clinical cases, 34 guided lessons, 42 kinds of practice problems and 12 library drugs, plus antimicrobial PK/PD (fT>MIC, Cmax/MIC, AUC24/MIC), indirect response models, hemodialysis, sensitivity analysis, Bayesian individualization from levels, and instructor tools (write a case, assignments, completion codes).
 
 ## 8. After merging
 
