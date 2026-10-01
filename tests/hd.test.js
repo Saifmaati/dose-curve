@@ -162,6 +162,6 @@ test("other models with dialysis: population bands follow the sessions; the Baye
   const r=P.population(PK, p, {n:50, cvCL:0.0001, cvV:0.0001, seed:1, T:96, mec:2, mtc:12, auc:null});
   [24, 48, 72].forEach(t=>{ const i=r.t.findIndex(x=>x>=t); rel(r.q50[i], PK.conc(p, r.t[i]), 1e-3, `median at ${r.t[i]} h`); });
   assert.equal(PK.bayes.applicable(S({pm:"clinical", hd:1})).ok, false);
-  assert.match(fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8"), /postMessage\(\{engine:eng, hd:HD_SRC\}\)/);
+  assert.match(fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8"), /postMessage\(\{engine:eng, hd:HD_SRC, idr:IDR_SRC\}\)/);
   assert.match(fs.readFileSync(path.join(__dirname,"..","pop-worker.js"),"utf8"), /importScripts\(m\.hd\)/);
 });

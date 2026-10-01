@@ -6,11 +6,11 @@
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v34";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v35";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
   "./cases.js?v=a038829f2a",
-  "./pk-sens.js?v=b8300283e3","./pk-explain.js?v=dcc7fa3a92","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=b96f5ee841","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=87885afef2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=6684974af7","./pk-practice.js?v=b7088f3efd","./pk-math.js?v=9864dcbd27","./pk-glossary.js?v=89b9e2c6bf","./pop-worker.js?v=44970c316f","./validation.html","./educators.html","./stage.js?v=e469dd8aca","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=fee9fced8e"];
+  "./pk-sens.js?v=b8300283e3","./pk-explain.js?v=dcc7fa3a92","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=b96f5ee841","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=6684974af7","./pk-practice.js?v=b7088f3efd","./pk-math.js?v=9864dcbd27","./pk-glossary.js?v=89b9e2c6bf","./pop-worker.js?v=67b2b76963","./validation.html","./educators.html","./stage.js?v=e469dd8aca","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=fee9fced8e"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

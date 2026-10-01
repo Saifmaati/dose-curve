@@ -58,6 +58,7 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   - The band holds the middle 90% of their levels.
   - For a repeated regimen the panel gives the probability of target attainment: the share whose steady-state trough is at or above MEC and whose peak is at or below MTC, and optionally the share with AUC24 in a range.
   - In Compare it shows both regimens on the same virtual patients, a clean way to ask which regimen suits more people.
+  - With **Effect** on, the effect chart shades the same patients' effect, and the panel compares the spread in effect with the spread in level at the moment the median effect is furthest from baseline. Near Emax the effect band narrows: with the default drug at steady state, a 1.8-fold spread in peak levels is only 13 points of effect, while the troughs, lower on the curve, spread far wider. Lowering EC50 narrows it further. A good question for students: why does variability in level matter less for some drugs' effects than for others'?
   - The seed is in the link, so a class sees the same population.
 - **Show saturation.** Switch **Drug Parameters** from *First-order* to *Saturable (Vmax, Km)*, or load phenytoin. Elimination is then Vmax·C / (Km + C), integrated numerically.
   - The readouts give the predicted steady state, Css = Km·R / (Vmax − R), and the input as a share of Vmax.

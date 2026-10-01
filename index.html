@@ -53,7 +53,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.5.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.6.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1583,7 +1583,7 @@
             <span class="pop-aucu">mg·h/L</span>
           </div>
           <div class="pop-out" id="popOut" aria-live="polite"></div>
-          <p class="pop-note">Clearance (Vmax, with saturable elimination) and volume vary log-normally around the scenario's values (their medians); the CVs are typical teaching assumptions, not drug-specific claims. The shaded band holds the middle 90% of levels (5th–95th percentile) and the dotted line is the median. Educational model, not for clinical dosing.</p>
+          <p class="pop-note">Clearance (Vmax, with saturable elimination) and volume vary log-normally around the scenario's values (their medians); the CVs are typical teaching assumptions, not drug-specific claims. The shaded band holds the middle 90% of levels (5th–95th percentile) and the dotted line is the median. With the effect charts on, the effect chart shades the same patients' effect; EC50, Emax and the response's turnover are the scenario's for every patient, so that band shows only the spread the levels carry through. Educational model, not for clinical dosing.</p>
         </section>
 
         <div class="insp" id="insp">
@@ -1801,7 +1801,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.5.0, updated 1 October 2026</span>
+        <span>Version 2.6.0, updated 1 October 2026</span>
       </nav>
     </footer>
   </div>
@@ -2116,7 +2116,7 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
-  const IDR_SRC="pk-idr.js?v=87885afef2";
+  const IDR_SRC="pk-idr.js?v=f6002874d2";
   let idrLoad=null;
   function loadIdr(){
     if(PK.idrModule) return Promise.resolve();
@@ -4055,17 +4055,17 @@
   /* ================= POPULATION ================= */
   // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
   // is kept with the key of what it was computed for; the chart uses it only while that still matches.
-  const POP_SRC="pop-worker.js?v=44970c316f";
+  const POP_SRC="pop-worker.js?v=67b2b76963";
   let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
   const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
-    auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null});
+    auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null, pd:state.pd ? 1 : 0});
   function popWorkerReady(){
     if(popWorker) return popWorker;
     if(typeof Worker==="undefined") return null;
     try{
       popWorker=new Worker(POP_SRC);
       const eng=[...document.scripts].map(x=>x.getAttribute("src")||"").find(x=>/^pk-engine\.js\?v=/.test(x));
-      popWorker.postMessage({engine:eng, hd:HD_SRC});   // the dialysis model too, so the bands follow the sessions
+      popWorker.postMessage({engine:eng, hd:HD_SRC, idr:IDR_SRC});   // the dialysis and response models too, so the bands follow them
       popWorker.onmessage=e=>{
         const m=e.data||{};
         if(!popPending || m.id!==popPending.id) return;   // a newer request superseded it
@@ -4113,15 +4113,25 @@
     if(!ready){ out.textContent=`Working out ${state.popn} virtual patients${mmN ? " (saturable: each is integrated step by step)" : ""}…`; return; }
     const lines=shown.map((cv,i)=>{
       const r=popResult.list[i], tag=cv.tag ? `<b style="color:${cv.col.css}">${cv.tag}</b>: ` : "";
-      if(!r || r.pta==null) return `${tag}The band shows how levels spread across ${r ? r.n : state.popn} patients. Probability of target attainment needs a regular regimen (repeated dosing), which has a steady state.`;
+      const eff=r && r.eAt ? popEffectText(cv, r) : "";
+      if(!r || r.pta==null) return `${tag}The band shows how levels spread across ${r ? r.n : state.popn} patients. Probability of target attainment needs a regular regimen (repeated dosing), which has a steady state.`+eff;
       let s=`${tag}At steady state, <b>${fmt(100*r.pta,0)}%</b> of ${r.n} virtual patients keep the trough at or above MEC (${trim(state.mec)}) and the peak at or below MTC (${trim(state.mtc)} ${u.conc}). `+
         (r.trough ? `Troughs run ${fmt(r.trough[0],cdp(1))}–${fmt(r.trough[2],cdp(1))} and peaks ${fmt(r.peak[0],cdp(1))}–${fmt(r.peak[2],cdp(1))} ${u.conc} (5th–95th percentile${r.noSS>0 ? " of those who settle" : ""}).` : "");
       if(r.noSS>0) s+=` <b>${fmt(100*r.noSS,0)}%</b> have no steady state: the input exceeds their Vmax, so their level keeps rising, and they count as missing the target.`;
       if(r.ptaAuc!=null) s+=` <b>${fmt(100*r.ptaAuc,0)}%</b> have an AUC24 of ${trim(state.plo)}–${trim(state.phi)} ${u.auc}.`;
-      return s;
+      return s+eff;
     });
     out.innerHTML=lines.map(l=>`<p>${l}</p>`).join("");
   }
+  // With the effect charts on: where the median effect is furthest from its baseline, the spread of the effect
+  // beside the spread of the level that drives it
+  function popEffectText(cv, r){
+    const a=r.eAt, u=U(), idr=cv.p.idr>0, fold=a.c[0]>0 ? a.c[2]/a.c[0] : null;
+    return ` ${idr ? "Response" : "Effect"}: at ${fmt(a.t,1)} h, where the median ${idr ? "response" : "effect"} is furthest from its baseline, the middle 90% of patients run `+
+      `<b>${fmt(a.e[0],0)}–${fmt(a.e[2],0)}%</b>${idr ? " of baseline" : ""} while their ${keqOfShown(cv) ? "plasma " : ""}levels run ${fmt(a.c[0],cdp(1))}–${fmt(a.c[2],cdp(1))} ${u.conc}`+
+      (fold ? `: a ${fmt(fold,1)}-fold spread in level, ${fmt(a.e[2]-a.e[0],0)} points of ${idr ? "response" : "effect"}.` : ".");
+  }
+  const keqOfShown=cv=> !(cv.p.idr>0) && cv.p.kin!=="mm" && cv.p.teq>0;
   function setPop(k, v){ state[k]=v; render(); }
   byId("popBtn").addEventListener("click",()=>{ state.pop=!state.pop; syncPopInputs(); render(); });
   function syncPopInputs(){
@@ -4188,6 +4198,15 @@
       `<text x="${PW-EM.r-4}" y="${y(100)-5}" text-anchor="end" font-family="IBM Plex Mono" font-size="9.5" fill="${K.text}">baseline 100%</text>`;
     else g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${K.band}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
       `<text x="${PW-EM.r-4}" y="${y(state.etgt)-5}" text-anchor="end" font-family="IBM Plex Mono" font-size="9.5" fill="${K.band}">target ${state.etgt}%</text>`;
+    // population mode: the effect's 5th–95th percentile band across the same virtual patients, its median dotted
+    popBands(curves).forEach(({cv,r})=>{
+      if(!r.e05) return;
+      const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9);
+      if(idx.length<2) return;
+      const yc=e=> y(Math.min(e, effTop)), col=effColor(cv);
+      g+=`<polygon points="${idx.map(i=>`${x(r.t[i])},${yc(r.e95[i])}`).concat(idx.slice().reverse().map(i=>`${x(r.t[i])},${yc(r.e05[i])}`)).join(" ")}" fill="${col}" fill-opacity="0.13" stroke="none"/>`+
+        `<path d="${polyline(idx.map(i=>({x:x(r.t[i]), y:yc(r.e50[i])})))}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/>`;
+    });
     const order=mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse();
     order.forEach(cv=>{
       const d="M "+cv.raw.map(q=>`${x(q.t)} ${y(respOf(cv,q.t,q.ce))}`).join(" L ");

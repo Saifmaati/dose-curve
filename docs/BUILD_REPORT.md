@@ -445,3 +445,12 @@ Not done: pediatric allometry with maturation (DECISIONS 143), until its paramet
 | "What changed" sentences in `pk-explain.js` | set a baseline, or Compare | `explain.test.js`; 526 of 526 pairs identical to the inline version |
 
 Lighthouse on mobile: root 99, a lesson link 90, `#cases` 97; accessibility 100, CLS 0. 375 tests in 22 files. Initial script +18.0% of the 25% budget.
+
+## 34. 2.6.0 (population mode on the effect chart)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The effect's population band (direct, delayed, indirect response) and the spread sentence | Population and Effect both on | `population.test.js` (percentiles are the Emax of the level's; saturation narrows the band; delayed and indirect bands start at baseline and stay in bounds) |
+| Faster indirect responses; capped steps for bands | an indirect response; with population mode | `population.test.js` (within 0.05 points), bit-identical courses before and after |
+
+axe: no violations. 379 tests in 22 files.

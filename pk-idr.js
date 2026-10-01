@@ -44,19 +44,23 @@
   }
 
   // The response over [0, T] at RK4 nodes, with its rate of change at each (for cubic Hermite interpolation). `level`
-  // replaces the scenario's concentration with any function of time (the tests use a constant).
+  // replaces the scenario's concentration with any function of time (the tests use a constant). `maxSteps` caps the
+  // steps (population mode's bands use 2000; such courses aren't cached, as each patient's is read once).
   const cache=new Map(), MAX_STEPS=40000;
-  function course(p, T, level){
-    const key=level ? null : encodeScenario(p)+"|"+T;
+  function course(p, T, level, maxSteps){
+    const key=level || maxSteps ? null : encodeScenario(p)+"|"+T;
     if(key && cache.has(key)) return cache.get(key);
-    const ev=level ? [] : doseEvents(p), cOf=level || (t=> conc(p, t, ev));
+    const ev=level ? [] : doseEvents(p), raw=level || (t=> conc(p, t, ev));
+    // the level at the last two times asked for: a step asks for t + h/2 twice and ends where the next begins
+    let t1=NaN, c1=0, t2=NaN, c2=0;
+    const cOf=t=>{ if(t===t1) return c1; if(t===t2) return c2; const c=raw(t); t2=t1; c2=c1; t1=t; c1=c; return c; };
     const cuts=new Set([0, T]);
     ev.forEach(e=>{ [e.t, e.route==="inf" ? e.t+e.dur : null].forEach(t=>{ if(t!==null && t>0 && t<T) cuts.add(t); }); });
     if(!level && PK.hdOn(p) && PK.hd) PK.hd.sessions(p, T).forEach(s=>{ [s.start, s.end].forEach(t=>{ if(t>0 && t<T) cuts.add(t); }); });   // dialysis: kinks too
     const bp=[...cuts].sort((a,b)=>a-b);
     // the step resolves the response's fastest rate and the plasma curve's
     const fastest=koutOf(p)*(p.idr===4 ? 1+p.smax : 1), pkScale=Math.min(p.thalf||1, p.route==="oral" && p.ka ? 1/p.ka : Infinity, p.cmt===2 ? 1/(p.k12+p.k21) : Infinity);
-    const H=Math.max(T/MAX_STEPS, Math.min(0.025, 0.02/fastest, pkScale/60));
+    const H=Math.max(T/(maxSteps || MAX_STEPS), Math.min(0.025, 0.02/fastest, pkScale/60));
     const ts=[0], rs=[R0], ds=[rate(p, R0, cOf(0))];
     let R=R0;
     for(let s=0;s<bp.length-1;s++){

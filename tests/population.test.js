@@ -118,3 +118,40 @@ test("links carry the population settings; the page and service worker load the 
   // the worker only loads this site's own stamped engine
   assert.match(fs.readFileSync(path.join(root,"pop-worker.js"),"utf8"), /\^pk-engine\\\.js\\\?v=\[0-9a-f\]\{10\}\$/);
 });
+
+// 2.6: the effect's band across the same virtual patients
+test("effect band: with a direct Emax, the effect's percentiles are the Emax of the level's (the curve is monotone)", ()=>{
+  const p=PK.normalizeScenario(PK.scenario({dosing:"repeated", nDoses:6, tau:12, ec50:4, emax:90, e0:5, hill:1.5}));
+  const r=P.population(PK, p, {n:201, cvCL:30, cvV:20, seed:7, T:72, mec:2, mtc:12, pd:1});
+  r.t.forEach((t,i)=>{
+    assert.ok(Math.abs(r.e05[i]-PK.effectOf(p, r.q05[i]))<1e-9 && Math.abs(r.e50[i]-PK.effectOf(p, r.q50[i]))<1e-9 && Math.abs(r.e95[i]-PK.effectOf(p, r.q95[i]))<1e-9, `t=${t}`);
+  });
+  assert.equal(P.population(PK, p, {n:201, cvCL:30, cvV:20, seed:7, T:72, mec:2, mtc:12}).e05, undefined, "no band with the effect charts off");
+});
+
+test("effect band: near Emax the same spread in level gives a narrower spread in effect", ()=>{
+  const at=ec50=>{ const p=PK.normalizeScenario(PK.scenario({dosing:"repeated", nDoses:6, tau:12, ec50, emax:100, e0:0, hill:1}));
+    const a=P.population(PK, p, {n:201, cvCL:30, cvV:20, seed:3, T:72, mec:2, mtc:12, pd:1}).eAt; return {fold:a.c[2]/a.c[0], pts:a.e[2]-a.e[0], a}; };
+  const mid=at(10), high=at(1);
+  near(mid.fold, high.fold, 1e-9, "the same patients, the same levels");
+  assert.ok(high.pts<mid.pts/2, `EC50 1: ${high.pts} points; EC50 10: ${mid.pts}`);
+  assert.ok(mid.a.e[0]<=mid.a.e[1] && mid.a.e[1]<=mid.a.e[2] && mid.a.c[0]<=mid.a.c[1] && mid.a.c[1]<=mid.a.c[2]);
+});
+
+test("effect band: an effect-site delay and an indirect response get bands too, starting at their baselines", ()=>{
+  const d=PK.normalizeScenario(PK.scenario({teq:2})), rd=P.population(PK, d, {n:101, cvCL:30, cvV:20, seed:1, T:24, mec:2, mtc:12, pd:1});
+  assert.equal(rd.e50[0], d.e0); assert.ok(rd.eAt.t>PK.windowStats(d,24,0,Infinity).tmax, "the delayed effect peaks after the plasma level");
+  const q=PK.normalizeScenario(PK.scenario({idr:1, tout:6, imax:0.8})), rq=P.population(PK, q, {n:101, cvCL:30, cvV:20, seed:1, T:48, mec:2, mtc:12, pd:1});
+  near(rq.e05[0], 100, 1e-9); near(rq.e95[0], 100, 1e-9);
+  rq.t.forEach((t,i)=> assert.ok(rq.e05[i]<=rq.e50[i]+1e-9 && rq.e50[i]<=rq.e95[i]+1e-9 && rq.e05[i]>=100*(1-0.8)-1e-6 && rq.e95[i]<=100+1e-9, `t=${t}`));
+  assert.ok(rq.eAt.e[1]<100, "inhibiting production lowers the response");
+});
+
+test("the band's response solver, capped at 2000 steps, stays within 0.05 points of the full one", ()=>{
+  [{idr:1, tout:6, imax:0.8}, {idr:2, tout:1, imax:0.9, dosing:"repeated", nDoses:28, tau:12}, {idr:3, tout:24, smax:2, dosing:"repeated", nDoses:28, tau:12, thalf:30}, {idr:4, tout:0.5, smax:3, route:"iv"}].forEach(o=>{
+    [48, 336].forEach(T=>{
+      const p=PK.normalizeScenario(PK.scenario(o)), a=PK.idr.course(p, T), b=PK.idr.course(p, T, null, 2000);
+      for(let i=0;i<=200;i++){ const t=T*i/200; assert.ok(Math.abs(PK.idr.interp(a,t)-PK.idr.interp(b,t))<0.05, `${JSON.stringify(o)} T=${T} t=${t}`); }
+    });
+  });
+});

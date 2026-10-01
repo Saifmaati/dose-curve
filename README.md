@@ -31,7 +31,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 - A **drug library** of 12 teaching profiles (gentamicin, vancomycin, meropenem, piperacillin-tazobactam, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop. **Indirect responses** (the four types of Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production or loss of something the body makes, and the response, as a percentage of its baseline, follows that turnover, with a lag set by its half-life.
 - **Antimicrobial PK/PD:** enter the organism's MIC (and the drug's unbound fraction) to read fT>MIC on the unbound level, Cmax/MIC and AUC24/MIC at steady state, with the MIC line and the unbound level drawn on the chart. Each antimicrobial in the library names the index its label or guideline gives; a numeric target appears only where a cited source states one (vancomycin's AUC24/MIC of 400–600).
-- A **population**: 50–1,000 virtual patients with log-normal variability on clearance (or Vmax, for a saturable drug) and volume, drawn as a 5th–95th percentile band. With saturable elimination it also reports the share whose input exceeds their own Vmax, so they never reach a steady state. It reports the probability of target attainment at steady state (and for an AUC24 range), is computed in a Web Worker, and reproduces from its seed.
+- A **population**: 50–1,000 virtual patients with log-normal variability on clearance (or Vmax, for a saturable drug) and volume, drawn as a 5th–95th percentile band. With saturable elimination it also reports the share whose input exceeds their own Vmax, so they never reach a steady state. It reports the probability of target attainment at steady state (and for an AUC24 range), is computed in a Web Worker, and reproduces from its seed. With the effect charts on, the effect (direct, delayed or an indirect response) gets the same patients' band, and the panel compares the spread in effect with the spread in level that drives it.
 
 ![One or two compartments: vancomycin with the same clearance, a higher peak and the same AUC24](docs/img/two-compartments.png)
 
@@ -156,7 +156,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.5.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.6.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 

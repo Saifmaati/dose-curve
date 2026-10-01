@@ -2,6 +2,15 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.6.0 (2026-10-01)
+
+Population mode carries through to the effect.
+
+- **The effect gets a population band.** With population mode and the effect charts both on, the effect chart shades the 5th–95th percentile of the same virtual patients' effect, with the median dotted. It covers a direct Emax, an effect-site delay and an indirect response. Only the levels vary, so the band shows how the spread in level carries through to the effect. The panel adds one sentence: at the moment the median effect is furthest from baseline, the effect's spread beside the level's. With the default drug at steady state, a 1.8-fold spread in level is 13 points of effect near the peak, while the troughs, lower on the curve, spread far wider. In Compare each scenario gets its own band.
+- Indirect responses are solved faster: each solver step reuses the level it has already computed at the half step and the step's end, with bit-identical results. Population bands use at most 2,000 steps per patient, within 0.05 points of the full solution. The worker loads the response model when it needs it.
+
+375 → 379 tests in 22 files. axe: no violations, the band included.
+
 ## 2.5.0 (2026-10-01)
 
 Every link opens without the page moving, and the first view loads less.
