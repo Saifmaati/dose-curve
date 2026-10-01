@@ -2,6 +2,29 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.11.0 (2026-10-01)
+
+Objects in the scenes, lit like product photography, each moving only by the engine's numbers. Two new scenes, Exposure and Rebound, make nine.
+
+- **Hero:** a two-tone capsule at the curve's start dissolves as it empties, e^(−ka·t). Its particles leave at times that follow absorption and land on the ribbon, drawing it. The cold open's draw is eased in so the dissolving can be seen.
+- **Every dose:** a frosted-glass figure, the model's one compartment. Its liquid stands at the default scenario's concentration, between hairline rings at the MEC and MTC, with the capsule dissolving inside it.
+- **Simulate:** a capsule at each dose, dissolving from its own dose time.
+- **Learn:** 200 glass vials, one per virtual patient, fill to each patient's level at 4 hours. They then sort by it: the middle 90% lit, the middle two (the median, 7.0 mg/L) in bronze. The numbers are in the text.
+- **Cases:** two connected glass chambers hold the central and peripheral amounts, A₁(t) and A₂(t). Particles cross the tube at k₁₂·A₁ and k₂₁·A₂.
+- **Exposure (new):**
+  - Piperacillin 3 g every 6 hours against an MIC of 16 mg/L, as a 30-minute and as a 3-hour infusion (the app's "Extended infusion" pair).
+  - Two culture dishes dim by each regimen's share of time above the MIC, and the counters count to 47% and 69%.
+  - The text says the dimming is a visual cue, not a model of bacterial killing.
+- **Rebound (new):** the rebound lesson's patient through one hemodialysis session. A dialyzer cartridge runs at the removal rate CLd·C(t) during the session, the level falls 53% and then rebounds to 6.3 mg/L, and a counter shows the 245 mg removed.
+- **Validated:** the 584 checks sit inside a glass globe in a brass armillary on a turned stand. To open the simulator, the camera flies into the globe (its glass clears as the camera nears it), among the checks, and out to the simulator.
+- **Phones** get the capsule, the figure and the vials with simpler materials. The other scenes keep their SVG frames, which now include the MIC's shaded time and the session with its rebound.
+- **Under the hood:**
+  - Everything is procedural: there are no model files.
+  - The vials' glass skips transmission, since 200 overlapping transmissive vials cost 50–100 ms frames.
+  - Shaders compile group by group before the sequence plays, and the second tone's after the cold open.
+  - pk-hd.js loads a scene ahead.
+  - The sequence is now 18 screens.
+
 ## 2.10.0 (2026-10-01)
 
 The opening sequence becomes one continuous film, and the long-form text moves to its own page.

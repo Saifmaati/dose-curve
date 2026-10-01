@@ -310,12 +310,14 @@ sequence back from anywhere. The pill reads "Open the simulator" throughout and 
 | # | Section | Headline (split) | Caption | Small print (columns) | Object and camera |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Dark | Dose ··· Curve | Watch a dose move. | Cmax, AUC, time in window of the default scenario, counting as the ribbon draws; the disclaimer | The default curve draws itself once (1.2 s) between the two words; the window settles in. Camera low, rising |
-| 2 | Light | Every ··· dose | drawn from the model | Four columns: simulate, compare, learn, check, one sentence each | The ribbon in graphite crosses the page left to right as the visitor scrolls |
+| 2 | Light | Every ··· dose | drawn from the model | Four columns: simulate, compare, learn, check, one sentence each | A glass figure, the model's one compartment, its level the default scenario's concentration (2.11) |
 | 3 | Dark | Simulate (bleeds off the right edge) | Doses arrive as pulses. | The regimen, in one line | Every 8 h, six doses: the curve draws to a cursor the scroll moves, each dose pulses as it is reached. Camera tracks the cursor |
 | 4 | Light | Learn | 200 patients, one median. | Population settings, in one line | 200 virtual patients from the app's population mode, in graphite, drawing in to their median. Camera pulls back, then closes |
 | 5 | Light | Cases | Two phases, one patient. | Sixteen graded cases, one line | A two-compartment bolus splitting into its distribution and elimination phases on a log scale. Camera orbits a quarter turn |
-| 6 | Dark | Validated (behind the object) | Every check, within tolerance. | The count, the solver, the tolerance | A sphere of points, one per check against the independent solver, lighting to 100% as the engine's values are compared. Camera faces it, turning with the scroll |
-| 7 | Dark | Open ··· DoseCurve | Free, in your browser. | The disclaimer | The ribbon, small and still, as at the start |
+| 6 | Dark | Exposure | Time above the MIC, counted. | Two counters (fT>MIC for each infusion); piperacillin against an MIC, one paragraph (2.11) | One steady-state interval as a 30-minute and a 3-hour infusion against the MIC; a culture dish under each, dimming by its share of time above the MIC |
+| 7 | Light | Rebound (right) | The level returns after dialysis. | The amount removed, counting; the session in one paragraph (2.11) | A two-compartment course through a session: a dialyzer that runs while it lasts, then the rebound, ringed |
+| 8 | Dark | Validated (behind the object) | Every check, within tolerance. | The count, the solver, the tolerance | A sphere of points, one per check against the independent solver, lighting to 100% as the engine's values are compared, inside a glass globe on a brass stand (2.11). Camera faces it, turning with the scroll |
+| 9 | Dark | Open ··· DoseCurve | Free, in your browser. | The disclaimer | The camera flies into the globe and out to the simulator's curve |
 
 Captions are three to five words; small print is 13 px in columns. Every number in a scene is in its text too.
 
@@ -382,7 +384,7 @@ Compare stay dark; leaving a lesson or task returns them.
 
 ## 16. Storyboard: 2.10, one world and one camera
 
-**The world.** The scenes sit along x (hero and "Every dose" at 0, Simulate 24, Learn 48, Cases 72, Validated 96, the simulator at 120), close enough that the next comes into view as the camera travels. A thinner strand of the ribbon joins each scene's curve to the next and passes under the sphere to the simulator's own curve. The floor is one plane under everything: a faint grid that recedes into exponential fog and, in tier 2, a blurred mirror.
+**The world.** The scenes sit along x (hero and "Every dose" at 0, Simulate 24, Learn 48, Cases 72, Validated 96, the simulator at 120; since 2.11 the figure at 12, Exposure 96, Rebound 120, Validated 144 and the simulator at 168), close enough that the next comes into view as the camera travels. A thinner strand of the ribbon joins each scene's curve to the next and passes under the sphere to the simulator's own curve. The floor is one plane under everything: a faint grid that recedes into exponential fog and, in tier 2, a blurred mirror.
 
 **The camera.** Three resting frames per scene, at 18%, 50% and 82% of its pinned screen, on one Catmull–Rom path; each segment eases in and out, so the camera dwells where a beat rests. The scroll drives it through an inertia filter (14% of the remaining distance per frame). When scrolling stops within a tenth of a screen of a resting frame, the page settles there. Reduced motion holds each scene's last resting frame.
 
@@ -398,3 +400,31 @@ Compare stay dark; leaving a lesson or task returns them.
 | Open | dark | the camera flies to the simulator's place; its curve is there | split |
 
 **The look.** Dark scenes: deep blue-black, a warm key and a cool rim, one warm accent (the shafts and the dust), the ribbon's core emissive and blooming. Paper scenes: near-white, graphite with clearcoat, bronze for the median, no bloom, almost no aberration. Grain and the vignette are a CSS layer over the whole frame. The focus pulls to the headline as it arrives or leaves and racks back onto the ribbon as the camera settles.
+
+## 17. Storyboard: 2.11, objects in the scenes
+
+Each scene gains one object, lit and shot like product photography: clear or frosted glass, brass, graphite caps, a
+luminous liquid. All are built in `stage.js` from Three.js primitives (lathes, capsules, cylinders, tori, instanced
+meshes and point sprites). There are no model files, so there is nothing under `assets/` and no loader to fetch. **No
+object moves on its own: every motion is a number from the engine, at the time the scroll has reached.**
+
+| Scene | Object | What moves it (the engine) |
+| --- | --- | --- |
+| Hero | A two-tone capsule at the curve's start, dissolving (dithered) as it empties; particles leave it and land on the ribbon, drawing it | The amount left in the capsule, D·e^(−ka·t), at the time drawn. Particle i leaves at −ln(1 − Fᵢ)/ka for evenly spread Fᵢ (so their times follow absorption) and lands on the curve at that time |
+| Every dose | A frosted-glass figure (a lathe): the body as one compartment, with its capsule dissolving inside, and hairline rings at the MEC and MTC | Its liquid stands at C(t) of the default scenario (clipped at that height); the capsule follows e^(−ka·t); a marker on the hero's ribbon shows the same t |
+| Simulate | A capsule at each of the six doses, on its ring | Each dissolves from its own dose time, e^(−ka·(t − t_dose)), as the curve draws past it |
+| Learn | 200 glass vials with crimp caps, one per virtual patient (the cloud's own patients) | Each fills to its patient's level as t runs to 4 hours, then they sort by that level: the middle 90% lit in the band's colour, the middle two (the median) in bronze, the tails grey. The same numbers are in the text |
+| Cases | Two glass chambers joined by a tube, the central and the peripheral compartment | Their liquids are A₁(t) and A₂(t) as shares of the dose (A₁ = C·V₁; A₂ = D·k₁₂·(e^(−βt) − e^(−αt))/(α − β), checked against pk-hd.js's state). The tube's particles going out and back are in proportion to k₁₂·A₁ and k₂₁·A₂ |
+| Exposure | Two culture dishes (glass, agar, 90–150 glowing colonies), one per infusion | Each dims by the share of the interval so far with the unbound level above the MIC (micStats' crossings, ending on its own fT>MIC), and the counters count it. A visual cue, said so in the text; not a model of bacterial killing |
+| Rebound | A dialyzer: a glass cartridge of hollow fibres, capped, on a brass stand | During the session (pk-hd.js's schedule) the fibres glow and blood and dialysate stream through in proportion to the removal rate, CLd·C(t); between sessions it is dark. The rebound is ringed at sessionTable's peak, and the counter is the amount removed so far (stateAt) |
+| Validated | The 584-point sphere inside a glass globe in a brass armillary (a meridian and a horizon ring) on a turned stand | The points light as the checks pass (the same comparison the validation page runs) |
+| Open | The camera flies into the globe, whose glass clears as the camera nears it, among the checks and out to the simulator | — |
+
+Reduced motion shows each object at its final state: the figure at Tmax, the vials sorted, both dishes and counters
+at their final values, the session over with its rebound ringed. Phones get the capsule, the figure and the vials with
+tier 1's simpler materials; the other scenes keep their SVG frames (which show the same numbers: the MIC's shaded
+time, the session's hours and the rebound).
+
+**Cost.** The vials' glass is a clear sheen without transmission (200 overlapping transmissive vials made 50–100 ms
+frames). Shaders compile group by group before the sequence plays, the other tone's once the cold open is over and
+the page is idle. pk-hd.js loads for the dialysis scene a scene ahead.

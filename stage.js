@@ -45,21 +45,51 @@ export function start(PK){
     // the default scenario and its three readouts
     sc.p1=S({}); sc.T1=V0.duration; sc.c1=sample(sc.p1, sc.T1, 240);
     { const d=PK.derived(sc.p1), w=PK.windowStats(sc.p1, sc.T1, V0.mec, V0.mtc);
-      sc.final=[fmt(d.cmax,1), fmt(d.auc,1), fmt(100*w.tIn/sc.T1,0)]; }
+      sc.final=[fmt(d.cmax,1), fmt(d.auc,1), fmt(100*w.tIn/sc.T1,0)]; sc.tmax1=d.tmax; }
     // the same drug every 8 hours, six doses, over 48 h; and the first dose alone, to show what each dose stacks on
     sc.p2=S({dosing:"repeated", tau:8, nDoses:6}); sc.T2=48; sc.c2=sample(sc.p2, sc.T2, 320); sc.d2=PK.doseSchedule(sc.p2).map(x=>x.t);
     sc.c2one=sample(S({}), sc.T2, 320);
     // 200 virtual patients as the app's population mode makes them (clearance CV 30%, volume CV 20%, seed 1), with
     // the median and the 5th–95th percentile band at each time
     { const p=sc.p1, z=normals(PK.seededRandom(1)), w=cv=> Math.sqrt(Math.log(1+cv*cv)), wCL=w(.3), wV=w(.2), n=80;
-      sc.pop=[]; for(let i=0;i<200;i++){ const eCL=wCL*z(), eV=wV*z(); sc.pop.push(sample(Object.assign({}, p, {V:p.V*Math.exp(eV), thalf:p.thalf*Math.exp(eV-eCL)}), 24, n)); }
+      sc.pop=[]; sc.popP=[]; for(let i=0;i<200;i++){ const eCL=wCL*z(), eV=wV*z(), q=Object.assign({}, p, {V:p.V*Math.exp(eV), thalf:p.thalf*Math.exp(eV-eCL)}); sc.popP.push(q); sc.pop.push(sample(q, 24, n)); }
       sc.med=[]; sc.lo=[]; sc.hi=[];
       for(let i=0;i<=n;i++){ const v=sc.pop.map(c=>c[i].c).sort((a,b)=>a-b), t=24*i/n;
         sc.med.push({t, c:(v[99]+v[100])/2}); sc.lo.push({t, c:v[10]}); sc.hi.push({t, c:v[189]}); } }
     // a two-compartment IV bolus: C = A·e^(−αt) + B·e^(−βt), the distribution and the elimination phase
     { const p=S({route:"iv", cmt:2, D:500, V:20, thalf:3, k12:0.9, k21:0.35}), d=PK.derived(p), C0=PK.conc(p,1e-9), a=d.alpha, b=d.beta;
       const A=C0*(a-p.k21)/(a-b), B=C0*(p.k21-b)/(a-b);
-      sc.T4=24; sc.c4=sample(p, 24, 240); sc.pa=sc.c4.map(q=>({t:q.t, c:A*Math.exp(-a*q.t)})); sc.pb=sc.c4.map(q=>({t:q.t, c:B*Math.exp(-b*q.t)})); }
+      sc.T4=24; sc.c4=sample(p, 24, 240); sc.pa=sc.c4.map(q=>({t:q.t, c:A*Math.exp(-a*q.t)})); sc.pb=sc.c4.map(q=>({t:q.t, c:B*Math.exp(-b*q.t)}));
+      // the amounts in the two compartments (2.11's chambers): central A₁ = C·V₁, peripheral
+      // A₂ = D·k₁₂·(e^(−βt) − e^(−αt)) / (α − β), from the same α and β
+      sc.p4=p; sc.amt4=t=>({a1:PK.conc(p, Math.max(t,1e-9))*p.V, a2:p.D*p.k12*(Math.exp(-b*t)-Math.exp(-a*t))/(a-b)}); }
+    // each patient's level at 4 hours (2.11's vials), and the median and the middle 90% there
+    { const tv=4; sc.tv=tv; sc.lv=sc.popP.map(q=> PK.conc(q, tv));
+      const order=sc.lv.map((c,j)=>j).sort((x,y)=> sc.lv[x]-sc.lv[y]); sc.rank=new Array(200); order.forEach((j,r)=> sc.rank[j]=r); }
+    // An antimicrobial at steady state against an MIC: piperacillin 3 g every 6 hours as a 30-minute and as a 3-hour
+    // infusion (the app's "Extended infusion" pair), MIC 16 mg/L, unbound fraction 0.7; the share of the interval with
+    // the unbound level above the MIC, counted along it (it ends on micStats' own fT>MIC)
+    { const base={route:"inf", dosing:"repeated", D:3000, thalf:0.84, V:15.1, tau:6, nDoses:8, fu:0.7};
+      sc.mic=16; sc.T6=6; sc.p6=[0.5,3].map(tinf=> S(Object.assign({}, base, {tinf})));
+      sc.ms6=sc.p6.map(p=> PK.micStats(p, sc.mic, 24));
+      sc.c6=sc.p6.map(p=> Array.from({length:361},(_,i)=>{ const t=sc.T6*i/360; return {t, c:PK.ssConc(p, Math.min(t, sc.T6-1e-9))}; }));
+      sc.ab6=sc.c6.map((cv,k)=>{ const thr=sc.ms6[k].thr, out=[0];
+        for(let i=1;i<cv.length;i++){ const a=cv[i-1], b=cv[i], dt=b.t-a.t;
+          out.push(out[i-1]+(a.c>=thr && b.c>=thr ? dt : a.c<thr && b.c<thr ? 0 : dt*(Math.max(a.c,b.c)-thr)/Math.abs(b.c-a.c))); }
+        const k2=sc.ms6[k].ft/100*sc.T6/out[out.length-1]; return out.map(v=> v*k2); }); }
+  }
+  // A two-compartment drug through a hemodialysis session (the rebound lesson's patient): pk-hd.js, loaded for it
+  const HD_SRC="pk-hd.js?v=adbb8a2d82";   // stamped by content hash, like the page's files
+  const HD_T0=4;   // the scene shows the course from 4 hours, after the bolus's first fall
+  let hdPrep=null;
+  function prepHd(){
+    if(hdPrep) return hdPrep;
+    const ok=()=>{ const p=S({route:"iv", dosing:"single", D:1000, V:20, thalf:6, cmt:2, k12:0.8, k21:0.4, hd:1, hdcl:8, hdstart:6, hddur:4, hdevery:48});
+      sc.p7=p; sc.T7=24; sc.c7=sample(p, 24, 288); sc.row7=PK.hd.sessionTable(p, 24)[0]; sc.kd7=p.hdcl;
+      sc.rm7=t=> PK.hd.stateAt(p, t).removed; };
+    return hdPrep=(PK.hdModule ? Promise.resolve() : new Promise((res,rej)=>{ const e=document.createElement("script"); e.src=HD_SRC;
+      e.onload=()=> PK.hdModule ? res() : rej(new Error("hd")); e.onerror=()=> rej(new Error("hd")); document.head.appendChild(e); }))
+      .then(ok).catch(()=>{ hdPrep=null; });
   }
   // the validation checks, filled as the engine's values are compared with the independent solver's
   sc.checks=[]; sc.nChecks=584;
@@ -70,13 +100,13 @@ export function start(PK){
       const {T,mec,mtc}=REF.window, pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
       sc.nChecks=4*REF.scenarios.length;
       for(let i=0;i<REF.scenarios.length;i++){
-        if(i && i%6===0){ await new Promise(r=>setTimeout(r)); paintFrame(6); if(three) three.light6(); }
+        if(i && i%6===0){ await new Promise(r=>setTimeout(r)); paintFrame(8); if(three) three.light6(); }
         const s=REF.scenarios[i], p=S(s.scenario), w=PK.windowStats(p,T,mec,mtc,s.site), level=s.site==="effect" ? PK.ceConc : PK.conc, r=s.reference;
         const tol=100*(s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear), tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
         const trough=level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9);
         sc.checks.push(Math.abs(pct(w.cmax,r.peak))<=tol, Math.abs(pct(trough,r.trough))<=tol, Math.abs(pct(w.auc,r.auc))<=tol, Math.abs(100*w.tIn/T-r.tin_pct)<=tpp);
       }
-      paintFrame(6); if(three) three.light6();
+      paintFrame(8); if(three) three.light6();
     }).catch(()=>{ checking=null; });
   }
   // the points of the check sphere: one per check, spread evenly (a Fibonacci lattice)
@@ -98,7 +128,7 @@ export function start(PK){
     const x=t=> m.l+t/T*iw, y=c=> m.t+ih-((opt.log ? Math.log10(Math.max(c,opt.floor)) : c)-lo)/(hi-lo)*ih;
     const g={x, y, m, iw, ih, add:(tag,a)=> svg.appendChild(svgEl(tag,a)), path:(pts,a)=> svg.appendChild(svgEl("path", Object.assign({d:pts.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+" "+y(q.c).toFixed(1)).join(""), fill:"none"}, a)))};
     if(!opt.bare){ g.add("line",{x1:m.l, x2:W-m.r, y1:m.t+ih, y2:m.t+ih, stroke:k.line});
-      for(let i=0;i<=4;i++){ const t=T*i/4; g.add("text",{x:x(t), y:H-8, "text-anchor":"middle", "font-family":"IBM Plex Mono", "font-size":12, fill:k.muted}).textContent=(+t.toFixed(1))+(i===4 ? " h" : ""); } }
+      for(let i=0;i<=4;i++){ const t=T*i/4; g.add("text",{x:x(t), y:H-8, "text-anchor":"middle", "font-family":"IBM Plex Mono", "font-size":12, fill:k.muted}).textContent=(+(t+(opt.t0||0)).toFixed(1))+(i===4 ? " h" : ""); } }
     return g;
   }
   const win=(g,k,mec,mtc)=>{ g.add("rect",{x:g.m.l, y:g.y(mtc), width:g.iw, height:g.y(mec)-g.y(mtc), fill:k.band, "fill-opacity":.1});
@@ -108,30 +138,47 @@ export function start(PK){
   function paintFrame(n){
     const svg=vis(n); if(!svg) return;
     const k=tokensOf(scenes[n-1]), dark=scenes[n-1].dataset.tone==="dark" && !D.classList.contains("light"), c=dark ? k.accent : k.text;
-    if(n===1 || n===2 || n===7){
+    if(n===1 || n===2 || n===9){
       if(!svg.firstChild){ const g=frame(svg, sc.T1, 14, k, {bare:n!==1}); if(n===1) win(g,k,V0.mec,V0.mtc);
         if(n===1){ svg.appendChild(svgEl("clipPath",{id:"s1clip"})).appendChild(svgEl("rect",{id:"s1wipe", x:0, y:0, width:600, height:340})); }
         const a={stroke:c, "stroke-width":n===2 ? 3 : 2.6, "stroke-linejoin":"round"}; if(n===1) a["clip-path"]="url(#s1clip)"; g.path(sc.c1,a); }
       if(n===1){ const w=$("s1wipe"); if(w) w.setAttribute("width", 24+drawU*552+4); }
       return;
     }
-    if(svg.firstChild && n!==6) return;
+    if(svg.firstChild && n!==8) return;
     if(n===3){ const top=Math.max(...sc.c2.map(q=>q.c))*1.12, g=frame(svg, sc.T2, top, k); win(g,k,V0.mec,Math.min(V0.mtc,top*.98));
       g.path(sc.c2,{stroke:c, "stroke-width":2.4, "stroke-linejoin":"round"});
       sc.d2.forEach(t=>[6,11].forEach((r,j)=> g.add("circle",{cx:g.x(t), cy:g.m.t+g.ih, r, fill:"none", stroke:c, "stroke-opacity":j ? .35 : .9}))); }
     if(n===4){ const g=frame(svg, 24, 16, k); win(g,k,V0.mec,V0.mtc);
-      sc.pop.forEach(cv=> g.path(cv,{stroke:c, "stroke-opacity":.12, "stroke-width":1})); g.path(sc.med,{stroke:c, "stroke-width":2.6}); }
+      sc.pop.forEach(cv=> g.path(cv,{stroke:c, "stroke-opacity":.12, "stroke-width":1})); g.path(sc.med,{stroke:c, "stroke-width":2.6});
+      g.add("line",{x1:g.x(sc.tv), x2:g.x(sc.tv), y1:g.m.t, y2:g.m.t+g.ih, stroke:k.muted, "stroke-dasharray":"2 4"}); }
     if(n===5){ const g=frame(svg, sc.T4, sc.c4[0].c*1.5, k, {log:true, floor:sc.c4[sc.c4.length-1].c*0.5});
       g.path(sc.pa,{stroke:k.mic, "stroke-width":1.8, "stroke-dasharray":"6 5"}); g.path(sc.pb,{stroke:k.band, "stroke-width":1.8, "stroke-dasharray":"6 5"});
       g.path(sc.c4,{stroke:c, "stroke-width":2.6});
       [["distribution, α", sc.pa, k.mic, 18],["elimination, β", sc.pb, k.band, 150]].forEach(([lb,pts,col,i])=>
         g.add("text",{x:g.x(pts[i].t)+8, y:g.y(pts[i].c)-8, "font-family":"IBM Plex Sans", "font-size":13, fill:col}).textContent=lb); }
-    if(n===6){
+    if(n===6){   // the steady-state interval, both infusions; the time the 3-hour infusion's unbound level is above the MIC, shaded
+      const top=Math.max(...sc.c6[0].map(q=>q.c))*1.08, g=frame(svg, sc.T6, top, k), thr=sc.ms6[0].thr, cv=sc.c6[1];
+      cv.forEach((q,i)=>{ if(i && q.c>=thr) g.add("rect",{x:g.x(cv[i-1].t), y:g.y(q.c), width:Math.max(.6,g.x(q.t)-g.x(cv[i-1].t)), height:Math.max(0,g.y(thr)-g.y(q.c)), fill:k.mic, "fill-opacity":.16}); });
+      g.add("line",{x1:g.m.l, x2:g.m.l+g.iw, y1:g.y(thr), y2:g.y(thr), stroke:k.mic, "stroke-dasharray":"5 4", "stroke-width":1.2});
+      g.path(sc.c6[0],{stroke:k.ghost, "stroke-width":1.6, "stroke-dasharray":"4 4"}); g.path(cv,{stroke:c, "stroke-width":2.6, "stroke-linejoin":"round"});
+      g.add("text",{x:g.x(sc.T6)-4, y:g.y(thr)-8, "text-anchor":"end", "font-family":"IBM Plex Sans", "font-size":13, fill:k.mic}).textContent="MIC (unbound)"; }
+    if(n===7){   // the session's hours shaded, the rebound ringed (pk-hd.js, loaded for it)
+      if(!sc.c7){ prepHd().then(()=>{ if(sc.c7) paintFrame(7); }); return; }
+      const g=frame(svg, sc.T7-HD_T0, 14, k, {t0:HD_T0}), r=sc.row7, at=t=> t-HD_T0, cv=sc.c7.filter(q=> q.t>=HD_T0).map(q=>({t:at(q.t), c:q.c}));
+      g.add("rect",{x:g.x(at(r.start)), y:g.m.t, width:g.x(at(r.end))-g.x(at(r.start)), height:g.ih, fill:k.band, "fill-opacity":.1});
+      g.add("text",{x:g.x(at(r.start))+8, y:g.m.t+16, "font-family":"IBM Plex Sans", "font-size":13, fill:k.band}).textContent="dialysis";
+      g.path(cv,{stroke:c, "stroke-width":2.6, "stroke-linejoin":"round"});
+      const tr=at(r.end+r.rebound.after);
+      g.add("line",{x1:g.x(tr), x2:g.x(tr), y1:g.y(r.post), y2:g.y(r.rebound.level), stroke:k.mtc, "stroke-dasharray":"3 3"});
+      g.add("circle",{cx:g.x(tr), cy:g.y(r.rebound.level), r:7, fill:"none", stroke:k.mtc, "stroke-width":1.6});
+      g.add("text",{x:g.x(tr)+12, y:g.y(r.rebound.level)-10, "font-family":"IBM Plex Sans", "font-size":13, fill:k.mtc}).textContent="rebound"; }
+    if(n===8){
       if(!svg.firstChild) sphere(sc.nChecks).forEach(([x,y,z],i)=>{ if(z<-0.05) return; const e=svgEl("circle",{cx:300+150*x, cy:170-150*y, r:1.4+1.4*z}); e.dataset.i=i; svg.appendChild(e); });
       for(const el of svg.children){ const i=+el.dataset.i; el.setAttribute("fill", i<sc.checks.length ? (sc.checks[i] ? k.band : k.mtc) : k.line); }
     }
   }
-  const paintFrames=()=>{ for(let n=1;n<=7;n++) paintFrame(n); };
+  const paintFrames=()=>{ for(let n=1;n<=9;n++) paintFrame(n); };
 
   /* ---------- where the visitor is in the sequence ---------- */
   // P: the scroll position in screens from the sequence's top. Each scene spans two screens: its frame is pinned for
@@ -181,7 +228,8 @@ export function start(PK){
   let readyAt=0;
   const coldStart=()=> Math.max(600, readyAt+120);
   const coldLight=()=> stillQ.matches || !D.classList.contains("intro-on") ? 1 : coldOn() || coldT()<COLD_MS ? smooth((coldT()-coldStart())/1500) : 1;
-  const coldDraw=()=> stillQ.matches || !D.classList.contains("intro-on") ? 1 : coldOn() || coldT()<COLD_MS ? smooth((coldT()-coldStart()-100)/Math.max(900, Math.min(1900, COLD_MS-coldStart()-500))) : 1;
+  // (eased in, so the first hours, when the capsule dissolves at ka, take a visible share of it)
+  const coldDraw=()=> stillQ.matches || !D.classList.contains("intro-on") ? 1 : coldOn() || coldT()<COLD_MS ? Math.pow(smooth((coldT()-coldStart()-100)/Math.max(900, Math.min(2500, COLD_MS-coldStart()-400))), 1.6) : 1;
   // gentle snap: when the scrolling stops close to a resting frame (within a tenth of a screen), settle on it; never
   // during a scene change, never under reduced motion. (CSS proximity snapping, with frames this close together,
   // behaved as mandatory and fought slow scrolling.)
@@ -207,7 +255,8 @@ export function start(PK){
     if(w.inIntro!==lastIn){ lastIn=w.inIntro; D.classList.toggle("in-intro", w.inIntro); setPill(); }
     if(top!==lastTop){ lastTop=top; D.classList.toggle("tone-light", top==="light" && !D.classList.contains("light")); }
     if(D.classList.contains("intro-on") && w.P>=-1) textVars(w.P);
-    if(w.inIntro && w.g>=4) runChecks();
+    if(w.inIntro && w.g>=6) runChecks();
+    if(w.inIntro && w.g>=5) prepHd();   // the dialysis course (pk-hd.js), a scene ahead
     if(three) three.scroll(w);
   }
 
@@ -257,6 +306,7 @@ export function start(PK){
     const full=tier===2 && !soft;
     document.body.appendChild(host3d);
     renderer.setClearColor(0x000000, 0);
+    renderer.localClippingEnabled=true;   // the glass figure's liquid is cut at its level
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     // tier 1 maps tones as it draws; tier 2 draws linear light into its own targets and maps it in the composite
     renderer.toneMapping=full ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
@@ -269,7 +319,7 @@ export function start(PK){
     const groups={};
     const disposeGroup=g=>{ if(!g) return; g.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) [].concat(o.material).forEach(m=>{ if(!m.userData.shared) m.dispose(); }); }); if(g.parent) g.parent.remove(g); };
     const GRAPHITE="#2C313A", BRONZE="#8C6A44";
-    const APPX=120;   // the app's own place in the world: the sequence flies there and the simulator is simply there
+    const APPX=168;   // the app's own place in the world: the sequence flies there and the simulator is simply there
 
     /* lights and a studio environment (PMREM), one per tone */
     const key=new THREE.DirectionalLight(0xfff1df, 2.4); key.position.set(-6, 10, 8);
@@ -318,6 +368,24 @@ export function start(PK){
       M.mec=mark(new THREE.LineDashedMaterial({color:col(K2.mec), dashSize:.22, gapSize:.16, transparent:true, opacity:.9}));
       M.mtc=mark(new THREE.LineDashedMaterial({color:col(K2.mtc), dashSize:.22, gapSize:.16, transparent:true, opacity:.9}));
       M.ring=mark(new THREE.MeshBasicMaterial({color:col(lit ? GRAPHITE : K2.accent), transparent:true, opacity:.95, side:THREE.DoubleSide, depthWrite:false}));
+      // 2.11's objects: clear glass (a figure, vials, chambers, dishes, a cartridge, the instrument's globe), frosted with
+      // transmission in tier 2 and a clear sheen otherwise; brass; graphite caps; hairline rings
+      M.vessel=mark(full ? new THREE.MeshPhysicalMaterial({color:col(lit ? "#f7f8fa" : "#e4edf6"), transmission:1, roughness:lit ? .17 : .2, thickness:.3, ior:1.45,
+          clearcoat:1, clearcoatRoughness:.08, metalness:0, envMapIntensity:lit ? 1.1 : 1.5, transparent:true, depthWrite:false, side:THREE.DoubleSide})
+        : new THREE.MeshStandardMaterial({color:col(lit ? "#cfd5dd" : "#9fb6cc"), transparent:true, opacity:lit ? .26 : .17, roughness:.14, metalness:.1, depthWrite:false, side:THREE.DoubleSide}));
+      // the vials: 200 of them overlap, so their glass is a clear sheen without transmission (transmission there cost
+      // 50 ms frames)
+      M.vial=mark(full ? new THREE.MeshPhysicalMaterial({color:col(lit ? "#e9edf2" : "#b9cde0"), transparent:true, opacity:lit ? .34 : .24, roughness:.06, metalness:0,
+          clearcoat:1, clearcoatRoughness:.05, envMapIntensity:lit ? 1.4 : 1.8, depthWrite:false, side:THREE.DoubleSide})
+        : new THREE.MeshStandardMaterial({color:col(lit ? "#cfd5dd" : "#9fb6cc"), transparent:true, opacity:lit ? .3 : .2, roughness:.12, metalness:.1, depthWrite:false, side:THREE.DoubleSide}));
+      M.brass=mark(full ? new THREE.MeshPhysicalMaterial({color:col("#B08A52"), metalness:1, roughness:.26, clearcoat:.6, clearcoatRoughness:.18, envMapIntensity:1.3})
+                        : new THREE.MeshStandardMaterial({color:col("#B08A52"), metalness:.75, roughness:.32}));
+      M.cap=mark(new THREE.MeshStandardMaterial({color:col(lit ? "#3a404a" : "#1d222b"), metalness:.7, roughness:.3}));
+      M.hairMec=mark(new THREE.MeshBasicMaterial({color:col(K2.mec), transparent:true, opacity:.85}));
+      M.hairMtc=mark(new THREE.MeshBasicMaterial({color:col(K2.mtc), transparent:true, opacity:.85}));
+      M.hairMic=mark(new THREE.LineDashedMaterial({color:col(K2.mic), dashSize:.22, gapSize:.16, transparent:true, opacity:.95}));
+      M.sheetMic=mark(new THREE.MeshBasicMaterial({color:col(K2.mic), transparent:true, opacity:lit ? .05 : .07, side:THREE.DoubleSide, depthWrite:false}));
+      M.sheetBand=mark(new THREE.MeshBasicMaterial({color:col(K2.band), transparent:true, opacity:lit ? .07 : .06, side:THREE.DoubleSide, depthWrite:false}));
       M.K=K2;
       return mats[t]=M;
     }
@@ -328,21 +396,21 @@ export function start(PK){
         for(let s=0;s<=seg;s++){ const a=a0+(Math.PI/2)*s/seg, nn=Math.cos(a), nz=Math.sin(a); out.push([cn+r*nn, cz+r*nz, nn, nz]); } });
       return out; })();
     const NP=PROF.length;
-    function sweep(xs, ys, z, scale=1){
+    function sweep(xs, ys, z, scale=1, zs=null){
       const N=xs.length, pos=new Float32Array(N*NP*3), nor=new Float32Array(N*NP*3), idx=new Uint32Array((N-1)*NP*6);
       let k=0;
       for(let i=0;i<N-1;i++) for(let j=0;j<NP;j++){ const a=i*NP+j, b=i*NP+(j+1)%NP, c=(i+1)*NP+j, d=(i+1)*NP+(j+1)%NP; idx.set([a,c,b, b,c,d], k); k+=6; }
       const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("normal", new THREE.BufferAttribute(nor,3)); geo.setIndex(new THREE.BufferAttribute(idx,1));
-      geo.userData={xs:Float32Array.from(xs), z, scale};
+      geo.userData={xs:Float32Array.from(xs), z, scale, zs:zs && Float32Array.from(zs)};
       writeSweep(geo, ys); return geo;
     }
     function writeSweep(geo, ys){
-      const {xs, z, scale}=geo.userData, N=xs.length, pos=geo.attributes.position.array, nor=geo.attributes.normal.array;
+      const {xs, z, scale, zs}=geo.userData, N=xs.length, pos=geo.attributes.position.array, nor=geo.attributes.normal.array;
       for(let i=0;i<N;i++){
         const i0=Math.max(0,i-1), i1=Math.min(N-1,i+1); let tx=xs[i1]-xs[i0], ty=ys[i1]-ys[i0]; const l=Math.hypot(tx,ty)||1; tx/=l; ty/=l;
         const nx=-ty, ny=tx;
         for(let j=0;j<NP;j++){ const [pn,pz,cn,cz]=PROF[j], o=(i*NP+j)*3;
-          pos[o]=xs[i]+nx*pn*scale; pos[o+1]=ys[i]+ny*pn*scale; pos[o+2]=z+pz*scale; nor[o]=nx*cn; nor[o+1]=ny*cn; nor[o+2]=cz; }
+          pos[o]=xs[i]+nx*pn*scale; pos[o+1]=ys[i]+ny*pn*scale; pos[o+2]=(zs ? zs[i] : z)+pz*scale; nor[o]=nx*cn; nor[o+1]=ny*cn; nor[o+2]=cz; }
       }
       geo.attributes.position.needsUpdate=true; geo.attributes.normal.needsUpdate=true; geo.computeBoundingSphere();
     }
@@ -451,7 +519,7 @@ export function start(PK){
           if(uHas>.5){ vec4 r=texture2DProj(tRefl, vR); float k=uAmt*(1.-fog)*(1.-smoothstep(6.,42.,vD)); vec3 rc=min(r.rgb, vec3(1.2))*k; pm+=rc; a=clamp(a+max(r.a*k, max(rc.r,max(rc.g,rc.b))),0.,1.); }
           gl_FragColor=vec4(min(pm, vec3(a)), a);
         }`});
-    const floor=new THREE.Mesh(new THREE.PlaneGeometry(220, 60), floorMat); floor.rotation.x=-Math.PI/2; floor.position.set(60, 0, -6); floor.renderOrder=-1;
+    const floor=new THREE.Mesh(new THREE.PlaneGeometry(270, 60), floorMat); floor.rotation.x=-Math.PI/2; floor.position.set(82, 0, -6); floor.renderOrder=-1;
     scene.add(floor);
 
     /* dust: slow motes through the whole world, brighter where they catch the key light */
@@ -463,8 +531,8 @@ export function start(PK){
           gl_PointSize=uScale*(.35+aSeed)/max(d,.5); vec3 v=normalize(w.xyz-cameraPosition); float sc=pow(max(dot(v,uL),0.),5.);
           vA=(.16+1.5*sc)*(1.-smoothstep(6.,48.,d))*smoothstep(.6,2.5,d); }`,
       fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(0.,.25,r))*vA*uA*.55; gl_FragColor=vec4(uColor*a,a); }`});
-    const dust=(()=>{ const n=full ? 900 : 260, pos=new Float32Array(n*3), seed=new Float32Array(n), R=PK.seededRandom(7);
-      for(let i=0;i<n;i++){ pos.set([-20+160*R(), .2+8*R(), -14+24*R()], i*3); seed[i]=R(); }
+    const dust=(()=>{ const n=full ? 1200 : 340, pos=new Float32Array(n*3), seed=new Float32Array(n), R=PK.seededRandom(7);
+      for(let i=0;i<n;i++){ pos.set([-20+215*R(), .2+8*R(), -14+24*R()], i*3); seed[i]=R(); }
       const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("aSeed", new THREE.BufferAttribute(seed,1));
       const pts=new THREE.Points(geo, dustMat); pts.frustumCulled=false; pts.layers.enable(BLOOM); scene.add(pts); return pts; })();
 
@@ -476,7 +544,7 @@ export function start(PK){
         void main(){ float x=clamp(abs(vUv.x-.5)*2.,0.,1.); float a=pow(max(1.-x,0.),2.2)*smoothstep(0.,.25,vUv.y)*pow(max(vUv.y,0.),.6)*(1.-smoothstep(.55,1.,vUv.y))*uA*(.85+.15*sin(uTime*.3+vUv.y*3.));
           gl_FragColor=vec4(uColor*a,0.); }`});   // light only: the composite gives it alpha by its brightness
     const shafts=new THREE.Group(); scene.add(shafts);
-    [[-3.5,0],[ -1.2,.6],[21,0],[25,.4],[93,0],[97.5,.5]].forEach(([x,o])=>{
+    [[-3.5,0],[ -1.2,.6],[21,0],[25,.4],[93,0],[97.5,.5],[141,0],[145.5,.5]].forEach(([x,o])=>{
       const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6+o, 22), shaftMat); m.position.set(x+2, 5.5, -4.5-o*3);
       m.rotation.z=Math.atan2(-LIGHT_DIR.x, -LIGHT_DIR.y)*-1; m.rotation.y=.35; shafts.add(m); });
 
@@ -520,84 +588,355 @@ export function start(PK){
       m.visible=true; m.position.set(X(t,T), 0, r.userData.z); m.getObjectByName("dot").position.y=y; m.getObjectByName("line").scale.y=Math.max(.001, y);
     }
 
+    /* 2.11: the objects in the scenes, all procedural (no model files). Every motion they make is the engine's: a
+       capsule's remaining amount e^(−ka·t), a level C(t), the amounts in two compartments, each patient's level, the
+       time above an MIC, the dialyzer's removal CLd·C(t). */
+    const toned=(m, role)=>{ m.material=matsOf(tone)[role]; m.userData.tone=t=>{ m.material=matsOf(t)[role]; }; return m; };
+    const lathe=(pts, seg)=> new THREE.LatheGeometry(new THREE.SplineCurve(pts.map(([x,y])=> new THREE.Vector2(x,y))).getPoints(Math.max(24, pts.length*6)), seg);
+    const SEG=full ? 64 : 36;
+    // a luminous liquid, its own material (it may carry a clipping plane): lit from inside in the dark, a clear tint on paper
+    function liquidMat(pick){
+      const m=new THREE.MeshStandardMaterial({roughness:.28, metalness:0, side:THREE.DoubleSide});
+      m.userData.paint=t=>{ const c=col((pick||(k=>k.accent))(matsOf(t).K));
+        if(t==="light"){ m.color.copy(c); m.emissive.copy(c).multiplyScalar(.3); m.emissiveIntensity=1; } else { m.color.set("#06141b"); m.emissive.copy(c); m.emissiveIntensity=full ? 1.6 : 1.25; } };
+      m.userData.paint(tone); return m; }
+    const liquidMesh=(geo, m)=>{ const x=new THREE.Mesh(geo, m); x.layers.enable(BLOOM); x.userData.tone=t=> m.userData.paint(t); return x; };
+    // the luminous surface of a liquid: a disc a little brighter than the liquid
+    function surfaceDisc(pick){
+      const m=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}), d=new THREE.Mesh(new THREE.CircleGeometry(1, SEG), m); d.rotation.x=-Math.PI/2; d.layers.enable(BLOOM);
+      d.userData.tone=t=>{ const c=col((pick||(k=>k.accent))(matsOf(t).K)); if(t==="light") m.color.copy(c).lerp(col("#ffffff"), .35); else m.color.copy(c).multiplyScalar(full ? 2.4 : 1.6); };
+      d.userData.tone(tone); return d; }
+
+    // a capsule: two gelatin halves, lying on its side; it dissolves (dithered away) as the amount left in it falls
+    function capsule(len=.62, r=.15){
+      const g=new THREE.Group(), body=new THREE.Mesh(new THREE.CapsuleGeometry(r, len-2*r, 8, 24)), cap=new THREE.Mesh(new THREE.CapsuleGeometry(r*1.07, (len-2*r)*.46, 8, 24));
+      const mk=()=> full ? new THREE.MeshPhysicalMaterial({roughness:.3, clearcoat:1, clearcoatRoughness:.12, sheen:.4, alphaHash:true}) : new THREE.MeshStandardMaterial({roughness:.34, alphaHash:true});
+      body.material=mk(); cap.material=mk(); cap.position.y=len*.2; g.add(body, cap); g.rotation.z=Math.PI/2;
+      const paint=t=>{ body.material.color.set("#EEE6D6"); cap.material.color.set(matsOf(t).K.accent); };
+      body.userData.tone=paint; paint(tone);
+      g.userData.set=rem=>{ const a=clamp(rem,0,1); body.material.opacity=cap.material.opacity=a; const k=.55+.45*Math.cbrt(a); g.scale.set(k,k,k); g.visible=a>.008; };
+      return g;
+    }
+    // the absorbed drug: particles leave the capsule at times that follow ka (−ln(1 − F) / ka for evenly spread F) and
+    // land on the ribbon at the time each reaches the blood, so they draw it
+    function absorption(from, pts, T, top, ka, n){
+      const pos=new Float32Array(n*3), to=new Float32Array(n*3), tb=new Float32Array(n), sd=new Float32Array(n), R=PK.seededRandom(5), N=pts.length-1;
+      for(let i=0;i<n;i++){ const F=(i+R())/n*.985, t=-Math.log(1-F)/ka, f=clamp(t/T,0,1)*N, j=Math.min(N-1,Math.floor(f)), u=f-j, c=pts[j].c*(1-u)+pts[j+1].c*u;
+        tb[i]=t; sd[i]=R(); pos.set([from.x+(R()-.5)*.36, from.y+(R()-.5)*.12, from.z+(R()-.5)*.12], i*3); to.set([X(t,T), YH*c/top, (R()-.5)*.14], i*3); }
+      const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3));
+      [["aTo",to,3],["aTb",tb,1],["aSd",sd,1]].forEach(([k,a,s])=> geo.setAttribute(k, new THREE.BufferAttribute(a,s)));
+      const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true,
+        uniforms:{uT:{value:0}, uFly:{value:1.1}, uColor:{value:col(K.accent)}, uScale:{value:full ? 60 : 44}},
+        vertexShader:`attribute vec3 aTo; attribute float aTb, aSd; uniform float uT, uFly, uScale; varying float vA;
+          void main(){ float s=clamp((uT-aTb)/uFly,0.,1.), e=s*s*(3.-2.*s); vec3 p=mix(position, aTo, e); p.y+=sin(3.14159*s)*(.3+.5*aSd); p.z+=sin(6.2832*s)*.22*(aSd-.5);
+            vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(uScale*(.5+aSd)/max(-mv.z,.5), 28.); vA=step(.0001,s)*(1.-smoothstep(.78,1.,s)); }`,
+        fragmentShader:`uniform vec3 uColor; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25 || vA<.003) discard; float a=(1.-smoothstep(0.,.25,r))*vA; gl_FragColor=vec4(uColor*a*1.6,a); }`});
+      const p=new THREE.Points(geo, m); p.frustumCulled=false; p.layers.enable(BLOOM);
+      p.userData.tone=t=>{ m.uniforms.uColor.value.set(t==="light" ? GRAPHITE : K.accent); m.blending=t==="light" ? THREE.NormalBlending : THREE.AdditiveBlending; m.needsUpdate=true; };
+      return p;
+    }
+
+    // a glass figure, the body as one compartment: its liquid stands at the concentration, C(t), between hairline rings
+    // at the window's edges (MEC and MTC), with the dose's capsule dissolving inside
+    const FIG=[[0,0],[.72,0],[.84,.06],[.92,.3],[1.02,.78],[.98,1.15],[.82,1.6],[.74,1.9],[.84,2.3],[1.06,2.7],[1.26,3.02],[1.3,3.2],[1.18,3.36],[.66,3.5],[.3,3.6],
+      [.25,3.7],[.25,3.96],[.38,4.08],[.48,4.3],[.5,4.56],[.46,4.82],[.34,5.02],[.16,5.15],[0,5.18]];
+    const FIG_Y=c=> .14+3.25*Math.min(c,14)/14;   // a level, as a height inside the figure (14 mg/L at the shoulders)
+    function figure(){
+      const g=new THREE.Group(), outer=new THREE.SplineCurve(FIG.map(([x,y])=> new THREE.Vector2(x,y))).getPoints(120);
+      g.add(toned(new THREE.Mesh(new THREE.LatheGeometry(outer, SEG)), "vessel"));
+      const inner=[new THREE.Vector2(0,.1)].concat(outer.filter(v=> v.y>.12 && v.y<3.52).map(v=> new THREE.Vector2(Math.max(.02, v.x*.9-.03), v.y)));
+      const rAt=y=>{ for(let i=1;i<inner.length;i++) if(inner[i].y>=y){ const a=inner[i-1], b=inner[i], u=(y-a.y)/Math.max(1e-6,b.y-a.y); return a.x+(b.x-a.x)*u; } return inner[inner.length-1].x; };
+      const lm=liquidMat(), plane=new THREE.Plane(new THREE.Vector3(0,-1,0), 0); lm.clippingPlanes=[plane];
+      const liq=liquidMesh(new THREE.LatheGeometry(inner, SEG), lm); g.add(liq);
+      const surf=surfaceDisc(); g.add(surf);
+      [[V0.mec,"hairMec"],[V0.mtc,"hairMtc"]].forEach(([c,role])=>{ const y=FIG_Y(c), r=rAt(y)/.9+.06, ring=new THREE.Mesh(new THREE.TorusGeometry(r, .011, 6, SEG)); ring.rotation.x=Math.PI/2; ring.position.y=y; g.add(toned(ring, role)); });
+      const cp=capsule(.5,.12); cp.position.set(0, 1.42, 0); g.add(cp);
+      g.userData={rAt, set:(c, rem)=>{ const y=FIG_Y(c); plane.constant=y+g.position.y; surf.position.y=y; const r=rAt(y); surf.scale.set(r,r,r); surf.visible=c>.02; cp.userData.set(rem); }};
+      return g;
+    }
+
+    // 200 glass vials, one per virtual patient, each filled to that patient's level; sorted, they stand in order, the
+    // middle 90% (the band) and the middle two (the median) lit
+    function vials(){
+      const g=new THREE.Group(), N=200, seg=full ? 20 : 12;
+      const glass=new THREE.InstancedMesh(lathe([[0,0],[.1,0],[.118,.02],[.122,.07],[.122,.72],[.104,.79],[.074,.83],[.074,.9]], seg), matsOf(tone).vial, N);
+      glass.userData.tone=t=>{ glass.material=matsOf(t).vial; };
+      // the liquid's colour is each vial's own (instance colours); the dark tone adds a faint glow
+      const lm=new THREE.MeshStandardMaterial({roughness:.3, metalness:0}), liq=new THREE.InstancedMesh(new THREE.CylinderGeometry(.104,.104,1,seg).translate(0,.5,0), lm, N);
+      liq.userData.tone=t=>{ lm.emissive.set(t==="light" ? "#000000" : "#0c2630"); }; liq.userData.tone(tone);
+      const caps=new THREE.InstancedMesh(new THREE.CylinderGeometry(.088,.088,.07,seg), matsOf(tone).cap, N); caps.userData.tone=t=>{ caps.material=matsOf(t).cap; };
+      g.add(glass, liq, caps);
+      const at=j=>{ const col2=j%20, row=Math.floor(j/20); return [-5.7+.6*col2, 1.5+.36*row]; }, sorted=r=>{ const c2=Math.floor(r/10), row=r%10; return [-5.7+.6*c2, 1.5+.36*row]; };
+      const M4=new THREE.Matrix4(), Q=new THREE.Quaternion(), Sv=new THREE.Vector3(), Pv=new THREE.Vector3(), cA=new THREE.Color(), cB=new THREE.Color();
+      g.userData.set=(reveal, levelOf, cond, tn)=>{
+        const K2=matsOf(tn).K, base=col(K2.accent), hiBand=col(K2.band), hiMed=col(tn==="light" ? BRONZE : "#ffcf8a"), tail=col(K2.ghost);
+        for(let j=0;j<N;j++){ const shown=smooth((reveal-j/N)/.03), r=sc.rank[j], a=at(j), b=sorted(r), e=smooth(cond);
+          const x=lerp(a[0],b[0],e), z=lerp(a[1],b[1],e), s=Math.max(.0001, shown), fill=.7*Math.min(levelOf(j),V0.mtc)/V0.mtc;   // full at the MTC
+          Q.identity(); M4.compose(Pv.set(x,0,z), Q, Sv.set(s,s,s)); glass.setMatrixAt(j, M4);
+          M4.compose(Pv.set(x,.02*s,z), Q, Sv.set(s, Math.max(.0001, fill*s), s)); liq.setMatrixAt(j, M4);
+          M4.compose(Pv.set(x,.92*s,z), Q, Sv.set(s,s,s)); caps.setMatrixAt(j, M4);
+          cA.copy(base); cB.copy(r===99 || r===100 ? hiMed : r>=10 && r<=189 ? hiBand : tail); liq.setColorAt(j, cA.lerp(cB, e)); }
+        [glass, liq, caps].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.computeBoundingSphere(); }); if(liq.instanceColor) liq.instanceColor.needsUpdate=true; };
+      g.userData.set(0, ()=>0, 0, tone);   // the instance colours exist from the start, so the shader is compiled with them
+      return g;
+    }
+
+    // two connected glass chambers, the central and the peripheral compartment: each holds its amount (a share of the
+    // dose), and particles cross the tube at rates k₁₂·A₁ (out) and k₂₁·A₂ (back)
+    function chambers(){
+      const g=new THREE.Group(), R=.62, H=2.7, gap=2.3, prof=[[0,0],[R-.08,0],[R,.07],[R,H],[R+.05,H+.04]];
+      const c1=new THREE.Group(), c2=new THREE.Group(); c2.position.set(-gap,0,-.5); g.add(c1, c2);
+      const parts=[[c1, k=>k.accent],[c2, k=>k.b]].map(([c,pick])=>{
+        c.add(toned(new THREE.Mesh(lathe(prof, SEG)), "vessel"));
+        const lm=liquidMat(pick), liq=liquidMesh(new THREE.CylinderGeometry(R-.06,R-.06,1,SEG).translate(0,.5,0), lm); liq.position.y=.05; c.add(liq);
+        const s=surfaceDisc(pick); s.scale.set(R-.06,R-.06,R-.06); c.add(s); return {liq, s}; });
+      const len=Math.hypot(gap, .5)-2*R+.12, tube=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,len,20,1,true));
+      tube.position.set(-gap/2,.42,-.25); tube.rotation.z=Math.PI/2; tube.rotation.y=-Math.atan2(.5,gap); g.add(toned(tube,"vessel"));
+      const n=full ? 220 : 120, lane=new Float32Array(n), ph=new Float32Array(n), sd=new Float32Array(n), pos=new Float32Array(n*3), Rr=PK.seededRandom(9);
+      for(let i=0;i<n;i++){ lane[i]=i%2; ph[i]=Rr(); sd[i]=Rr(); }
+      const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); [["aLane",lane],["aPh",ph],["aSd",sd]].forEach(([k,a])=> geo.setAttribute(k, new THREE.BufferAttribute(a,1)));
+      const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true,
+        uniforms:{uTime:{value:0}, uOut:{value:0}, uBack:{value:0}, uA:{value:col(K.accent)}, uB:{value:col(K.b)}, uScale:{value:full ? 42 : 32}, uFrom:{value:new THREE.Vector3(-R+.04,.42,0)}, uTo:{value:new THREE.Vector3(-gap+R-.04,.42,-.5)}},
+        vertexShader:`attribute float aLane, aPh, aSd; uniform float uTime, uOut, uBack, uScale; uniform vec3 uFrom, uTo; varying float vA; varying float vL;
+          void main(){ float f=fract(aPh+uTime*(.32+.2*aSd)); float u=aLane<.5 ? f : 1.-f; vec3 p=mix(uFrom, uTo, u); p.y+=(aSd-.5)*.11+(aLane-.5)*.05; p.z+=(fract(aSd*7.3)-.5)*.1;
+            vA=step(aSd, aLane<.5 ? uOut : uBack)*smoothstep(0.,.12,u)*(1.-smoothstep(.88,1.,u)); vL=aLane;
+            vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(uScale/max(-mv.z,.5), 22.); }`,
+        fragmentShader:`uniform vec3 uA, uB; varying float vA; varying float vL; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25 || vA<.01) discard; float a=(1.-smoothstep(0.,.25,r))*vA; gl_FragColor=vec4(mix(uA,uB,vL)*a*1.5,a); }`});
+      const pts=new THREE.Points(geo, m); pts.frustumCulled=false; pts.layers.enable(BLOOM); g.add(pts);
+      pts.userData.tone=t=>{ const K2=matsOf(t).K; m.uniforms.uA.value.set(K2.accent); m.uniforms.uB.value.set(K2.b); m.blending=t==="light" ? THREE.NormalBlending : THREE.AdditiveBlending; m.needsUpdate=true; };
+      pts.userData.tone(tone);
+      g.userData.set=(f1, f2, out, back, time)=>{ [[parts[0],f1],[parts[1],f2]].forEach(([q,f])=>{ const h=Math.max(.001,(H-.2)*clamp(f,0,1)); q.liq.scale.y=h; q.s.position.y=.05+h; q.s.visible=f>.004; });
+        m.uniforms.uOut.value=out; m.uniforms.uBack.value=back; m.uniforms.uTime.value=time; };
+      return g;
+    }
+
+    // a culture dish (glass, agar, colonies) whose colonies dim by the share of time so far that the unbound level has
+    // been above the MIC: a visual cue for fT>MIC, not a model of bacterial killing
+    function cultureDish(seed){
+      const g=new THREE.Group(), R=1.55;
+      g.add(toned(new THREE.Mesh(lathe([[0,0],[R-.06,0],[R,.04],[R,.24],[R+.03,.26]], SEG)), "vessel"));
+      const lid=toned(new THREE.Mesh(lathe([[0,.34],[R+.05,.3],[R+.09,.26],[R+.09,.12]], SEG)), "vessel"); lid.position.set(.5,.42,-.9); lid.rotation.x=-.42; g.add(lid);
+      const agarM=new THREE.MeshStandardMaterial({roughness:.55, metalness:0});
+      const agar=new THREE.Mesh(new THREE.CylinderGeometry(R-.05,R-.05,.12,SEG), agarM); agar.position.y=.08; g.add(agar);
+      agar.userData.tone=t=> agarM.color.set(t==="light" ? "#d9c08f" : "#2a1d0e"); agar.userData.tone(tone);
+      const n=full ? 150 : 90, cm=new THREE.MeshStandardMaterial({roughness:.4, metalness:0}), col3=new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI*2, 0, Math.PI/2), cm, n);
+      const Rr=PK.seededRandom(seed), M4=new THREE.Matrix4(), Q=new THREE.Quaternion(), c=new THREE.Color();
+      for(let i=0;i<n;i++){ const r=(R-.22)*Math.sqrt(Rr()), a=Rr()*Math.PI*2, s=.035+.085*Math.pow(Rr(),2);
+        M4.compose(new THREE.Vector3(r*Math.cos(a), .14, r*Math.sin(a)), Q, new THREE.Vector3(s, s*.55, s)); col3.setMatrixAt(i, M4); col3.setColorAt(i, c.setHSL(.08+.04*Rr(), .55, .62+.2*Rr())); }
+      col3.layers.enable(BLOOM); g.add(col3);
+      // dark: the colonies glow and dim; paper: they are a warm brown that fades into the agar
+      const paint=(t,k)=>{ const e=.06+.94*Math.pow(clamp(k,0,1),1.6), warm=col("#ffb36b");
+        if(t==="light"){ cm.color.set("#d9c08f").lerp(col("#8a4b14"), e); cm.emissive.set("#000000"); cm.emissiveIntensity=0; }
+        else { cm.color.set("#2b1a0a"); cm.emissive.copy(warm); cm.emissiveIntensity=(full ? 1.9 : 1.4)*e; } };
+      let glow=1; col3.userData.tone=t=> paint(t, glow); paint(tone, 1);
+      g.userData.glow=k=>{ glow=k; paint(tone, k); };
+      return g;
+    }
+
+    // a dialyzer: a glass cartridge of hollow fibres between capped ends, held on a stand. During a session its fibres
+    // glow and blood and dialysate stream through it (blood down the fibres, dialysate up around them) in proportion to
+    // the removal rate, CLd·C(t); between sessions it is dark
+    function dialyzer(){
+      const g=new THREE.Group(), R=.34, H=3.1, y0=.62, segs=full ? 40 : 24;
+      const house=toned(new THREE.Mesh(new THREE.CylinderGeometry(R,R,H,segs,1,true)), "vessel"); house.position.y=y0+H/2; g.add(house);
+      [[y0+H, 1],[y0, -1]].forEach(([y,s])=>{ const cap=toned(new THREE.Mesh(new THREE.CylinderGeometry(s>0 ? R*.5 : R*1.06, s>0 ? R*1.06 : R*.5, .3, segs)), "cap"); cap.position.y=y+s*.15; g.add(cap);
+        const port=toned(new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.34,16)), "cap"); port.position.y=y+s*.45; g.add(port); });
+      [y0+.42, y0+H-.42].forEach(y=>{ const p=toned(new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.42,16)), "cap"); p.rotation.z=Math.PI/2; p.position.set(R+.18,y,0); g.add(p); });
+      const pole=toned(new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,y0+H+.6,12)), "brass"); pole.position.set(-.95,(y0+H+.6)/2,-.2); g.add(pole);
+      const foot=toned(new THREE.Mesh(new THREE.CylinderGeometry(.42,.48,.06,32)), "brass"); foot.position.set(-.95,.03,-.2); g.add(foot);
+      [y0+.7, y0+H-.7].forEach(y=>{ const arm=toned(new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.62,10)), "brass"); arm.rotation.z=Math.PI/2; arm.position.set(-.62,y,-.1); g.add(arm);
+        const ring=toned(new THREE.Mesh(new THREE.TorusGeometry(R+.03,.025,8,40)), "brass"); ring.rotation.x=Math.PI/2; ring.position.y=y; g.add(ring); });
+      const nf=full ? 120 : 64, fp=new Float32Array(nf*6), Rr=PK.seededRandom(13), fx=[];
+      for(let i=0;i<nf;i++){ const r=(R-.06)*Math.sqrt(Rr()), a=Rr()*Math.PI*2, x=r*Math.cos(a), z=r*Math.sin(a); fx.push([x,z]); fp.set([x,y0+.02,z, x,y0+H-.02,z], i*6); }
+      const fg=new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.BufferAttribute(fp,3));
+      const fm=new THREE.LineBasicMaterial({transparent:true, opacity:.2, depthWrite:false}), fibres=new THREE.LineSegments(fg, fm); fibres.layers.enable(BLOOM); g.add(fibres);
+      const n=full ? 340 : 180, pos=new Float32Array(n*3), lane=new Float32Array(n), ph=new Float32Array(n), sd=new Float32Array(n);
+      for(let i=0;i<n;i++){ lane[i]=i%3===0 ? 1 : 0; const f=fx[i%nf]; const r2=lane[i] ? (R-.04)*Math.sqrt(Rr()) : 0, a2=Rr()*Math.PI*2;
+        pos.set(lane[i] ? [r2*Math.cos(a2), 0, r2*Math.sin(a2)] : [f[0], 0, f[1]], i*3); ph[i]=Rr(); sd[i]=Rr(); }
+      const pg=new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pos,3)); [["aLane",lane],["aPh",ph],["aSd",sd]].forEach(([k,a])=> pg.setAttribute(k, new THREE.BufferAttribute(a,1)));
+      const pm=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true,
+        uniforms:{uTime:{value:0}, uRate:{value:0}, uY0:{value:y0}, uH:{value:H}, uBlood:{value:col(K.mtc)}, uDial:{value:col(K.accent)}, uScale:{value:full ? 34 : 26}},
+        vertexShader:`attribute float aLane, aPh, aSd; uniform float uTime, uRate, uY0, uH, uScale; varying float vA; varying float vL;
+          void main(){ float f=fract(aPh+uTime*(.22+.12*aSd)); float u=aLane<.5 ? 1.-f : f; vec3 p=position; p.y=uY0+.05+u*(uH-.1);
+            vA=step(aSd, uRate)*smoothstep(0.,.08,f)*(1.-smoothstep(.92,1.,f)); vL=aLane;
+            vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(uScale/max(-mv.z,.5), 18.); }`,
+        fragmentShader:`uniform vec3 uBlood, uDial; varying float vA; varying float vL; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25 || vA<.01) discard; float a=(1.-smoothstep(0.,.25,r))*vA; gl_FragColor=vec4(mix(uBlood,uDial,vL)*a*1.4,a); }`});
+      const flow=new THREE.Points(pg, pm); flow.frustumCulled=false; flow.layers.enable(BLOOM); g.add(flow);
+      const paint=t=>{ const K2=matsOf(t).K; fm.color.set(K2.mtc); pm.uniforms.uBlood.value.set(K2.mtc); pm.uniforms.uDial.value.set(K2.accent);
+        pm.blending=fm.blending=t==="light" ? THREE.NormalBlending : THREE.AdditiveBlending; pm.needsUpdate=fm.needsUpdate=true; };
+      fibres.userData.tone=paint; paint(tone);
+      g.userData.set=(rate, time)=>{ const r=clamp(rate,0,1); pm.uniforms.uRate.value=r; pm.uniforms.uTime.value=time; fm.opacity=.12+.6*r; };
+      return g;
+    }
+
+    // the check sphere's instrument: a glass globe in a brass armillary (a meridian and a horizon ring) on a turned stand
+    const CY=3.6;   // the globe's centre height
+    function instrument(){
+      const g=new THREE.Group();
+      // the globe's glass is its own (it clears as the camera flies in)
+      const globe=new THREE.Mesh(new THREE.SphereGeometry(2.95, full ? 72 : 40, full ? 48 : 28)), own={};
+      globe.userData.tone=t=>{ if(!own[t]){ own[t]=matsOf(t).vessel.clone(); own[t].userData.shared=false; own[t].transparent=true; } globe.material=own[t]; }; globe.userData.tone(tone);
+      globe.position.y=CY; globe.name="globe"; g.add(globe);
+      const mer=new THREE.Group(); mer.position.y=CY; g.add(mer);
+      mer.add(toned(new THREE.Mesh(new THREE.TorusGeometry(3.22, .05, 12, 160)), "brass"));
+      const hor=toned(new THREE.Mesh(new THREE.TorusGeometry(3.38, .06, 12, 160)), "brass"); hor.rotation.x=Math.PI/2; hor.position.y=CY; g.add(hor);
+      [-1,1].forEach(s=>{ const pin=toned(new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.34,12)), "brass"); pin.position.y=s*3.32; mer.add(pin); });
+      const stand=toned(new THREE.Mesh(lathe([[0,0],[.95,0],[.98,.06],[.6,.14],[.28,.26],[.2,.42],[.26,.48],[.14,.56],[.12,CY-3.3]], SEG)), "brass"); g.add(stand);
+      g.userData.mer=mer; return g;
+    }
+
     /* the sequence's objects, placed along the x axis; the camera travels between them */
-    const SX=[0,24,48,72,96];   // close enough that the next scene comes into view as the camera travels
+    const SX=[0,24,48,72,96,120,144];   // the scenes with their own place: hero, simulate, learn, cases, exposure, rebound, validated
+    const FX=12;   // the glass figure ("Every dose"), between the hero and Simulate, in front of the strand
+    const GLOBE_C=new THREE.Vector3(SX[6], CY, 0);
+    const SCENE_GROUPS=["s1","s2","s3","s4","s5","s6","s7","s8","strand"];
     let popPts=null;
+    // top of the exposure scene's ribbons (mg/L): the 30-minute infusion's peak stands well above the 3-hour one's
+    const TOP6=130;
     function buildIntro(){
       prepScenes();
-      ["s1","s3","s4","s5","s6","strand"].forEach(k=>{ disposeGroup(groups[k]); delete groups[k]; });
-      const g1=groups.s1=new THREE.Group(); scene.add(g1);
-      const r1=ribbon(sc.c1, sc.T1, 14, {curtain:!phoneQ.matches}); r1.name="r"; g1.add(r1);
+      SCENE_GROUPS.forEach(k=>{ disposeGroup(groups[k]); delete groups[k]; });
+      popPts=null;
+      const phone=phoneQ.matches, add=(k,x,y=0)=>{ const g=groups[k]=new THREE.Group(); g.position.set(x,y,0); scene.add(g); return g; };
+      // Hero: the ribbon draws itself in the cold open, fed by the particles of a dissolving capsule
+      const g1=add("s1",0);
+      const r1=ribbon(sc.c1, sc.T1, 14, {curtain:!phone}); r1.name="r"; g1.add(r1);
       const h1=head(); g1.add(h1);
-      if(phoneQ.matches){ setVis(); return; }   // phones: the single ribbon; the other scenes keep their SVG frames
-      const w1=windowPlate(14, V0.mec, V0.mtc); w1.name="win"; g1.add(w1);
-      // Simulate: the regimen, and the first dose alone (what the second stacks on)
-      const top2=Math.max(...sc.c2.map(q=>q.c))*1.1, g3=groups.s3=new THREE.Group(); g3.position.x=SX[1]; scene.add(g3);
-      const r3=ribbon(sc.c2, sc.T2, top2); r3.name="r"; g3.add(r3);
-      const one=ribbon(sc.c2one, sc.T2, top2, {ghost:true, curtain:false, z:-.3}); one.name="one"; g3.add(one);
-      const w3=windowPlate(top2, V0.mec, V0.mtc); w3.name="win"; g3.add(w3);
-      const rg=rings(sc.d2, sc.T2); rg.name="rings"; g3.add(rg); const h3=head(); g3.add(h3);
-      // Learn: 200 patients as points, revealed one by one, then condensing into the median and the band
-      const g4=groups.s4=new THREE.Group(); g4.position.x=SX[2]; scene.add(g4);
-      { const n=sc.pop[0].length, per=full ? 150 : 90, N=200*per, pos=new Float32Array(N*3), aIdx=new Float32Array(N), aMed=new Float32Array(N), aLo=new Float32Array(N), aHi=new Float32Array(N);
-        const yv=c=> YH*Math.min(c,16*1.2)/16, R=PK.seededRandom(11), at=(arr,f)=>{ const i=Math.min(n-2, Math.floor(f)), u=f-i; return arr[i].c*(1-u)+arr[i+1].c*u; };
-        sc.pop.forEach((c,j)=>{ for(let i=0;i<per;i++){ const k=j*per+i, f=(n-1)*Math.pow(R(),1.35);   // denser early, where the curve moves
-          pos.set([X(24*f/(n-1),24), yv(at(c,f)), (j%20-9.5)*.06], k*3); aIdx[k]=j/200; aMed[k]=yv(at(sc.med,f)); aLo[k]=yv(at(sc.lo,f)); aHi[k]=yv(at(sc.hi,f)); } });
-        const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3));
-        [["aIdx",aIdx],["aMed",aMed],["aLo",aLo],["aHi",aHi]].forEach(([k,a])=> geo.setAttribute(k, new THREE.BufferAttribute(a,1)));
-        const order=new Uint32Array(N); for(let i=0;i<N;i++) order[i]=i; geo.setIndex(new THREE.BufferAttribute(order,1));
-        const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true,
-          uniforms:{uReveal:{value:1}, uCond:{value:0}, uColor:{value:col(P.accent)}, uScale:{value:full ? 48 : 36}, uA:{value:1}},
-          vertexShader:`attribute float aIdx, aMed, aLo, aHi; uniform float uReveal, uCond, uScale; varying float vA;
-            void main(){ float shown=smoothstep(aIdx, aIdx+.03, uReveal);
-              float yc=clamp(aMed+(position.y-aMed)*.3, aLo, aHi); vec3 p=vec3(position.x, mix(position.y, yc, uCond), position.z*(1.-.85*uCond));
-              vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=uScale/max(-mv.z,.5)*(1.+.6*(1.-shown));
-              vA=shown*(1.-.6*uCond); }`,
-          fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.02,.25,r))*vA*uA*.36; gl_FragColor=vec4(uColor*a,a); }`});
-        popPts=new THREE.Points(geo, m); popPts.name="cloud"; popPts.layers.enable(BLOOM); g4.add(popPts);
-        // the band (the middle 90%) as a glass sheet, and the median as a ribbon
-        const pos2=new Float32Array((n)*6), idx=[]; for(let i=0;i<n;i++){ pos2.set([X(sc.lo[i].t,24), yv(sc.lo[i].c), -.05, X(sc.hi[i].t,24), yv(sc.hi[i].c), -.05], i*6); if(i) idx.push(2*i-2,2*i-1,2*i, 2*i-1,2*i+1,2*i); }
-        const bg=new THREE.BufferGeometry(); bg.setAttribute("position", new THREE.BufferAttribute(pos2,3)); bg.setIndex(idx); bg.computeVertexNormals();
-        const sheet=new THREE.Mesh(bg, new THREE.MeshStandardMaterial({color:col(P.band), transparent:true, opacity:0, roughness:.4, side:THREE.DoubleSide, depthWrite:false})); sheet.name="band"; g4.add(sheet);
-        const med=ribbon(sc.med, 24, 16, {curtain:false, bronze:true, noGlow:false}); med.name="med"; g4.add(med);
-        const w4=windowPlate(16, V0.mec, V0.mtc); w4.name="win"; g4.add(w4); }
-      // Cases: the two phases, the axis turning logarithmic in front of the camera
-      const g5=groups.s5=new THREE.Group(); g5.position.x=SX[3]; scene.add(g5);
-      { const fl=sc.c4[sc.c4.length-1].c*0.5, top=sc.c4[0].c*1.5, lin=c=> YH*c/top, lg=c=> YH*(Math.log10(Math.max(c,fl))-Math.log10(fl))/(Math.log10(top)-Math.log10(fl));
-        const mk=(pts, name, o)=>{ const r=ribbon(pts, sc.T4, top, Object.assign({curtain:false}, o)); r.name=name; r.userData.lin=Float32Array.from(pts, q=>lin(q.c)); r.userData.lg=Float32Array.from(pts, q=>lg(q.c)); g5.add(r); return r; };
-        mk(sc.c4, "r", {}); mk(sc.pa, "a", {thin:true, b:true}); mk(sc.pb, "b", {thin:true, bronze:true, noGlow:true}); }
-      // Validated: one point per check, lit as the checks pass
-      const g6=groups.s6=new THREE.Group(); g6.position.set(SX[4], 2.4, 0); scene.add(g6);
-      { const pts=sphere(sc.nChecks), pos=new Float32Array(pts.length*3), cols=new Float32Array(pts.length*3), off=col(P.line);
-        pts.forEach(([x,y,z],i)=>{ pos.set([2.6*x,2.6*y,2.6*z], i*3); cols.set([off.r,off.g,off.b], i*3); });
-        const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("color", new THREE.BufferAttribute(cols,3));
-        const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true, vertexColors:true, uniforms:{uScale:{value:full ? 44 : 34}},
-          vertexShader:"uniform float uScale; varying vec3 vC; void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; gl_PointSize=uScale/max(-mv.z,.5); }",
-          fragmentShader:"varying vec3 vC; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.0,.25,r)); a*=a; gl_FragColor=vec4(vC*a*2.2,a); }"});
-        const pts3=new THREE.Points(geo, m); pts3.name="pts"; pts3.layers.enable(BLOOM); g6.add(pts3);
-        g6.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.58, 3)), new THREE.LineBasicMaterial({color:col(P.line), transparent:true, opacity:.18}))); }
-      // the strand: the ribbon travelling on between scenes, from the end of each curve to the start of the next, under the
-      // sphere and on to the simulator's own curve, so the camera always follows one object
-      { const st=groups.strand=new THREE.Group(); scene.add(st);
-        const endOf=(g,r,last)=>{ const k=last ? r.userData.n-1 : 0; return [g.position.x+r.userData.xs[k], r.userData.ys[k]]; };
-        const legs=[[endOf(g1,r1,1), endOf(g3,r3,0)], [endOf(g3,r3,1), endOf(groups.s4, groups.s4.getObjectByName("med"),0)],
-          [endOf(groups.s4, groups.s4.getObjectByName("med"),1), endOf(groups.s5, groups.s5.getObjectByName("r"),0)],
-          [endOf(groups.s5, groups.s5.getObjectByName("r"),1), [SX[4]-1, .16]], [[SX[4]+1, .16], [APPX-6, .05]]];
-        legs.forEach(([a,b])=>{ const n=72, xs=[], ys=[];
-          for(let i=0;i<n;i++){ const u=i/(n-1), e=u*u*(3-2*u); xs.push(lerp(a[0],b[0],u)); ys.push(lerp(a[1],b[1],e)+Math.sin(Math.PI*u)*.18); }
-          const geo=sweep(xs, ys, 0, .42), mD=new THREE.Mesh(geo, matsOf("dark").core), mL=new THREE.Mesh(geo, matsOf("light").core);
-          mD.layers.enable(BLOOM); mD.name="dark"; mL.name="light";
-          const leg=new THREE.Group(); leg.add(mD, mL); leg.userData.tone=t=>{ mD.visible=t!=="light"; mL.visible=t==="light"; }; leg.userData.tone(tone); st.add(leg); });
-        // under the sphere, the strand passes as a short, faint arc
-        const arc=[], ax=[], ay=[]; for(let i=0;i<40;i++){ const u=i/39; ax.push(lerp(SX[4]-1, SX[4]+1, u)); ay.push(.16); }
-        const ag=sweep(ax, ay, 0, .42), aD=new THREE.Mesh(ag, matsOf("dark").core), aL=new THREE.Mesh(ag, matsOf("light").core); aD.layers.enable(BLOOM);
-        const al=new THREE.Group(); al.add(aD, aL); al.userData.tone=t=>{ aD.visible=t!=="light"; aL.visible=t==="light"; }; al.userData.tone(tone); st.add(al); }
+      const cap1=capsule(); cap1.name="cap"; cap1.position.set(X(0,sc.T1)-.15, .17, .7); g1.add(cap1);
+      const ab=absorption(cap1.position, sc.c1, sc.T1, 14, sc.p1.ka, full ? 640 : phone ? 200 : 320); ab.name="abs"; g1.add(ab);
+      const cur1=cursorDot(); cur1.name="cur"; g1.add(cur1);
+      // Every dose: the glass figure, its level the default scenario's concentration
+      const g2=add("s2",FX); g2.position.z=1.25; const fig=figure(); fig.name="fig"; g2.add(fig);
+      // Learn: on phones the vials alone (the cloud stays the SVG frame's)
+      const g4=add("s4",SX[2]); const vi=vials(); vi.name="vials"; g4.add(vi);
+      if(!phone){
+        const w1=windowPlate(14, V0.mec, V0.mtc); w1.name="win"; g1.add(w1);
+        // Simulate: the regimen, the first dose alone (what the second stacks on), a capsule at each dose
+        const top2=Math.max(...sc.c2.map(q=>q.c))*1.1, g3=add("s3",SX[1]);
+        const r3=ribbon(sc.c2, sc.T2, top2); r3.name="r"; g3.add(r3);
+        const one=ribbon(sc.c2one, sc.T2, top2, {ghost:true, curtain:false, z:-.3}); one.name="one"; g3.add(one);
+        const w3=windowPlate(top2, V0.mec, V0.mtc); w3.name="win"; g3.add(w3);
+        const rg=rings(sc.d2, sc.T2); rg.name="rings"; g3.add(rg); const h3=head(); g3.add(h3);
+        const caps=new THREE.Group(); caps.name="caps"; sc.d2.forEach(t=>{ const c=capsule(.44,.105); c.position.set(X(t,sc.T2), .12, .62); c.userData.t=t; caps.add(c); }); g3.add(caps);
+        // Learn: 200 patients as points, revealed one by one, then condensing into the median and the band; the vials in front
+        { const n=sc.pop[0].length, per=full ? 150 : 90, N=200*per, pos=new Float32Array(N*3), aIdx=new Float32Array(N), aMed=new Float32Array(N), aLo=new Float32Array(N), aHi=new Float32Array(N);
+          const yv=c=> YH*Math.min(c,16*1.2)/16, R=PK.seededRandom(11), at=(arr,f)=>{ const i=Math.min(n-2, Math.floor(f)), u=f-i; return arr[i].c*(1-u)+arr[i+1].c*u; };
+          sc.pop.forEach((c,j)=>{ for(let i=0;i<per;i++){ const k=j*per+i, f=(n-1)*Math.pow(R(),1.35);   // denser early, where the curve moves
+            pos.set([X(24*f/(n-1),24), yv(at(c,f)), (j%20-9.5)*.06], k*3); aIdx[k]=j/200; aMed[k]=yv(at(sc.med,f)); aLo[k]=yv(at(sc.lo,f)); aHi[k]=yv(at(sc.hi,f)); } });
+          const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3));
+          [["aIdx",aIdx],["aMed",aMed],["aLo",aLo],["aHi",aHi]].forEach(([k,a])=> geo.setAttribute(k, new THREE.BufferAttribute(a,1)));
+          const order=new Uint32Array(N); for(let i=0;i<N;i++) order[i]=i; geo.setIndex(new THREE.BufferAttribute(order,1));
+          const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true,
+            uniforms:{uReveal:{value:1}, uCond:{value:0}, uColor:{value:col(P.accent)}, uScale:{value:full ? 48 : 36}, uA:{value:1}},
+            vertexShader:`attribute float aIdx, aMed, aLo, aHi; uniform float uReveal, uCond, uScale; varying float vA;
+              void main(){ float shown=smoothstep(aIdx, aIdx+.03, uReveal);
+                float yc=clamp(aMed+(position.y-aMed)*.3, aLo, aHi); vec3 p=vec3(position.x, mix(position.y, yc, uCond), position.z*(1.-.85*uCond));
+                vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=uScale/max(-mv.z,.5)*(1.+.6*(1.-shown));
+                vA=shown*(1.-.6*uCond); }`,
+            fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.02,.25,r))*vA*uA*.36; gl_FragColor=vec4(uColor*a,a); }`});
+          popPts=new THREE.Points(geo, m); popPts.name="cloud"; popPts.layers.enable(BLOOM); g4.add(popPts);
+          // the band (the middle 90%) as a glass sheet, and the median as a ribbon
+          const pos2=new Float32Array((n)*6), idx=[]; for(let i=0;i<n;i++){ pos2.set([X(sc.lo[i].t,24), yv(sc.lo[i].c), -.05, X(sc.hi[i].t,24), yv(sc.hi[i].c), -.05], i*6); if(i) idx.push(2*i-2,2*i-1,2*i, 2*i-1,2*i+1,2*i); }
+          const bg=new THREE.BufferGeometry(); bg.setAttribute("position", new THREE.BufferAttribute(pos2,3)); bg.setIndex(idx); bg.computeVertexNormals();
+          const sheet=new THREE.Mesh(bg, new THREE.MeshStandardMaterial({color:col(P.band), transparent:true, opacity:0, roughness:.4, side:THREE.DoubleSide, depthWrite:false})); sheet.name="band"; g4.add(sheet);
+          const med=ribbon(sc.med, 24, 16, {curtain:false, bronze:true, noGlow:false}); med.name="med"; g4.add(med);
+          const w4=windowPlate(16, V0.mec, V0.mtc); w4.name="win"; g4.add(w4);
+          // the time the vials are read at: a thin glass plane through the cloud
+          const tp=new THREE.Mesh(new THREE.PlaneGeometry(2.6, YH*1.2)); tp.rotation.y=Math.PI/2; tp.position.set(X(sc.tv,24), YH*.6, 0); tp.name="tplane"; g4.add(toned(tp,"sheetBand")); }
+        // Cases: the two phases, the axis turning logarithmic in front of the camera; the two compartments as chambers
+        const g5=add("s5",SX[3]);
+        { const fl=sc.c4[sc.c4.length-1].c*0.5, top=sc.c4[0].c*1.5, lin=c=> YH*c/top, lg=c=> YH*(Math.log10(Math.max(c,fl))-Math.log10(fl))/(Math.log10(top)-Math.log10(fl));
+          const mk=(pts, name, o)=>{ const r=ribbon(pts, sc.T4, top, Object.assign({curtain:false}, o)); r.name=name; r.userData.lin=Float32Array.from(pts, q=>lin(q.c)); r.userData.lg=Float32Array.from(pts, q=>lg(q.c)); g5.add(r); return r; };
+          mk(sc.c4, "r", {}); mk(sc.pa, "a", {thin:true, b:true}); mk(sc.pb, "b", {thin:true, bronze:true, noGlow:true});
+          const ch=chambers(); ch.name="ch"; ch.position.set(-8.6, 0, -2.1); g5.add(ch); const cd=cursorDot(); cd.name="cur"; g5.add(cd); }
+        // Exposure: one steady-state interval of piperacillin, as a 30-minute and a 3-hour infusion, against the MIC; a dish each
+        const g6=add("s6",SX[4]);
+        { const thr=sc.ms6[0].thr, y=c=> YH*c/TOP6;
+          const a=ribbon(sc.c6[0], sc.T6, TOP6, {curtain:false}); a.name="r30"; g6.add(a);
+          const ag=ribbon(sc.c6[0], sc.T6, TOP6, {ghost:true, curtain:false, z:-.3}); ag.name="r30g"; g6.add(ag);
+          const b=ribbon(sc.c6[1], sc.T6, TOP6, {curtain:false, z:.35}); b.name="r3h"; g6.add(b);
+          const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-XW/2,y(thr),-.2), new THREE.Vector3(XW/2,y(thr),-.2)])); ln.computeLineDistances(); g6.add(toned(ln,"hairMic"));
+          const sh=new THREE.Mesh(new THREE.PlaneGeometry(XW, y(thr))); sh.position.set(0, y(thr)/2, -.25); g6.add(toned(sh,"sheetMic"));
+          [[-2.6,0,"dishA",21],[2.6,1,"dishB",23]].forEach(([x,k,nm,seed])=>{ const d=cultureDish(seed); d.position.set(x,0,3.1); d.name=nm; g6.add(d); });
+          const h6=head(); g6.add(h6); }
+        // Rebound: the dialysis course (pk-hd.js arrives a moment later), the session's hours, the cartridge behind
+        add("s7",SX[5]); buildHd();
+        // Validated: one point per check, lit as the checks pass, in a glass globe on a brass stand
+        const g8=add("s8",SX[6]); const ins=instrument(); ins.name="ins"; g8.add(ins);
+        { const pts=sphere(sc.nChecks), pos=new Float32Array(pts.length*3), cols=new Float32Array(pts.length*3), off=col(P.line);
+          pts.forEach(([x,y,z],i)=>{ pos.set([2.6*x,2.6*y,2.6*z], i*3); cols.set([off.r,off.g,off.b], i*3); });
+          const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("color", new THREE.BufferAttribute(cols,3));
+          const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true, vertexColors:true, uniforms:{uScale:{value:full ? 44 : 34}, uK:{value:2.2}},
+            vertexShader:"uniform float uScale; varying vec3 vC; void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(uScale/max(-mv.z,.5), 26.); }",
+            fragmentShader:"uniform float uK; varying vec3 vC; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.0,.25,r)); a*=a; gl_FragColor=vec4(vC*a*uK,a); }"});
+          const core=new THREE.Group(); core.name="core"; core.position.y=CY; g8.add(core);
+          const pts3=new THREE.Points(geo, m); pts3.name="pts"; pts3.layers.enable(BLOOM); core.add(pts3);
+          // on paper the checks are ink (normal blending), in the dark they glow (additive)
+          pts3.userData.tone=t=>{ m.blending=t==="light" ? THREE.NormalBlending : THREE.AdditiveBlending; m.uniforms.uK.value=t==="light" ? 1 : 2.2; m.needsUpdate=true; light6(); };
+          core.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.58, 3)), new THREE.LineBasicMaterial({color:col(P.line), transparent:true, opacity:.14}))); }
+        buildStrand();
+      }
       setVis(); light6(); applyTone();
+    }
+    // the dialysis scene's ribbon and cartridge, once pk-hd.js has given its course
+    function buildHd(){
+      const g7=groups.s7; if(!g7) return;
+      if(!sc.c7){ prepHd().then(()=>{ if(sc.c7 && groups.s7===g7){ buildHd(); buildStrand(); setVis(); applyTone(); precompile(); } }); return; }
+      g7.children.slice().forEach(disposeGroup);
+      const span=sc.T7-HD_T0, pts=sc.c7.filter(q=> q.t>=HD_T0).map(q=>({t:q.t-HD_T0, c:q.c})), r=sc.row7;
+      const rb=ribbon(pts, span, 14, {curtain:true}); rb.name="r"; g7.add(rb);
+      const x=t=> X(t-HD_T0, span), y=c=> YH*c/14;
+      const band7=new THREE.Mesh(new THREE.PlaneGeometry(x(r.end)-x(r.start), YH*1.1)); band7.position.set((x(r.start)+x(r.end))/2, YH*.55, -.6); g7.add(toned(band7,"sheetBand"));
+      const dz=dialyzer(); dz.name="dz"; dz.position.set((x(r.start)+x(r.end))/2, 0, -2.4); g7.add(dz);
+      const tr=r.end+r.rebound.after, ring=new THREE.Mesh(new THREE.TorusGeometry(.2,.02,8,40)); ring.position.set(x(tr), y(r.rebound.level), .05); ring.name="reb"; g7.add(toned(ring,"hairMtc"));
+      const drop=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,1,6)); drop.name="drop"; drop.position.set(x(tr), (y(r.post)+y(r.rebound.level))/2, .05); drop.scale.y=Math.max(.001,y(r.rebound.level)-y(r.post)); g7.add(toned(drop,"hairMtc"));
+      const cd=cursorDot(); cd.name="cur"; g7.add(cd);
+    }
+    // the strand: the ribbon travelling on between scenes, from the end of each curve to the start of the next, behind the
+    // glass figure, around the instrument's stand and on to the simulator's own curve, so the camera always follows one object
+    function buildStrand(){
+      disposeGroup(groups.strand); delete groups.strand;
+      const st=groups.strand=new THREE.Group(); scene.add(st);
+      const endOf=(k,nm,last)=>{ const g=groups[k], r=g && g.getObjectByName(nm); if(!r) return null; const i=last ? r.userData.n-1 : 0; return [g.position.x+r.userData.xs[i], r.userData.ys[i]]; };
+      const legs=[], pair=(a,b)=>{ if(a && b) legs.push([a,b,null]); }, base=[SX[6]-2.6,.16];
+      pair(endOf("s1","r",1), endOf("s3","r",0)); pair(endOf("s3","r",1), endOf("s4","med",0)); pair(endOf("s4","med",1), endOf("s5","r",0)); pair(endOf("s5","r",1), endOf("s6","r3h",0));
+      const s7a=endOf("s7","r",0); if(s7a){ pair(endOf("s6","r3h",1), s7a); pair(endOf("s7","r",1), base); } else pair(endOf("s6","r3h",1), base);
+      // around the stand, in front of it, and on to the app
+      legs.push([base,[SX[6]+2.6,.16], u=> 1.7*Math.sin(Math.PI*u)], [[SX[6]+2.6,.16],[APPX-6,.05], null]);
+      legs.forEach(([a,b,zf])=>{ const n=72, xs=[], ys=[], zs=[];
+        for(let i=0;i<n;i++){ const u=i/(n-1), e=u*u*(3-2*u); xs.push(lerp(a[0],b[0],u)); ys.push(lerp(a[1],b[1],e)+(zf ? 0 : Math.sin(Math.PI*u)*.18)); zs.push(zf ? zf(u) : 0); }
+        const geo=sweep(xs, ys, 0, .42, zf ? zs : null), mD=new THREE.Mesh(geo, matsOf("dark").core), mL=new THREE.Mesh(geo, matsOf("light").core);
+        mD.layers.enable(BLOOM); mD.name="dark"; mL.name="light";
+        const leg=new THREE.Group(); leg.add(mD, mL); leg.userData.tone=t=>{ mD.visible=t!=="light"; mL.visible=t==="light"; }; leg.userData.tone(tone); st.add(leg); });
+    }
+    // every object's shaders, in both tones, before the sequence plays (otherwise each compiles the first time it comes
+    // into view, or the first time the tone changes, and that frame stalls)
+    async function precompile(tones){
+      if(!renderer.compileAsync) return;
+      const was=tone, vis=SCENE_GROUPS.map(k=> groups[k] && groups[k].visible);
+      SCENE_GROUPS.forEach(k=>{ if(groups[k]) groups[k].visible=true; });
+      // group by group, so the work is spread over several frames rather than one long one
+      const parts=SCENE_GROUPS.concat(["live"]).map(k=> groups[k]).filter(Boolean).concat([floor, dust, shafts]);
+      for(const t of tones || [was]){ if(t!==tone){ tone=t; applyTone(); }
+        for(const o of parts){ try{ await renderer.compileAsync(o, camera, scene); }catch(e){} await new Promise(r=> setTimeout(r)); } }
+      if(tone!==was){ tone=was; applyTone(); }
+      SCENE_GROUPS.forEach((k,i)=>{ if(groups[k]) groups[k].visible=vis[i]; }); setVis();
+    }
+    // the other tone waits until the cold open is over and the page is idle
+    const otherTone=()=> new Promise(res=>{ const go=()=> (window.requestIdleCallback || (f=>setTimeout(f,200)))(()=> precompile([tone==="light" ? "dark" : "light"]).then(res), {timeout:2500});
+      setTimeout(go, Math.max(0, COLD_MS+600-performance.now())); });
+    // a small marker riding a ribbon: the time a scene's object is showing
+    function cursorDot(){
+      const m=new THREE.MeshBasicMaterial(), d=new THREE.Mesh(new THREE.SphereGeometry(.09,20,14), m); d.visible=false; d.layers.enable(BLOOM);
+      d.userData.tone=t=> m.color.set(t==="light" ? GRAPHITE : "#ffffff"); d.userData.tone(tone);
+      d.userData.at=(r, t, show)=>{ if(!r || !show){ d.visible=false; return; } const T=r.userData.T, ys=r.userData.ys, f=clamp(t/T,0,1)*(ys.length-1), i=Math.min(ys.length-2, Math.floor(f)), u=f-i;
+        d.visible=true; d.position.set(X(clamp(t,0,T),T), ys[i]*(1-u)+ys[i+1]*u, r.userData.z+.02+r.position.z); };
+      return d;
     }
     let k6=0;
     function light6(){
-      const p=groups.s6 && groups.s6.getObjectByName("pts"); if(!p) return;
-      const upto=Math.round(k6*sc.nChecks), on=col(P.band).multiplyScalar(1.4), off=col(P.line).multiplyScalar(.6), bad=col(P.mtc), a=p.geometry.attributes.color;
+      const p=groups.s8 && groups.s8.getObjectByName("pts"); if(!p) return;
+      const lit=tone==="light", upto=Math.round(k6*sc.nChecks), on=col(P.band).multiplyScalar(lit ? 1 : 1.4), off=lit ? col("#b9bfc8") : col(P.line).multiplyScalar(.6), bad=col(P.mtc), a=p.geometry.attributes.color;
       for(let i=0;i<a.count;i++){ const c=i<Math.min(upto, sc.checks.length) ? (sc.checks[i] ? on : bad) : off; a.setXYZ(i, c.r, c.g, c.b); }
       a.needsUpdate=true; frame();
     }
@@ -614,12 +953,16 @@ export function start(PK){
     const V=(x,y,z)=> new THREE.Vector3(x,y,z);
     const REST=[ // scene, [camera, target] at u = 0.18, 0.5, 0.82 of its pinned screen
       [[V(0,1.9,15),V(0,1.6,0)], [V(-3.2,3.3,14),V(0,1.4,0)], [V(2.6,2.4,13.2),V(.4,1.4,0)]],
-      [[V(-8.5,.9,8.4),V(-3,1.2,0)], [V(-1,1.05,7.4),V(2,1.05,0)], [V(6.2,2.6,10.5),V(3,1.1,0)]],
+      [[V(FX-7.8,3,15),V(FX-1.8,2.3,0)], [V(FX-4.6,3,16),V(FX-1.6,2.5,1.2)], [V(FX+2.2,3.4,14.5),V(FX-1.4,2.3,1.2)]],
       [[V(SX[1]-6.2,2.3,10),V(SX[1]-3.4,2.9,0)], [V(SX[1]-4,2.5,10.5),V(SX[1]-1.8,2.9,0)], [V(SX[1]+2,3.4,13.5),V(SX[1]+3.4,3,0)]],
-      [[V(SX[2]-7,4.4,16),V(SX[2]-2.5,1.5,0)], [V(SX[2]-3,3,13),V(SX[2]-1.5,1.6,0)], [V(SX[2]+1,2.1,11.5),V(SX[2]+.5,1.5,0)]],
-      [[V(SX[3]-8,3.4,12),V(SX[3]-4,2.4,0)], [V(SX[3]-4.2,2.6,7),V(SX[3]-3,2,0)], [V(SX[3]+2,3.8,13),V(SX[3]+1,2,0)]],
-      [[V(SX[4]+.6,2.6,5.4),V(SX[4],2.4,0)], [V(SX[4]-1.2,2.8,7.8),V(SX[4],2.4,0)], [V(SX[4],3.4,12.5),V(SX[4],2.3,0)]],
-      [[V(SX[4]+10,3.2,15),V(APPX-4,1.8,0)], [V(APPX-9.5,5.4,18),V(APPX-.8,2.2,0)], [V(APPX-7.5,4.6,16),V(APPX-.6,2.6,0)]]];
+      [[V(SX[2]-7,6.6,21),V(SX[2]-2.5,.9,1.5)], [V(SX[2]-3,6.6,20.5),V(SX[2]-1.2,.6,2)], [V(SX[2]+1,7.2,19.5),V(SX[2]+.4,.3,2.2)]],
+      [[V(SX[3]-13,3.2,10),V(SX[3]-8.4,1.5,-1.6)], [V(SX[3]-4.6,2.7,7.6),V(SX[3]-3,2,0)], [V(SX[3]+2,3.8,13),V(SX[3]+1,2,0)]],
+      [[V(SX[4]-5.5,4.4,18.5),V(SX[4]-1,2.5,1)], [V(SX[4]-1.5,4.8,17.5),V(SX[4]+.3,2.3,1.5)], [V(SX[4]+3,4,16),V(SX[4]+.8,1.9,2)]],
+      [[V(SX[5]-7,3,13),V(SX[5]-2.6,2,-.8)], [V(SX[5]-3,3.2,14.5),V(SX[5]-1,1.9,-.8)], [V(SX[5]+2.5,3,13.5),V(SX[5]+.5,1.6,0)]],
+      [[V(SX[6]+1.6,CY+.6,12),V(SX[6],CY,0)], [V(SX[6]-2,CY+.9,13),V(SX[6],CY-.2,0)], [V(SX[6],CY+1.8,17),V(SX[6],CY-.4,0)]],
+      // Open: the camera flies into the globe (its glass clears as the camera nears it), among the checks, and on
+      // out to the simulator
+      [[V(SX[6]+.2,CY+.15,.7),V(SX[6]+10,CY-1,2)], [V(APPX-9.5,5.4,18),V(APPX-.8,2.2,0)], [V(APPX-7.5,4.6,16),V(APPX-.6,2.6,0)]]];
     const KEYS=[]; REST.forEach((r,i)=> r.forEach((k,j)=> KEYS.push({P:2*i+[.18,.5,.82][j], p:k[0], l:k[1], scene:i})));
     const COLD=[V(-3.6,1.95,6.2),V(-5.1,2.3,0)];   // the cold open: close on the peak, in the dark
     const cr=(p0,p1,p2,p3,u,out)=>{ const u2=u*u, u3=u2*u;
@@ -638,16 +981,19 @@ export function start(PK){
     const FR={sim:[V(APPX-7.5,4.6,16),V(APPX-.6,2.6,0)], cmp:[V(APPX-9.5,6.2,17),V(APPX-.8,1.5,0.4)], ls:[V(APPX-3.6,2.4,19),V(APPX+.6,-2.1,0)],
       cs:[V(APPX+1.5,3.4,19),V(APPX+1,-2.2,0)], pr:[V(APPX-2.5,2.2,24),V(APPX+.4,-2.8,0)]};
     FR.lesson=FR.fit=FR.win=FR.ls;
-    // a phone in portrait sees a narrow slice: the camera stands back so the whole ribbon shows
-    const PH=[V(0,3.4,42),V(0,-3.6,0)], PHA=[V(APPX,3.4,42),V(APPX,-3.6,0)];
+    // a phone in portrait sees a narrow slice: the camera stands back so the whole object shows (the ribbon, the figure,
+    // the vials), easing from the ribbon to the figure; the scenes between keep their SVG frames
+    const PH=[V(0,3.4,42),V(0,-3.6,0)], PHT=[V(FX,6.4,25),V(FX,-2.2,1.2)], PHV=[V(SX[2],12,33),V(SX[2],-8,3)], PHA=[V(APPX,3.4,42),V(APPX,-3.6,0)];
+    const phoneAt=Pv=>{ const [a,b,u]=Pv<4.5 ? [PH,PHT,smooth((Pv-1)/1.2)] : [PHT,PHV,1]; return {p:a[0].clone().lerp(b[0],u), l:a[1].clone().lerp(b[1],u)}; };
     let mode="app", camFrom=null, camTo=null, camT0=0, camDur=900, scrollS=0, lastW=null;
     let Psm=null, Ptg=0;   // the scroll position, smoothed (inertia)
     const camNow={p:V(0,0,0), l:V(0,0,0)};
     function target(){
       const portrait=phoneQ.matches && innerWidth<innerHeight;
       if(mode==="intro"){
-        if(portrait) return {p:PH[0].clone(), l:PH[1].clone()};
-        const still=stillQ.matches, Pv=still ? restOf(Psm===null ? Ptg : Psm) : (Psm===null ? Ptg : Psm), t=pathAt(Pv);
+        const still=stillQ.matches, Pv=still ? restOf(Psm===null ? Ptg : Psm) : (Psm===null ? Ptg : Psm);
+        if(portrait) return phoneAt(Pv);
+        const t=pathAt(Pv);
         // the cold open: the camera starts close on the peak in the dark and pulls back to the first resting frame
         const e=coldOn() || coldT()<COLD_MS ? ease(clamp((coldT()-250)/(COLD_MS-400),0,1)) : 1;
         if(e<1 && !still){ t.p.lerpVectors(COLD[0], t.p, e); t.l.lerpVectors(COLD[1], t.l, e); }
@@ -690,40 +1036,83 @@ export function start(PK){
       const max=Math.max(1, D.scrollHeight-innerHeight), start=w.inIntro ? 0 : (D.classList.contains("intro-on") ? intro.offsetTop+intro.offsetHeight : 0);
       scrollS=clamp((scrollY-start)/Math.max(1,max-start),0,1);
       if(was!==mode && !quiet){ setVis(); moveTo(); return; }
-      if(mode==="intro") canvas.style.opacity=phoneQ.matches ? (w.g<1 ? 1 : 0) : "";
+      // phones: the 3D picture for the hero, the figure and the vials; the other scenes show their SVG frames
+      if(mode==="intro") canvas.style.opacity=phoneQ.matches ? ([0,1,3].includes(Math.floor(w.g)) ? 1 : 0) : "";
       else canvas.style.opacity="";
       setVis(); camFrom=null; frame();
     }
-    // the beats: what each scene's objects do at the smoothed scroll position
+    // the beats: what each scene's objects do at the smoothed scroll position. Every quantity is the engine's; the
+    // scroll only chooses the time
+    const lvl=(pts,T,t)=>{ const N=pts.length-1, f=clamp(t/T,0,1)*N, i=Math.min(N-1,Math.floor(f)), u=f-i; return pts[i].c*(1-u)+pts[i+1].c*u; };
+    const cum=(arr,T,t)=>{ const N=arr.length-1, f=clamp(t/T,0,1)*N, i=Math.min(N-1,Math.floor(f)), u=f-i; return arr[i]*(1-u)+arr[i+1]*u; };
+    const counters={};
+    const say=(id,v)=>{ if(counters[id]===v) return; counters[id]=v; const el=$(id); if(el) el.textContent=v; };
+    let vialKey="";
     function beats(Pv, now){
-      const u=i=> Pv-2*i;
-      if(groups.s1){ const r=groups.s1.getObjectByName("r"), dr=coldDraw(); r.userData.setDraw(dr);
-        const hd=groups.s1.getObjectByName("head"), n=r.userData.n, k=Math.min(n-1, Math.round((n-1)*dr));
+      const u=i=> Pv-2*i, still=stillQ.matches, time=still ? 0 : now/1000, G=k=> groups[k], on=(k,nm)=> G(k) && G(k).getObjectByName(nm);
+      if(G("s1")){ const r=on("s1","r"), dr=coldDraw(); r.userData.setDraw(dr);
+        const hd=on("s1","head"), n=r.userData.n, k=Math.min(n-1, Math.round((n-1)*dr));
         hd.userData.place(r.userData.xs[k], r.userData.ys[k], 0, dr<1 ? 1 : Math.max(0, 1-(coldT()-2700)/900)*(tone==="light" ? 0 : 1));
-        const w1=groups.s1.getObjectByName("win"); if(w1) w1.userData.rise(stillQ.matches ? 1 : D.classList.contains("intro-on") ? band(u(0),0.28,0.56) : 1); }
-      if(groups.s3){ const r=groups.s3.getObjectByName("r"), one=groups.s3.getObjectByName("one"), U=u(2);
+        // the capsule holds what is left of the dose, e^(−ka·t), at the time drawn; its particles reach the ribbon
+        const tH=dr*sc.T1; on("s1","cap").userData.set(still ? 0 : Math.exp(-sc.p1.ka*tH)); on("s1","abs").material.uniforms.uT.value=still ? 1e3 : tH;
+        const w1=on("s1","win"); if(w1) w1.userData.rise(still ? 1 : D.classList.contains("intro-on") ? band(u(0),0.28,0.56) : 1); }
+      if(G("s2")){ const U=u(1), t=still ? sc.tmax1 : sc.T1*band(U,.02,.94);
+        // the figure's level is C(t) and its capsule e^(−ka·t); the hero's ribbon marks the same moment
+        on("s2","fig").userData.set(lvl(sc.c1, sc.T1, t), Math.exp(-sc.p1.ka*t));
+        on("s1","cur").userData.at(on("s1","r"), t, U>-.4 && U<1.4); }
+      if(G("s3")){ const r=on("s3","r"), one=on("s3","one"), U=u(2);
         // one dose (to 8 h), a second stacking on what is left (to 16 h), then the climb to steady state (to 48 h)
-        const tEnd=stillQ.matches ? sc.T2 : U<.36 ? lerp(0.5, 8, band(U,-0.3,.3)) : U<.66 ? lerp(8, 16, band(U,.36,.62)) : lerp(16, sc.T2, band(U,.66,1));
+        const tEnd=still ? sc.T2 : U<.36 ? lerp(0.5, 8, band(U,-0.3,.3)) : U<.66 ? lerp(8, 16, band(U,.36,.62)) : lerp(16, sc.T2, band(U,.66,1));
         const dr=tEnd/sc.T2; r.userData.setDraw(dr);
         one.visible=U>.3 && U<1.2; one.userData.setDraw(1);
-        const n=r.userData.n, k=Math.min(n-1, Math.round((n-1)*dr)), hd=groups.s3.getObjectByName("head");
+        const n=r.userData.n, k=Math.min(n-1, Math.round((n-1)*dr)), hd=on("s3","head");
         hd.userData.place(r.userData.xs[k], r.userData.ys[k], 0, dr<.995 && tone!=="light" ? 1 : 0);
-        groups.s3.getObjectByName("rings").children.forEach(m=>{ const a=clamp((tEnd-m.userData.t)/3,0,1), s=a>0 && a<1 ? 1+a*2.2 : 1; m.scale.set(s,s,s); m.material.opacity=a<=0 ? .2 : a<1 ? 1-.7*a : .9; }); }
-      if(groups.s4 && popPts){ const U=u(3), mt=popPts.material.uniforms;
-        mt.uReveal.value=stillQ.matches ? 1 : band(U,-0.2,.5)*1.04; mt.uCond.value=stillQ.matches ? 1 : band(U,.55,.95);
-        const sheet=groups.s4.getObjectByName("band"); sheet.material.opacity=.16*mt.uCond.value;
-        groups.s4.getObjectByName("med").userData.setDraw(stillQ.matches ? 1 : band(U,.5,.9)); sortPop(now); }
-      if(groups.s5){ const U=u(4), lg=stillQ.matches ? 1 : band(U,.32,.62), sep=stillQ.matches ? 1 : band(U,.68,.95);
-        ["r","a","b"].forEach(nm=>{ const r=groups.s5.getObjectByName(nm), L=r.userData.lin, G=r.userData.lg, ys=new Float32Array(L.length);
-          for(let i=0;i<L.length;i++) ys[i]=lerp(L[i], G[i], lg); if(r.userData.lastLg!==lg){ r.userData.writeY(ys); r.userData.lastLg=lg; } });
-        groups.s5.getObjectByName("a").position.z=1.5*sep; groups.s5.getObjectByName("b").position.z=-1.5*sep; }
-      if(groups.s6){ const U=u(5), k=stillQ.matches ? 1 : band(U,-0.1,.62); if(Math.abs(k-k6)>.004){ k6=k; light6(); } groups.s6.rotation.y=(stillQ.matches ? .3 : U*.9); }
+        on("s3","rings").children.forEach(m=>{ const a=clamp((tEnd-m.userData.t)/3,0,1), s=a>0 && a<1 ? 1+a*2.2 : 1; m.scale.set(s,s,s); m.material.opacity=a<=0 ? .2 : a<1 ? 1-.7*a : .9; });
+        // each dose's capsule dissolves from its own dose time, e^(−ka·(t − t_dose))
+        on("s3","caps").children.forEach(c=> c.userData.set(tEnd<c.userData.t ? 1 : Math.exp(-sc.p2.ka*(tEnd-c.userData.t)))); }
+      if(G("s4")){ const U=u(3), rv=still ? 1 : band(U,-0.2,.5)*1.04, cond=still ? 1 : band(U,.55,.95), tv=still ? sc.tv : lerp(0, sc.tv, band(U,-.2,.45));
+        if(popPts){ const mt=popPts.material.uniforms; mt.uReveal.value=rv; mt.uCond.value=cond;
+          on("s4","band").material.opacity=.16*cond; on("s4","med").userData.setDraw(still ? 1 : band(U,.5,.9)); sortPop(now);
+          const tp=on("s4","tplane"); if(tp){ tp.position.x=X(tv,24); tp.visible=tv>.05; } }
+        // each vial holds its patient's level at time tv (4 hours, once there), then they sort by it
+        const key=[rv.toFixed(3), tv.toFixed(3), cond.toFixed(3), tone].join();
+        if(key!==vialKey){ vialKey=key; const N=sc.pop[0].length-1, f=tv/24*N, i=Math.min(N-1,Math.floor(f)), w=f-i;
+          on("s4","vials").userData.set(rv, j=> tv>=sc.tv-1e-9 ? sc.lv[j] : sc.pop[j][i].c*(1-w)+sc.pop[j][i+1].c*w, cond, tone); } }
+      if(G("s5")){ const U=u(4), lg=still ? 1 : band(U,.32,.62), sep=still ? 1 : band(U,.68,.95);
+        ["r","a","b"].forEach(nm=>{ const r=on("s5",nm), L=r.userData.lin, Gq=r.userData.lg, ys=new Float32Array(L.length);
+          for(let i=0;i<L.length;i++) ys[i]=lerp(L[i], Gq[i], lg); if(r.userData.lastLg!==lg){ r.userData.writeY(ys); r.userData.lastLg=lg; } });
+        on("s5","a").position.z=1.5*sep; on("s5","b").position.z=-1.5*sep;
+        // the chambers hold A₁(t) and A₂(t) as shares of the dose; the tube carries k₁₂·A₁ out and k₂₁·A₂ back
+        const t=still ? 2 : sc.T4*Math.pow(band(U,-.15,.95),2), A=sc.amt4(t), p=sc.p4, mx=p.k12*p.D;
+        on("s5","ch").userData.set(A.a1/p.D, A.a2/p.D, p.k12*A.a1/mx, p.k21*A.a2/mx, time);
+        on("s5","cur").userData.at(on("s5","r"), t, U>-.3 && U<1.3); }
+      if(G("s6")){ const U=u(5), tA=still ? sc.T6 : sc.T6*band(U,-.15,.4), tB=still ? sc.T6 : sc.T6*band(U,.45,.9);
+        const ra=on("s6","r30"), rg=on("s6","r30g"), rb=on("s6","r3h"), second=still || U>=.45;
+        ra.visible=!second; rg.visible=second; ra.userData.setDraw(tA/sc.T6); rg.userData.setDraw(1); rb.visible=tB>.01; rb.userData.setDraw(tB/sc.T6);
+        const r=second ? rb : ra, tt=second ? tB : tA, n=r.userData.n, k=Math.min(n-1, Math.round((n-1)*tt/sc.T6));
+        on("s6","head").userData.place(r.userData.xs[k], r.userData.ys[k], r.userData.z, tt>.01 && tt<sc.T6-.01 && tone!=="light" ? 1 : 0);
+        // the share of the interval so far with the unbound level above the MIC: each dish dims by it, and it is counted
+        const fa=cum(sc.ab6[0], sc.T6, tA)/sc.T6, fb=cum(sc.ab6[1], sc.T6, tB)/sc.T6;
+        on("s6","dishA").userData.glow(1-fa); on("s6","dishB").userData.glow(1-fb);
+        say("ftA", String(Math.round(100*fa))); say("ftB", String(Math.round(100*fb))); }
+      if(G("s7") && on("s7","r")){ const U=u(6), span=sc.T7-HD_T0, r=sc.row7;
+        const t=still ? span : U<.34 ? lerp(0, r.start-HD_T0, band(U,-.2,.32)) : U<.67 ? lerp(r.start-HD_T0, r.end-HD_T0, band(U,.36,.64)) : lerp(r.end-HD_T0, span, band(U,.68,.98)), ta=t+HD_T0;
+        const rb=on("s7","r"); rb.userData.setDraw(t/span); on("s7","cur").userData.at(rb, t, t>.02 && t<span-.02);
+        // during the session the dialyzer runs at the removal rate CLd·C(t) (relative to its start); after it, the rebound
+        const run=ta>=r.start && ta<=r.end ? lvl(sc.c7, sc.T7, ta)/r.pre : 0; on("s7","dz").userData.set(run, time);
+        const tr=r.end+r.rebound.after, reb=clamp((ta-tr)/1.2+1,0,1); [on("s7","reb"), on("s7","drop")].forEach(m=>{ m.visible=reb>0; });
+        on("s7","reb").scale.setScalar(Math.max(.001,reb));
+        say("hdRm", String(Math.round(sc.rm7(ta)))); }
+      if(G("s8")){ const U=u(7), k=still ? 1 : band(U,-0.1,.62); if(Math.abs(k-k6)>.004){ k6=k; light6(); }
+        const a=still ? .3 : U*.9; on("s8","core").rotation.y=a; on("s8","ins").userData.mer.rotation.y=a;
+        const gl=on("s8","globe"), dist=camera.position.distanceTo(GLOBE_C), base=full ? 1 : (tone==="light" ? .26 : .17);
+        gl.material.opacity=base*(.06+.94*smooth((dist-3.2)/3)); gl.visible=gl.material.opacity>.01; }
     }
     function setVis(){
       const intro=mode==="intro";
-      ["s1","s3","s4","s5","s6","strand"].forEach(k=>{ if(groups[k]) groups[k].visible=intro; });
+      SCENE_GROUPS.forEach(k=>{ if(groups[k]) groups[k].visible=intro; });
       // the app's scenario appears as the sequence reaches it ("Open"), and stays
-      if(groups.live) groups.live.visible=!intro || (lastW && lastW.P>12.4);
+      if(groups.live) groups.live.visible=!intro || (lastW && lastW.P>16.4);
       shafts.visible=intro && !phoneQ.matches;
     }
 
@@ -895,7 +1284,7 @@ export function start(PK){
       intro:()=>{ buildIntro(); },
       retheme:()=>{ K=tokensOf(D); Object.keys(mats).forEach(k=>{ Object.values(mats[k]).forEach(m=> m && m.dispose && m.dispose()); delete mats[k]; });
         tone=""; disposeGroup(groups.live); delete groups.live; if(D.classList.contains("intro-on")) buildIntro(); setTone(toneAt(lastW||where())); setLive(); },
-      ready:()=> (renderer.compileAsync ? renderer.compileAsync(scene, camera).catch(()=>{}) : Promise.resolve()),
+      ready:()=>{ const r=precompile(); r.then(otherTone); return r; },
       dispose:()=>{ Object.values(groups).forEach(disposeGroup); if(rt) Object.values(rt).forEach(t=> t && t.dispose && t.dispose()); Object.values(envs).forEach(t=>t.dispose()); pmrem.dispose(); renderer.dispose(); host3d.remove(); }
     };
   }

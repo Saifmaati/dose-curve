@@ -10,11 +10,11 @@
 
 ![The opening screen: the word DoseCurve split across the screen, with the default curve as a 3D ribbon drawn from the model passing between the halves, and its Cmax, AUC and time in the window](docs/img/opening.png)
 
-Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. The site's address opens on a short scrolling introduction on every visit (back from the app returns to it); `#app` and any shared link go straight to what they name. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
+Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. The site's address opens on a short scrolling introduction on every visit (back from the app returns to it): nine scenes, each with an object moved only by the engine's numbers (a capsule dissolving at its absorption rate, a glass figure filled to the concentration, 200 vials, two compartments as chambers, culture dishes against an MIC, a dialyzer and its rebound, the validation checks in a glass globe). `#app` and any shared link go straight to what they name. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
 
 | A lesson, on paper | 200 virtual patients around their median |
 | --- | --- |
-| ![A lesson's page: its title as a giant headline with the lesson's curve crossing it, over the lesson bar and the controls](docs/img/lesson-paper.png) | ![The "Learn" screen of the introduction: 200 graphite curves from the population mode drawing in to their median](docs/img/opening-learn.png) |
+| ![A lesson's page: its title as a giant headline with the lesson's curve crossing it, over the lesson bar and the controls](docs/img/lesson-paper.png) | ![The "Learn" screen of the introduction: 200 glass vials, one per virtual patient from the population mode, sorted by their level at 4 hours, with the middle 90% lit and the median in bronze, under the patients' curves](docs/img/opening-learn.png) |
 
 ![A saturable-elimination lesson: phenytoin at 300 and 400 mg a day](docs/img/saturable-lesson.png)
 
@@ -162,7 +162,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.10.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.11.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 
