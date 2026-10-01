@@ -303,10 +303,10 @@
   .grid>*{min-width:0}
   /* glass over the stage: the surface at 78% (dark) or 84% (light) and a blur. At these opacities every text colour
      keeps AA contrast even over a stage far brighter than a blurred ribbon (docs/DESIGN.md, section 3) */
-  .panel,.foot{background:color-mix(in srgb,var(--c-surface) var(--glass),transparent);-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
+  .panel{background:color-mix(in srgb,var(--c-surface) var(--glass),transparent);-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
     border:1px solid var(--c-line);border-radius:var(--r-3);box-shadow:var(--shadow-glass);position:relative}
-  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .panel,.foot{background:var(--c-surface)} }
-  @media (max-width:760px){ .panel,.foot{-webkit-backdrop-filter:none;backdrop-filter:none;--glass:94%} }   /* phones: no blur to pay for */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .panel{background:var(--c-surface)} }
+  @media (max-width:760px){ .panel{-webkit-backdrop-filter:none;backdrop-filter:none;--glass:94%} }   /* phones: no blur to pay for */
   .panel-pad{padding:20px 20px 24px}
   .controls{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;scrollbar-width:thin;scrollbar-color:var(--c-line-strong) transparent}
 
@@ -976,18 +976,16 @@
   .toast.show{opacity:1;transform:translate(-50%,0);transition-duration:var(--t-slow);transition-timing-function:var(--ease)}
 
   /* footer */
-  .foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px 48px;padding:32px;margin:8px 0 40px;
-    color:var(--c-muted);font-size:13.5px;line-height:1.6}
-  .foot .disc{grid-column:1 / -1;display:flex;gap:12px;align-items:flex-start;max-width:54em;color:var(--c-text-2);font-size:14px}
-  .foot .disc b{color:var(--c-text)}
-  .foot .privacy{margin:0}
-  .foot .privacy b{color:var(--c-text-2)}
-  .foot .eq{font-family:var(--f-mono);font-size:12.5px;line-height:1.8;color:var(--c-muted);overflow-wrap:anywhere}
-  .foot p.eq{font-family:var(--f-sans);font-size:13.5px;line-height:1.6}
-  .foot-links{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding-top:20px;border-top:1px solid var(--c-line);font-size:14px}
-  .foot-links a,.foot-keys{color:var(--c-text-2);font-size:14px;text-decoration:underline;text-decoration-color:var(--c-line-strong);text-underline-offset:3px}
-  .foot-links a:hover{color:var(--c-text);text-decoration-color:currentColor}
-  .foot-links span{margin-left:auto;font-family:var(--f-mono);font-size:12.5px;color:var(--c-muted)}
+  /* the footer: four quiet lines on the stage (the mark, the links, the disclaimer, the version) */
+  .foot{display:grid;justify-items:center;gap:14px;padding:72px 16px 120px;margin:0;text-align:center;color:var(--c-muted);font-size:13.5px;line-height:1.6}
+  .foot p{margin:0}
+  .foot-mark{display:flex;align-items:center;gap:8px;color:var(--c-text);font-weight:600;font-size:16px;letter-spacing:-.01em}
+  .foot-mark svg{color:var(--c-accent)} .foot-mark em{font-style:normal;font-weight:400;color:var(--c-text-2)}
+  .foot-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;font-size:14px}
+  .foot-links a{color:var(--c-text-2);text-decoration:none;border-bottom:1px solid var(--c-line-strong);padding-bottom:1px}
+  .foot-links a:hover{color:var(--c-text);border-bottom-color:currentColor}
+  .foot-disc{color:var(--c-text-2)}
+  .foot-ver{font-family:var(--f-mono);font-size:12.5px}
 
   /* layout steps */
   @media (max-width:1100px){ .ro-grid{grid-template-columns:repeat(4,minmax(0,1fr))} .ro-v{font-size:19px} }
@@ -998,14 +996,12 @@
     .learn-grid,.ls-grid,.gloss-list{grid-template-columns:1fr}
     .ss-stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px}
     .ssw-grid{grid-template-columns:1fr}
-    .foot{grid-template-columns:1fr}
   }
   @media (max-width:640px){
     .ro-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .ro-v{font-size:20px}
     .sc-cards{grid-template-columns:1fr}
     .lock{margin-left:0}
-    .foot-links span{margin-left:0;width:100%}
   }
   @media (max-width:480px){
     :root{--gut:14px}
@@ -1068,11 +1064,11 @@
     @page{margin:12mm}
     body{background:#fff !important;font-size:10.5pt}
     .stage,.stage-3d,.pill,.masthead,.intro,.top,.hero,.embed-bar,aside.controls,.tabbar,#sharedPill,.cmpbar,#lessonBar,#fitBar,#winBar,#quickStart,#evStripWrap,#insp,#cmpEmpty,.learn,#roHint,.rm-x,
-    .foot-links,.foot .eq,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
+    .foot-links,.foot-mark,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
     .wrap{max-width:none;padding:0}
     .grid{display:block}
     .panel{background:#fff !important;box-shadow:none !important;border:0 !important}
-    .foot{display:block;border:0;padding:12px 0 0;background:#fff;box-shadow:none}
+    .foot{display:block;border:0;padding:12px 0 0;background:#fff;box-shadow:none;text-align:left}
     .print-head{display:block;margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid #c9cfdf;font-size:10.5pt;color:#121720;line-height:1.5}
     .print-head b{font-size:13pt;font-weight:600}
     .print-head .ph-meta{font-family:var(--f-mono);font-size:8.5pt;color:#454d68;word-break:break-all}
@@ -1786,31 +1782,17 @@
     </div>
 
     <footer class="foot">
-      <div class="disc">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div><b>Educational simulation.</b> DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</div>
-      </div>
-      <p class="privacy"><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student's name as an identifier.
-        <br><b>Effects.</b> The fonts come from this site. With Effects on, the 3D stage loads Three.js, a pinned and hash-checked copy, from cdnjs.cloudflare.com; that request is the only one to another site, and it carries nothing you enter. Turn Effects off in the top bar and it is never made.
-        <br><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
-      <div class="eq">
-        Oral:&nbsp; C(t) = (F·D·kₐ)/(V·(kₐ−kₑ)) · (e^(−kₑt) − e^(−kₐt))<br>IV bolus:&nbsp; C(t) = (D/V)·e^(−kₑt)<br>
-        IV infusion (rate R₀ = D/T_inf):&nbsp; C(t) = R₀/(kₑ·V)·(1−e^(−kₑt)) during infusion, then first-order decay<br>kₑ = ln2/t½ and CL = kₑ·V, with superposition over every dose given (a loading dose scales dose 1; a missed dose is left out; a custom schedule adds each dose at its own time, amount and route).<br>
-        Two compartments:&nbsp; C(t) = A·e^(−αt) + B·e^(−βt) after an IV bolus, the central volume exchanging with a peripheral one at k12 and k21<br>
-        Effect (PK/PD):&nbsp; E = E₀ + Emax·Cⁿ/(EC50ⁿ + Cⁿ), driven by plasma or, with a delay, by an effect-site level.
-      </div>
-      <p class="eq">The model is checked by an automated test suite (tests/): closed-form results, the clinical and saturable models, regimen edge cases, the share-link format, every quantitative claim the lessons make, every practice answer and every case. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see Validation.</p>
+      <p class="foot-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Dose<em>Curve</em></span></p>
       <nav class="foot-links" aria-label="Project links">
-        <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source code on GitHub</a>
-        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <a href="methods.html">Model and methods</a>
         <a href="validation.html">Validation</a>
         <a href="educators.html">For educators</a>
-        <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
-        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <a href="https://doi.org/10.5281/zenodo.23082408" target="_blank" rel="noopener">Cite: doi:10.5281/zenodo.23082408</a>
-        <span>Version 2.9.0, updated 1 October 2026</span>
+        <a href="https://github.com/Saifmaati/dose-curve/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a>
+        <a href="https://github.com/Saifmaati/dose-curve" target="_blank" rel="noopener">Source</a>
+        <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
+      <p class="foot-disc">Educational model, not for clinical dosing.</p>
+      <p class="foot-ver"><span>Version 2.9.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -5208,7 +5190,7 @@
   byId("printBtn").addEventListener("click",()=>{ fillPrintHead(); window.print(); });
   // The keyboard shortcuts, in a dialog opened from under the chart or the footer; focus goes back where it came from.
   let keysOpener=null;
-  ["keysBtn","keysFoot"].forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
+  ["keysBtn","keysFoot"].filter(id=> byId(id)).forEach(id=> byId(id).addEventListener("click",()=>{ keysOpener=byId(id); pause(); byId("keysDlg").showModal(); byId("keysClose").focus(); }));
   byId("keysClose").addEventListener("click",()=> byId("keysDlg").close());
   // Single-key shortcuts can be switched off (WCAG 2.1.4); they never fire while typing or in a dialog.
   const KEYS_KEY="dosecurve.keys";
@@ -5717,7 +5699,7 @@
     gc.async=true; gc.src="https://gc.zgo.at/count.js"; gc.dataset.goatcounter=`https://${ANALYTICS_SITE_ID}.goatcounter.com/count`;
     gc.onload=()=>{ try{ window.goatcounter.count({path:location.pathname}); }catch(e){ /* counting is optional */ } };
     document.head.appendChild(gc);
-    byId("anaState").textContent="on";
+    const as=byId("anaState"); if(as) as.textContent="on";   // the statement is on methods.html
   }
 
   // Offline use: after one visit a service worker (sw.js) keeps a copy of the app, so it opens without a

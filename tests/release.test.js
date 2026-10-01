@@ -56,7 +56,8 @@ test("visit counting is off by default, sends only the page path, and is never c
   assert.match(page, /const ANALYTICS_SITE_ID="";/);
   assert.match(page, /count\(\{path:location\.pathname\}\)/, "only the path: never the # part with a scenario's settings");
   assert.ok(!/<script[^>]+gc\.zgo\.at/.test(page), "no counting script in the markup");
-  assert.match(page, /Visit counting: <span id="anaState">off<\/span>/);
+  assert.match(read("methods.html"), /Visit counting: <span id="anaState">off<\/span>/, "the statement, on Model and methods (2.10)");
+  assert.match(read("methods.html"), /const ANALYTICS_SITE_ID="";/, "with the same switch, off");
   assert.ok(!read("sw.js").includes("zgo.at") && !read("sw.js").includes("goatcounter"), "the service worker leaves it alone");
 });
 
@@ -101,10 +102,27 @@ test("the initial script payload stays within the plan's budget: +25% over the P
   assert.ok(total<=Math.floor(318996*1.25), `${total} bytes (${(100*total/318996-100).toFixed(1)}% over the baseline)`);
 });
 
-test("the DOI is the same in the README, CITATION.cff and the app's footer (2.10)", ()=>{
+test("the DOI is the same in the README, CITATION.cff and Model and methods (2.10)", ()=>{
   const DOI="10.5281/zenodo.23082408", cff=read("CITATION.cff"), md=read("README.md"), page=read("index.html");
   assert.match(cff, new RegExp("^doi: "+DOI.replace(/\./g,"\\.")+"$", "m"));
   assert.ok(md.includes(`https://zenodo.org/badge/DOI/${DOI}.svg`) && md.includes(`doi:${DOI}`), "the README's badge and citation");
-  assert.ok(page.includes(`href="https://doi.org/${DOI}"`), "the footer links it");
+  assert.ok(read("methods.html").includes(`href="https://doi.org/${DOI}"`), "Model and methods links it");
   assert.ok(!/one-compartment kinetics/.test(cff) && !/one-compartment kinetics/.test(read(".zenodo.json")), "the abstracts describe the current model");
+});
+
+test("the footer is four quiet lines: the mark, six links, the disclaimer, the version (2.10)", ()=>{
+  const page=read("index.html"), foot=page.slice(page.indexOf('<footer class="foot">'), page.indexOf("</footer>"));
+  const lines=[...foot.matchAll(/^      <(p|nav) class="(foot-[a-z]+)"/gm)].map(m=>m[2]);
+  assert.deepEqual(lines, ["foot-mark","foot-links","foot-disc","foot-ver"]);
+  const links=[...foot.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map(m=>m[2]);
+  assert.deepEqual(links, ["Model and methods","Validation","For educators","Teaching guide","Source","Feedback"]);
+  assert.match(foot, /href="methods\.html"/); assert.match(foot, /issues\/new\?template=feedback\.md/);
+  assert.match(foot, /<p class="foot-disc">Educational model, not for clinical dosing\.<\/p>/);
+  assert.match(foot, new RegExp(`<span>Version ${PK.VERSION_NAME||"[0-9.]+"}, updated [0-9]+ [A-Z][a-z]+ [0-9]{4}</span>`));
+  // the long-form text lives on Model and methods, linked from the validation page too
+  const m=read("methods.html");
+  ["Educational simulation.","<b>Privacy.</b>","<b>Effects.</b>","Visit counting:","an independent solver on","<math"].forEach(x=> assert.ok(m.includes(x), x));
+  assert.ok(!/<b>Privacy\.<\/b>|class="eq"/.test(foot), "not in the footer any more");
+  assert.match(read("validation.html"), /href="methods\.html">Model and methods</);
+  assert.ok(read("sw.js").includes('"methods.html"'), "kept for offline use");
 });
