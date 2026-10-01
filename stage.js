@@ -12,7 +12,7 @@
 
 const D=document.documentElement, $=id=>document.getElementById(id), NS="http://www.w3.org/2000/svg";
 const phoneQ=matchMedia("(max-width:760px)"), stillQ=matchMedia("(prefers-reduced-motion: reduce)");
-const REF_SRC="validation/reference-results.json?v=fee9fced8e";   // stamped by content hash, like the page's files
+const REF_SRC="validation/reference-results.json?v=3e5c9bbc7c";   // stamped by content hash, like the page's files
 const clamp=(v,a,b)=> Math.min(b, Math.max(a, v)), lerp=(a,b,u)=> a+(b-a)*u, ease=u=> u<.5 ? 4*u*u*u : 1-Math.pow(-2*u+2,3)/2;
 const smooth=u=>{ u=clamp(u,0,1); return u*u*(3-2*u); };
 const TOKENS="accent band mec mtc mic b ghost text muted line page surface".split(" ");

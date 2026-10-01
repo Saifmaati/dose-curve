@@ -89,3 +89,4 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-10-01 01:45 | 2.4.0 | When to sample (pk-tdm.js), lesson "Which weight for CrCl" (35 lessons), case of the day, ARCHITECTURE.md, CONTRIBUTING.md, tools/stamp.js, print fixes | done | (this release) |
 | 2026-10-01 02:13 | 2.5.0 | Layout shift fixed on lesson links (up to 0.23) and #cases (0.63); all 107 link kinds CLS 0 at 390 and 1440; What changed sentences in pk-explain.js (script +24.7% to +18.0%) | done | (this release) |
 | 2026-10-01 02:22 | 2.6.0 | Population band on the effect chart (direct, delayed, indirect), spread sentence, faster indirect-response solver | done | (this release) |
+| 2026-10-01 02:53 | 2.7.0 | Hemodialysis with two compartments (exact), the rebound, lesson Rebound after dialysis (36 lessons), links v12, 3 SciPy dialysis scenarios (718 comparisons), What changed AUC sentences with dialysis | done | (this release) |

@@ -337,8 +337,8 @@ test("malformed, truncated and oversized links degrade safely", ()=>{
   assert.equal(PK.decodeLink("v=1&m=cmp&a=D:40").a.D, 40, "a truncated value is still clamped into range");
   const st=PK.decodeLink("v=1&m=cmp&na="+"x".repeat(200000));
   assert.equal(st.nameA.length, 40);
-  assert.equal(PK.decodeLink("v=12&s=D:400").s.D, 400, "newer versions are read best-effort");
-  assert.equal(PK.decodeLink("v=12&s=D:400").newer, true, "and flagged");
+  assert.equal(PK.decodeLink("v=13&s=D:400").s.D, 400, "newer versions are read best-effort");
+  assert.equal(PK.decodeLink("v=13&s=D:400").newer, true, "and flagged");
   [1,2,3].forEach(v=> assert.equal(PK.decodeLink(`v=${v}&s=D:400`).newer, false, `v${v} is current`));
 });
 

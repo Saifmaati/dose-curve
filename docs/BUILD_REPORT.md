@@ -454,3 +454,15 @@ Lighthouse on mobile: root 99, a lesson link 90, `#cases` 97; accessibility 100,
 | Faster indirect responses; capped steps for bands | an indirect response; with population mode | `population.test.js` (within 0.05 points), bit-identical courses before and after |
 
 axe: no violations. 379 tests in 22 files.
+
+## 35. 2.7.0 (hemodialysis with two compartments; the rebound)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Exact two-compartment dialysis | Two compartments with Hemodialysis on | `hd.test.js` (equals the engine's two-compartment curve when no session falls in the window; mass balance; one-compartment limit), SciPy reference (3 new scenarios) |
+| The rebound in the session list; fall per session; clearance for a fall | the session list and the Fall per session readout | `hd.test.js` |
+| Lesson "Rebound after dialysis" | Lessons, PK fundamentals | `hd.test.js` (every number it states), the lessons' prediction and challenge checks |
+| Links v12 | a link with both | `hd.test.js` (v12; a v11 link opens with dialysis off) |
+| What changed: AUC sentences with dialysis | the rebound lesson | the lesson's own output (9% higher) |
+
+All 36 lesson links CLS 0 at 390 and 1440. 385 tests in 22 files.

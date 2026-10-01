@@ -20,18 +20,20 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   1. In the Simulator, press **Set baseline**. This freezes the current curve.
   2. Change one setting, such as the dose, the half-life or the route.
   3. The panel under the chart explains what moved and why. Its table gives the metrics before and after.
-- **Two regimens side by side.** The **Compare** tab has 18 one-click comparisons:
+- **Two regimens side by side.** The **Compare** tab has 28 one-click comparisons:
   - Once vs twice daily
   - Loading dose
   - Normal vs 50% clearance
-  - CrCl 73 vs 41 mL/min
+  - Vancomycin: one vs two compartments
   - Phenytoin 300 vs 400 mg/day
+  - CrCl 73 vs 41 mL/min
   - 50 kg vs 100 kg, same dose
   - IV bolus vs oral
   - Bolus vs infusion
   - Short vs long infusion
   - Infusion ± loading bolus
   - Continuous vs intermittent infusion
+  - Meropenem: 30-minute vs 3-hour infusion
   - On time vs missed dose
   - Potent vs less potent
   - Full vs partial agonist
@@ -42,6 +44,11 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   - Induction: first pass, by mouth
   - Liver blood flow halved (IV)
   - Evenly spaced vs bunched doses
+  - Fast vs slow response turnover
+  - No dialysis vs hemodialysis
+  - Dialysis: one vs two compartments
+  - Piperacillin: 30-minute vs 3-hour infusion
+  - Gentamicin: divided vs once daily
 
   **Vary only** locks every setting except one, so A and B can differ in exactly one respect.
 - **Show where a number comes from.** Select any readout under the chart (Cmax, tmax, half-life, clearance, AUC, peak, trough, accumulation…). It shows the formula worked through with the scenario's own numbers, and updates as you move the sliders.
@@ -68,13 +75,13 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (35)
+## Guided lessons (36)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Which weight for CrCl · Hemodialysis sessions · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Which weight for CrCl · Hemodialysis sessions · Rebound after dialysis · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
@@ -128,7 +135,7 @@ Under the readouts, **Sensitivity** moves each input 20% down and 20% up, one at
 
 ## Hemodialysis
 
-Under the patient, **Hemodialysis** adds sessions: the dialyzer's clearance, how long each session lasts, when the first starts and how often they repeat. While a session runs, the clearances add, so the level falls faster. The chart marks each session, and the panel lists, for each session in the window, the level as it starts and as it ends, the amount removed (the dialysis clearance times the area under the curve during the session) and the IV dose that would bring the level back to where the session found it. Regimens on dialysis have no single steady state, so those readouts give way to the clearance on and off dialysis and the fall per session. One compartment means there is no post-dialysis rebound, and the panel says so. The default dialysis clearance is a typical value, flagged unverified; the gentamicin case and the lesson set it from the gentamicin label's statement that an 8-hour session lowers the level by about 50%. A question that works well: why does the label give 1 to 1.7 mg/kg after each session when each session in the case removes only 15 to 18 mg?
+Under the patient, **Hemodialysis** adds sessions: the dialyzer's clearance, how long each session lasts, when the first starts and how often they repeat. While a session runs, the clearances add, so the level falls faster. The chart marks each session, and the panel lists, for each session in the window, the level as it starts and as it ends, the amount removed (the dialysis clearance times the area under the curve during the session) and the IV dose that would bring the level back to where the session found it. Regimens on dialysis have no single steady state, so those readouts give way to the clearance on and off dialysis and the fall per session. With one compartment there is no post-dialysis rebound. Switch **Drug parameters** to two compartments and the level rebounds after each session as drug returns from the tissues; the session list gives the rebound's height, timing and the share of the fall it gives back. A good question for students: why does a level drawn straight after a session underestimate what the patient has? The default dialysis clearance is a typical value, flagged unverified; the gentamicin case and the lesson set it from the gentamicin label's statement that an 8-hour session lowers the level by about 50%. A question that works well: why does the label give 1 to 1.7 mg/kg after each session when each session in the case removes only 15 to 18 mg?
 
 ## Effects that lag the level
 

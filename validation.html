@@ -191,8 +191,8 @@ if(window.dcDone!==undefined) word.textContent=window.dcDone ? "Validated" : "Ch
 if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:true});
 })();
 </script>
-<script src="pk-engine.js?v=091ea20094" defer></script>
-<script src="pk-hd.js?v=b96f5ee841" defer></script>
+<script src="pk-engine.js?v=577f71e3e9" defer></script>
+<script src="pk-hd.js?v=adbb8a2d82" defer></script>
 <script src="pk-idr.js?v=f6002874d2" defer></script>
 <script src="pk-bayes.js?v=21a1045af5" defer></script>
 <script>
@@ -203,7 +203,7 @@ document.addEventListener("DOMContentLoaded", function(){
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
   // every comparison's result, in order, for the sphere at the top of the page
   const mark=ok=>{ (window.dcChecks=window.dcChecks||[]).push(!!ok); return ok; };
-  fetch("validation/reference-results.json?v=fee9fced8e").then(r=>r.json()).then(async REF=>{
+  fetch("validation/reference-results.json?v=3e5c9bbc7c").then(r=>r.json()).then(async REF=>{
     window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};

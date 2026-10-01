@@ -144,7 +144,7 @@
          `Replacing only what the session removed, about ${nf(s.supplement,0)} mg, would bring the level back to ${nf(s.pre,2)} mg/L, not to a peak. After a session ${nf(100*s.post/m.peaks[m.peaks.length-1],0)}% of the peak before it is left, so the dose at the end of each session is a full dose that rebuilds the peak, not a top-up.`]};
      },
      wrong:[{reg:{D:200, tau:48}, hint:"perkgHigh"}, {reg:{D:60, tau:48}, hint:"perkgLow"}],
-     also:"His residual kidney function, the dialysis method (the label notes that the amount removed varies with it), when levels are drawn (gentamicin returning from the tissues after a session raises the level again; this model has no rebound), the severity of the infection, and hearing and balance, which aminoglycosides can damage, more so with renal impairment.",
+     also:"His residual kidney function, the dialysis method (the label notes that the amount removed varies with it), when levels are drawn (gentamicin returning from the tissues after a session raises the level again; this case's one-compartment model has no rebound), the severity of the infection, and hearing and balance, which aminoglycosides can damage, more so with renal impairment.",
      refs:["gent","cg"]},
 
     {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside, Hartford approach",

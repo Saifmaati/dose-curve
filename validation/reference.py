@@ -366,11 +366,15 @@ def hd_course(p, t_end):
     def on(t):
         return any(a <= t < b for a, b in ses)
 
-    def rhs(t, y, R, k_d):
-        ag, a, rem = y
-        return [-ka * ag, ka * ag + R - ke * a - k_d * a, k_d * a]
+    # with two compartments the dialyzer clears the central one, which exchanges with a peripheral one at k12, k21
+    two = p.get("cmt", 1) == 2
+    k12, k21 = (p["k12"], p["k21"]) if two else (0.0, 0.0)
 
-    y = np.array([0.0, 0.0, 0.0])
+    def rhs(t, y, R, k_d):
+        ag, a, rem, a2 = y
+        return [-ka * ag, ka * ag + R - ke * a - k_d * a - k12 * a + k21 * a2, k_d * a, k12 * a - k21 * a2]
+
+    y = np.array([0.0, 0.0, 0.0, 0.0])
     pieces = []
     for s0, s1 in zip(cuts[:-1], cuts[1:]):
         for t0, mg, r, d in ds:
@@ -405,6 +409,10 @@ def hd_matrix():
         ("loading dose and a missed dose", 120, dict(route="iv", dosing="repeated", D=300, tau=24, nDoses=5, loadMult=2, missed=3, V=25, thalf=30, hdcl=3, hdstart=20, hddur=4, hdevery=48)),
         ("vancomycin-like, reduced CrCl, short sessions", 168, dict(route="inf", dosing="single", D=1500, tinf=1.5, V=28, thalf=4.8, wt=75, pm="clinical", age=70, sex="F", scr=5, fe=0.83, hdcl=4, hdstart=12, hddur=3.5, hdevery=48)),
         ("a fast dialyzer next to a slow body", 48, dict(route="iv", dosing="single", D=800, V=50, thalf=60, hdcl=20, hdstart=1, hddur=8, hdevery=24)),
+        # two compartments (2.6): the level rebounds as drug returns from the tissues after each session
+        ("two compartments, IV bolus, rebound after a session", 48, dict(route="iv", dosing="single", D=1000, V=20, thalf=6, cmt=2, k12=0.8, k21=0.4, hdcl=8, hdstart=6, hddur=4, hdevery=48)),
+        ("two compartments, daily infusions, sessions every 48 h", 120, dict(route="inf", dosing="repeated", D=1000, tinf=1, tau=24, nDoses=5, V=28, thalf=30, cmt=2, k12=0.5, k21=0.25, hdcl=6, hdstart=20, hddur=4, hdevery=48)),
+        ("two compartments, oral, slow return from the tissues", 96, dict(route="oral", dosing="repeated", D=400, F=0.8, ka=1.2, tau=12, nDoses=8, V=30, thalf=12, cmt=2, k12=1.5, k21=0.2, hdcl=10, hdstart=10, hddur=5, hdevery=48)),
     ]
     return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
 
@@ -513,7 +521,7 @@ def main():
                  "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
         "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
                 "tolerance": {"rel": 0.0001, "t_h": 0.01}, "scenarios": idr},
-        "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 8 scenarios with a dialysis clearance switched on during sessions.",
+        "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 11 scenarios (3 of them two-compartment) with a dialysis clearance switched on during sessions.",
                "tolerance": {"rel": 0.0001}, "scenarios": hd},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:

@@ -95,7 +95,7 @@ test("dialysis takes away the steady state: the dose table is read off the curve
   assert.equal(PK.keqOf(S(Object.assign({}, p, {teq:2}))), 0);
 });
 
-test("links: dialysis needs v11 and round-trips; it applies to first-order one-compartment scenarios only", ()=>{
+test("links: dialysis needs v11 (v12 with two compartments) and round-trips; it applies to first-order scenarios", ()=>{
   const V=PK.VIEW_DEFAULTS, p=S({hd:1, hdcl:7.5, hdstart:30, hddur:5.5, hdevery:72}), link=PK.encodeLink({mode:"sim", s:p, view:V});
   assert.ok(link.startsWith("v=11&"), link);
   const back=PK.decodeLink(link).s;
@@ -103,7 +103,12 @@ test("links: dialysis needs v11 and round-trips; it applies to first-order one-c
   ["v=1&s=D:400", "v=10&s=idr:1"].forEach(h=> assert.equal(PK.decodeLink(h).s.hd, 0, h));
   const bad=PK.decodeLink("v=11&s=hd:2,hdcl:99,hddur:0,hdevery:1").s;
   assert.deepEqual([bad.hd, bad.hdcl, bad.hddur, bad.hdevery], [0, 20, 1, 12]);
-  assert.equal(PK.hdOn(S({hd:1, kin:"mm"})), false); assert.equal(PK.hdOn(S({hd:1, cmt:2})), false);
+  assert.equal(PK.hdOn(S({hd:1, kin:"mm"})), false); assert.equal(PK.hdOn(S({hd:1, cmt:2})), true);
+  // two compartments: a v12 link; before v12 dialysis did nothing with two compartments, so an older link opens without it
+  const two=S({hd:1, hdcl:6, cmt:2, k12:0.5, k21:0.3}), l2=PK.encodeLink({mode:"sim", s:two, view:V});
+  assert.ok(l2.startsWith("v=12&"), l2); assert.equal(PK.decodeLink(l2).s.hd, 1);
+  assert.equal(PK.decodeLink(l2.replace("v=12&","v=11&")).s.hd, 0, "a v11 link with both opens as it did");
+  assert.equal(PK.isRelevant("hd", S({cmt:2})), true);
   assert.equal(PK.isRelevant("hdcl", S({hd:1})), true); assert.equal(PK.isRelevant("hdcl", S({})), false);
   assert.equal(PK.isRelevant("teq", S({hd:1})), false);
 });
@@ -153,7 +158,8 @@ test("practice: the fall over a session is new in worksheet version 8", ()=>{
   const v7=PK.makeWorksheet({topic:"single", count:15, seed:5, v:7});
   assert.ok(v7.problems.every(x=>x.id!=="hdfall"), "a version-7 sheet doesn't change");
   const glossary=t=> PK.GLOSSARY.find(x=>x.term===t);
-  ["Dialysis clearance","Post-dialysis rebound"].forEach(t=> assert.ok(glossary(t) && glossary(t).lesson==="hd", t));
+  assert.ok(glossary("Dialysis clearance") && glossary("Dialysis clearance").lesson==="hd");
+  assert.ok(glossary("Post-dialysis rebound") && glossary("Post-dialysis rebound").lesson==="hdreb", "the rebound links to the lesson that shows it (2.6)");
 });
 
 test("other models with dialysis: population bands follow the sessions; the Bayesian estimate says it doesn't cover them; the worker is given the dialysis model", ()=>{
@@ -164,4 +170,66 @@ test("other models with dialysis: population bands follow the sessions; the Baye
   assert.equal(PK.bayes.applicable(S({pm:"clinical", hd:1})).ok, false);
   assert.match(fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8"), /postMessage\(\{engine:eng, hd:HD_SRC, idr:IDR_SRC\}\)/);
   assert.match(fs.readFileSync(path.join(__dirname,"..","pop-worker.js"),"utf8"), /importScripts\(m\.hd\)/);
+});
+
+/* ---------- two compartments (2.6) ---------- */
+const two=o=> S(Object.assign({hd:1, cmt:2, k12:0.6, k21:0.3, hdcl:6, hddur:4, hdevery:48}, o));
+test("two compartments: with every session outside the window, the dialysis solver gives the engine's own two-compartment curve", ()=>{
+  [{route:"iv", dosing:"single", D:800}, {route:"inf", dosing:"repeated", D:1000, tinf:1, tau:12, nDoses:6}, {route:"oral", dosing:"repeated", D:400, ka:1.2, tau:8, nDoses:9}].forEach(o=>{
+    const p=two(Object.assign({hdstart:500}, o)), q=S(Object.assign({}, p, {hd:0}));
+    for(let t=0.25;t<=72;t+=1.75){ const a=PK.conc(p,t), b=PK.conc(q,t); assert.ok(Math.abs(a-b)<=1e-9*Math.max(b,1e-9), `${JSON.stringify(o)} t=${t}: ${a} vs ${b}`); }
+  });
+});
+test("two compartments: mass balance, what was given is in the gut, the two compartments, cleared by the body or removed by the dialyzer", ()=>{
+  [{route:"iv", dosing:"single", D:1000, hdstart:6}, {route:"oral", dosing:"repeated", D:400, ka:1.2, tau:12, nDoses:8, hdstart:10, hdevery:24}, {route:"inf", dosing:"repeated", D:1000, tinf:2, tau:24, nDoses:5, hdstart:1}].forEach(o=>{
+    const p=two(o), k10=PK.keOf(p), F=PK.fOf(p), ev=PK.doseEvents(p);
+    [3, 9.5, 20, 47, 90].forEach(t=>{
+      const st=PK.hd.stateAt(p,t);
+      const given=ev.reduce((s,e)=> s+(e.t>t ? 0 : e.route==="inf" ? e.mg*Math.min(1,(t-e.t)/e.dur) : e.route==="oral" ? F*e.mg : e.mg), 0);
+      const accounted=st.g+st.a+st.q+k10*st.area+st.removed;
+      assert.ok(st.q>0, "drug in the tissues");
+      near(accounted, given, 1e-9*given, `${JSON.stringify(o)} t=${t}`);
+    });
+  });
+});
+test("two compartments: the level rebounds after a session; with one compartment it doesn't", ()=>{
+  const p=two({route:"iv", dosing:"single", D:1000, V:20, thalf:6, k12:0.8, k21:0.4, hdcl:8, hdstart:6}), rows=PK.hd.sessionTable(p,48);
+  const rb=rows[0].rebound;
+  assert.ok(rb && rb.level>rows[0].post && rb.after>0 && rb.share>0 && rb.share<1, JSON.stringify(rb));
+  near(PK.conc(p, rows[0].end+rb.after), rb.level, 1e-9*rb.level, "the rebound's level is on the curve");
+  assert.ok(PK.conc(p, rows[0].end+rb.after-0.05)<rb.level && PK.conc(p, rows[0].end+rb.after+0.05)<rb.level, "and it is the curve's peak");
+  const one=S({hd:1, route:"iv", dosing:"single", D:1000, V:20, thalf:6, hdcl:8, hdstart:6, hddur:4, hdevery:48});
+  assert.equal(PK.hd.sessionTable(one,48)[0].rebound, null);
+});
+test("two compartments: the fall per session, its dialyzer share, the clearance for a stated fall, and the one-compartment limit", ()=>{
+  const p=two({route:"iv", dosing:"single", D:1000, hdstart:6}), f=PK.hd.sessionFraction(p);
+  near(f.byDialysis/f.fall, f.kd/(f.kd+f.k0), 1e-12, "the dialyzer's share of what is eliminated");
+  near(PK.hd.clForFall(p, f.fall, p.hddur), p.hdcl, 1e-6, "the clearance that gives this fall is the scenario's");
+  // a peripheral compartment that barely fills and empties at once: the one-compartment fall
+  const thin=two({route:"iv", dosing:"single", D:1000, k12:0.05, k21:5}), ft=PK.hd.sessionFraction(thin);
+  near(ft.fall, -Math.expm1(-(ft.k0+ft.kd)*thin.hddur), 0.01*ft.fall);
+});
+
+test("lesson: rebound after dialysis, every number it states", ()=>{
+  const L=PK.LESSONS.find(l=>l.id==="hdreb"), cur=S(L.cur), base=S(L.base), rc=PK.hd.sessionTable(cur,24)[0], rb=PK.hd.sessionTable(base,24)[0];
+  near(PK.derived(cur).CL, 2.31, 0.005, "the same clearance"); near(PK.derived(base).CL, PK.derived(cur).CL, 1e-9);
+  near(cur.V*(1+cur.k12/cur.k21), base.V, 1e-9, "and the same total volume, 60 L");
+  assert.deepEqual([r(rb.pre,1), r(rb.post,2), r(PK.conc(base, rc.end+rc.rebound.after),2)], ["13.2","6.65","6.26"], "one compartment keeps falling");
+  assert.deepEqual([r(rc.pre,1), r(rc.post,2), r(100*rc.fall,0)], ["11.8","5.53","53"], "two compartments: the session");
+  assert.deepEqual([r(rc.rebound.level,2), r(rc.rebound.after,1), r(100*(rc.rebound.level/rc.post-1),0), r(100*rc.rebound.share,0)], ["6.33","1.6","14","13"], "the rebound");
+  assert.deepEqual([r(rc.removed,0), r(rb.removed,0)], ["245","306"], "removed");
+  const k=PK.hd.sessionTable(S(Object.assign({}, L.cur, {k21:0.2})),24)[0].rebound;
+  assert.deepEqual([r(100*k.share,0), r(k.after,1)], ["29","2.4"], "try this: k21 0.2");
+  const t=require("../pk-lessons.js").hdreb.text+" "+require("../pk-lessons.js").hdreb.tryThis;
+  ["13.2","6.65","6.26","11.8","5.53","53%","6.33","1.6","14%","13%","245","306","29%","2.4"].forEach(n=> assert.ok(t.includes(n), n));
+  const tp=PK.TEMPLATES.find(x=>x.id==="hdreb"); assert.ok(tp && tp.lesson==="hdreb");
+  numbersIn(tp.look).forEach(n=> assert.ok(["4","5.53","6.33","1.6"].includes(n), `the comparison states ${n}`));
+});
+
+test("two compartments: the worked fall per session is the solver's, from the terminal phase", ()=>{
+  const p=two({route:"iv", dosing:"single", D:1000, hdstart:6}), view=Object.assign({}, PK.VIEW_DEFAULTS, {duration:48});
+  const m=PK.metricMath(p, "hdFall", view);
+  assert.ok(Math.abs(m.value/(100*PK.hd.sessionFraction(p).fall)-1)<1e-12);
+  const txt=m.steps.map(s=> s.t||s.m).join(" ");
+  assert.ok(/terminal phase/.test(txt) && /rebounds/.test(txt), "and it says where it starts and what follows");
 });

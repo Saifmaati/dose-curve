@@ -65,8 +65,8 @@
     if(a.route==="oral" && b.route==="oral"){
       if(a.F!==b.F) out.push(`Bioavailability ${trim(a.F)} → ${trim(b.F)}. Only that fraction of the oral dose reaches circulation, so exposure changes by <b>${pctTxt(a.F,b.F)}</b> with the same shape.`);
       if(a.ka!==b.ka) out.push(b.ka>a.ka
-        ? `Faster absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): an earlier, higher peak. AUC doesn't change because the same amount is still absorbed.`
-        : `Slower absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): a later, flatter peak, which is the extended-release idea. AUC doesn't change because the same amount is still absorbed.`);
+        ? `Faster absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): an earlier, higher peak. ${PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`
+        : `Slower absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): a later, flatter peak, which is the extended-release idea. ${PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`);
     }
     if(a.route==="inf" && b.route==="inf" && a.tinf!==b.tinf){
       out.push(b.tinf>a.tinf
@@ -86,8 +86,10 @@
     // compartments
     if((a.cmt===2)!==(b.cmt===2) && !mmA && !mmB){
       // the total AUC follows the clearance alone; a window that ends early counts the two shapes' area differently
-      const sameCL=Math.abs(db.CL/da.CL-1)<1e-6, dW=wa.auc>0 ? wb.auc/wa.auc-1 : 0;
-      const auc=!sameCL ? "The total AUC still follows the clearance alone (F·D / CL): the compartments change the curve's shape, not its area."
+      const sameCL=Math.abs(db.CL/da.CL-1)<1e-6, dW=wa.auc>0 ? wb.auc/wa.auc-1 : 0, dInf=da.auc>0 ? db.auc/da.auc-1 : 0;
+      // with dialysis the total also depends on what each session removes, which follows the central level as it runs
+      const auc=(PK.hdOn(a) || PK.hdOn(b)) ? `With dialysis the total AUC also depends on how much each session removes, which follows the central level while it runs: here the AUC to infinity is ${Math.abs(dInf)<0.005 ? "about the same" : `${fmt(Math.abs(dInf)*100,0)}% ${dInf>0 ? "higher" : "lower"}`} with ${b.cmt===2 ? "two compartments" : "one compartment"}.`
+        : !sameCL ? "The total AUC still follows the clearance alone (F·D / CL): the compartments change the curve's shape, not its area."
         : Math.abs(dW)<0.01 ? "The clearance is the same, so the AUC is too, while early levels and peaks differ."
         : `The clearance is the same, so the total AUC (to infinity) is too. Within this ${state.duration} h window it is ${fmt(Math.abs(dW)*100,0)}% ${dW<0 ? "lower, because the slower terminal phase carries part of the area past the window" : "higher, because less of the area falls after the window"}.`;
       out.push(b.cmt===2
@@ -160,7 +162,7 @@
         ? "lingers longer, carries over more between doses and takes longer to reach steady state"
         : "clears faster, carries over less between doses and reaches steady state sooner"}.`);
       out.push((causes.length?`<b>${cap(causes.join(", "))}.</b> `:"")+parts.join(" "));
-      if(dV && !dCL) out.push("Clearance is unchanged, so total exposure (AUC) is too: a bigger volume lowers the peak but stretches the half-life by the same factor.");
+      if(dV && !dCL && !PK.hdOn(a) && !PK.hdOn(b)) out.push("Clearance is unchanged, so total exposure (AUC) is too: a bigger volume lowers the peak but stretches the half-life by the same factor.");
       if(dV && dCL && !dT) out.push("This model holds the half-life fixed, so clearance moves with volume (CL = kₑ·V).");
     }
 

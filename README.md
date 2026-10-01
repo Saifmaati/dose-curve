@@ -26,7 +26,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 - First-order elimination, or saturable **Michaelis–Menten** elimination (Vmax, Km) integrated numerically. The readouts give the predicted steady state Km·R / (Vmax − R), the input as a share of Vmax, the level-dependent half-life and the time to 90% of steady state, and they say "No steady state: input rate exceeds Vmax" when that happens.
 - A **liver model** (optional): hepatic clearance and first-pass bioavailability from liver blood flow, the unbound fraction and intrinsic clearance (the well-stirred model), E = fu·CLint / (Q + fu·CLint), CL = Q·E and F = fabs·(1 − E), with the working shown.
 - **Individualize from levels** (Bayesian, in Clinical mode): measured levels, each tied to a dose, weighed against the patient model (maximum a posteriori, the approach of Sheiner et al. 1979), give the patient's own clearance, volume and half-life with 95% intervals, how much uncertainty the levels removed, the two-level estimate beside it, and the dose for an AUC24 or trough target.
-- **Hemodialysis:** sessions (their clearance, length and timing) add the dialyzer's clearance while they run. A table gives each session's level before and after, the amount removed and the IV dose that would restore the level. The readouts show the clearance on and off dialysis and the fall per session. One compartment, so there is no rebound, and the panel says so.
+- **Hemodialysis:** sessions (their clearance, length and timing) add the dialyzer's clearance while they run. A table gives each session's level before and after, the amount removed and the IV dose that would restore the level. The readouts show the clearance on and off dialysis and the fall per session. With two compartments the level rebounds after each session as drug returns from the tissues, and the table gives the rebound's height and timing; the solution stays exact between events.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of 12 teaching profiles (gentamicin, vancomycin, meropenem, piperacillin-tazobactam, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
 - The **effect** (PK/PD): a sigmoid Emax model, its concentration–effect curve, and time above a target effect. An optional effect-site delay (an equilibration half-life) makes the effect lag the level: the effect-site level is drawn under the plasma curve, and the concentration–effect chart shows the hysteresis loop. **Indirect responses** (the four types of Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production or loss of something the body makes, and the response, as a percentage of its baseline, follows that turnover, with a lag set by its half-life.
@@ -43,7 +43,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
-- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 27 one-click comparisons.
+- Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 28 one-click comparisons.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 - **Sensitivity:** move each input (clearance, volume, F, kₐ, dose, interval; k12 and k21 with two compartments) 20% down and up, one at a time, and see a tornado chart of the change in AUC24, the peak, the trough or the time in the window, with a sentence naming the input that matters most.
 - **When to sample:** for a repeated regimen, the dose from which its peak and trough are within 10% of steady state, and the model's peak and trough times in that interval (with two compartments, once distribution is 90% complete), each with a button that moves the time cursor there.
@@ -53,7 +53,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 ![Sensitivity for vancomycin 1 g every 12 h: clearance and the dosing interval move AUC24 by +25% and −16.7% at ±20%, the dose by ±20%, the volume not at all](docs/img/sensitivity.png)
 
 **Teach and practise**
-- **35 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
+- **36 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
 - **16 clinical cases** (gentamicin conventional, once daily, on hemodialysis, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem, piperacillin-tazobactam and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question), one of them the case of the day, the same for everyone on a given date. The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
 - **42 kinds of generated practice problems** in seven topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 69-term glossary.
 - **For instructors:** write a case (patient, drug, regimen choices and target) and share it as a link, checked for a solution before the link is made and marked as an unreviewed community case; put cases and worksheets in one assignment link; and verify the completion codes (HMAC-SHA256 with a class key) students make at the end. Nothing is sent anywhere.
@@ -86,7 +86,7 @@ And the antimicrobial indices: 12 regimens (piperacillin by 30-minute, extended 
 
 And the indirect responses: 12 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient) integrate the response with the drug in one ODE system. The response agrees within 0.01% at five times and at its largest change (in practice to about one part in 10⁸), and the time of that change within 0.01 h. The tests also check that it stays at baseline without drug, and that at a constant level it approaches the analytic plateau with time constant 1/kout.
 
-And hemodialysis: 8 scenarios with the dialysis clearance switched on during each session. The level, and each session's levels and the amount it removes, agree within 0.01% (in practice to about one part in 10¹²). The tests also hold the model to mass balance: what the body clears plus what the dialyzer removes is what was given.
+And hemodialysis: 11 scenarios (3 with two compartments, where the level rebounds) with the dialysis clearance switched on during each session. The level, and each session's levels and the amount it removes, agree within 0.01% (in practice to about one part in 10¹²). The tests also hold the model to mass balance: what the body clears plus what the dialyzer removes is what was given.
 
 A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect (with and without an effect-site delay) are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
 
@@ -136,7 +136,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-sens.js` | The sensitivity analysis and its tornado chart, loaded when its panel opens |
 | `pk-tdm.js` | When to sample: the model's steady-state, peak and trough times for a repeated regimen, loaded when its section opens |
 | `pk-explain.js` | The sentences under "What changed" and in Compare, loaded just after the first paint |
-| `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge), loaded when a scenario has dialysis on |
+| `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge, with one or two compartments), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
 | `stage.js` | The 3D stage and the opening sequence (since 2.0), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
@@ -156,7 +156,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.6.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.7.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 

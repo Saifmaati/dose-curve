@@ -16,7 +16,7 @@
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
   // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions.
-  const VERSION=11;
+  const VERSION=12;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
@@ -221,7 +221,7 @@
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
     if(k==="teq") return s.kin!=="mm" && !(s.idr>0) && !hdOn(s);
-    if(k==="hd") return s.kin!=="mm" && s.cmt!==2;
+    if(k==="hd") return s.kin!=="mm";
     if(k==="hdcl"||k==="hdstart"||k==="hddur"||k==="hdevery") return hdOn(s);
     if(k==="e0"||k==="emax") return !(s.idr>0);
     if(k==="tout") return s.idr>0;
@@ -263,8 +263,8 @@
   // that escapes the liver on its first pass, 1 − E. Oral F is the fraction absorbed times 1 − E. Blood and plasma
   // concentrations are taken as equal. Clearance and volume both scale with weight, so the half-life doesn't.
   const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm!=="clinical";
-  // Hemodialysis sessions (pk-hd.js) apply to first-order, one-compartment scenarios.
-  const hdOn=p=> p.hd===1 && p.kin!=="mm" && p.cmt!==2;
+  // Hemodialysis sessions (pk-hd.js) apply to first-order scenarios, with one or (since 2.7) two compartments.
+  const hdOn=p=> p.hd===1 && p.kin!=="mm";   // with one or (since links v12) two compartments
   function wellStirred(p){
     const fc=p.fub*p.clint, E=fc/(p.qh+fc);
     return {E, CL:p.qh*E, FH:1-E, fcl:fc};
@@ -1253,7 +1253,11 @@
     {id:"hd", tag:"CLd", title:"Hemodialysis sessions", sum:"Clearance that comes and goes.", baseLabel:"no dialysis",
      view:{duration:144,mec:1,mtc:12},
      base:{route:"inf",dosing:"single",D:120,tinf:0.5,thalf:2.5,V:18,wt:80,pm:"clinical",age:64,sex:"M",ht:175,scr:7.5,fe:1},
-     cur:{route:"inf",dosing:"single",D:120,tinf:0.5,thalf:2.5,V:18,wt:80,pm:"clinical",age:64,sex:"M",ht:175,scr:7.5,fe:1,hd:1,hdcl:1.25,hdstart:40,hddur:8,hdevery:48}}
+     cur:{route:"inf",dosing:"single",D:120,tinf:0.5,thalf:2.5,V:18,wt:80,pm:"clinical",age:64,sex:"M",ht:175,scr:7.5,fe:1,hd:1,hdcl:1.25,hdstart:40,hddur:8,hdevery:48}},
+    {id:"hdreb", tag:"HD", title:"Rebound after dialysis", sum:"Drug the dialyzer couldn't reach comes back.", baseLabel:"one compartment, same clearance and total volume",
+     view:{duration:24,mec:2,mtc:20},
+     base:{route:"iv",dosing:"single",D:1000,V:60,thalf:18,hd:1,hdcl:8,hdstart:6,hddur:4,hdevery:48},
+     cur:{route:"iv",dosing:"single",D:1000,V:20,thalf:6,cmt:2,k12:0.8,k21:0.4,hd:1,hdcl:8,hdstart:6,hddur:4,hdevery:48}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1308,6 +1312,8 @@
      look:"The same dose of a slowly cleared drug. A falls to 37% of baseline at 24 h; B only to 67%, and not until 96 h, long after the level peaked at 3.6 h."},
     {id:"hd", lesson:"hd", title:"No dialysis vs hemodialysis", nameA:"No dialysis", nameB:"8-hour session at 40 h",
      look:"The same 120 mg in end-stage kidney disease. B's session halves the level, from 2.07 to 1.04 mg/L by 48 h; over all its sessions dialysis removes 18 mg of the 120."},
+    {id:"hdreb", lesson:"hdreb", title:"Dialysis: one vs two compartments", nameA:"One compartment", nameB:"Two compartments",
+     look:"The same clearance, total volume and 4-hour session. A keeps falling after the session; B rises from 5.53 to 6.33 mg/L in the 1.6 hours after it, as drug returns from the tissues."},
     {id:"ptz", lesson:"ptz", title:"Piperacillin: 30-minute vs 3-hour infusion", nameA:"Over 30 min", nameB:"Over 3 h",
      look:"The same 3 g every 6 h. B peaks at 74 mg/L instead of 164, but its unbound level stays above the 16 mg/L MIC for 69% of each interval instead of 47%. AUC24/MIC is 60 for both."},
     {id:"gcmax", lesson:"gcmax", title:"Gentamicin: divided vs once daily", nameA:"160 mg every 8 h", nameB:"480 mg every 24 h",
@@ -1322,7 +1328,7 @@
     {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","wtcrcl":"pk","hd":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","wtcrcl":"pk","hd":"pk","hdreb":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
@@ -1435,6 +1441,8 @@
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
       p[k]=clamp(v, legacy && V8_MAX[k] ? [RANGES[k][0], V8_MAX[k]] : RANGES[k]);
     });
+    // before links v12, dialysis did nothing with two compartments: such a link opens as it always did
+    if(version!==undefined && version<12 && p.cmt===2 && p.hd===1) p.hd=0;
     return normalizeScenario(p);
   }
   function encodeView(v){
@@ -1468,6 +1476,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV12=scen.some(p=>p.cmt===2 && p.hd===1);
     const usesV11=scen.some(p=>V11_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV10=scen.some(p=>V10_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV9=view.mic>0 || scen.some(p=>V9_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V8_MAX).some(k=>p[k]>V8_MAX[k]));
@@ -1476,7 +1485,7 @@
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));

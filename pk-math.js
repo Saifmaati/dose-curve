@@ -150,9 +150,14 @@
           m(`t½ during a session = 0.693 × V / ${n2(tot)} = 0.693 × ${n1(V)} / ${n2(tot)} = ${n2(Math.LN2*V/tot)} h, against ${n1(th)} h between sessions`),
           t(`The dialyzer's clearance adds to the body's own only while a session runs.`)]}; }
       case "hdFall": { const kd=p.hdcl/V, kt=k+kd, f=-Math.expm1(-kt*p.hddur);
+        if(p.cmt===2 && PK.hd){ const sf=PK.hd.sessionFraction(p);
+          return {title:"Fall over one session", value:100*sf.fall, steps:[
+            t(`With two compartments the fall depends on how the drug is spread as the session starts. Starting from the terminal phase (distribution over), the exact two-compartment solution gives a fall of ${nf(100*sf.fall,1)}% over ${nf(p.hddur,2)} h in the central level.`),
+            m(`Of the drug eliminated during it, the dialyzer removes CLd / (CL + CLd) = ${n2(p.hdcl)} / ${n2(CL+p.hdcl)} = ${nf(100*kd/kt,0)}%, and the body the rest`),
+            t(`Afterwards drug moves back from the tissues and the level rebounds: the session list gives how far and when.`)]}; }
         return {title:"Fall over one session", value:100*f, steps:[m(`Fall = 1 − e^(−(kₑ + CLd/V)·T) = 1 − e^(−(${nk(k)} + ${nk(kd)}) × ${nf(p.hddur,2)}) = ${nf(100*f,1)}%`),
           m(`Of that, the dialyzer removes CLd / (CL + CLd) = ${n2(p.hdcl)} / ${n2(CL+p.hdcl)} = ${nf(100*kd/kt,0)}%, and the body the rest`),
-          t(`That is with no dose given during the session. One compartment: drug returning from the tissues afterwards (rebound) isn't modelled.`)]}; }
+          t(`That is with no dose given during the session. One compartment: no drug returns from the tissues afterwards (with two compartments, the level rebounds).`)]}; }
       case "aucHd": { const v=derived(p).auc;
         return {title:"Total exposure (AUC∞) with dialysis", value:v, steps:[t(`During sessions the clearance is ${n2(CL+p.hdcl)} L/h, between them ${n2(CL)} L/h, so AUC = F·${Sd} / CL no longer holds. The area is summed exactly between each dose, infusion end and session edge.`),
           m(`AUC∞ = ${n1(v)} ${U.auc}, against F·${Sd} / CL = ${n1(F*D/CL)} ${U.auc} with no dialysis`)]}; }

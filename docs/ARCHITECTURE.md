@@ -15,7 +15,7 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `pk-math.js` | The worked formulas behind each readout | when a readout's working opens |
 | `pk-bayes.js` | Bayesian (MAP) individualization from measured levels | when the clinical panel's Bayesian section or a Bayesian case needs it |
 | `pk-idr.js` | Indirect response models (Dayneka, Garg and Jusko 1993) | when a scenario uses one |
-| `pk-hd.js` | Hemodialysis sessions, exact between events | when a scenario uses dialysis |
+| `pk-hd.js` | Hemodialysis sessions, exact between events, with one or two compartments (the rebound after each session) | when a scenario uses dialysis |
 | `pk-sens.js` | Sensitivity analysis (±20% on each input) and its tornado chart | when its panel opens |
 | `pk-tdm.js` | When to sample: the dose from which a repeated regimen is within 10% of steady state, and the model's peak and trough times in that interval | when its section opens |
 | `pk-explain.js` | The sentences under "What changed" and in Compare: what moved between two scenarios and why, with the model's numbers | just after the first paint; a link that opens with a baseline waits for it |
@@ -78,7 +78,7 @@ SVG frame. It renders only when something changes. Its camera framings and the o
 
 `validation/reference.py` integrates the same models with SciPy, written from the equations rather than translated
 from the engine, and writes `reference-results.json`. `tests/validation.test.js` compares the engine with it in
-Node; `validation.html` runs the same comparison in the reader's browser (712 comparisons) and lights its sphere as
+Node; `validation.html` runs the same comparison in the reader's browser (718 comparisons) and lights its sphere as
 each one passes. Regenerate the reference after changing a model: `python3 validation/reference.py`.
 
 ## Design
