@@ -30,6 +30,7 @@
   function applicable(p){
     if(p.kin==="mm") return {ok:false, why:"Saturable (Michaelis–Menten) elimination isn't covered: the method here assumes first-order elimination."};
     if(p.cmt===2) return {ok:false, why:"Two compartments aren't covered: the method here fits one compartment (CL and V)."};
+    if(PK.hdOn(p)) return {ok:false, why:"Dialysis sessions aren't covered: the estimate assumes the clearance stays the same between the levels."};
     return {ok:true};
   }
 

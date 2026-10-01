@@ -400,6 +400,7 @@
     const ts=[];
     for(let i=0;i<=N;i++) ts.push(i===N ? t1-1e-9 : t0+(t1-t0)*i/N);
     (ev||doseEvents(p)).forEach(e=>{ [e.t, e.route==="inf" ? e.t+e.dur : null].forEach(t=>{ if(t!==null && t>t0 && t<t1) ts.push(t); }); });
+    if(hdOn(p) && hdApi()) hdApi().sessions(p, t1).forEach(s=>{ [s.start, s.end].forEach(t=>{ if(t>t0 && t<t1) ts.push(t); }); });
     ts.sort((a,b)=>a-b);
     const at=t=>conc(p,t,ev||undefined);
     let mx=-1, i0=0;
@@ -471,6 +472,8 @@
     const eff=site==="effect" && keqOf(p)>0, level=eff ? t=>ceConc(p,t,ev) : t=>conc(p,t,ev);
     for(let i=0;i<=N;i++) pts.add(T*i/N);
     let endJump=false;   // a bolus exactly at the window's end adds nothing inside it: the end takes the level just before
+    // dialysis sessions start and end with a kink in the curve: grid points too
+    if(hdOn(p) && hdApi()) hdApi().sessions(p, T).forEach(s=>{ [s.start, s.end].forEach(t=>{ if(t>0 && t<T) pts.add(t); }); });
     ev.forEach(e=>{
       if(!eff && e.route==="iv" && Math.abs(e.t-T)<1e-9) endJump=true;
       if(e.t>0 && e.t<T){ pts.add(e.t); if(!eff && e.route==="iv") jumps.add(e.t); }

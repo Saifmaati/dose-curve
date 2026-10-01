@@ -124,7 +124,7 @@
     {term:"Dialysis clearance", sym:"CLd", unit:"L/h", lesson:"hd",
      def:"The clearance a dialysis session adds while it runs. It adds to the body's own: the rate constant during a session is kₑ + CLd / V, so a session of T hours lowers the level (with no dose during it) by 1 − e^(−(kₑ + CLd/V)·T), and the dialyzer's share of the loss is CLd / (CL + CLd)."},
     {term:"Post-dialysis rebound", sym:"", unit:"", lesson:"hd",
-     def:"The rise in level after a session as drug moves back from the tissues into the blood. One-compartment models such as DoseCurve's don't show it, so the level the model gives just after a session is lower than one measured an hour or two later would tend to be."},
+     def:"The rise in level after a session as drug moves back from the tissues into the blood. One-compartment models such as DoseCurve's don't show it, so the level the model gives just after a session tends to be lower than one measured some time later."},
     {term:"Indirect response", sym:"kin, kout", unit:"", lesson:"idr",
      def:"An effect produced by changing how fast the body makes (kin) or removes (kout) something, such as a clotting factor, instead of by the level directly. It lags the level. The four basic types (Dayneka, Garg and Jusko 1993) inhibit or stimulate production or loss."},
     {term:"Response turnover", sym:"t½,out = ln 2 / kout", unit:"h", lesson:"idr",

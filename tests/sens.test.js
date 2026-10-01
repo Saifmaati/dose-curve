@@ -55,7 +55,7 @@ test("the inputs offered fit the scenario, and F is capped at 1", ()=>{
 
 test("the window reading for a single dose, a custom schedule and dialysis; saturable drugs at steady state", ()=>{
   const single=S({route:"iv", D:500, thalf:6, V:40}), b=X.outputs(single, view);
-  assert.equal(b.ss, false); near(b.auc, PK.windowStats(single, 24, 2, 12).auc, 1e-12); near(b.cmin, PK.conc(single, 96-1e-9), 1e-15);
+  assert.equal(b.ss, false); near(b.auc, PK.windowStats(single, 96, 2, 12).auc, 1e-12, "the AUC over the window"); near(b.cmin, PK.conc(single, 96-1e-9), 1e-15);
   const hd=S({route:"iv", dosing:"repeated", D:500, tau:12, nDoses:8, thalf:20, V:40, hd:1, hdcl:6, hdstart:20, hddur:4, hdevery:48});
   assert.equal(X.outputs(hd, view).ss, false, "no steady state on dialysis");
   const mm=S({kin:"mm", route:"oral", dosing:"repeated", D:300, tau:24, nDoses:14, F:1, ka:0.4, V:49, vmax:7, km:4}), r=X.analyse(mm, {duration:336, mec:10, mtc:20});

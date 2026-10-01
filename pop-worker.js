@@ -17,7 +17,10 @@
         const m=e.data||{};
         if(!ready){
           if(typeof m.engine!=="string" || !/^pk-engine\.js\?v=[0-9a-f]{10}$/.test(m.engine)) return;
-          importScripts(m.engine); ready=true;
+          importScripts(m.engine);
+          // the dialysis model, when the page passes its own stamped address: without it, sessions would be ignored
+          if(typeof m.hd==="string" && /^pk-hd\.js\?v=[0-9a-f]{10}$/.test(m.hd)) importScripts(m.hd);
+          ready=true;
         }
         if(m.job){
           try{ root.postMessage({id:m.job.id, result:m.job.list.map(p=>api.population(root.PK, p, m.job.opts))}); }

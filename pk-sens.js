@@ -3,7 +3,7 @@
    peak, the trough and the time in the window. Clearance moves with the volume held (the half-life follows), volume
    with clearance held, and F is capped at 1. A regular regimen is read at steady state (AUC24 = AUCτ × 24 / τ, and
    the steady-state peak and trough); a single dose, a custom schedule, or a regimen on dialysis over the chart window
-   (AUC over the first 24 h, the window's peak, and the level at its end). The time in the window is always over the
+   (the AUC over the window, its peak, and the level at its end). The time in the window is always over the
    chart window. The page loads this file when the Sensitivity panel opens (it registers itself as PK.sensModule); in
    Node the engine requires it on first use of PK.sens. Educational model, not for clinical dosing. */
 (function(root, factory){
@@ -13,7 +13,7 @@
   "use strict";
   const {normalizeScenario, cloneScenario, derived, windowStats, conc, ssPeakTrough, hepOn, hdOn, mmSteady, unitsOf}=PK;
   const STEP=0.2;
-  const METRICS=[{id:"auc", name:"AUC24", kind:"pct"}, {id:"cmax", name:"Peak", kind:"pct"}, {id:"cmin", name:"Trough", kind:"pct"}, {id:"tin", name:"Time in window", kind:"pp"}];
+  const METRICS=[{id:"auc", name:"AUC", kind:"pct"}, {id:"cmax", name:"Peak", kind:"pct"}, {id:"cmin", name:"Trough", kind:"pct"}, {id:"tin", name:"Time in window", kind:"pp"}];
 
   // The inputs that mean something for this scenario, each as a function that scales it by f.
   function inputs(p){
@@ -35,7 +35,7 @@
     const ss=p.dosing==="repeated" && !hdOn(p) && !(p.kin==="mm" && mmSteady(p).none);
     if(ss && p.kin==="mm"){ const m=mmSteady(p), pt=PK.ssProfile(p); return {auc:24*m.avg, cmax:pt.ssPeak, cmin:pt.ssTrough, tin, ss:true}; }
     if(ss){ const pt=ssPeakTrough(p); return {auc:derived(p).auc*24/p.tau, cmax:pt.peak, cmin:pt.trough, tin, ss:true}; }
-    return {auc:windowStats(p, 24, view.mec, view.mtc).auc, cmax:w.cmax, cmin:conc(p, T-1e-9), tin, ss:false};
+    return {auc:w.auc, cmax:w.cmax, cmin:conc(p, T-1e-9), tin, ss:false};
   }
   const change=(kind, a, b)=> kind==="pp" ? b-a : (a===0 ? (b===0 ? 0 : null) : 100*(b/a-1));
   // Each input at −20% and +20%, and the change in each output from the scenario as it is.
@@ -55,7 +55,7 @@
     const top=rows[0], u=m.kind==="pp" ? " percentage points" : "%", sg=v=> v==null ? "n/a" : (v>0 ? "+" : v<0 ? "−" : "")+Math.abs(v).toFixed(1)+u;
     const tied=rows.filter(r=> Math.abs(span(r[metric])-span(top[metric]))<0.05);
     const what=res.base.ss ? (metric==="auc" ? "AUC24 at steady state" : metric==="cmax" ? "the steady-state peak" : metric==="cmin" ? "the steady-state trough" : "the time in the window")
-      : (metric==="auc" ? "the AUC over the first 24 h" : metric==="cmax" ? "the peak in the window" : metric==="cmin" ? "the level at the end of the window" : "the time in the window");
+      : (metric==="auc" ? "the AUC over the time window" : metric==="cmax" ? "the peak in the window" : metric==="cmin" ? "the level at the end of the window" : "the time in the window");
     const text=span(top[metric])<0.05 ? `None of these inputs moves ${what} by more than 0.05${u.trim()==="%" ? "%" : u} at ±20%.`
       : `${what.charAt(0).toUpperCase()+what.slice(1)} is most sensitive to ${tied.map(r=>r.name.toLowerCase()).join(" and ")}: −20% changes it by ${sg(top[metric].lo)}, +20% by ${sg(top[metric].hi)}.`
         +(rows.length>1 && span(rows[1][metric])>=0.05 && tied.length===1 ? ` Next is ${rows[1].name.toLowerCase()} (${sg(rows[1][metric].lo)} / ${sg(rows[1][metric].hi)}).` : "");

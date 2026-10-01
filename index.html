@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.17.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.17.1",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1462,7 +1462,7 @@
         <details class="sens sim-only" id="sensBox">
           <summary>Sensitivity: which input matters most? (each ±20%)</summary>
           <div class="seg" id="sensSeg" role="group" aria-label="Output" style="margin-top:8px">
-            <button data-m="auc" class="on">AUC24</button><button data-m="cmax">Peak</button><button data-m="cmin">Trough</button><button data-m="tin">Time in window</button>
+            <button data-m="auc" class="on">AUC</button><button data-m="cmax">Peak</button><button data-m="cmin">Trough</button><button data-m="tin">Time in window</button>
           </div>
           <svg id="sensPlot" viewBox="0 0 760 200" role="img" aria-describedby="sensText" aria-label="Tornado chart: the change in the chosen output when each input is 20% lower and 20% higher"></svg>
           <p id="sensText" aria-live="polite"></p>
@@ -1627,7 +1627,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.17.0 · updated 30 September 2026</span>
+        <span>Version 1.17.1 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1697,7 +1697,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=4013aff61f" defer></script>
+<script src="pk-engine.js?v=dfd6bd1f81" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1886,7 +1886,7 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
-  const IDR_SRC="pk-idr.js?v=046041894a";
+  const IDR_SRC="pk-idr.js?v=87885afef2";
   let idrLoad=null;
   function loadIdr(){
     if(PK.idrModule) return Promise.resolve();
@@ -1926,7 +1926,7 @@
     out.innerHTML=h;
   }
   // Sensitivity (pk-sens.js): computed and drawn only while its panel is open
-  const SENS_SRC="pk-sens.js?v=2a5a830446";
+  const SENS_SRC="pk-sens.js?v=3333646d23";
   let sensLoad=null, sensMetric="auc";
   function loadSens(){
     if(PK.sensModule) return Promise.resolve();
@@ -1962,7 +1962,7 @@
     return srcLoad;
   }
   const IDR_NAME=["Direct (Emax model)","Inhibits production","Inhibits loss","Stimulates production","Stimulates loss"];
-  const BAYES_SRC="pk-bayes.js?v=49979aea6b";
+  const BAYES_SRC="pk-bayes.js?v=21a1045af5";
   let bayesLoad=null, bzCache={key:"", est:null};
   function loadBayes(){
     if(PK.bayesModule) return Promise.resolve();
@@ -4006,7 +4006,7 @@
   /* ================= POPULATION ================= */
   // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
   // is kept with the key of what it was computed for; the chart uses it only while that still matches.
-  const POP_SRC="pop-worker.js?v=4b1fe43934";
+  const POP_SRC="pop-worker.js?v=44970c316f";
   let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
   const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
     auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null});
@@ -4016,7 +4016,7 @@
     try{
       popWorker=new Worker(POP_SRC);
       const eng=[...document.scripts].map(x=>x.getAttribute("src")||"").find(x=>/^pk-engine\.js\?v=/.test(x));
-      popWorker.postMessage({engine:eng});
+      popWorker.postMessage({engine:eng, hd:HD_SRC});   // the dialysis model too, so the bands follow the sessions
       popWorker.onmessage=e=>{
         const m=e.data||{};
         if(!popPending || m.id!==popPending.id) return;   // a newer request superseded it
@@ -4413,7 +4413,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=573573fa4e";
+  const GLOSS_SRC="pk-glossary.js?v=89b9e2c6bf";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }

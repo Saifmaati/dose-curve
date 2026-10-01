@@ -52,10 +52,11 @@
     const ev=level ? [] : doseEvents(p), cOf=level || (t=> conc(p, t, ev));
     const cuts=new Set([0, T]);
     ev.forEach(e=>{ [e.t, e.route==="inf" ? e.t+e.dur : null].forEach(t=>{ if(t!==null && t>0 && t<T) cuts.add(t); }); });
+    if(!level && PK.hdOn(p) && PK.hd) PK.hd.sessions(p, T).forEach(s=>{ [s.start, s.end].forEach(t=>{ if(t>0 && t<T) cuts.add(t); }); });   // dialysis: kinks too
     const bp=[...cuts].sort((a,b)=>a-b);
     // the step resolves the response's fastest rate and the plasma curve's
     const fastest=koutOf(p)*(p.idr===4 ? 1+p.smax : 1), pkScale=Math.min(p.thalf||1, p.route==="oral" && p.ka ? 1/p.ka : Infinity, p.cmt===2 ? 1/(p.k12+p.k21) : Infinity);
-    const H=Math.max(T/MAX_STEPS, Math.min(0.05, 0.025/fastest, pkScale/40));
+    const H=Math.max(T/MAX_STEPS, Math.min(0.025, 0.02/fastest, pkScale/60));
     const ts=[0], rs=[R0], ds=[rate(p, R0, cOf(0))];
     let R=R0;
     for(let s=0;s<bp.length-1;s++){

@@ -155,3 +155,13 @@ test("practice: the fall over a session is new in worksheet version 8", ()=>{
   const glossary=t=> PK.GLOSSARY.find(x=>x.term===t);
   ["Dialysis clearance","Post-dialysis rebound"].forEach(t=> assert.ok(glossary(t) && glossary(t).lesson==="hd", t));
 });
+
+test("other models with dialysis: population bands follow the sessions; the Bayesian estimate says it doesn't cover them; the worker is given the dialysis model", ()=>{
+  const P=require("../pop-worker.js"), fs=require("node:fs"), path=require("node:path");
+  const p=S({route:"iv", dosing:"repeated", D:500, tau:12, nDoses:8, thalf:20, V:30, hd:1, hdcl:8, hdstart:20, hddur:4, hdevery:48});
+  const r=P.population(PK, p, {n:50, cvCL:0.0001, cvV:0.0001, seed:1, T:96, mec:2, mtc:12, auc:null});
+  [24, 48, 72].forEach(t=>{ const i=r.t.findIndex(x=>x>=t); rel(r.q50[i], PK.conc(p, r.t[i]), 1e-3, `median at ${r.t[i]} h`); });
+  assert.equal(PK.bayes.applicable(S({pm:"clinical", hd:1})).ok, false);
+  assert.match(fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8"), /postMessage\(\{engine:eng, hd:HD_SRC\}\)/);
+  assert.match(fs.readFileSync(path.join(__dirname,"..","pop-worker.js"),"utf8"), /importScripts\(m\.hd\)/);
+});
