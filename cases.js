@@ -357,6 +357,7 @@
   function caseWindow(c){
     const t=c.target, d=drugOf(c.drug);
     // a case read on the unbound level against an MIC opens with that MIC, so the simulator's readouts are the case's
+    if(t.kind==="ftmic") return {mec:t.mic, mtc:d.s.mtc, mic:t.mic};
     return t.kind==="table" ? Object.assign({mec:t.mic, mtc:d.s.mtc}, t.unbound ? {mic:t.mic} : {}) : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
       : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
   }
@@ -429,7 +430,8 @@
     hartfordInterval:"The interval comes from creatinine clearance in the Hartford bands: at least 60 mL/min every 24 h, 40–59 every 36 h, 20–39 every 48 h.",
     choice:"Compare how many half-lives the extra hours are for each drug: the one with more of them falls further.",
     tableInterval:"The interval doesn't match the label's row for this creatinine clearance: find the row, then use its interval.",
-    tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives."
+    tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives.",
+    ftLow:"The unbound level is above the MIC for less of each interval than the target: shorten the interval, or raise the dose."
   };
   // The label table's row for a creatinine clearance (rows in order: gt, then ge thresholds).
   const tableRow=(t, crcl)=> t.rows.find(r=> r.gt!==undefined ? crcl>r.gt : crcl>=r.ge) || t.rows[t.rows.length-1];
@@ -443,7 +445,7 @@
     if(c.target.kind==="at" && !m.none) m.atLevel=PK.ssConc(p, Math.min(c.target.at, p.tau-1e-9));
     // the share of a steady-state interval above the MIC (sampled finely; shown to the nearest percent)
     // (with `unbound`, the unbound level's share, read exactly by micStats; the meropenem case keeps its total level)
-    if(c.target.unbound) m.aboveMic=PK.micStats(p, c.target.mic, 24).ft;
+    if(c.target.unbound || c.target.kind==="ftmic") m.aboveMic=PK.micStats(p, c.target.mic, 24).ft;
     else if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
     // hours each interval spends below 1 mg/L at steady state (the drug-free stretch of extended-interval dosing)
     if(!m.none && p.unit==="mg"){ let below=0; const N=240; for(let i=0;i<N;i++){ if(PK.ssConc(p, p.tau*(i+0.5)/N)<1) below+=p.tau/N; } m.below1=below; }
@@ -468,6 +470,8 @@
       const perKg=reg.D/p.wt, band=t.bands.find(b=>PK.patientOf(p).crcl>=b[0]);
       const doseOk=Math.abs(perKg-t.perKg)<=0.35+1e-9, tauOk=!!band && reg.tau===band[1];
       ok=doseOk && tauOk; hint=ok ? null : !doseOk ? "hartfordDose" : "hartfordInterval";
+    } else if(t.kind==="ftmic"){
+      ok=m.aboveMic>=t.ft-1e-9; hint=ok ? null : "ftLow";
     } else if(t.kind==="table"){
       const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-(row.D!=null ? row.D : t.dose*row.frac))<1e-9;
       ok=tauOk && doseOk; hint=ok ? null : !tauOk ? "tableInterval" : "tableDose";
@@ -524,7 +528,7 @@
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
     const m=g.metrics;
-    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
+    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="ftmic" ? `fT>MIC ${nf(m.aboveMic,1)}% of each interval, AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
     if(c.id==="li"){ const md=missedDose(c, ref); steps.push(`If one dose is missed at steady state, the level before the next dose falls to ${nf(md.low,2)} mEq/L (from ${nf(md.usual,2)}), and regular dosing brings the troughs back within 5% of steady state after ${nf(md.recover/24,1)} days.`); }
     return steps;
   }
@@ -603,7 +607,10 @@
         if(tmax!=null){ if(num(tmax,0,pk[1])) target.troughMax=tmax; else err.push("a trough limit below the peak's top"); }
         if(tmin!=null){ if(num(tmin,0,target.troughMax!=null ? target.troughMax : pk[1])) target.troughMin=tmin; else err.push("a trough floor below its limit"); }
       } else err.push("a peak range");
-    } else err.push("a target (peak and trough, or AUC24)");
+    } else if(t.kind==="ftmic"){
+      // the author's own MIC and the least share of each interval the unbound level must stay above it
+      if(num(t.mic, 0.001, 10000) && num(t.ft, 1, 100)) target={kind:"ftmic", mic:t.mic, ft:t.ft}; else err.push("an MIC and a time above it of 1–100%");
+    } else err.push("a target (peak and trough, AUC24, or fT>MIC)");
     const st=o.start||{}, start={D:st.D, tau:st.tau};
     if(!num(start.D, choices.min||0, choices.max||0) || !taus.includes(start.tau)) err.push("a starting regimen within the choices");
     const refs=(Array.isArray(o.refs) ? o.refs : []).map(r=>str(r, TEXT_LIMITS.ref)).filter(Boolean).slice(0, TEXT_LIMITS.refs);
@@ -622,7 +629,7 @@
       plan(){ const sol=solveCase(this), r=sol.best;
         return {reg:{D:r.D, tau:r.tau}, steps:[
           `The grid of regimens the case allows: ${sol.total} (doses ${sol.doses} × intervals ${this.choices.taus.join(", ")} h); ${sol.count} of them meet the target in this model.`,
-          `One of them, nearest the middle of the target: <b>${nf(r.D,1)} ${PK.unitsOf({unit:drugOf(this.drug).units}).dose} every ${r.tau} h</b>.`]};
+          `One of them, ${this.target.kind==="ftmic" ? "with the smallest daily dose" : "nearest the middle of the target"}: <b>${nf(r.D,1)} ${PK.unitsOf({unit:drugOf(this.drug).units}).dose} every ${r.tau} h</b>.`]};
       }};
     return c;
   }
@@ -633,6 +640,19 @@
     const t=c.target, ch=c.choices, list=achievable(c), doses=(list ? list.filter(D=>D>=ch.min-1e-9 && D<=ch.max+1e-9)
       : Array.from({length:Math.min(4000, Math.floor((ch.max-ch.min)/ch.step+1e-9)+1)}, (_,i)=> +(ch.min+i*ch.step).toFixed(6)));
     let count=0, best=null;
+    if(t.kind==="ftmic"){
+      // fT>MIC at dose D is the unit dose's against MIC / D, and it rises with the dose: bisect the grid for the first that meets it
+      ch.taus.forEach(tau=>{
+        const p1=caseScenario(c, {D:1, tau}), meets=D=> PK.micStats(p1, t.mic/D, 24).ft>=t.ft-1e-9;
+        let lo=0, hi=doses.length;
+        while(lo<hi){ const mid=(lo+hi)>>1; if(meets(doses[mid])) hi=mid; else lo=mid+1; }
+        count+=doses.length-lo;
+        if(lo<doses.length){ const D=doses[lo], score=D*24/tau;   // the smallest daily dose that meets it
+          if(!best || score<best.score-1e-9 || (Math.abs(score-best.score)<=1e-9 && tau===c.start.tau)) best={D, tau, score}; }
+      });
+      if(best) best.grade=gradeCase(c, {D:best.D, tau:best.tau});
+      return {count, total:doses.length*ch.taus.length, doses:doses.length, best, solvable:!!(best && best.grade.ok)};
+    }
     ch.taus.forEach(tau=>{
       const m=metricsOf(c, caseScenario(c, {D:1, tau}));
       doses.forEach(D=>{
@@ -753,6 +773,7 @@
     if(t.kind==="css") return `Predicted steady-state level ${t.css[0]}–${t.css[1]} ${u}`;
     if(t.kind==="hartford") return `7 mg/kg, at the interval the Hartford bands give for this CrCl`;
     if(t.kind==="table") return `The dose and interval the label's renal table gives for this creatinine clearance`;
+    if(t.kind==="ftmic") return `The unbound level above an MIC of ${t.mic} ${u} for at least ${t.ft}% of each interval at steady state (fT>MIC; unbound fraction ${PK.drugScenario(drugOf(c.drug)).fu} from the library)`;
     if(t.kind==="at") return `The ${t.at}-hour level at steady state ${t.range[0]}–${t.range[1]} ${u}, peak below ${t.peakMax} ${u}`;
     if(t.kind==="choice") return `A reasoning question, checked against the model`;
     const parts=[];
@@ -829,27 +850,30 @@
           <label>Opening dose<input id="auD" type="number" min="0.01" step="any" value="${v((sp.start||{}).D)}"></label>
           <label>Opening interval<select id="auTau">${AUTHOR_TAUS.map(x=>`<option value="${x}"${sel(x,(sp.start||{}).tau)}>${x} h</option>`).join("")}</select></label></fieldset>
         <fieldset><legend>Target at steady state</legend>
-          <label>Kind<select id="auKind"><option value="pt"${sel("pt",t.kind)}>Peak and trough</option><option value="auc"${sel("auc",t.kind)}>AUC24</option></select></label>
+          <label>Kind<select id="auKind"><option value="pt"${sel("pt",t.kind)}>Peak and trough</option><option value="auc"${sel("auc",t.kind)}>AUC24</option><option value="ftmic"${sel("ftmic",t.kind)}>Time above the MIC (fT&gt;MIC)</option></select></label>
           <label class="au-pt">Peak from<input id="auPkLo" type="number" min="0" step="any" value="${v((t.peak||[])[0])}"></label>
           <label class="au-pt">Peak to<input id="auPkHi" type="number" min="0" step="any" value="${v((t.peak||[])[1])}"></label>
           <label class="au-pt">Trough at most (optional)<input id="auTrMax" type="number" min="0" step="any" value="${v(t.troughMax)}"></label>
           <label class="au-pt">Trough at least (optional)<input id="auTrMin" type="number" min="0" step="any" value="${v(t.troughMin)}"></label>
           <label class="au-auc">AUC24 from<input id="auAucLo" type="number" min="0" step="any" value="${v((t.auc||[])[0])}"></label>
-          <label class="au-auc">AUC24 to<input id="auAucHi" type="number" min="0" step="any" value="${v((t.auc||[])[1])}"></label></fieldset>
+          <label class="au-auc">AUC24 to<input id="auAucHi" type="number" min="0" step="any" value="${v((t.auc||[])[1])}"></label>
+          <label class="au-ft">MIC<input id="auMic" type="number" min="0" step="any" value="${v(t.mic)}"></label>
+          <label class="au-ft">Above it for at least (% of each interval)<input id="auFt" type="number" min="1" max="100" step="any" value="${v(t.ft)}"></label></fieldset>
         <label class="wide">What a pharmacist also weighs (optional)<textarea id="auAlso" rows="2" maxlength="${TEXT_LIMITS.also}">${h.esc(v(sp.also))}</textarea></label>
         <label class="wide">References, one per line (optional, up to ${TEXT_LIMITS.refs}; shown as author-provided)<textarea id="auRefs" rows="2">${h.esc((sp.refs||[]).join("\n"))}</textarea></label>
         <div class="cs-actions"><button class="abtn" type="submit">Check and make the link</button></div>
       </form>
       <div id="auOut" class="cs-result" aria-live="polite"></div>`);
     const f=el.querySelector("#auForm"), $=id=>el.querySelector("#"+id), nv=id=>{ const x=$(id).value.trim(); return x==="" ? null : parseFloat(x); };
-    const sync=()=>{ const inf=drugOf($("auDrug").value).s.route==="inf", auc=$("auKind").value==="auc";
-      $("auTinfL").hidden=!inf; el.querySelectorAll(".au-pt").forEach(x=>x.hidden=auc); el.querySelectorAll(".au-auc").forEach(x=>x.hidden=!auc);
+    const sync=()=>{ const inf=drugOf($("auDrug").value).s.route==="inf", kind=$("auKind").value;
+      $("auTinfL").hidden=!inf; el.querySelectorAll(".au-pt").forEach(x=>x.hidden=kind!=="pt"); el.querySelectorAll(".au-auc").forEach(x=>x.hidden=kind!=="auc");
+      el.querySelectorAll(".au-ft").forEach(x=>x.hidden=kind!=="ftmic");
       $("auF").closest("label").hidden=drugOf($("auDrug").value).s.route!=="oral"; };
     ["auDrug","auKind"].forEach(id=> $(id).addEventListener("change", sync)); sync();
     const read=()=>{
       const drug=$("auDrug").value, inf=drugOf(drug).s.route==="inf", oral=drugOf(drug).s.route==="oral", kind=$("auKind").value, over={};
       [["thalf","auThalf"],["V","auV"]].concat(oral ? [["F","auF"]] : []).forEach(([k,id])=>{ const x=nv(id); if(x!=null) over[k]=x; });
-      const target=kind==="auc" ? {kind, auc:[nv("auAucLo"), nv("auAucHi")]} : {kind, peak:[nv("auPkLo"), nv("auPkHi")]};
+      const target=kind==="auc" ? {kind, auc:[nv("auAucLo"), nv("auAucHi")]} : kind==="ftmic" ? {kind, mic:nv("auMic"), ft:nv("auFt")} : {kind, peak:[nv("auPkLo"), nv("auPkHi")]};
       if(kind==="pt"){ const a=nv("auTrMax"), b=nv("auTrMin"); if(a!=null) target.troughMax=a; if(b!=null) target.troughMin=b; }
       const choices={taus:[...el.querySelectorAll(".au-taus input:checked")].map(x=>+x.value), min:nv("auMin"), max:nv("auMax"), step:nv("auStep")};
       if(inf) choices.tinf=nv("auTinf");

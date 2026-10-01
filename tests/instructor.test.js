@@ -106,3 +106,28 @@ test("completion codes: the same inputs give the same code, and a changed payloa
   // identifiers: letters, digits, - and _, no spaces (a name isn't asked for)
   ["S-17","ab_9"].forEach(x=> assert.ok(C.IDENT.test(x))); ["Jane Doe","", "x".repeat(25)].forEach(x=> assert.ok(!C.IDENT.test(x), x));
 });
+
+test("an fT>MIC target (the author's MIC and least share of each interval): checked, graded on the unbound level, and solved exactly", async()=>{
+  const mk=(drug, choices, ft, mic)=> C.checkSpec({title:"An antibiotic", drug, patient:{age:60, sex:"M", ht:178, wt:80, scr:1.0}, task:"Choose.",
+    target:{kind:"ftmic", mic, ft}, choices, start:{D:choices.min, tau:choices.taus[0]}});
+  const g=mk("pip", {taus:[6,8,12], step:250, min:1000, max:4000, tinf:0.5}, 50, 16);
+  assert.ok(g.spec, g.errors && g.errors.join("; ")); assert.deepEqual(g.spec.target, {kind:"ftmic", mic:16, ft:50});
+  ["ft", "mic"].forEach(k=> assert.ok(!C.checkSpec(Object.assign({}, g.spec, {target:Object.assign({}, g.spec.target, {[k]:0})})).spec, `a ${k} of 0`));
+  assert.ok(!C.checkSpec(Object.assign({}, g.spec, {target:{kind:"ftmic", mic:16, ft:101}})).spec, "over 100%");
+  // graded on the unbound level, with the library's fu, exactly as the simulator's panel reads it
+  const c=C.communityCase(g.spec), r=C.gradeCase(c, {D:3000, tau:6}), p=C.caseScenario(c, {D:3000, tau:6});
+  assert.equal(p.fu, 0.7); assert.equal(r.metrics.aboveMic, PK.micStats(p, 16, 24).ft); assert.equal(r.ok, r.metrics.aboveMic>=50);
+  assert.equal(C.gradeCase(c, {D:2000, tau:12}).hint, "ftLow");
+  assert.deepEqual(C.caseWindow(c), {mec:16, mtc:250, mic:16}, "the simulator opens with the MIC");
+  // the bisection over the dose grid counts exactly what grading every regimen counts
+  for(const [drug, choices, ft, mic] of [["pip", {taus:[6,8,12], step:250, min:1000, max:4000, tinf:0.5}, 50, 16], ["mero", {taus:[6,8,12], step:250, min:250, max:2000, tinf:3}, 60, 4],
+    ["amox", {taus:[6,8,12], step:250, min:250, max:3000}, 40, 2], ["vanc", {taus:[8,12,24], step:250, min:500, max:2500, tinf:1}, 90, 10]]){
+    const cc=C.communityCase(mk(drug, choices, ft, mic).spec), sol=C.solveCase(cc), list=C.achievable(cc);
+    const doses=list ? list.filter(D=>D>=choices.min && D<=choices.max) : Array.from({length:Math.floor((choices.max-choices.min)/choices.step)+1}, (_,i)=>choices.min+i*choices.step);
+    let brute=0; choices.taus.forEach(tau=> doses.forEach(D=>{ if(C.gradeCase(cc, {D, tau}).ok) brute++; }));
+    assert.equal(sol.count, brute, drug); assert.ok(sol.solvable && sol.best.grade.ok, drug);
+  }
+  // it travels in a community link like any other target
+  const back=await C.decodeAnyCaseLink("#"+await C.encodeCommunityLink(g.spec));
+  assert.deepEqual(back.case.spec.target, g.spec.target);
+});
