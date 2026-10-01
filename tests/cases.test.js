@@ -249,3 +249,12 @@ test("Bayesian cases: levels drawn an hour apart mislead the two-level method, a
     assert.ok(c.refs.includes("sheiner1979") && PK.SOURCES.sheiner1979.url.includes("10.1002/cpt1979263294"));
   });
 });
+
+test("the case of the day is the same all day, is a real case, and every case comes round in turn", ()=>{
+  const {caseOfDay, CASES}=require("../cases.js");
+  const d=new Date(Date.UTC(2026,9,1,0,5)), e=new Date(Date.UTC(2026,9,1,23,55));
+  assert.equal(caseOfDay(d), caseOfDay(e), "one case for the whole day");
+  const seen=new Set();
+  for(let i=0;i<CASES.length;i++) seen.add(caseOfDay(new Date(Date.UTC(2026,9,1+i,12))).id);
+  assert.equal(seen.size, CASES.length, "every case once in as many days");
+});

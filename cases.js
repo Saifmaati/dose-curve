@@ -824,12 +824,15 @@
     if(t.troughMin!=null) parts.push(`trough at or above ${t.troughMin} ${u}`);
     return `At steady state: ${parts.join(", ")}`;
   };
+  // The case of the day: the same for everyone on a given (UTC) day, and every case in turn over CASES.length days
+  const caseOfDay=(date=new Date())=> CASES[Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())/864e5) % CASES.length];
   function mount(el, h){
     host=h; rootEl=el;
+    const today=caseOfDay(), order=[today, ...CASES.filter(c=>c!==today)];
     el.innerHTML=`<div class="cs-intro"><h2 class="cs-h">Clinical cases</h2>
       <p>Each case gives a patient and a drug. Propose a regimen and the model grades it at steady state, with a hint when it misses and the same regimen rounded to the forms available. The walkthrough works the textbook route with the patient's own numbers.</p>
       <p class="cs-disc">Educational model, not for clinical dosing. The cases teach the reasoning; they are not prescribing instructions.</p></div>
-      <div class="cs-list">${CASES.map(c=>`<button class="cs-card" data-id="${c.id}"><span class="cs-tag">${h.esc(c.tag)}</span><span class="cs-title">${h.esc(c.title)}</span><span class="cs-who">${h.esc(who(c))}</span></button>`).join("")}</div>
+      <div class="cs-list">${order.map(c=>`<button class="cs-card${c===today ? " today" : ""}" data-id="${c.id}">${c===today ? `<span class="cs-today">Case of the day</span>` : ""}<span class="cs-tag">${h.esc(c.tag)}</span><span class="cs-title">${h.esc(c.title)}</span><span class="cs-who">${h.esc(who(c))}</span></button>`).join("")}</div>
       <div class="cs-tools"><p class="cs-sub">For instructors</p>
         <p>Write your own case and share it as a link, put cases and worksheets together as an assignment, and check the completion codes students bring back. Everything stays in the link and in each browser: nothing is sent anywhere.</p>
         <div class="cs-actions"><button class="abtn" type="button" id="csAuthorBtn">Write a case</button><button class="abtn" type="button" id="csBundleBtn">Make an assignment</button><button class="abtn" type="button" id="csVerifyBtn">Verify a completion code</button></div></div>
@@ -1158,7 +1161,7 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open,
+    caseOfDay, lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open,
     COMMUNITY_VERSION, TEXT_LIMITS, AUTHOR_TAUS, AUTHOR_DRUG_IDS, checkSpec, communityCase, solveCase, packJSON, unpackJSON, encodeCommunityLink, decodeAnyCaseLink,
     BUNDLE_VERSION, BUNDLE_MAX, checkBundle, encodeBundleLink, decodeBundleLink, itemId, IDENT, sha256Hex, completionPayload, completionCode, verifyCode};
 });

@@ -371,3 +371,9 @@ Compare stay dark; leaving a lesson or task returns them.
 | Educators | Paper, always | The default curve as a graphite line drawn from the engine, crossing the headline | "For ··· educators", caption "Teach pharmacokinetics with it." | Still |
 | README | — | New screenshots: the opening sequence, the simulator, a lesson, a case dossier, the validation sphere | — | — |
 | Link previews (OG) | Dark | The first screen of the sequence: "Dose ··· Curve" with the ribbon passing between, rendered from the engine | the caption | — |
+
+## 15. 2.4: When to sample, and the case of the day
+
+**When to sample** sits under the steady-state chart's four readouts, as a closed accordion with a hairline above it, like the sensitivity panel. Its summary is one line: the title, then "the model's times for this regimen" in the muted tone. Opened, it shows three columns in the readouts' type (a small muted label, the value in Plex Mono with tabular figures, a short sentence under it): *Steady state* (dose n), *Peak* and *Trough* (hours from the first dose). Peak and Trough each have a small **Show** button that moves the time cursor there, and the chart's focus with it. Below them is a note in small muted text, at most 62 em wide. On a phone the columns stack. It takes the panel's tone (dark in the simulator, paper in the light theme) and adds no colour of its own.
+
+**The case of the day** is the first card in the case list, two columns wide, with "Case of the day" in the accent colour above its title. The other cards follow in their usual order.

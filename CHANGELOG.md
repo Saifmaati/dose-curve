@@ -2,6 +2,18 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.4.0 (2026-10-01)
+
+Teaching additions after the redesign: when to sample, a lesson on the weight in Cockcroft–Gault, a case of the day, and documents for contributors.
+
+- **When to sample.** Under the steady-state chart of any repeated regimen, a new section gives the dose from which the regimen's peak and trough are within 10% of steady state (and within 3%), and the model's sampling times in that interval. The trough is at its end, just before the next dose. The peak is at the end of an infusion, at the oral Tmax, or straight after a bolus. With two compartments it is the moment distribution is 90% complete: ln(9A/B)/(α − β) after the infusion ends, when the distribution phase is a tenth of the level. A **Show** button moves the time cursor to each time, widening the chart if needed. Example: for vancomycin 1 g over an hour every 12 h with two compartments, distribution is 90% complete 1.4 h after the infusion ends, inside the 1–2 hours the 2020 guideline gives for a post-distribution peak. These are the model's times, and the section says a protocol sets the real ones. The section loads when it opens (`pk-tdm.js`).
+- **A new lesson, "Which weight for CrCl"** (35 lessons). A 130 kg man, 175 cm tall (ideal weight 70.5 kg), on a drug 90% renally cleared. Cockcroft–Gault with his ideal, adjusted or actual weight gives a CrCl of 88, 118 or 163 mL/min and a predicted trough of 6.1, 4.0 or 2.3 mg/L: a 2.7-fold spread from one patient and one creatinine. The challenge asks for the interval that restores the ideal-weight trough when actual weight is used. The tests check every number in it.
+- **Case of the day.** The case list opens on one case, the same for everyone on a given date (it changes at midnight UTC), so a class can work one case together without a link.
+- **For contributors:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (the files, the rules the code keeps, the stage, validation) and [CONTRIBUTING.md](CONTRIBUTING.md). `node tools/stamp.js` restamps every file loaded on demand after a change.
+- Printing leaves out the pill, the masthead and the 3D stage.
+
+Lighthouse on mobile: the root address 96–99 over three runs, a two-compartment vancomycin link 94; accessibility 100 and layout shift 0. axe: no violations, including the new section in both themes. 371 tests in 21 files. The initial script is now 24.7% over the Phase 0 baseline, within the 25% budget.
+
 ## 2.3.0 (2026-10-01)
 
 The redesign's last stage: validation, educators, README and link previews (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 14). A summary of the four 2.x releases is in [docs/REDESIGN_REPORT.md](docs/REDESIGN_REPORT.md).

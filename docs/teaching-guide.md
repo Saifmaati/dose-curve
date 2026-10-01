@@ -67,13 +67,13 @@ With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, 
   With phenytoin loaded, a small tool adjusts a measured total level for low albumin (Sheiner–Tozer). It is separate from the simulation.
 - **Use a drug from the library.** Eleven teaching profiles: ibuprofen, amoxicillin, caffeine, theophylline, gentamicin, vancomycin, meropenem, digoxin, phenytoin, lithium carbonate and levetiracetam. Meropenem shows time above the MIC (its label ties efficacy to that), and levetiracetam is a mostly renally cleared drug whose label adjusts the dose by creatinine clearance. Each shows its renal fraction, protein binding, salt factor, units and forms. **Where these values come from** ties each value to its FDA label on DailyMed or a paper, or marks it "typical textbook value, unverified". Digoxin runs in mcg and ng/mL, and lithium in mEq/L (300 mg of lithium carbonate is 8.12 mEq), and every readout, axis, table and CSV column follows.
 
-## Guided lessons (34)
+## Guided lessons (35)
 
 Each lesson opens a ready-made scenario next to a baseline. It sets a goal and asks students to **predict** the result before it explains anything. It then says why the idea matters and ends with a **challenge** that the app checks live as students move the sliders. Every number a lesson states is checked by the automated tests.
 
 | Group | Lessons |
 | --- | --- |
-| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Hemodialysis sessions · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
+| PK fundamentals | Oral vs IV bolus · Reduced clearance · Kidney function (CrCl) · Which weight for CrCl · Hemodialysis sessions · Volume of distribution · Dosing by weight · Double the dose · Flip-flop kinetics · Saturable elimination · One or two compartments |
 | Repeated dosing and steady state | Repeated dosing · Loading dose · Missed dose · Narrow window · Short vs long half-life · Once vs twice daily |
 | Custom regimens | Evenly spaced vs bunched doses |
 | Infusion and route | Bolus vs infusion · Short vs long infusion · Loading bolus + infusion · Continuous vs intermittent · Time above the MIC |
@@ -88,13 +88,15 @@ The **glossary** under the lessons defines 69 terms, each with its symbol, unit 
 
 ## Clinical cases (16)
 
-The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state:
+The **Cases** tab puts a patient, a drug from the library and a target together. Students propose a dose and an interval, and the model grades the regimen at steady state. The list opens on the **case of the day**, the same case for everyone on a given date (it changes at midnight UTC), so a class can work one case together without a link:
 
 - It says whether the target is met.
 - It gives a rule-based hint when it isn't, for example "Trough above target and peak in range: lengthen the interval before reducing the dose."
 - It grades the same regimen again, rounded to the tablets, capsules or vial steps available.
 
 **Individualize from levels.** Under the clinical patient in the simulator, measured levels (each entered as hours after a given dose) give a Bayesian estimate of the patient's own clearance, volume and half-life with 95% intervals, weighing each level against the patient model by its uncertainty (Sheiner et al., 1979). It shows how much uncertainty the levels removed, the two-level estimate beside it when two levels follow the same IV dose, and the dose for an AUC24 or trough target; applying it keeps the setup the levels were measured on as the baseline. The two Bayesian cases open with their levels, so students can compare the two methods on the same numbers. The prior's CVs and the error model are teaching assumptions, stated in the panel.
+
+**When to sample.** Under the steady-state chart of any repeated regimen, *When to sample* gives the dose from which its peak and trough are within 10% of steady state, and the model's peak and trough times in that interval: the end of an infusion, the oral Tmax, or, with two compartments, the moment distribution is 90% complete. A **Show** button moves the time cursor to each. Comparing one and two compartments for vancomycin shows why a protocol waits after the infusion before drawing a peak. The times are the model's; a local protocol sets the times levels are actually drawn.
 
 A **Walkthrough** works the textbook route with the patient's own numbers: Cockcroft–Gault, clearance, then the dose and interval, then the check. **What a pharmacist also weighs** lists the qualitative side. **Open in simulator** loads the case's patient and regimen, and every case has its own link (with the proposed regimen) and prints.
 
@@ -197,7 +199,7 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 | 4 | Multiple dosing and accumulation | Lessons: Repeated dosing, Short vs long half-life, Once vs twice daily. Practice: *Repeated dosing* |
 | 5 | Loading doses, missed and late doses | Lessons: Loading dose, Missed dose. Case: A late dose. Hit the window |
 | 6 | Infusions | Lessons: Bolus vs infusion, Short vs long infusion, Loading bolus + infusion, Continuous vs intermittent, Time above the MIC (meropenem). Practice: *Infusions* |
-| 7 | Renal function and dose adjustment | Lesson: Kidney function (CrCl). Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
+| 7 | Renal function and dose adjustment | Lessons: Kidney function (CrCl), Which weight for CrCl. Clinical patient mode. Cases: Gentamicin with reduced kidney function, Lithium, Digoxin |
 | 8 | Aminoglycosides, vancomycin, variability | Lesson: One or two compartments. Fit the data (two compartments: the method of residuals). Cases: Gentamicin once daily, Vancomycin to an AUC target, Vancomycin from two levels, Vancomycin: two levels an hour apart, Gentamicin: when the second level comes back higher. Lesson: One level and a prior. Individualize from levels (Bayesian) under the clinical patient. Population mode and probability of target attainment |
 | 9 | Nonlinear (saturable) kinetics | Lesson: Saturable elimination. Case: Phenytoin with low albumin. Population mode on phenytoin: how many virtual patients have no steady state as the dose rises. Practice: *Saturable (Michaelis–Menten)* |
 | 10 | PK/PD and review | Lessons: Potency, Efficacy, Hill slope, Dose vs duration of effect, Effect delay. Case: Theophylline in a smoker. A mixed worksheet |

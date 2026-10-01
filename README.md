@@ -46,14 +46,15 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 - Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 27 one-click comparisons.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 - **Sensitivity:** move each input (clearance, volume, F, kₐ, dose, interval; k12 and k21 with two compartments) 20% down and up, one at a time, and see a tornado chart of the change in AUC24, the peak, the trough or the time in the window, with a sentence naming the input that matters most.
+- **When to sample:** for a repeated regimen, the dose from which its peak and trough are within 10% of steady state, and the model's peak and trough times in that interval (with two compartments, once distribution is 90% complete), each with a button that moves the time cursor there.
 
 ![An effect-site delay: the effect lags the plasma level, peaks later and lower, and traces a counterclockwise loop against it](docs/img/effect-delay.png)
 
 ![Sensitivity for vancomycin 1 g every 12 h: clearance and the dosing interval move AUC24 by +25% and −16.7% at ±20%, the dose by ±20%, the volume not at all](docs/img/sensitivity.png)
 
 **Teach and practise**
-- **34 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
-- **16 clinical cases** (gentamicin conventional, once daily, on hemodialysis, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem, piperacillin-tazobactam and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question). The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
+- **35 guided lessons** that ask for a prediction first and end with a challenge the app checks live.
+- **16 clinical cases** (gentamicin conventional, once daily, on hemodialysis, individualized from two levels and from a Bayesian estimate, vancomycin to an AUC24 target, from two measured levels and from a Bayesian estimate, meropenem, piperacillin-tazobactam and levetiracetam by their labels' renal tables, phenytoin with low albumin, digoxin, theophylline in a smoker, lithium, a late-dose question), one of them the case of the day, the same for everyone on a given date. The model grades a proposed regimen at steady state, gives rule-based hints, re-grades it rounded to the forms available, and walks through the textbook route.
 - **42 kinds of generated practice problems** in seven topics with worked solutions, printable worksheets with answer keys, "Fit the data" (including a two-compartment curve to strip by the method of residuals) and "Hit the window" exercises, and a 69-term glossary.
 - **For instructors:** write a case (patient, drug, regimen choices and target) and share it as a link, checked for a solution before the link is made and marked as an unreviewed community case; put cases and worksheets in one assignment link; and verify the completion codes (HMAC-SHA256 with a class key) students make at the end. Nothing is sent anywhere.
 - Links for everything (a scenario, a lesson, a problem, a worksheet, a case, an assignment), embed code for course pages, a light theme for projectors, printable handouts, and offline use after one visit.
@@ -117,7 +118,7 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py
 ```
 
-When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pk-practice.js`, `pk-lessons.js`, `pk-bayes.js`, `pk-idr.js`, `pk-hd.js`, `pk-sens.js`, `pk-sources.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
+When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.js`, `pk-glossary.js`, `pk-practice.js`, `pk-lessons.js`, `pk-bayes.js`, `pk-idr.js`, `pk-hd.js`, `pk-sens.js`, `pk-tdm.js`, `pk-sources.js`, `pop-worker.js`) changes, update its `?v=` content-hash stamp where it's loaded: `index.html` and `validation.html` for the engine, `index.html` and `sw.js` for the others. The failing test prints the new value.
 
 ## How it's built
 
@@ -133,14 +134,18 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-bayes.js` | The Bayesian (MAP) estimate from measured levels, loaded when levels are entered and with the cases |
 | `pk-idr.js` | The indirect response models, loaded when a scenario uses one |
 | `pk-sens.js` | The sensitivity analysis and its tornado chart, loaded when its panel opens |
+| `pk-tdm.js` | When to sample: the model's steady-state, peak and trough times for a repeated regimen, loaded when its section opens |
 | `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
+| `stage.js` | The 3D stage and the opening sequence (since 2.0), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
+| `fonts/` | IBM Plex Sans and Mono, served from the site |
+| `tools/stamp.js` | Restamps the content hashes of the files loaded on demand (`node tools/stamp.js`) |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
 | `educators.html` | The page for instructors: what DoseCurve covers, how to run a class, and a link to every lesson and case |
 | `sw.js` | The service worker for offline use |
 | `tests/` | The engine, clinical, saturable, two-compartment, cases, population, validation, accessibility, release and service-worker tests |
-| `docs/` | The teaching guide, audits, the v1.0 build log, decisions and report |
+| `docs/` | The teaching guide, [ARCHITECTURE.md](docs/ARCHITECTURE.md) (how the pieces fit), [DESIGN.md](docs/DESIGN.md) (the design system and storyboards), audits, build logs, decisions and reports |
 
 Share links carry every setting in the URL itself and are written at the lowest format version that holds them (v1–v11). Older links open unchanged, and a scenario link without a version reads as v1. Nothing is sent to or stored on a server; saved scenarios and progress stay in your browser. Visit counting (GoatCounter, cookie-free) is off unless the site owner sets `ANALYTICS_SITE_ID`, and it never receives a link's settings. Don't enter patient-identifying information.
 
@@ -150,14 +155,15 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 1.6.0. 2026. https://github.com/Saifmaati/dose-curve
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.4.0. 2026. https://github.com/Saifmaati/dose-curve
 
 ## Contributing
 
 Issues and suggestions are welcome, and there are templates for a [bug report](https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md), [feedback](https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md), and ["I'm an educator and want…"](https://github.com/Saifmaati/dose-curve/issues/new?template=educator.md).
 
 For changes:
-- Keep the site static (no build step, no runtime dependencies), keep every number the UI shows covered by a test, and run `node --test tests/` before sending.
+- Keep the site static (no build step; the one runtime dependency is Three.js for the optional 3D stage, pinned and loaded from cdnjs), keep every number the UI shows covered by a test, and run `node --test tests/` before sending.
+- The full checklist is in [CONTRIBUTING.md](CONTRIBUTING.md).
 - Cite drug values only from a source you've read (an FDA label on DailyMed or a paper), or mark them unverified.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.

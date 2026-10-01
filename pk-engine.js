@@ -1168,6 +1168,10 @@
      view:{duration:72,mec:1,mtc:12},
      base:{route:"inf",tinf:0.5,dosing:"repeated",D:120,tau:8,nDoses:9,thalf:2.5,V:18,pm:"clinical",fe:0.9,age:65,scr:1.0},
      cur:{route:"inf",tinf:0.5,dosing:"repeated",D:120,tau:8,nDoses:9,thalf:2.5,V:18,pm:"clinical",fe:0.9,age:65,scr:1.8}},
+    {id:"wtcrcl", tag:"IBW", title:"Which weight for CrCl", sum:"Ideal, adjusted or actual weight in Cockcroft–Gault, and the trough it predicts.", baseLabel:"ideal weight in Cockcroft–Gault",
+     view:{duration:96,mec:5,mtc:40},
+     base:{route:"inf",tinf:1,dosing:"repeated",D:1000,tau:12,nDoses:8,thalf:6,V:49,pm:"clinical",fe:0.9,age:50,scr:1,sex:"M",wt:130,ht:175,wtm:"ibw"},
+     cur:{route:"inf",tinf:1,dosing:"repeated",D:1000,tau:12,nDoses:8,thalf:6,V:49,pm:"clinical",fe:0.9,age:50,scr:1,sex:"M",wt:130,ht:175,wtm:"actual"}},
     {id:"vd", tag:"V", title:"Volume of distribution", sum:"Dilution, half-life and why AUC can stay put.", baseLabel:"V = 20 L",
      view:{duration:72,mec:2,mtc:25},
      base:{route:"iv",D:600,V:20,thalf:3}, cur:{route:"iv",D:600,V:60,thalf:9}},
@@ -1318,12 +1322,12 @@
     {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","hd":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","wtcrcl":"pk","hd":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
   // its id, title, summary, group and scenarios, which is all the lists and links need.
-  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null, hdMod=null, sensMod=null;
+  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null, hdMod=null, sensMod=null, tdmMod=null;
   function hdApi(){ if(!hdMod && typeof require==="function") hdMod=require("./pk-hd.js"); return hdMod; }
   // the sources: attached to the drugs when pk-sources.js loads (the page) or on first use (Node)
   function attachSources(m){ srcMod=m; DRUGS.forEach(d=>{ d.refs=m.REFS[d.id]; }); }
@@ -1887,7 +1891,7 @@
     // Bayesian individualization (pk-bayes.js): loaded by the page when needed, required on first use in Node
     get bayes(){ if(!bayesMod && typeof require==="function") bayesMod=require("./pk-bayes.js"); return bayesMod; },
     get idr(){ return idrApi(); }, get hd(){ return hdApi(); },
-    get sens(){ if(!sensMod && typeof require==="function") sensMod=require("./pk-sens.js"); return sensMod; }, get sensModule(){ return sensMod; }, set sensModule(v){ sensMod=v; }, get hdModule(){ return hdMod; }, set hdModule(v){ hdMod=v; }, hdOn, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
+    get sens(){ if(!sensMod && typeof require==="function") sensMod=require("./pk-sens.js"); return sensMod; }, get sensModule(){ return sensMod; }, set sensModule(v){ sensMod=v; }, get tdm(){ if(!tdmMod && typeof require==="function") tdmMod=require("./pk-tdm.js"); return tdmMod; }, get tdmModule(){ return tdmMod; }, set tdmModule(v){ tdmMod=v; }, get hdModule(){ return hdMod; }, set hdModule(v){ hdMod=v; }, hdOn, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
     get bayesModule(){ return bayesMod; }, set bayesModule(v){ bayesMod=v; },
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

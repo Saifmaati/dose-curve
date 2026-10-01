@@ -41,7 +41,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond, in 2D and as a 3D curve drawn live from the model. Compare regimens, build dose schedules, and learn with 34 guided lessons and 16 graded clinical cases. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond, in 2D and as a 3D curve drawn live from the model. Compare regimens, build dose schedules, and learn with 35 guided lessons and 16 graded clinical cases. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -53,7 +53,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.3.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.4.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -475,7 +475,7 @@
   .clin-note::before,.drug-info .di-note::before,.lib-note.disc-note::before{content:"i";flex:0 0 auto;width:14px;height:14px;margin-top:2px;border-radius:50%;border:1.2px solid currentColor;
     font-family:var(--f-mono);font-size:9.5px;font-weight:500;line-height:12px;text-align:center}
   .bayes{margin-top:14px;border-top:1px solid var(--c-line);padding-top:12px}
-  .bayes summary,.ev-model summary,.sens summary,.fit-data summary,.cs-more summary,.drug-info summary{cursor:pointer;width:fit-content;font-size:13px;font-weight:500;color:var(--c-text);border-radius:var(--r-1)}
+  .bayes summary,.ev-model summary,.sens summary,.ss-when summary,.fit-data summary,.cs-more summary,.drug-info summary{cursor:pointer;width:fit-content;font-size:13px;font-weight:500;color:var(--c-text);border-radius:var(--r-1)}
   .bz-intro{font-size:13px;color:var(--c-text-2);margin:8px 0}
   .bz-row{display:grid;grid-template-columns:1fr 1fr 1.25fr auto;gap:6px;align-items:end;margin-bottom:6px}
   .bz-row .num-field label{margin-bottom:3px;font-size:11.5px}
@@ -728,6 +728,10 @@
     color:var(--c-text-2);font:inherit;transition:border-color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
   .cs-card:hover{border-color:var(--c-line-strong);background:var(--c-raised)}
   .cs-tag{font-size:12.5px;font-weight:500;color:var(--c-muted)}
+  /* the case of the day leads the list, twice as wide */
+  .cs-card.today{grid-column:span 2;border-color:var(--c-line-strong);background:var(--c-surface)}
+  .cs-today{font-size:12.5px;font-weight:600;color:var(--c-accent)}
+  @media (max-width:640px){ .cs-card.today{grid-column:auto} }
   .cs-title{font-weight:600;color:var(--c-text);font-size:15px;line-height:1.35}
   .cs-who{font-size:13px;color:var(--c-text-2);line-height:1.5}
   .cs-case,.cs-panel{max-width:820px} .cs-case:focus,.cs-panel:focus{outline:none}
@@ -783,6 +787,17 @@
   .ss-stat .k{font-size:12.5px;font-weight:500;color:var(--c-muted)}
   .ss-stat .v{font-family:var(--f-mono);font-size:16px;font-weight:500;margin-top:2px;color:var(--c-text)}
   .ss-stat .s{font-size:12px;color:var(--c-muted)}
+  /* when to sample (2.4) */
+  .ss-when{margin:14px 6px 0;padding-top:12px;border-top:1px solid var(--c-line)}
+  .ss-when[hidden]{display:none}
+  .ss-when summary span{font-weight:400;color:var(--c-muted);margin-left:8px}
+  .ssw-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px;margin-top:12px}
+  .ssw{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .ssw .k{font-size:12.5px;font-weight:500;color:var(--c-muted)}
+  .ssw .v{font-family:var(--f-mono);font-size:16px;font-weight:500;color:var(--c-text);font-variant-numeric:tabular-nums}
+  .ssw .s{font-size:12px;line-height:1.5;color:var(--c-muted);margin-bottom:6px}
+  .ssw .abtn{align-self:flex-start;margin-top:auto;min-height:32px;font-size:12.5px}
+  .ssw-note{margin-top:12px;font-size:12px;line-height:1.6;color:var(--c-muted);max-width:62em}
 
   /* compare against a baseline, and what changed */
   .cmp-empty{margin:16px var(--gut) 0;padding:14px 16px;border-radius:var(--r-2);border:1px dashed var(--c-line-strong);
@@ -982,6 +997,7 @@
     .pd-row{grid-template-columns:1fr}
     .learn-grid,.ls-grid,.gloss-list{grid-template-columns:1fr}
     .ss-stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px}
+    .ssw-grid{grid-template-columns:1fr}
     .foot{grid-template-columns:1fr}
   }
   @media (max-width:640px){
@@ -1051,7 +1067,7 @@
   @media print{
     @page{margin:12mm}
     body{background:#fff !important;font-size:10.5pt}
-    .stage,.intro,.top,.hero,.embed-bar,aside.controls,.tabbar,#sharedPill,.cmpbar,#lessonBar,#fitBar,#winBar,#quickStart,#evStripWrap,#insp,#cmpEmpty,.learn,#roHint,.rm-x,
+    .stage,.stage-3d,.pill,.masthead,.intro,.top,.hero,.embed-bar,aside.controls,.tabbar,#sharedPill,.cmpbar,#lessonBar,#fitBar,#winBar,#quickStart,#evStripWrap,#insp,#cmpEmpty,.learn,#roHint,.rm-x,
     .foot-links,.foot .eq,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
     .wrap{max-width:none;padding:0}
     .grid{display:block}
@@ -1123,7 +1139,7 @@
     <p class="cap">drawn from the model.</p>
     <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
       <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
-      <p><b>Learn.</b> 34 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
+      <p><b>Learn.</b> 35 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
       <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
   </section>
   <section class="scene" data-scene="3" data-tone="dark" aria-labelledby="scene3">
@@ -1632,6 +1648,10 @@
           <svg id="ssPlot" viewBox="0 0 760 240" role="img" aria-describedby="ssSummary" aria-label="Peak and trough concentration by dose number"></svg>
           <p class="sr-only" id="ssSummary"></p>
           <div class="ss-stats" id="ssStats"></div>
+          <details class="ss-when" id="ssWhen" hidden>
+            <summary>When to sample<span>the model's times for this regimen</span></summary>
+            <div class="ssw-body" id="ssWhenBody"></div>
+          </details>
         </div>
 
         <div class="cmp-empty sim-only" id="cmpEmpty">
@@ -1781,7 +1801,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.3.0, updated 1 October 2026</span>
+        <span>Version 2.4.0, updated 1 October 2026</span>
       </nav>
     </footer>
   </div>
@@ -1851,7 +1871,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=dfd6bd1f81" defer></script>
+<script src="pk-engine.js?v=58e347664c" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2953,7 +2973,7 @@
     }
 
     const stats=byId("ssStats");
-    if(mode==="cmp"){ stats.style.display="none"; return; }
+    if(mode==="cmp"){ stats.style.display="none"; renderWhen(null); return; }
     stats.style.display="";
     const S=series[0].S, p=series[0].p, last=S.rows[S.rows.length-1], u=U();
     const items=S.hd ? [
@@ -2978,7 +2998,45 @@
         `≈ ${fmt(S.t90,1)} h, ${S.dosesTo90<=p.nDoses?"within this regimen":`regimen has only ${p.nDoses}`}`]
     ];
     stats.innerHTML=items.map(s=>`<div class="ss-stat"><div class="k">${s[0]}</div><div class="v">${s[1]}</div><div class="s">${s[2]}</div></div>`).join("");
+    renderWhen(p, S);
   }
+
+  // When to sample (pk-tdm.js, 2.4): the model's times for this regimen, loaded when the section opens; each time has
+  // a button that moves the time cursor there, widening the chart when the time is past its end
+  const TDM_SRC="pk-tdm.js?v=faef16b95a";
+  let tdmLoad=null;
+  function loadTdm(){
+    if(PK.tdmModule) return Promise.resolve();
+    if(!tdmLoad) tdmLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script"); sc.src=TDM_SRC;
+      sc.onload=()=> PK.tdmModule ? res() : rej(new Error("no tdm"));
+      sc.onerror=()=>{ tdmLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return tdmLoad;
+  }
+  function renderWhen(p, S){
+    const box=byId("ssWhen"), body=byId("ssWhenBody");
+    box.hidden=!p || S.hd || !!S.mm;
+    if(box.hidden || !box.open) return;
+    if(!PK.tdmModule){ body.textContent="Loading…"; loadTdm().then(()=>renderSS()).catch(()=>{ body.textContent="This section couldn't load. Check the connection."; }); return; }
+    const w=PK.tdm.sampling(p);
+    body.innerHTML=w ? PK.tdm.html(p, w, {num:fmt, dp:cdp(1), unit:U().conc, drug:state.drug, maxT:PK.VIEW_RANGES.duration[1]})
+                     : `<p class="ssw-note">The trough doesn't settle within this model's reach.</p>`;
+  }
+  byId("ssWhen").addEventListener("toggle", ()=> renderSS());
+  byId("ssWhen").addEventListener("click", e=>{
+    const b=e.target.closest("[data-jump]");
+    if(!b || b.disabled) return;
+    const t=+b.dataset.jump;
+    if(t>state.duration){
+      state.duration=Math.min(PK.VIEW_RANGES.duration[1], Math.ceil((t+state.tau)/2)*2);
+      const r=sliderRefs.duration; if(r){ r.sl.value=state.duration; r.show(); }
+      render();
+    }
+    jumpTo(t);
+    plotEl.focus({preventScroll:false});
+  });
 
   /* ================= COMPARISON ================= */
   const ROUTE_NAME={oral:"oral",iv:"IV bolus",inf:"IV infusion",mixed:"mixed-route"};
@@ -4681,7 +4739,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=ca97210b0e";
+  const LESSON_SRC="pk-lessons.js?v=6684974af7";
   let lessonLoad=null;
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -5702,7 +5760,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=03c14857cf";
+  const CASES_SRC="cases.js?v=a038829f2a";
   let casesReady=null, casesMounted=false;
   // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){

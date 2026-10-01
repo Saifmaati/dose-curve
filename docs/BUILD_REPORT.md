@@ -420,3 +420,17 @@ Lighthouse on mobile: root 99, `#lessons` 97, `#case=vanc-lv` 96; accessibility 
 | Masthead type fitted to its words | a long lesson title | screenshots |
 
 Lighthouse on mobile: root 99, validation 99 (desktop 100), educators 100; accessibility 100 and CLS 0. axe: no violations. 362 tests in 20 files.
+
+## 32. 2.4.0 (after the redesign: when to sample, a lesson, case of the day, contributor docs)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| When to sample: steady state within 10% and 3%, the peak's and trough's times, Show buttons | Simulator, any repeated regimen, under the steady-state chart | `tdm.test.js` (closed forms for one compartment, the engine's curve at the named dose and the one before, the distribution share read off the curve's slope, loading and missed doses, scenarios left alone, wording) |
+| Lesson "Which weight for CrCl" | Lessons, PK fundamentals | `clinical.test.js` (IBW, CrCl, clearance, trough, volume, half-life, the 2.7-fold spread), the lessons' prediction and challenge checks |
+| Case of the day | Cases | `cases.test.js` (the same case all day in UTC, the next case the next day, every case in turn) |
+| ARCHITECTURE.md, CONTRIBUTING.md, `tools/stamp.js` | docs | `release.test.js` (stamps) |
+| Print leaves out the pill, masthead and stage | Print preview | the print stylesheet |
+
+Lighthouse on mobile: root 96–99 (three runs), a two-compartment vancomycin link 94; accessibility 100 and CLS 0. axe: no violations, the new section included, in both themes at 1280 and 390. 371 tests in 21 files. Initial script +24.7% of the 25% budget.
+
+Not done: pediatric allometry with maturation (DECISIONS 143), until its parameters are verified against their sources.

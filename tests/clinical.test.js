@@ -290,3 +290,19 @@ test("lesson: time above the MIC (meropenem-like, every number the text, the tem
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:0.5, tau:4, D:500})), false, "not by changing the regimen");
   assert.ok(PK.GLOSSARY.some(g=> g.lesson==="tmic" && /fT>MIC/.test(g.sym)));
 });
+
+test("lesson: which weight for CrCl (ideal, adjusted, actual) and the trough each predicts", ()=>{
+  const L=PK.LESSONS.find(l=>l.id==="wtcrcl"), at=wtm=> PK.normalizeScenario(scenario(Object.assign({}, L.cur, {wtm})));
+  const pt=PK.patientOf(at("actual"));
+  near(pt.ibw, 70.5, 0.05, "ideal body weight 70.5 kg (Devine, 175 cm)");
+  const want={ibw:[88,8.0,6.1], adj:[118,10.3,4.0], actual:[163,13.9,2.3]};
+  Object.entries(want).forEach(([w,[cr,cl,tr]])=>{
+    const p=at(w), d=PK.derived(p);
+    assert.equal(Math.round(PK.patientOf(p).crcl), cr, `${w}: CrCl ${cr} mL/min`);
+    near(d.CL, cl, 0.05, `${w}: clearance ${cl} L/h`); near(d.cminSS, tr, 0.05, `${w}: trough ${tr} mg/L`);
+    near(d.V, 91, 0.5, "the volume, by actual weight, is the same in each");
+  });
+  near(PK.derived(at("ibw")).thalfEff, 7.9, 0.05); near(PK.derived(at("actual")).thalfEff, 4.55, 0.01);
+  near(PK.derived(at("ibw")).cminSS/PK.derived(at("actual")).cminSS, 2.7, 0.01, "a 2.7-fold spread");
+  near(130/70.5, 1.8, 0.05, "actual is 1.8 times ideal");
+});
