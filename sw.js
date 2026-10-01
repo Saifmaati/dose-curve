@@ -2,16 +2,15 @@
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
 // - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), the validation results (by hash too),
-//   icons, manifest and the Google
-//   Fonts files come from the cache and are refreshed in the background. A page and its scripts always match:
+//   icons, manifest and the font files (served from this site since 2.0; older pages' Google Fonts too) come from the cache and are refreshed in the background. A page and its scripts always match:
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v19";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v38";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
-  "./cases.js?v=3ffd337354",
-  "./pk-practice.js?v=558540efae","./pk-math.js?v=42c8440065","./pk-glossary.js?v=c7406ab9b9","./pop-worker.js?v=4b1fe43934","./validation.html","./validation/reference-results.json?v=22dc7c5cbb"];
+  "./cases.js?v=124759dd74",
+  "./pk-sens.js?v=b8300283e3","./pk-explain.js?v=4bbeb09405","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=56c16f5396","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=67b2b76963","./validation.html","./educators.html","./stage.js?v=55e58173ac","./fonts/plex-sans-latin.woff2","./fonts/plex-mono-400-latin.woff2","./fonts/plex-mono-500-latin.woff2","./validation/reference-results.json?v=3e5c9bbc7c"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

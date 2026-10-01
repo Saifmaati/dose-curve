@@ -24,7 +24,7 @@
   // "at" (the level `at` hours after a dose, plus a peak limit), "hartford" (dose per kg and interval band),
   // "choice" (a reasoning question answered from the model).
   const CASES=[
-    {id:"gent", drug:"gent", title:"Gentamicin with reduced kidney function", tag:"Aminoglycoside · peak and trough",
+    {id:"gent", drug:"gent", title:"Gentamicin with reduced kidney function", tag:"Aminoglycoside, peak and trough",
      patient:{age:72, sex:"M", ht:178, wt:70, scr:1.6},
      indication:"A serious Gram-negative infection. Gentamicin is given as a 30-minute infusion.",
      target:{kind:"pt", peak:[5,12], troughMax:2,
@@ -43,7 +43,7 @@
      also:"How sick the patient is and where the infection is, whether the creatinine is stable enough for Cockcroft–Gault to mean anything, other nephrotoxic drugs, hearing and balance, fluid status (gentamicin distributes in extracellular fluid), and when to draw levels to check the model against the patient.",
      refs:["gent","cg"]},
 
-    {id:"gent-lv", drug:"gent", title:"Gentamicin after burns: individualizing from two levels", tag:"Aminoglycoside · Sawchuk–Zaske",
+    {id:"gent-lv", drug:"gent", title:"Gentamicin after burns: individualizing from two levels", tag:"Aminoglycoside, Sawchuk–Zaske",
      patient:{age:28, sex:"M", ht:178, wt:75, scr:0.8}, clMult:1.8, vMult:1.4,   // the case's premise: 1.8× the predicted clearance, 1.4× the volume
      current:{D:130, tau:8}, sample:{after:0.5, second:6},   // a level 30 min after the infusion ends, and one 6 h after it started
      indication:"A serious Gram-negative infection after extensive burns. He has had 130 mg (about 5 mg/kg a day) every 8 h as 30-minute infusions, long enough to be at steady state, and two levels were drawn in one interval (see Levels). In this case (its premise, not a general figure) he clears gentamicin 1.8 times faster than his creatinine suggests, and it spreads through a volume 1.4 times the usual estimate.",
@@ -66,7 +66,7 @@
      also:"Burn care changes gentamicin handling as the wounds, fluids and kidney function change, so levels are repeated. Other points: the infection, other nephrotoxic drugs, hearing and balance, and whether the levels were drawn at the charted times.",
      refs:["zaske1976","sawchukZaske","gent","cg"]},
 
-    {id:"lev-renal", drug:"lev", title:"Levetiracetam with reduced kidney function", tag:"Antiseizure · label renal table",
+    {id:"lev-renal", drug:"lev", title:"Levetiracetam with reduced kidney function", tag:"Antiseizure, label renal table",
      patient:{age:74, sex:"F", ht:160, wt:58, scr:1.4},
      indication:"Partial-onset seizures. She takes 1,500 mg twice daily, the usual maintenance dose, and her kidney function has declined.",
      target:{kind:"table", bsa:true, rows:[{gt:80, tau:12, lo:500, hi:1500}, {ge:50, tau:12, lo:500, hi:1000}, {ge:30, tau:12, lo:250, hi:750}, {ge:0, tau:12, lo:250, hi:500}],
@@ -85,7 +85,7 @@
      also:"Seizure control and side effects (drowsiness, behavioral changes) at the new dose, whether her kidney function is stable, dialysis (the label adds a supplemental dose after it), and the tablet sizes she can split: the tablets are scored.",
      refs:["keppra","cg"]},
 
-    {id:"mero-renal", drug:"mero", title:"Meropenem with reduced kidney function", tag:"Carbapenem · label renal table",
+    {id:"mero-renal", drug:"mero", title:"Meropenem with reduced kidney function", tag:"Carbapenem, label renal table",
      patient:{age:68, sex:"M", ht:175, wt:80, scr:2.0},
      indication:"An intra-abdominal infection. He has been started on the usual 1 g every 8 hours, infused over 30 minutes, and his kidney function is reduced.",
      target:{kind:"table", dose:1000, mic:2, rows:[{gt:50, tau:8, frac:1}, {ge:26, tau:12, frac:1}, {ge:10, tau:12, frac:0.5}, {ge:0, tau:24, frac:0.5}],
@@ -105,7 +105,49 @@
      also:"The infection and its site, the organism's actual MIC, whether kidney function is changing, dialysis (the table doesn't cover it), seizure risk, and interacting drugs such as valproic acid, whose levels meropenem can lower.",
      refs:["meropenem","cg"]},
 
-    {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
+    {id:"ptz-renal", drug:"pip", title:"Piperacillin-tazobactam with reduced kidney function", tag:"Penicillin, label renal table, fT>MIC",
+     patient:{age:72, sex:"F", ht:160, wt:62, scr:1.6},
+     indication:"A complicated intra-abdominal infection, with Pseudomonas aeruginosa among the organisms considered: the MIC is taken as 16 mg/L, the FDA susceptible breakpoint. She was started on the usual 3.375 g every 6 hours, infused over 30 minutes, and her kidney function is reduced.",
+     target:{kind:"table", mic:16, unbound:true, rows:[{gt:40, tau:6, D:3000}, {ge:20, tau:6, D:2000}, {ge:0, tau:8, D:2000}],
+       why:"The label's Table 1 (all indications except nosocomial pneumonia) sets the dose by Cockcroft–Gault creatinine clearance: above 40 mL/min, 3.375 g every 6 hours; 20 to 40, 2.25 g every 6 hours; below 20, 2.25 g every 8 hours. Doses here are the piperacillin in each, 3,000 or 2,000 mg. The label names time above the MIC as the index most predictive of efficacy; the model reads it on the unbound level (fu 0.7, from the label's 30% binding)."},
+     choices:{step:1000, min:2000, max:4000, taus:[6,8,12], tinf:0.5},
+     start:{D:3000, tau:6},
+     task:"Work out her creatinine clearance, find her row in the label's renal table, and choose the piperacillin dose and interval it gives. Then compare fT>MIC with the same regimen infused over 3 hours.",
+     plan(x){ const row=tableRow(this.target, x.crcl), D=row.D, ft=(reg, tinf)=> PK.micStats(Object.assign(caseScenario(this, reg), tinf ? {tinf} : {}), this.target.mic, 24);
+       const cur=ft(this.start), nxt=ft({D, tau:row.tau}), ext=ft({D, tau:row.tau}, 3), lod=ft({D:3000, tau:8}, 4), k0=LN2/drugOf("pip").s.thalf;
+       const norm=PK.micStats(PK.normalizeScenario(PK.scenario(PK.drugScenario(drugOf("pip")))), this.target.mic, 24), mg=v=> v.toLocaleString("en-US");
+       return {reg:{D, tau:row.tau}, steps:[
+         `Her creatinine clearance, ${nf(x.crcl,0)} mL/min, falls in the label's row for ${row.gt!==undefined ? `more than ${row.gt}` : row.ge===20 ? "20 to 40" : "less than 20"} mL/min: <b>${row.D===3000 ? "3.375 g" : "2.25 g"} every ${row.tau} hours</b>, so ${mg(D)} mg of piperacillin every ${row.tau} h.`,
+         `Why less drug is needed: with 68% of piperacillin excreted unchanged by the kidneys, her clearance factor is (1 − 0.68) + 0.68 × ${nf(x.crcl,0)} / 120 = ${nf(x.factor,2)}, so her half-life is ${nf(x.th,2)} h instead of ${nf(LN2/k0,2)} h.`,
+         `The unbound level (fu 0.7) is above the 16 mg/L MIC while the total level is above 16 / 0.7 = ${nf(16/0.7,1)} mg/L. On the 3,000 mg every 6 hours she started on, that is ${nf(cur.ft,0)}% of each interval, with an AUC24 of ${nf(cur.auc24,0)} mg·h/L, ${nf(cur.auc24/norm.auc24,1)} times the ${nf(norm.auc24,0)} of the same regimen with normal kidneys. On ${mg(D)} mg every ${row.tau} hours it is ${nf(nxt.ft,0)}%, with an AUC24 of ${nf(nxt.auc24,0)}. With normal kidneys, 3,000 mg every 6 hours over 30 minutes gives ${nf(norm.ft,0)}%: her slower clearance keeps each dose above the MIC for longer.`,
+         `The same ${mg(D)} mg every ${row.tau} hours infused over 3 hours gives ${nf(ext.ft,0)}% with the same AUC24. For comparison, the extended-infusion scheme of Lodise et al. (3.375 g over 4 hours every 8 hours) gives ${nf(lod.ft,0)}% in her, with an AUC24 of ${nf(lod.auc24,0)} mg·h/L. The label's table is written for 30-minute infusions.`]};
+     },
+     wrong:[{reg:{D:3000, tau:6}, hint:"tableDose"}, {reg:{D:2000, tau:8}, hint:"tableInterval"}],
+     also:"The infection's source and severity, the organism's measured MIC, whether her kidney function is changing, dialysis (hemodialysis removes 30% to 40% of a dose and has its own row in the label), the sodium each dose carries (65 mg per gram of piperacillin), and her other drugs: kidney injury has been reported more often when piperacillin-tazobactam is given with vancomycin.",
+     refs:["zosyn","fdaPtz","lodise2007","cg"]},
+
+    {id:"gent-hd", drug:"gent", title:"Gentamicin on hemodialysis", tag:"Aminoglycoside, dose after each session",
+     patient:{age:64, sex:"M", ht:175, wt:80, scr:7.5},
+     hd:{every:48, dur:8, fall:0.5},
+     indication:"End-stage kidney disease, on hemodialysis for 8 hours every 48 hours, with a gram-negative infection. He has had a first dose; the next is due at the end of tonight's session.",
+     target:{kind:"perkg", lo:1, hi:1.7,
+       why:"The label: an eight-hour hemodialysis may reduce serum concentrations of gentamicin by approximately 50%, and the dose at the end of each dialysis period is 1 to 1.7 mg/kg, depending on the severity of infection."},
+     choices:{step:10, min:40, max:300, taus:[48], tinf:0.5},
+     start:{D:200, tau:48},
+     task:"Choose the dose to give at the end of each session. Then compare it with the amount a session removes, and look at the levels before and after each session.",
+     plan(x){ const r=x.round(1.5*this.patient.wt), p=caseScenario(this, {D:r, tau:48}), m=metricsOf(this, p), s=m.sessions[m.sessions.length-1], th=LN2/PK.keOf(p);
+       return {reg:{D:r, tau:48}, steps:[
+         `Between sessions he clears gentamicin only through his own kidneys: with a creatinine clearance of ${nf(x.crcl,1)} mL/min, ${nf(100*x.factor,1)}% of the reference clearance, ${nf(PK.derived(p).CL,2)} L/h, a half-life of ${nf(th,0)} h.`,
+         `The label says an eight-hour session may lower the level by about 50%. In the model that takes a dialysis clearance of ${nf(p.hdcl,2)} L/h on top of his own, while the session runs.`,
+         `The label's dose at the end of each session is 1 to 1.7 mg/kg: ${nf(this.patient.wt,0)} to ${nf(1.7*this.patient.wt,0)} mg for ${this.patient.wt} kg. 1.5 mg/kg is <b>${nf(r,0)} mg</b> (rounded to 10 mg), after each session.`,
+         `On it, each dose peaks at ${m.peaks.map(v=>nf(v,1)).join(", then ")} mg/L. Before the third session the level is ${nf(s.pre,2)} mg/L, and the session takes it to ${nf(s.post,2)} mg/L, removing ${nf(s.removed,0)} mg.`,
+         `Replacing only what the session removed, about ${nf(s.supplement,0)} mg, would bring the level back to ${nf(s.pre,2)} mg/L, not to a peak. After a session ${nf(100*s.post/m.peaks[m.peaks.length-1],0)}% of the peak before it is left, so the dose at the end of each session is a full dose that rebuilds the peak, not a top-up.`]};
+     },
+     wrong:[{reg:{D:200, tau:48}, hint:"perkgHigh"}, {reg:{D:60, tau:48}, hint:"perkgLow"}],
+     also:"His residual kidney function, the dialysis method (the label notes that the amount removed varies with it), when levels are drawn (gentamicin returning from the tissues after a session raises the level again; this case's one-compartment model has no rebound), the severity of the infection, and hearing and balance, which aminoglycosides can damage, more so with renal impairment.",
+     refs:["gent","cg"]},
+
+    {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside, Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
      target:{kind:"hartford", perKg:7, bands:[[60,24],[40,36],[20,48]],
@@ -123,7 +165,7 @@
      also:"Who the approach wasn't studied in (for example burns, pregnancy, endocarditis, CrCl below 20 mL/min), dosing weight in obesity, when the single level is drawn for the nomogram, and whether the infection calls for a synergy regimen instead.",
      refs:["nicolau","gent","cg"]},
 
-    {id:"vanc", drug:"vanc", title:"Vancomycin to an AUC target", tag:"Glycopeptide · AUC24",
+    {id:"vanc", drug:"vanc", title:"Vancomycin to an AUC target", tag:"Glycopeptide, AUC24",
      patient:{age:58, sex:"M", ht:178, wt:85, scr:1.2},
      indication:"A serious MRSA infection. The target is an AUC24 of 400–600 mg·h/L, assuming an MIC of 1 mg/L (so AUC24/MIC equals AUC24).",
      target:{kind:"auc", auc:[400,600],
@@ -144,7 +186,7 @@
      also:"This one-compartment model is a teaching simplification: vancomycin distributes in two phases, and practice estimates the AUC from two levels or with Bayesian software. Kidney function trends, other nephrotoxins, the infection site, and whether a loading dose is needed all shape the choice.",
      refs:["rybak","idsaVanc","vanc","cg"]},
 
-    {id:"vanc-lv", drug:"vanc", title:"Vancomycin: the AUC from two levels", tag:"Glycopeptide · two-level AUC",
+    {id:"vanc-lv", drug:"vanc", title:"Vancomycin: the AUC from two levels", tag:"Glycopeptide, two-level AUC",
      patient:{age:52, sex:"M", ht:175, wt:95, scr:0.9},
      current:{D:1000, tau:12}, sample:{after:1},   // the levels: a peak 1 h after the infusion ends, and a trough
      indication:"A serious MRSA infection. He has had 1 g every 12 h long enough to be at steady state, and two levels were drawn in one interval: one an hour after the infusion ended, after distribution, and one just before the next dose (see Levels).",
@@ -168,7 +210,52 @@
      also:"Bayesian software (the guideline's preferred approach, which can work from one or two levels before steady state), whether the levels were drawn at the charted times and truly at steady state, the infusion's actual start and stop times, kidney function trends, and other nephrotoxic drugs.",
      refs:["rybakCid","rybak","idsaVanc","vanc","cg"]},
 
-    {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics · albumin",
+    {id:"vanc-bayes", drug:"vanc", title:"Vancomycin: two levels an hour apart", tag:"Glycopeptide, Bayesian estimate",
+     patient:{age:66, sex:"M", ht:175, wt:82, scr:1.4}, clMult:0.7, vMult:1.1,   // the premise: 0.7× the predicted clearance, 1.1× the volume
+     current:{D:750, tau:12}, bayes:{dose:8, times:[2.25, 3.25], errors:[0.05, -0.05]},   // an hour after the infusion ends, and an hour later
+     indication:"A serious MRSA infection. He has had 750 mg every 12 hours (each infused over 1.25 hours) since admission, the regimen the patient model suggests for his creatinine. After the eighth dose two levels were drawn, meant as a peak and a trough, but the second was drawn only an hour after the first (see Levels).",
+     target:{kind:"auc", auc:[400,600],
+       why:"The 2020 consensus guideline suggests an AUC between 400 and 600 mg·h/L for serious MRSA infections. One approach it describes estimates the AUC from two levels with first-order equations; Bayesian software is its preferred approach."},
+     choices:{step:250, min:250, max:3000, taus:[8,12,24], tinf:"label"},
+     start:{D:750, tau:12},
+     task:"Estimate his AUC24 two ways: with the two-level (first-order) equations, and with a Bayesian estimate (Open in simulator brings his levels; the estimate is under the clinical patient). Then choose a regimen that puts the steady-state AUC24 in 400–600 mg·h/L.",
+     plan(x){ const b=bayesOf(this), e=b.est, sz=b.sz, tau=12, D=500*e.CL*tau/24, Dr=x.round(D), [l1,l2]=b.lv;
+       const drop=100*(1-Math.exp(-(b.trueCL/b.trueV)*(l2.dt-l1.dt)));
+       return {reg:{D, tau}, steps:[
+         `On 750 mg every 12 h that predicts an AUC24 of ${nf(1500/b.pr.CL,0)} mg·h/L (daily dose / CL), inside the target.`,
+         `The levels: ${nf(l1.c,1)} mg/L at ${nf(l1.dt,2)} h after the eighth dose started and ${nf(l2.c,1)} mg/L at ${nf(l2.dt,2)} h, an hour apart.`,
+         `Two-level equations: k = ln(${nf(l1.c,1)} / ${nf(l2.c,1)}) / 1 = <b>${nf(sz.k,4)} h⁻¹</b> (a half-life of ${nf(LN2/sz.k,1)} h); the trough extrapolated to 12 h is ${nf(sz.Cmin,1)} mg/L, and the AUC24 comes to <b>${nf(sz.auc24,0)} mg·h/L</b>: on target, no change.`,
+         `But an hour is too short: over one hour his level really falls about ${nf(drop,0)}%, and each level carries a few percent of assay error (in this case, its premise: +5% and −5%). The slope between them is as much error as fall, and the extrapolated trough inherits it.`,
+         `Bayesian estimate from the same two levels, weighed against the patient model (CVs 30% and 20%): clearance <b>${nf(e.CL,2)} L/h</b> (95% ${nf(e.ci.CL[0],2)}–${nf(e.ci.CL[1],2)}), volume ${nf(e.V,1)} L. The levels are too close together to pin down the slope, so the prior holds it steady, while their height (both well above the prediction) moves clearance down. On 750 mg every 12 h that is an AUC24 of <b>${nf(1500/e.CL,0)} mg·h/L</b>, above the target.`,
+         `For 500 mg·h/L: D = 500 × ${nf(e.CL,2)} × 12 / 24 = ${nf(D,0)} mg every 12 h; rounded to 250 mg, <b>${nf(Dr,0)} mg every 12 h</b>.`,
+         `In this case's premise he clears ${nf(b.trueCL,2)} L/h, so 750 mg every 12 h really gives an AUC24 of ${nf(1500/b.trueCL,0)} mg·h/L: the two-level conclusion would have left him above the target, while the Bayesian estimate is within ${nf(Math.abs(100*(e.CL/b.trueCL-1)),0)}% of his clearance.`]};
+     },
+     wrong:[{reg:{D:750, tau:12}, hint:"aucHigh"}, {reg:{D:250, tau:12}, hint:"aucLow"}],
+     also:"When the levels were really drawn (a charted time can differ from the real one), whether the infusion ran on schedule, kidney function trends, other nephrotoxic drugs, and repeating a level after the change. Bayesian programs used in practice have population models built for the drug; the CVs here are teaching assumptions.",
+     refs:["sheiner1979","rybakCid","vanc","cg"]},
+
+    {id:"gent-bayes", drug:"gent", title:"Gentamicin: when the second level comes back higher", tag:"Aminoglycoside, Bayesian estimate",
+     patient:{age:58, sex:"F", ht:163, wt:70, scr:1.2}, clMult:0.6, vMult:1.2,   // the premise: 0.6× the predicted clearance, 1.2× the volume
+     current:{D:120, tau:8}, bayes:{dose:4, times:[1, 2], errors:[-0.05, 0.05]},   // 30 minutes after the infusion ends, and an hour later
+     indication:"A serious Gram-negative infection. She has had 120 mg every 8 hours as 30-minute infusions. After the fourth dose two levels were drawn an hour apart, the first 30 minutes after the infusion ended (see Levels).",
+     target:{kind:"pt", peak:[5,12], troughMax:2,
+       why:"The label asks for dosing that avoids prolonged peaks above 12 mcg/mL and troughs above 2 mcg/mL. A peak of at least 5 mg/L is a teaching target (unverified)."},
+     choices:{step:10, min:40, max:600, taus:[8,12,24,36,48], tinf:0.5},
+     start:{D:120, tau:8},
+     task:"Try the two-level (Sawchuk–Zaske) equations on her levels, then estimate her elimination rate and volume with the Bayesian estimate (Open in simulator brings her levels). Choose a dose and interval that give a steady-state peak of 5–12 mg/L and a trough at or below 2 mg/L.",
+     plan(x){ const b=bayesOf(this), e=b.est, T=0.5, k=e.CL/e.V, tauIdeal=T+Math.log(8/1)/k, tau=x.upTau(tauIdeal), D=8*k*e.V*T*(1-Math.exp(-k*tau))/(1-Math.exp(-k*T)), [l1,l2]=b.lv;
+       return {reg:{D, tau}, steps:[
+         `The levels: ${nf(l1.c,1)} mg/L at ${nf(l1.dt,2)} h after the fourth dose started and <b>${nf(l2.c,1)} mg/L</b> at ${nf(l2.dt,2)} h. The second is higher than the first.`,
+         `Two-level equations: k = ln(${nf(l1.c,1)} / ${nf(l2.c,1)}) / 1 = ${signed(b.sz.k,4)} h⁻¹, a negative elimination rate. The method has nothing to work with: over one hour her level really falls only about ${nf(100*(1-Math.exp(-b.trueCL/b.trueV)),0)}%, less than the assay error in the two levels (in this case, its premise: −5% and +5%).`,
+         `Bayesian estimate from the same levels, weighed against the patient model: clearance ${nf(e.CL,2)} L/h, volume ${nf(e.V,1)} L, so k = ${nf(k,4)} h⁻¹ and a half-life of <b>${nf(LN2/k,1)} h</b> (95% ${nf(e.ci.thalf[0],1)}–${nf(e.ci.thalf[1],1)} h). The levels' height says she clears it more slowly than predicted; the prior supplies the slope they can't.`,
+         `For a peak of 8 and a trough of 1 mg/L: τ = T + ln(8 / 1) / k = ${T} + ${nf(Math.log(8),3)} / ${nf(k,4)} = ${nf(tauIdeal,1)} h, so every <b>${tau} h</b>; D = C<sub>peak</sub>·k·V·T·(1 − e^(−kτ)) / (1 − e^(−kT)) = <b>${nf(D,0)} mg</b>, or ${nf(x.round(D),0)} mg rounded.`,
+         `In this case's premise her half-life is ${nf(LN2*b.trueV/b.trueCL,1)} h: on 120 mg every 8 hours her trough would climb to ${nf(PK.ssProfile(b.truth).ssTrough,1)} mg/L.`]};
+     },
+     wrong:[{reg:{D:120, tau:8}, hint:"reduceBoth"}, {reg:{D:100, tau:12}, hint:"lengthen"}, {reg:{D:80, tau:24}, hint:"increase"}],
+     also:"Levels drawn close together can't show a slope, which is why two-level methods space them several hours apart; Bayesian programs used in practice have population models built for the drug. Also: kidney function trends, hearing and balance, other nephrotoxic drugs, and repeating a level after the change.",
+     refs:["sheiner1979","gent","cg"]},
+
+    {id:"phe", drug:"phe", title:"Phenytoin: a low level and low albumin", tag:"Saturable kinetics, albumin",
      patient:{age:60, sex:"F", ht:163, wt:60, scr:0.8, alb:2.5},
      measured:{C:8, D:300},
      indication:"Seizure prophylaxis. She takes 300 mg of phenytoin sodium a day, and a steady-state total level comes back at 8 mg/L with albumin at 2.5 g/dL.",
@@ -188,7 +275,7 @@
      also:"Whether an unbound (free) level can be measured instead of adjusting a total one, kidney function (the adjustment changes in end-stage kidney disease), interacting drugs, adherence, and waiting long enough after any change before checking again: near saturation the time to steady state stretches out.",
      refs:["dilantin","sheinerTozer"]},
 
-    {id:"dig", drug:"dig", title:"Digoxin in an older adult", tag:"Narrow window · ng/mL",
+    {id:"dig", drug:"dig", title:"Digoxin in an older adult", tag:"Narrow window, ng/mL",
      patient:{age:82, sex:"F", ht:157, wt:55, scr:1.3},
      indication:"Rate control in atrial fibrillation, starting digoxin tablets once a day.",
      target:{kind:"pt", troughMin:0.5, peak:[0,2],
@@ -206,7 +293,7 @@
      also:"Potassium and magnesium, thyroid function, interacting drugs (many raise digoxin levels), symptoms of toxicity, and drawing levels at least 6 hours after a dose, once the tissue distribution phase this model leaves out is over.",
      refs:["lanoxin","cg"]},
 
-    {id:"theo", drug:"theo", title:"Theophylline in a smoker", tag:"Narrow window · clearance factor",
+    {id:"theo", drug:"theo", title:"Theophylline in a smoker", tag:"Narrow window, clearance factor",
      patient:{age:35, sex:"M", ht:178, wt:70, scr:0.9}, clMult:1.5,
      indication:"Asthma, extended-release theophylline tablets. He smokes, which the label says raises clearance by about 50% in young adults.",
      target:{kind:"pt", peak:[10,20], troughMin:5,
@@ -224,7 +311,7 @@
      also:"What happens if he stops smoking (clearance falls and levels climb over the following week or so), interacting drugs, illness with fever, liver function, and checking a level once he's at steady state.",
      refs:["theo"]},
 
-    {id:"li", drug:"li", title:"Lithium with lower kidney function", tag:"Renal elimination · mEq/L",
+    {id:"li", drug:"li", title:"Lithium with lower kidney function", tag:"Renal elimination, mEq/L",
      patient:{age:68, sex:"M", ht:175, wt:80, scr:1.3},
      indication:"Bipolar I disorder, lithium carbonate. Levels are drawn 12 hours after the last dose.",
      target:{kind:"at", at:12, range:[0.8,1.2], peakMax:1.5,
@@ -261,18 +348,30 @@
     const t=c.choices.tinf;
     return t==="label" ? Math.max(1, D/600) : t || 1;   // vancomycin: no faster than 10 mg/min
   }
-  function caseScenario(c, reg, drugId){
+  function caseScenario(c, reg, drugId, prior){
     const d=drugOf(drugId||c.drug), base=PK.drugScenario(d), pt=c.patient;
     const over={pm:"clinical", age:pt.age, sex:pt.sex, ht:pt.ht, wt:pt.wt, scr:pt.scr, alb:pt.alb||4, wtm:"actual",
       dosing:"repeated", loadMult:1, missed:1};
     if(reg){ over.D=reg.D; over.tau=reg.tau; if(base.route==="inf") over.tinf=tinfFor(c, reg.D); }
     const p=Object.assign({}, base, over);
-    if(c.clMult) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
-    if(c.vMult){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
+    // the case's premise (what the levels reveal); `prior` leaves it out: the patient as the model predicts him
+    if(c.clMult && !prior) p.thalf=base.thalf/c.clMult;   // a clearance factor: the same volume, a shorter half-life
+    if(c.vMult && !prior){ p.V=base.V*c.vMult; p.thalf*=c.vMult; }   // a volume factor: the same clearance, a longer half-life
     if(c.id==="phe") p.vmax=pheVmax(c)/(pt.wt*PK.clFactor(p));   // her Vmax, net of the model's renal factor
+    if(c.over) Object.assign(p, c.over);   // a community case's own values in place of the library's (shown as the author's)
     // enough doses to show the approach to steady state inside two weeks
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
+    if(c.hd) return PK.normalizeScenario(PK.scenario(hdScenario(c, p)));
     return PK.normalizeScenario(PK.scenario(p));
+  }
+  // A dialysis case: a dose at the end of each session (as an infusion), three sessions apart, and the dialysis
+  // clearance that makes one session lower the level by the fraction the label states.
+  function hdScenario(c, p){
+    const h=c.hd, q=Object.assign({}, p, {dosing:"custom", hd:1, hdstart:h.every-h.dur, hddur:h.dur, hdevery:h.every});
+    q.events=[0,1,2].map(i=>({t:i*h.every, mg:p.D, route:"inf", dur:p.tinf, type:"maintenance", status:"given"}));
+    const r=PK.normalizeScenario(PK.scenario(q));
+    q.hdcl=+((-Math.log(1-h.fall)/h.dur-PK.keOf(r))*PK.vOf(r)).toFixed(3);
+    return q;
   }
   // The same patient with two compartments: half the volume central, the same clearance (k10 doubles).
   const twoCmtOf=p=> PK.normalizeScenario(Object.assign({}, p, {cmt:2, V:p.V/2, thalf:p.thalf/2, k12:0.545, k21:0.545}));
@@ -284,6 +383,30 @@
     const p=caseScenario(c, c.current), T=p.tinf, rep=v=> v>=1 ? Math.round(v*10)/10 : +v.toPrecision(2), second=c.sample.second;
     return {p, D:c.current.D, tau:c.current.tau, T, after:c.sample.after, second, peak:rep(PK.ssConc(p, T+c.sample.after)),
       trough:rep(PK.ssConc(p, second===undefined ? p.tau-1e-9 : second))};
+  }
+  // The window a case opens the simulator with (and whose lower bound sets the Bayesian estimate's additive error).
+  function caseWindow(c){
+    const t=c.target, d=drugOf(c.drug);
+    // a case read on the unbound level against an MIC opens with that MIC, so the simulator's readouts are the case's
+    if(t.kind==="ftmic") return {mec:t.mic, mtc:d.s.mtc, mic:t.mic};
+    return t.kind==="table" ? Object.assign({mec:t.mic, mtc:d.s.mtc}, t.unbound ? {mic:t.mic} : {}) : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
+      : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
+  }
+  // Bayesian cases: levels drawn on the current regimen from the patient as he really is (the premise), each with the
+  // case's stated assay error, reported as a laboratory would; the prior is the patient the model predicts. The estimate
+  // uses pk-bayes.js (the page loads it with the cases).
+  function bayesOf(c){
+    const b=c.bayes, truth=caseScenario(c, c.current), ev=PK.doseEvents(truth), rep=v=> v>=1 ? Math.round(v*10)/10 : +v.toPrecision(2);
+    const lv=b.times.map((dt,i)=>({n:b.dose, dt, c:rep(PK.conc(truth, ev[b.dose-1].t+dt, ev)*(1+b.errors[i]))}));
+    const prior=Object.assign(caseScenario(c, c.current, null, true), {lv}), opts={mec:caseWindow(c).mec};
+    const est=PK.bayes.estimate(prior, lv, opts), pr=PK.bayes.priorOf(prior, opts);
+    // the two-level (Sawchuk–Zaske) equations at steady state, from the same two levels: k from their fall, the level
+    // back at the end of the infusion and forward to the end of the interval, V from the infusion equation
+    const T=truth.tinf, [a,z]=lv, k=Math.log(a.c/z.c)/(z.dt-a.dt), tau=c.current.tau, D=c.current.D;
+    const Cmax=a.c*Math.exp(k*(a.dt-T)), Cmin=z.c*Math.exp(-k*(tau-z.dt)), V=(D/T)*(1-Math.exp(-k*T))/(k*(Cmax-Cmin*Math.exp(-k*T)));
+    const sz=k>0 ? {k, Cmax, Cmin, V, CL:k*V, auc24:(T*(Cmin+Cmax)/2+(Cmax-Cmin)/k)*24/tau} : {k, broken:true};
+    return {truth, prior, lv, est, pr, sz, opts, T,
+      trueCL:PK.derived(truth).CL, trueV:PK.vOf(truth)};
   }
   // First-order two-level AUC: k from the fall between the levels, the level back at the end of the infusion, then
   // the infusion phase as a trapezoid and the decline as (Cmax − Cmin) / k (Cmin is the trough at steady state).
@@ -338,7 +461,10 @@
     hartfordInterval:"The interval comes from creatinine clearance in the Hartford bands: at least 60 mL/min every 24 h, 40–59 every 36 h, 20–39 every 48 h.",
     choice:"Compare how many half-lives the extra hours are for each drug: the one with more of them falls further.",
     tableInterval:"The interval doesn't match the label's row for this creatinine clearance: find the row, then use its interval.",
-    tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives."
+    tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives.",
+    perkgLow:"Below the label's dose for the end of each dialysis session: work out mg/kg from the body weight.",
+    perkgHigh:"Above the label's dose for the end of each dialysis session: work out mg/kg from the body weight.",
+    ftLow:"The unbound level is above the MIC for less of each interval than the target: shorten the interval, or raise the dose."
   };
   // The label table's row for a creatinine clearance (rows in order: gt, then ge thresholds).
   const tableRow=(t, crcl)=> t.rows.find(r=> r.gt!==undefined ? crcl>r.gt : crcl>=r.ge) || t.rows[t.rows.length-1];
@@ -346,12 +472,19 @@
   const mosteller=(ht, wt)=> Math.sqrt(ht*wt/3600);
   const tableCrcl=(t, p)=>{ const cr=PK.patientOf(p).crcl; return t.bsa ? cr*1.73/mosteller(p.ht, p.wt) : cr; };
   function metricsOf(c, p){
+    if(c.hd){
+      // each session's levels and the peak after each dose, read off the curve with the sessions in it
+      const rows=PK.hd.sessionTable(p, 3*c.hd.every), peaks=p.events.map(e=> PK.conc(p, e.t+e.dur));
+      return {sessions:rows, peaks, peak:Math.max(...peaks), pre:rows[rows.length-1].pre, post:rows[rows.length-1].post, perKg:p.events[0].mg/p.wt};
+    }
     const ss=PK.ssProfile(p), m={peak:ss.ssPeak, trough:ss.ssTrough, none:!!(ss.mm && ss.mm.none)};
     if(p.kin==="mm"){ m.css=ss.mm.css; m.avg=ss.mm.avg; m.auc24=m.none ? null : 24*ss.mm.avg; }
     else m.auc24=PK.derived(p).auc*24/p.tau;
     if(c.target.kind==="at" && !m.none) m.atLevel=PK.ssConc(p, Math.min(c.target.at, p.tau-1e-9));
     // the share of a steady-state interval above the MIC (sampled finely; shown to the nearest percent)
-    if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
+    // (with `unbound`, the unbound level's share, read exactly by micStats; the meropenem case keeps its total level)
+    if(c.target.unbound || c.target.kind==="ftmic") m.aboveMic=PK.micStats(p, c.target.mic, 24).ft;
+    else if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
     // hours each interval spends below 1 mg/L at steady state (the drug-free stretch of extended-interval dosing)
     if(!m.none && p.unit==="mg"){ let below=0; const N=240; for(let i=0;i<N;i++){ if(PK.ssConc(p, p.tau*(i+0.5)/N)<1) below+=p.tau/N; } m.below1=below; }
     return m;
@@ -375,8 +508,13 @@
       const perKg=reg.D/p.wt, band=t.bands.find(b=>PK.patientOf(p).crcl>=b[0]);
       const doseOk=Math.abs(perKg-t.perKg)<=0.35+1e-9, tauOk=!!band && reg.tau===band[1];
       ok=doseOk && tauOk; hint=ok ? null : !doseOk ? "hartfordDose" : "hartfordInterval";
+    } else if(t.kind==="perkg"){
+      const pk=reg.D/c.patient.wt;
+      ok=pk>=t.lo-1e-9 && pk<=t.hi+1e-9; hint=ok ? null : pk<t.lo ? "perkgLow" : "perkgHigh";
+    } else if(t.kind==="ftmic"){
+      ok=m.aboveMic>=t.ft-1e-9; hint=ok ? null : "ftLow";
     } else if(t.kind==="table"){
-      const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-t.dose*row.frac)<1e-9;
+      const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-(row.D!=null ? row.D : t.dose*row.frac))<1e-9;
       ok=tauOk && doseOk; hint=ok ? null : !tauOk ? "tableInterval" : "tableDose";
     } else if(t.kind==="at"){
       const lo=m.atLevel<t.range[0], hi=m.atLevel>t.range[1], pkHi=m.peak>=t.peakMax;
@@ -427,11 +565,11 @@
       p.kin==="mm" ? `Saturable elimination: Km ${nf(p.km,1)} mg/L and this patient's Vmax (below).`
         : c.current && (c.clMult || c.vMult) ? (()=>{ const V0=x.V/(c.vMult||1), CL0=x.CL/(c.clMult||1);
             return `Before any levels, Cockcroft–Gault predicts a clearance of CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*V0,2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(CL0,2)} L/h</b>, a half-life of ${nf(LN2*V0/CL0,1)} h with V = ${nf(V0,1)} L.`; })()
-        : `Clearance = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/drugOf(c.drug).s.thalf*PK.vOf(p)*(c.clMult||1),2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(x.CL,2)} L/h</b>; V = ${nf(x.V,1)} L; k = ${nf(x.k,4)} h⁻¹; t½ = ${nf(x.th,1)} h.`];
+        : `Clearance = CL<sub>ref</sub> × [(1 − fe) + fe × CrCl / 120] = ${nf(LN2/p.thalf*PK.vOf(p),2)} × [(1 − ${p.fe}) + ${p.fe} × ${nf(pt.crcl,1)} / 120] = <b>${nf(x.CL,2)} L/h</b>; V = ${nf(x.V,1)} L; k = ${nf(x.k,4)} h⁻¹; t½ = ${nf(x.th,1)} h.`];
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
     const m=g.metrics;
-    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
+    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="ftmic" ? `fT>MIC ${nf(m.aboveMic,1)}% of each interval, AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="perkg" ? `${nf(m.perKg,2)} mg/kg after each session; peaks ${m.peaks.map(v=>nf(v,1)).join(", ")} ${u.conc}` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
     if(c.id==="li"){ const md=missedDose(c, ref); steps.push(`If one dose is missed at steady state, the level before the next dose falls to ${nf(md.low,2)} mEq/L (from ${nf(md.usual,2)}), and regular dosing brings the troughs back within 5% of steady state after ${nf(md.recover/24,1)} days.`); }
     return steps;
   }
@@ -465,6 +603,207 @@
     return out;
   }
 
+
+  /* ================= COMMUNITY CASES (written by instructors) ================= */
+  // An instructor writes a case as a spec: the patient, a first-order drug from the library (with any values the
+  // author changes, shown as the author's), the regimen choices, a target (peak and trough, or AUC24), the task,
+  // and optional notes and references (shown as author-provided). The spec travels in the link, compressed where
+  // the browser can, versioned; it is checked on the way in and the case is only offered when some regimen on its
+  // grid meets the target. Community cases say they are unreviewed.
+  const COMMUNITY_VERSION=1;
+  const TEXT_LIMITS={title:80, setting:500, task:600, also:600, ref:200, refs:5};
+  const AUTHOR_TAUS=[4,6,8,12,24,36,48];
+  const AUTHOR_DRUG_IDS=()=> PK.DRUGS.filter(d=>d.kinetics!=="michaelis-menten").map(d=>d.id);   // levels scale with the dose
+  const R=PK.RANGES, num=(v,lo,hi)=> typeof v==="number" && isFinite(v) && v>=lo && v<=hi;
+  const str=(v,max)=> typeof v==="string" ? v.replace(/[\u0000-\u001f\u007f]/g," ").trim().slice(0,max) : "";
+  // A checked spec, or the reasons it isn't one.
+  function checkSpec(o){
+    const err=[], ok=o && typeof o==="object";
+    if(!ok) return {errors:["not a case"]};
+    const title=str(o.title, TEXT_LIMITS.title), task=str(o.task, TEXT_LIMITS.task);
+    if(!title) err.push("a title"); if(!task) err.push("a task");
+    const drug=AUTHOR_DRUG_IDS().includes(o.drug) ? o.drug : null;
+    if(!drug) err.push("a first-order drug from the library");
+    const pt=o.patient||{}, patient={age:Math.round(pt.age), sex:pt.sex==="F" ? "F" : "M", ht:Math.round(pt.ht), wt:pt.wt, scr:pt.scr};
+    if(!num(patient.age, R.age[0], R.age[1])) err.push(`an age of ${R.age[0]}–${R.age[1]} years`);
+    if(!num(patient.ht, R.ht[0], R.ht[1])) err.push(`a height of ${R.ht[0]}–${R.ht[1]} cm`);
+    if(!num(patient.wt, R.wt[0], R.wt[1])) err.push(`a weight of ${R.wt[0]}–${R.wt[1]} kg`);
+    if(!num(patient.scr, R.scr[0], R.scr[1])) err.push(`a serum creatinine of ${R.scr[0]}–${R.scr[1]} mg/dL`);
+    const over={};
+    ["thalf","V","F"].forEach(k=>{ const v=o.over && o.over[k]; if(v!=null){ if(num(v, R[k][0], R[k][1])) over[k]=v; else err.push(`${k} within ${R[k][0]}–${R[k][1]}`); } });
+    const d=drug && drugOf(drug), inf=d && d.s.route==="inf";
+    if(over.F!=null && d && d.s.route!=="oral") err.push("F only for an oral drug");
+    const ch=o.choices||{}, taus=[...new Set((ch.taus||[]).filter(t=>AUTHOR_TAUS.includes(t)))].sort((a,b)=>a-b);
+    if(!taus.length) err.push("at least one dosing interval");
+    const choices={taus, step:ch.step, min:ch.min, max:ch.max};
+    if(!num(choices.step, 0.01, 1000)) err.push("a dose step"); if(!num(choices.min, 0.01, 10000)) err.push("a lowest dose");
+    if(!num(choices.max, choices.min||0, 10000)) err.push("a highest dose above the lowest");
+    if(inf){ choices.tinf=ch.tinf; if(!num(ch.tinf, 0.25, Math.min(24, taus[0]||24))) err.push("an infusion time shorter than the interval"); }
+    const t=o.target||{}; let target=null;
+    if(t.kind==="auc"){ if(Array.isArray(t.auc) && num(t.auc[0],1,100000) && num(t.auc[1],t.auc[0],100000) && t.auc[1]>t.auc[0]) target={kind:"auc", auc:[t.auc[0], t.auc[1]]}; else err.push("an AUC24 range"); }
+    else if(t.kind==="pt"){
+      const pk=t.peak, tmax=t.troughMax, tmin=t.troughMin;
+      if(Array.isArray(pk) && num(pk[0],0,100000) && num(pk[1],pk[0],100000) && pk[1]>pk[0]){
+        target={kind:"pt", peak:[pk[0], pk[1]]};
+        if(tmax!=null){ if(num(tmax,0,pk[1])) target.troughMax=tmax; else err.push("a trough limit below the peak's top"); }
+        if(tmin!=null){ if(num(tmin,0,target.troughMax!=null ? target.troughMax : pk[1])) target.troughMin=tmin; else err.push("a trough floor below its limit"); }
+      } else err.push("a peak range");
+    } else if(t.kind==="ftmic"){
+      // the author's own MIC and the least share of each interval the unbound level must stay above it
+      if(num(t.mic, 0.001, 10000) && num(t.ft, 1, 100)) target={kind:"ftmic", mic:t.mic, ft:t.ft}; else err.push("an MIC and a time above it of 1–100%");
+    } else err.push("a target (peak and trough, AUC24, or fT>MIC)");
+    const st=o.start||{}, start={D:st.D, tau:st.tau};
+    if(!num(start.D, choices.min||0, choices.max||0) || !taus.includes(start.tau)) err.push("a starting regimen within the choices");
+    const refs=(Array.isArray(o.refs) ? o.refs : []).map(r=>str(r, TEXT_LIMITS.ref)).filter(Boolean).slice(0, TEXT_LIMITS.refs);
+    if(err.length) return {errors:err};
+    const spec={v:COMMUNITY_VERSION, title, drug, patient, setting:str(o.setting, TEXT_LIMITS.setting), task, also:str(o.also, TEXT_LIMITS.also), refs, target, choices, start};
+    if(Object.keys(over).length) spec.over=over;
+    return {spec};
+  }
+  // The case object the grader, walkthrough and page use for a spec.
+  function communityCase(spec){
+    const c={id:"community", community:true, spec, drug:spec.drug, title:spec.title, tag:"Community case, unreviewed",
+      patient:Object.assign({}, spec.patient), over:spec.over, indication:spec.setting || "Written by an instructor.",
+      target:Object.assign({why:"Set by the case's author."}, spec.target), choices:Object.assign({}, spec.choices), start:Object.assign({}, spec.start),
+      // the library's own sources for the drug and for Cockcroft–Gault, which the model uses; the author's are listed apart
+      task:spec.task, also:spec.also || "The author added no notes.", refs:[spec.drug, "cg"].filter(k=>PK.SOURCES[k]), authorRefs:spec.refs, wrong:[],
+      plan(){ const sol=solveCase(this), r=sol.best;
+        return {reg:{D:r.D, tau:r.tau}, steps:[
+          `The grid of regimens the case allows: ${sol.total} (doses ${sol.doses} × intervals ${this.choices.taus.join(", ")} h); ${sol.count} of them meet the target in this model.`,
+          `One of them, ${this.target.kind==="ftmic" ? "with the smallest daily dose" : "nearest the middle of the target"}: <b>${nf(r.D,1)} ${PK.unitsOf({unit:drugOf(this.drug).units}).dose} every ${r.tau} h</b>.`]};
+      }};
+    return c;
+  }
+  // Every regimen on the case's grid, checked against its target. First-order levels scale with the dose, so each
+  // interval is simulated once at a unit dose and every dose on it is checked by scaling; the chosen regimen is then
+  // graded in full.
+  function solveCase(c){
+    const t=c.target, ch=c.choices, list=achievable(c), doses=(list ? list.filter(D=>D>=ch.min-1e-9 && D<=ch.max+1e-9)
+      : Array.from({length:Math.min(4000, Math.floor((ch.max-ch.min)/ch.step+1e-9)+1)}, (_,i)=> +(ch.min+i*ch.step).toFixed(6)));
+    let count=0, best=null;
+    if(t.kind==="ftmic"){
+      // fT>MIC at dose D is the unit dose's against MIC / D, and it rises with the dose: bisect the grid for the first that meets it
+      ch.taus.forEach(tau=>{
+        const p1=caseScenario(c, {D:1, tau}), meets=D=> PK.micStats(p1, t.mic/D, 24).ft>=t.ft-1e-9;
+        let lo=0, hi=doses.length;
+        while(lo<hi){ const mid=(lo+hi)>>1; if(meets(doses[mid])) hi=mid; else lo=mid+1; }
+        count+=doses.length-lo;
+        if(lo<doses.length){ const D=doses[lo], score=D*24/tau;   // the smallest daily dose that meets it
+          if(!best || score<best.score-1e-9 || (Math.abs(score-best.score)<=1e-9 && tau===c.start.tau)) best={D, tau, score}; }
+      });
+      if(best) best.grade=gradeCase(c, {D:best.D, tau:best.tau});
+      return {count, total:doses.length*ch.taus.length, doses:doses.length, best, solvable:!!(best && best.grade.ok)};
+    }
+    ch.taus.forEach(tau=>{
+      const m=metricsOf(c, caseScenario(c, {D:1, tau}));
+      doses.forEach(D=>{
+        let ok, score;
+        if(t.kind==="auc"){ const a=m.auc24*D; ok=a>=t.auc[0] && a<=t.auc[1]; score=Math.abs(a/((t.auc[0]+t.auc[1])/2)-1); }
+        else { const pk=m.peak*D, tr=m.trough*D; ok=pk>=t.peak[0] && pk<=t.peak[1] && (t.troughMax==null || tr<=t.troughMax) && (t.troughMin==null || tr>=t.troughMin); score=Math.abs(pk/((t.peak[0]+t.peak[1])/2)-1); }
+        if(ok){ count++; if(!best || score<best.score-1e-12 || (Math.abs(score-best.score)<=1e-12 && tau===c.start.tau)) best={D, tau, score}; }
+      });
+    });
+    if(best) best.grade=gradeCase(c, {D:best.D, tau:best.tau});
+    return {count, total:doses.length*ch.taus.length, doses:doses.length, best, solvable:!!(best && best.grade.ok)};
+  }
+
+  /* ---------- packing a spec into a link ---------- */
+  // "z." + deflate-raw + base64url where CompressionStream exists, else "j." + base64url of the JSON; both decode everywhere
+  // DecompressionStream exists (every current browser and Node 18+).
+  const MAX_TOKEN=16000, MAX_JSON=65536;
+  const b64u={enc:bytes=>{ let s=""; bytes.forEach(b=>{ s+=String.fromCharCode(b); }); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); },
+    dec:str=>{ const b=atob(str.replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(b, ch=>ch.charCodeAt(0)); }};
+  const utf8=new TextEncoder(), fromUtf8=new TextDecoder();
+  async function packJSON(obj, plain){
+    const bytes=utf8.encode(JSON.stringify(obj));
+    if(!plain && typeof CompressionStream==="function"){
+      const z=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());
+      return "z."+b64u.enc(z);
+    }
+    return "j."+b64u.enc(bytes);
+  }
+  async function unpackJSON(tok){
+    try{
+      if(typeof tok!=="string" || tok.length>MAX_TOKEN || !/^[zj]\.[A-Za-z0-9_-]+$/.test(tok)) return null;
+      let bytes=b64u.dec(tok.slice(2));
+      if(tok[0]==="z"){
+        if(typeof DecompressionStream!=="function") return null;
+        const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw")), reader=stream.getReader(), parts=[]; let n=0;
+        for(;;){ const {done, value}=await reader.read(); if(done) break; n+=value.length; if(n>MAX_JSON){ reader.cancel(); return null; } parts.push(value); }
+        bytes=new Uint8Array(n); let o=0; parts.forEach(p=>{ bytes.set(p,o); o+=p.length; });
+      }
+      if(bytes.length>MAX_JSON) return null;
+      return JSON.parse(fromUtf8.decode(bytes));
+    }catch(e){ return null; }
+  }
+  // "case=c1.<token>" (+ &d= &t= for a proposed regimen, as for the built-in cases)
+  async function encodeCommunityLink(spec, reg, plain){
+    let h="case=c"+COMMUNITY_VERSION+"."+await packJSON(spec, plain);
+    if(reg && isFinite(reg.D)) h+=`&d=${+reg.D.toFixed(2)}&t=${reg.tau}`;
+    return h;
+  }
+  // Any case link: the built-in ones exactly as decodeCaseLink reads them, and community ones (checked, and only if
+  // solvable). {id, reg} for a built-in case, {id:"community", case, reg} for a community one, or null.
+  async function decodeAnyCaseLink(hash){
+    const q={};
+    String(hash||"").replace(/^#/,"").split("&").forEach(kv=>{ const i=kv.indexOf("="); if(i>0) q[kv.slice(0,i)]=kv.slice(i+1); });
+    const m=/^c(\d+)\.(.+)$/.exec(q.case||"");
+    if(!m) return decodeCaseLink(hash);
+    if(+m[1]!==COMMUNITY_VERSION) return null;
+    const got=checkSpec(await unpackJSON(m[2]));
+    if(!got.spec) return null;
+    const c=communityCase(got.spec);
+    if(!solveCase(c).solvable) return null;
+    const out={id:"community", case:c, reg:null};
+    if(q.d!==undefined){ const D=parseFloat(q.d), tau=parseInt(q.t,10); if(isFinite(D) && D>0 && D<=10000 && c.choices.taus.includes(tau)) out.reg={D, tau}; }
+    return out;
+  }
+
+  /* ================= ASSIGNMENTS AND COMPLETION CODES ================= */
+  // An assignment (bundle) is an ordered list of up to 12 items: built-in cases, community cases (their specs) and
+  // worksheets (topic, count, seed, pool version). It travels in "#bundle=b1.<token>". Progress stays in the browser.
+  // A completion code is an HMAC-SHA256, keyed by a class key the teacher gives out, over the assignment, a
+  // teacher-chosen identifier (not a name), the items finished, the score and the date. Nothing is sent anywhere.
+  // Anyone who knows the key can make a code, so it records completion in the app, not proof.
+  const BUNDLE_VERSION=1, BUNDLE_MAX=12;
+  function checkBundle(o){
+    if(!o || typeof o!=="object" || !Array.isArray(o.items)) return null;
+    const title=str(o.title, TEXT_LIMITS.title) || "Assignment", items=[];
+    for(const it of o.items.slice(0, BUNDLE_MAX)){
+      if(it && it.kind==="case" && caseById(it.id)) items.push({kind:"case", id:it.id});
+      else if(it && it.kind==="case" && it.spec){ const g=checkSpec(it.spec); if(g.spec && solveCase(communityCase(g.spec)).solvable) items.push({kind:"case", spec:g.spec}); else return null; }
+      else if(it && it.kind==="ws"){ const t=PK.decodeTaskLink(`ws=${it.topic||"all"}.${it.count}.${it.seed}.${it.v||1}`); if(t) items.push({kind:"ws", topic:t.topic, count:t.count, seed:t.seed, v:t.v}); else return null; }
+      else return null;
+    }
+    return items.length ? {v:BUNDLE_VERSION, title, items} : null;
+  }
+  async function encodeBundleLink(b, plain){ const ok=checkBundle(b); return ok ? "bundle=b"+BUNDLE_VERSION+"."+await packJSON(ok, plain) : null; }
+  async function decodeBundleLink(hash){
+    const m=/^#?bundle=b(\d+)\.([zj]\.[A-Za-z0-9_-]+)$/.exec(String(hash||""));
+    if(!m || +m[1]!==BUNDLE_VERSION) return null;
+    return checkBundle(await unpackJSON(m[2]));
+  }
+  // Short, stable names for items, used in the payload a code covers.
+  const itemId=(it,i)=> it.kind==="case" ? (it.id || `community${i+1}`) : `ws:${it.topic||"all"}.${it.count}.${it.seed}.${it.v}`;
+  const IDENT=/^[A-Za-z0-9_-]{1,24}$/;
+  const hex=bytes=> Array.from(bytes, b=>b.toString(16).padStart(2,"0")).join("");
+  async function sha256Hex(text){ return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", utf8.encode(text)))); }
+  const B32="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no I, O, 0, 1
+  function base32(bytes, n){ let bits=0, val=0, out=""; for(const b of bytes){ val=(val<<8)|b; bits+=8; while(bits>=5 && out.length<n){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } } return out; }
+  // The readable payload: what the code vouches for.
+  function completionPayload(o){
+    return ["DoseCurve completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
+  }
+  async function completionCode(key, payload){
+    const k=await crypto.subtle.importKey("raw", utf8.encode(String(key)), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+    const sig=new Uint8Array(await crypto.subtle.sign("HMAC", k, utf8.encode(payload)));
+    return base32(sig, 16).replace(/(.{4})(?!$)/g,"$1-");
+  }
+  async function verifyCode(key, payload, code){
+    const want=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    return want.length===16 && (await completionCode(key, String(payload||"").replace(/\r\n?/g,"\n").trim())).replace(/-/g,"")===want;
+  }
+
   /* ================= THE CASES TAB (browser only) ================= */
   // host: {esc, fmt, toast, copyHash(hash), openScenario(p, view, drugId)} from the page.
   let host=null, rootEl=null, current=null;
@@ -475,6 +814,8 @@
     if(t.kind==="css") return `Predicted steady-state level ${t.css[0]}–${t.css[1]} ${u}`;
     if(t.kind==="hartford") return `7 mg/kg, at the interval the Hartford bands give for this CrCl`;
     if(t.kind==="table") return `The dose and interval the label's renal table gives for this creatinine clearance`;
+    if(t.kind==="perkg") return `${t.lo} to ${t.hi} mg/kg at the end of each dialysis session (the label's range)`;
+    if(t.kind==="ftmic") return `The unbound level above an MIC of ${t.mic} ${u} for at least ${t.ft}% of each interval at steady state (fT>MIC; unbound fraction ${PK.drugScenario(drugOf(c.drug)).fu} from the library)`;
     if(t.kind==="at") return `The ${t.at}-hour level at steady state ${t.range[0]}–${t.range[1]} ${u}, peak below ${t.peakMax} ${u}`;
     if(t.kind==="choice") return `A reasoning question, checked against the model`;
     const parts=[];
@@ -483,15 +824,235 @@
     if(t.troughMin!=null) parts.push(`trough at or above ${t.troughMin} ${u}`);
     return `At steady state: ${parts.join(", ")}`;
   };
+  // The case of the day: the same for everyone on a given (UTC) day, and every case in turn over CASES.length days
+  const caseOfDay=(date=new Date())=> CASES[Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())/864e5) % CASES.length];
   function mount(el, h){
     host=h; rootEl=el;
+    const today=caseOfDay(), order=[today, ...CASES.filter(c=>c!==today)];
     el.innerHTML=`<div class="cs-intro"><h2 class="cs-h">Clinical cases</h2>
       <p>Each case gives a patient and a drug. Propose a regimen and the model grades it at steady state, with a hint when it misses and the same regimen rounded to the forms available. The walkthrough works the textbook route with the patient's own numbers.</p>
       <p class="cs-disc">Educational model, not for clinical dosing. The cases teach the reasoning; they are not prescribing instructions.</p></div>
-      <div class="cs-list">${CASES.map(c=>`<button class="cs-card" data-id="${c.id}"><span class="cs-tag">${h.esc(c.tag)}</span><span class="cs-title">${h.esc(c.title)}</span><span class="cs-who">${h.esc(who(c))}</span></button>`).join("")}</div>
+      <div class="cs-list">${order.map(c=>`<button class="cs-card${c===today ? " today" : ""}" data-id="${c.id}">${c===today ? `<span class="cs-today">Case of the day</span>` : ""}<span class="cs-tag">${h.esc(c.tag)}</span><span class="cs-title">${h.esc(c.title)}</span><span class="cs-who">${h.esc(who(c))}</span></button>`).join("")}</div>
+      <div class="cs-tools"><p class="cs-sub">For instructors</p>
+        <p>Write your own case and share it as a link, put cases and worksheets together as an assignment, and check the completion codes students bring back. Everything stays in the link and in each browser: nothing is sent anywhere.</p>
+        <div class="cs-actions"><button class="abtn" type="button" id="csAuthorBtn">Write a case</button><button class="abtn" type="button" id="csBundleBtn">Make an assignment</button><button class="abtn" type="button" id="csVerifyBtn">Verify a completion code</button></div></div>
+      <section class="cs-panel" id="csPanel" hidden tabindex="-1"></section>
       <article class="cs-case" id="csCase" hidden tabindex="-1"></article>`;
     el.querySelector(".cs-list").addEventListener("click",e=>{ const b=e.target.closest(".cs-card"); if(b) open({id:b.dataset.id, reg:null}); });
+    el.querySelector("#csAuthorBtn").addEventListener("click",()=> renderAuthor());
+    el.querySelector("#csBundleBtn").addEventListener("click",()=> renderBundleMaker());
+    el.querySelector("#csVerifyBtn").addEventListener("click",()=> renderVerify());
   }
+
+  /* ---------- the tab's views ---------- */
+  // One view at a time: the list (with the intro and the instructor tools), a case, or an instructor panel.
+  function showOnly(el){
+    ["cs-intro","cs-list","cs-tools"].forEach(cl=>{ rootEl.querySelector("."+cl).hidden=!!el; });
+    ["#csPanel","#csCase"].forEach(id=>{ const x=rootEl.querySelector(id); x.hidden=x!==el; });
+  }
+  const showList=()=> showOnly(null);
+  function panel(html){
+    const el=rootEl.querySelector("#csPanel");
+    el.innerHTML=`<p><button class="abtn" type="button" data-back>All cases</button></p>`+html;
+    el.querySelector("[data-back]").addEventListener("click",()=>{ showList(); rootEl.querySelector("#csAuthorBtn").focus(); });
+    showOnly(el); el.focus({preventScroll:true}); el.scrollIntoView({block:"start"});
+    return el;
+  }
+  // Browser storage for drafts and assignment progress: a convenience that may be unavailable.
+  const store={get:k=>{ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ /* not kept */ } }};
+  let lastSpec=null;
+
+  /* ---------- write a case ---------- */
+  const TEMPLATE={title:"", drug:"gent", patient:{age:70, sex:"F", ht:160, wt:60, scr:1.5}, setting:"", task:"Choose a dose and interval that meet the target at steady state.",
+    also:"", refs:[], target:{kind:"pt", peak:[5,10], troughMax:1}, choices:{taus:[8,12,24,36], step:10, min:40, max:400, tinf:0.5}, start:{D:80, tau:8}};
+  function renderAuthor(){
+    const h=host, sp=Object.assign({}, TEMPLATE, store.get("dosecurve-author-draft")||{}), t=sp.target||{}, ch=sp.choices||{}, pt=sp.patient||{}, ov=sp.over||{};
+    const v=x=> x==null ? "" : String(x), sel=(a,b)=> a===b ? " selected" : "";
+    const el=panel(`<h2 class="cs-h">Write a case</h2>
+      <p class="cs-intro-p">A case is a patient, a drug from the library and a target. Students propose a regimen and the model grades it. Before the link is made, every regimen your choices allow is checked, and the link is offered only if at least one meets the target. It opens as a community case, marked unreviewed. Don't include a patient's name or other identifiers.</p>
+      <p class="cs-disc">Educational model, not for clinical dosing.</p>
+      <form id="auForm" class="cs-author" novalidate>
+        <label class="wide">Title<input id="auTitle" maxlength="${TEXT_LIMITS.title}" value="${h.esc(v(sp.title))}"></label>
+        <label>Drug<select id="auDrug">${AUTHOR_DRUG_IDS().map(id=>`<option value="${id}"${sel(id, sp.drug)}>${h.esc(drugOf(id).name)}</option>`).join("")}</select></label>
+        <fieldset><legend>Patient</legend>
+          <label>Age (years)<input id="auAge" type="number" min="18" max="100" step="1" value="${v(pt.age)}"></label>
+          <label>Sex<select id="auSex"><option value="F"${sel("F",pt.sex)}>Female</option><option value="M"${sel("M",pt.sex)}>Male</option></select></label>
+          <label>Height (cm)<input id="auHt" type="number" min="120" max="220" step="1" value="${v(pt.ht)}"></label>
+          <label>Weight (kg)<input id="auWt" type="number" min="40" max="200" step="0.5" value="${v(pt.wt)}"></label>
+          <label>Serum creatinine (mg/dL)<input id="auScr" type="number" min="0.2" max="15" step="0.1" value="${v(pt.scr)}"></label></fieldset>
+        <fieldset><legend>Your own values (optional; blank uses the library's)</legend>
+          <label>Half-life (h)<input id="auThalf" type="number" min="0.5" max="72" step="0.1" value="${v(ov.thalf)}"></label>
+          <label>Volume per 70 kg (L)<input id="auV" type="number" min="5" max="600" step="0.5" value="${v(ov.V)}"></label>
+          <label>Bioavailability (oral)<input id="auF" type="number" min="0.1" max="1" step="0.01" value="${v(ov.F)}"></label></fieldset>
+        <label class="wide">Setting<textarea id="auSetting" rows="2" maxlength="${TEXT_LIMITS.setting}">${h.esc(v(sp.setting))}</textarea></label>
+        <label class="wide">Task<textarea id="auTask" rows="2" maxlength="${TEXT_LIMITS.task}">${h.esc(v(sp.task))}</textarea></label>
+        <fieldset><legend>Regimens students can choose</legend>
+          <div class="au-taus">${AUTHOR_TAUS.map(x=>`<label class="au-chk"><input type="checkbox" value="${x}"${(ch.taus||[]).includes(x) ? " checked" : ""}> every ${x} h</label>`).join("")}</div>
+          <label>Lowest dose<input id="auMin" type="number" min="0.01" step="any" value="${v(ch.min)}"></label>
+          <label>Highest dose<input id="auMax" type="number" min="0.01" step="any" value="${v(ch.max)}"></label>
+          <label>Dose step<input id="auStep" type="number" min="0.01" step="any" value="${v(ch.step)}"></label>
+          <label id="auTinfL">Infusion time (h)<input id="auTinf" type="number" min="0.25" max="24" step="0.25" value="${v(ch.tinf)}"></label>
+          <label>Opening dose<input id="auD" type="number" min="0.01" step="any" value="${v((sp.start||{}).D)}"></label>
+          <label>Opening interval<select id="auTau">${AUTHOR_TAUS.map(x=>`<option value="${x}"${sel(x,(sp.start||{}).tau)}>${x} h</option>`).join("")}</select></label></fieldset>
+        <fieldset><legend>Target at steady state</legend>
+          <label>Kind<select id="auKind"><option value="pt"${sel("pt",t.kind)}>Peak and trough</option><option value="auc"${sel("auc",t.kind)}>AUC24</option><option value="ftmic"${sel("ftmic",t.kind)}>Time above the MIC (fT&gt;MIC)</option></select></label>
+          <label class="au-pt">Peak from<input id="auPkLo" type="number" min="0" step="any" value="${v((t.peak||[])[0])}"></label>
+          <label class="au-pt">Peak to<input id="auPkHi" type="number" min="0" step="any" value="${v((t.peak||[])[1])}"></label>
+          <label class="au-pt">Trough at most (optional)<input id="auTrMax" type="number" min="0" step="any" value="${v(t.troughMax)}"></label>
+          <label class="au-pt">Trough at least (optional)<input id="auTrMin" type="number" min="0" step="any" value="${v(t.troughMin)}"></label>
+          <label class="au-auc">AUC24 from<input id="auAucLo" type="number" min="0" step="any" value="${v((t.auc||[])[0])}"></label>
+          <label class="au-auc">AUC24 to<input id="auAucHi" type="number" min="0" step="any" value="${v((t.auc||[])[1])}"></label>
+          <label class="au-ft">MIC<input id="auMic" type="number" min="0" step="any" value="${v(t.mic)}"></label>
+          <label class="au-ft">Above it for at least (% of each interval)<input id="auFt" type="number" min="1" max="100" step="any" value="${v(t.ft)}"></label></fieldset>
+        <label class="wide">What a pharmacist also weighs (optional)<textarea id="auAlso" rows="2" maxlength="${TEXT_LIMITS.also}">${h.esc(v(sp.also))}</textarea></label>
+        <label class="wide">References, one per line (optional, up to ${TEXT_LIMITS.refs}; shown as author-provided)<textarea id="auRefs" rows="2">${h.esc((sp.refs||[]).join("\n"))}</textarea></label>
+        <div class="cs-actions"><button class="abtn" type="submit">Check and make the link</button></div>
+      </form>
+      <div id="auOut" class="cs-result" aria-live="polite"></div>`);
+    const f=el.querySelector("#auForm"), $=id=>el.querySelector("#"+id), nv=id=>{ const x=$(id).value.trim(); return x==="" ? null : parseFloat(x); };
+    const sync=()=>{ const inf=drugOf($("auDrug").value).s.route==="inf", kind=$("auKind").value;
+      $("auTinfL").hidden=!inf; el.querySelectorAll(".au-pt").forEach(x=>x.hidden=kind!=="pt"); el.querySelectorAll(".au-auc").forEach(x=>x.hidden=kind!=="auc");
+      el.querySelectorAll(".au-ft").forEach(x=>x.hidden=kind!=="ftmic");
+      $("auF").closest("label").hidden=drugOf($("auDrug").value).s.route!=="oral"; };
+    ["auDrug","auKind"].forEach(id=> $(id).addEventListener("change", sync)); sync();
+    const read=()=>{
+      const drug=$("auDrug").value, inf=drugOf(drug).s.route==="inf", oral=drugOf(drug).s.route==="oral", kind=$("auKind").value, over={};
+      [["thalf","auThalf"],["V","auV"]].concat(oral ? [["F","auF"]] : []).forEach(([k,id])=>{ const x=nv(id); if(x!=null) over[k]=x; });
+      const target=kind==="auc" ? {kind, auc:[nv("auAucLo"), nv("auAucHi")]} : kind==="ftmic" ? {kind, mic:nv("auMic"), ft:nv("auFt")} : {kind, peak:[nv("auPkLo"), nv("auPkHi")]};
+      if(kind==="pt"){ const a=nv("auTrMax"), b=nv("auTrMin"); if(a!=null) target.troughMax=a; if(b!=null) target.troughMin=b; }
+      const choices={taus:[...el.querySelectorAll(".au-taus input:checked")].map(x=>+x.value), min:nv("auMin"), max:nv("auMax"), step:nv("auStep")};
+      if(inf) choices.tinf=nv("auTinf");
+      return {title:$("auTitle").value, drug, patient:{age:nv("auAge"), sex:$("auSex").value, ht:nv("auHt"), wt:nv("auWt"), scr:nv("auScr")}, over:Object.keys(over).length ? over : undefined,
+        setting:$("auSetting").value, task:$("auTask").value, also:$("auAlso").value, refs:$("auRefs").value.split("\n").map(x=>x.trim()).filter(Boolean),
+        target, choices, start:{D:nv("auD"), tau:+$("auTau").value}};
+    };
+    f.addEventListener("submit",e=>{
+      e.preventDefault();
+      const raw=read(); store.set("dosecurve-author-draft", raw);
+      const got=checkSpec(raw), out=$("auOut");
+      if(!got.spec){ out.innerHTML=`<p class="cs-no">The case needs ${h.esc(got.errors.join("; "))}.</p>`; return; }
+      const c=communityCase(got.spec), sol=solveCase(c), u=PK.unitsOf({unit:drugOf(c.drug).units});
+      if(!sol.solvable){ out.innerHTML=`<p class="cs-no">✗ None of the ${sol.total} regimens your choices allow meets the target in the model. Widen the dose range, add intervals, or relax the target.</p>`; return; }
+      lastSpec=got.spec;
+      const g=sol.best.grade, m=g.metrics;
+      out.innerHTML=`<p class="cs-ok">✓ ${sol.count} of the ${sol.total} regimens your choices allow meet the target; for example ${nf(sol.best.D,1)} ${u.dose} every ${sol.best.tau} h (${c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} ${u.auc}` : `peak ${nf(m.peak,2)}, trough ${nf(m.trough,2)} ${u.conc}`}).</p>`+
+        `<p class="cs-sub">Link, ready to share</p><input class="cs-linkbox" id="auLink" readonly aria-label="The case's link">`+
+        `<div class="cs-actions"><button class="abtn" type="button" id="auCopy">Copy link</button><button class="abtn" type="button" id="auOpen">Open the case</button><button class="abtn" type="button" id="auBundle">Put it in an assignment</button></div>`;
+      encodeCommunityLink(got.spec).then(hash=>{ $("auLink").value=location.href.split("#")[0]+"#"+hash;
+        $("auCopy").addEventListener("click",()=> h.copyHash(hash)); });
+      $("auOpen").addEventListener("click",()=> open({id:"community", case:c, reg:null}));
+      $("auBundle").addEventListener("click",()=> renderBundleMaker(true));
+    });
+  }
+
+  /* ---------- make an assignment ---------- */
+  function renderBundleMaker(withSpec){
+    const h=host, items=[];
+    if(withSpec && lastSpec) items.push({kind:"case", spec:lastSpec});
+    const el=panel(`<h2 class="cs-h">Make an assignment</h2>
+      <p class="cs-intro-p">Put up to ${BUNDLE_MAX} cases and worksheets in order and share one link. Students open it, work through the items (worksheet answers are checked as they go), and can make a completion code at the end. Choose a class key and tell it to your class separately: it is not in the link, and you need it to verify their codes.</p>
+      <label class="cs-field">Title<input id="bmTitle" maxlength="${TEXT_LIMITS.title}" value="Assignment"></label>
+      <fieldset class="cs-field"><legend>Add a case</legend><select id="bmCase" aria-label="Case to add">${CASES.map(c=>`<option value="${c.id}">${h.esc(c.title)}</option>`).join("")}${lastSpec ? `<option value="community">Your case: ${h.esc(lastSpec.title)}</option>` : ""}</select>
+        <button class="abtn" type="button" id="bmAddCase">Add</button></fieldset>
+      <fieldset class="cs-field"><legend>Add a worksheet</legend><select id="bmTopic" aria-label="Worksheet topic"><option value="">All topics</option>${PK.PRACTICE_TOPICS.map(t=>`<option value="${t.id}">${h.esc(t.title)}</option>`).join("")}</select>
+        <select id="bmCount" aria-label="Number of problems">${PK.WORKSHEET_SIZES.map(n=>`<option value="${n}"${n===5 ? " selected" : ""}>${n} problems</option>`).join("")}</select>
+        <button class="abtn" type="button" id="bmAddWs">Add</button></fieldset>
+      <ol class="cs-items" id="bmItems"></ol>
+      <div class="cs-actions"><button class="abtn" type="button" id="bmMake">Make the link</button></div>
+      <div id="bmOut" class="cs-result" aria-live="polite"></div>`);
+    const $=id=>el.querySelector("#"+id);
+    const label=it=> it.kind==="case" ? `Case: ${it.id ? caseById(it.id).title : it.spec.title + " (community)"}` : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"}, ${it.count} problems`;
+    const draw=()=>{ $("bmItems").innerHTML=items.map((it,i)=>`<li>${h.esc(label(it))} <button class="bz-del" type="button" data-rm="${i}" aria-label="Remove item ${i+1}">✕</button></li>`).join("") || `<li class="cs-empty">No items yet.</li>`; };
+    $("bmItems").addEventListener("click",e=>{ const b=e.target.closest("[data-rm]"); if(b){ items.splice(+b.dataset.rm,1); draw(); } });
+    $("bmAddCase").addEventListener("click",()=>{ if(items.length>=BUNDLE_MAX) return; const v=$("bmCase").value; items.push(v==="community" ? {kind:"case", spec:lastSpec} : {kind:"case", id:v}); draw(); });
+    $("bmAddWs").addEventListener("click",()=>{ if(items.length>=BUNDLE_MAX) return; items.push({kind:"ws", topic:$("bmTopic").value, count:+$("bmCount").value, seed:1+Math.floor(Math.random()*999999), v:PK.WS_VERSION}); draw(); });
+    $("bmMake").addEventListener("click",()=>{
+      encodeBundleLink({title:$("bmTitle").value, items}).then(hash=>{
+        if(!hash){ $("bmOut").innerHTML=`<p class="cs-no">Add at least one item first.</p>`; return; }
+        $("bmOut").innerHTML=`<p class="cs-ok">✓ ${items.length} item${items.length>1 ? "s" : ""}.</p><input class="cs-linkbox" readonly aria-label="The assignment's link" value="${h.esc(location.href.split("#")[0]+"#"+hash)}">`+
+          `<div class="cs-actions"><button class="abtn" type="button" id="bmCopy">Copy link</button><button class="abtn" type="button" id="bmOpen">Open it</button></div>`;
+        $("bmCopy").addEventListener("click",()=> h.copyHash(hash));
+        $("bmOpen").addEventListener("click",()=> decodeBundleLink(hash).then(b=>openBundle(b, hash.slice(7))));
+      });
+    });
+    draw();
+  }
+
+  /* ---------- work through an assignment ---------- */
+  function progressKey(token){ return "dosecurve-assignment-"+token.slice(-24); }
+  function markDone(from, i, val){ const k=progressKey(from.token), pr=store.get(k)||{}; pr[i]=Object.assign(pr[i]||{}, val); store.set(k, pr); }
+  function openBundle(b, token){
+    if(!b){ panel(`<p class="cs-no">This assignment link couldn't be read. Ask for the link again.</p>`); return; }
+    token=token || (location.hash.match(/bundle=b\d+\.(.+)$/)||[])[1] || "local";
+    const h=host, pr=store.get(progressKey(token))||{}, from=i=>({bundle:b, token, index:i});
+    const status=(it,i)=>{ const p=pr[i]||{};
+      if(it.kind==="case") return p.ok ? "✓ on target" : "not yet";
+      const n=Object.values(p.answers||{}).filter(a=>a.ok).length; return `${n} of ${it.count} right`; };
+    const el=panel(`<p class="cs-tag">Assignment</p><h2 class="cs-h">${h.esc(b.title)}</h2>
+      <p class="cs-disc">Educational model, not for clinical dosing.</p>
+      <ol class="cs-items">${b.items.map((it,i)=>`<li><span>${h.esc(it.kind==="case" ? (it.id ? caseById(it.id).title : it.spec.title+" (community case)") : `Worksheet: ${it.topic ? PK.PRACTICE_TOPICS.find(t=>t.id===it.topic).title : "all topics"}, ${it.count} problems`)}</span>
+        <span class="cs-status">${status(it,i)}</span> <button class="abtn" type="button" data-open="${i}">Open</button></li>`).join("")}</ol>
+      <div id="bdWs"></div>
+      <section class="cs-code"><p class="cs-sub">Completion code</p>
+        <p>When you've finished, enter the identifier your teacher gave you (not your name) and the class key, and show the code and the lines above it to your teacher. The code is made in this browser; nothing is sent.</p>
+        <div class="cs-form"><label>Identifier<input id="bdId" maxlength="24" autocomplete="off" pattern="[A-Za-z0-9_-]{1,24}"></label><label>Class key<input id="bdKey" type="password" autocomplete="off"></label></div>
+        <div class="cs-actions"><button class="abtn" type="button" id="bdMake">Make my completion code</button></div>
+        <div id="bdOut" class="cs-result" aria-live="polite"></div></section>`);
+    el.querySelector(".cs-items").addEventListener("click",e=>{
+      const btn=e.target.closest("[data-open]"); if(!btn) return;
+      const i=+btn.dataset.open, it=b.items[i];
+      if(it.kind==="case") open(it.id ? {id:it.id, reg:null, from:from(i)} : {id:"community", case:communityCase(it.spec), reg:null, from:from(i)});
+      else openWorksheetItem(el, b, token, i);
+    });
+    el.querySelector("#bdMake").addEventListener("click",async()=>{
+      const id=el.querySelector("#bdId").value.trim(), key=el.querySelector("#bdKey").value, out=el.querySelector("#bdOut");
+      if(!IDENT.test(id)){ out.innerHTML=`<p class="cs-no">The identifier is 1 to 24 letters, digits, - or _ (no spaces): the one your teacher gave you, not your name.</p>`; return; }
+      if(key.length<4){ out.innerHTML=`<p class="cs-no">Enter the class key your teacher gave you (at least 4 characters).</p>`; return; }
+      const p2=store.get(progressKey(token))||{}, done=[], ids=[]; let score=0, total=0;
+      b.items.forEach((it,i)=>{ const q=p2[i]||{};
+        if(it.kind==="case"){ total++; if(q.ok){ score++; done.push(itemId(it,i)); } }
+        else { total+=it.count; const n=Object.values(q.answers||{}).filter(a=>a.ok).length; score+=n; if(n) done.push(itemId(it,i)+`(${n}/${it.count})`); }
+        ids.push(itemId(it,i)); });
+      const payload=completionPayload({bundle:(await sha256Hex(token)).slice(0,12), identifier:id, items:done.length ? done : ["none"], score, total, date:new Date().toISOString().slice(0,10)});
+      const code=await completionCode(key, payload);
+      out.innerHTML=`<pre class="cs-payload">${h.esc(payload)}</pre><p>Code: <b class="cs-codev">${code}</b></p><p class="cs-sub">Anyone who knows the class key could make a code, so it records work done in the app; it isn't proof.</p>`;
+    });
+  }
+  function openWorksheetItem(el, b, token, i){
+    const it=b.items[i], box=el.querySelector("#bdWs"), h=host;
+    box.innerHTML=`<p class="cs-sub">Loading the problems…</p>`;
+    h.loadPractice().then(()=>{
+      const w=PK.makeWorksheet({topic:it.topic||undefined, count:it.count, seed:it.seed, v:it.v}), pr=(store.get(progressKey(token))||{})[i]||{}, ans=pr.answers||{};
+      box.innerHTML=`<h3 class="cs-h3">Worksheet: ${it.count} problems</h3><ol class="cs-ws">${w.problems.map((p,j)=>`<li><div>${p.q}</div>
+        <div class="cs-form"><label>Answer (${h.esc(p.unit)})<input data-j="${j}" type="number" step="any" value="${ans[j] ? ans[j].v : ""}"></label><button class="abtn" type="button" data-chk="${j}">Check</button></div>
+        <p class="cs-wsr" id="wsr${i}_${j}">${ans[j] ? (ans[j].ok ? "✓ Right" : "✗ Not quite") : ""}</p></li>`).join("")}</ol>`;
+      box.onclick=e=>{
+        const btn=e.target.closest("[data-chk]"); if(!btn) return;
+        const j=+btn.dataset.chk, v=parseFloat(box.querySelector(`input[data-j="${j}"]`).value);
+        if(!isFinite(v)) return;
+        const ok=PK.practiceCorrect(w.problems[j], v), cur=(store.get(progressKey(token))||{})[i]||{}, answers=Object.assign({}, cur.answers, {[j]:{v, ok}});
+        markDone({token}, i, {answers});
+        box.querySelector(`#wsr${i}_${j}`).textContent=ok ? "✓ Right" : "✗ Not quite";
+      };
+      box.scrollIntoView({block:"start"});
+    }).catch(()=>{ box.innerHTML=`<p class="cs-no">The problems couldn't load. Check the connection and open the worksheet again.</p>`; });
+  }
+
+  /* ---------- verify a completion code ---------- */
+  function renderVerify(){
+    const h=host, el=panel(`<h2 class="cs-h">Verify a completion code</h2>
+      <p class="cs-intro-p">Paste the lines a student shows you and their code, and enter your class key. The check runs in this browser.</p>
+      <label class="cs-field">Class key<input id="vcKey" type="password" autocomplete="off"></label>
+      <label class="cs-field">The lines above the code<textarea id="vcPayload" rows="6"></textarea></label>
+      <label class="cs-field">Code<input id="vcCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX"></label>
+      <div class="cs-actions"><button class="abtn" type="button" id="vcGo">Verify</button></div>
+      <div id="vcOut" class="cs-result" aria-live="polite"></div>`);
+    el.querySelector("#vcGo").addEventListener("click",async()=>{
+      const ok=await verifyCode(el.querySelector("#vcKey").value, el.querySelector("#vcPayload").value, el.querySelector("#vcCode").value);
+      el.querySelector("#vcOut").innerHTML=ok ? `<p class="cs-ok">✓ The code matches these lines and this key.</p>` : `<p class="cs-no">✗ It doesn't match: the lines, the key or the code differ.</p>`;
+    });
+  }
+
   function regFromForm(c, box){
     if(c.target.kind==="choice"){ const r=box.querySelector('input[name="csChoice"]:checked'); return r ? {choice:r.value} : null; }
     const D=parseFloat(box.querySelector("#csDose").value), tau=parseInt(box.querySelector("#csTau").value,10);
@@ -501,7 +1062,11 @@
     const u=PK.unitsOf(g.p), m=g.metrics, f=(v,dp)=> v==null ? "—" : host.fmt(v,dp), cd=u.cdp;
     const rows=[];
     if(m.none) rows.push(["Steady state","none: input exceeds Vmax"]);
-    else {
+    else if(m.sessions){   // dialysis: per kg, the peaks, and the last session
+      const s=m.sessions[m.sessions.length-1];
+      rows.push(["Dose per kg", `${f(m.perKg,2)} mg/kg`], ["Peak after each dose", `${m.peaks.map(v=>f(v,1+cd)).join(", ")} ${u.conc}`],
+        [`Session ${s.n} (${s.start}–${s.end} h)`, `${f(s.pre,2+cd)} → ${f(s.post,2+cd)} ${u.conc}, ${f(s.removed,0)} ${u.amount} removed`]);
+    } else {
       if(c.target.kind==="css") rows.push(["Predicted Css", `${f(m.css,1+cd)} ${u.conc}`]);
       if(c.target.kind==="at") rows.push([`${c.target.at}-hour level`, `${f(m.atLevel,2)} ${u.conc}`]);
       rows.push(["Peak", `${f(m.peak,1+cd)} ${u.conc}`], ["Trough", `${f(m.trough,1+cd)} ${u.conc}`]);
@@ -526,9 +1091,9 @@
       return;
     }
     const g=gradeCase(c, reg), r=gradeRounded(c, reg);
-    let html=`<p class="${g.ok ? "cs-ok" : "cs-no"}">${g.ok ? "✓ On target" : "✗ Off target"} · ${host.esc(regText(c, reg))}</p>`+
+    let html=`<p class="${g.ok ? "cs-ok" : "cs-no"}">${g.ok ? "✓ On target" : "✗ Off target"}: ${host.esc(regText(c, reg))}</p>`+
       (g.ok ? "" : `<p class="cs-hint">${host.esc(g.hintText)}</p>`)+`<table class="cs-tbl"><tbody>${metricsHtml(c, g, reg)}</tbody></table>`;
-    if(r.changed) html+=`<p class="${r.ok ? "cs-ok" : "cs-no"}">Rounded to what the forms give: ${host.esc(regText(c, r.reg))} · ${r.ok ? "✓ on target" : "✗ off target"}</p>`+
+    if(r.changed) html+=`<p class="${r.ok ? "cs-ok" : "cs-no"}">Rounded to what the forms give: ${host.esc(regText(c, r.reg))}: ${r.ok ? "✓ on target" : "✗ off target"}</p>`+
       (r.ok ? "" : `<p class="cs-hint">${host.esc(r.hintText)}</p>`)+`<table class="cs-tbl"><tbody>${metricsHtml(c, r, r.reg)}</tbody></table>`;
     if(c.id==="gent-ext" && g.p){   // the comparison the case asks for
       const conv={D:roundDose(c, 1.7*c.patient.wt), tau:8}, gc=gradeCase(c, conv);
@@ -536,11 +1101,13 @@
     }
     out.innerHTML=html;
     current.last=reg;
+    if(current.from && g.ok) markDone(current.from, current.from.index, {ok:true});
   }
   function open(link){
-    const c=caseById(link && link.id);
+    if(link && link.bundle){ openBundle(link.bundle); return; }
+    const c=link && link.case ? link.case : caseById(link && link.id);
     if(!c || !rootEl) return;
-    current={c, last:null};
+    current={c, last:null, from:link.from || null};
     const box=rootEl.querySelector("#csCase"), h=host, t=c.target, ch=c.choices, u=c.drug ? PK.unitsOf({unit:drugOf(c.drug).units}) : null;
     const start=link.reg || c.start || null;
     let form;
@@ -553,14 +1120,18 @@
         `<label>Every<select id="csTau">${ch.taus.map(x=>`<option value="${x}"${start && start.tau===x ? " selected" : ""}>${x} h</option>`).join("")}</select></label></div>`;
     }
     const refs=c.refs.map(id=>PK.SOURCES[id]).filter(Boolean).map(s=>`<li>${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${h.esc(s.cite)}</a>` : h.esc(s.cite)}</li>`).join("");
-    box.innerHTML=`<p><button class="abtn" id="csBack">← All cases</button></p>
+    const community=c.community, ov=community && c.over ? Object.entries(c.over) : [], lib=drugOf(c.drug) && PK.drugScenario(drugOf(c.drug));
+    const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
+    box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "Back to the assignment" : "All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
+      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
-      <dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
-        ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})</dd>` : ""}
+      <details class="cs-more cs-dossier" open><summary>Case facts</summary><dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
+        ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}
         <dt>Setting</dt><dd>${h.esc(c.indication)}</dd>
-        ${c.current ? (L=>`<dt>Levels</dt><dd>On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
-        <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl>
+        ${c.bayes ? (b=>`<dt>Levels</dt><dd class="cs-lv">On ${nf(c.current.D,0)} mg every ${c.current.tau} h (each infused over ${nf(b.T,2)} h), after dose ${c.bayes.dose}: ${b.lv.map(l=>`<b>${nf(l.c,2)} mg/L</b> at ${nf(l.dt,2)} h`).join(" and ")} after that dose started.</dd>`)(bayesOf(c))
+          : c.current ? (L=>`<dt>Levels</dt><dd class="cs-lv">On ${nf(L.D,0)} mg every ${L.tau} h (each infused over ${nf(L.T,2)} h), at steady state: <b>${nf(L.peak,2)} mg/L</b> at ${nf(L.T+L.after,2)} h after an infusion started, and <b>${nf(L.trough,2)} mg/L</b> ${L.second===undefined ? "just before the next dose" : `at ${nf(L.second,2)} h after it started`}.</dd>`)(levelsOf(c)) : ""}
+        <dt>Target</dt><dd>${h.esc(targetText(c))}. <span class="cs-why">${h.esc(t.why)}</span></dd></dl></details>
       <p class="cs-task"><b>Task.</b> ${h.esc(c.task)}</p>
       <form id="csForm" novalidate>${form}<div class="cs-actions"><button class="abtn" type="submit">Check regimen</button>
         ${c.drug ? `<button class="abtn" type="button" id="csSim">Open in simulator</button>` : ""}
@@ -568,19 +1139,21 @@
       <div id="csResult" class="cs-result" aria-live="polite"></div>
       <details class="cs-more"><summary>Walkthrough</summary><ol>${walkthrough(c).map(s=>`<li>${s}</li>`).join("")}</ol></details>
       <details class="cs-more"><summary>What a pharmacist also weighs</summary><p>${h.esc(c.also)}</p></details>
-      <div class="cs-refs"><p class="cs-sub">Sources</p><ol>${refs}</ol></div>`;
-    rootEl.querySelector(".cs-intro").hidden=true; rootEl.querySelector(".cs-list").hidden=true; box.hidden=false;
-    box.querySelector("#csBack").addEventListener("click",()=>{ box.hidden=true; rootEl.querySelector(".cs-intro").hidden=false; rootEl.querySelector(".cs-list").hidden=false;
-      const card=rootEl.querySelector(`.cs-card[data-id="${c.id}"]`); if(card) card.focus(); });
+      <details class="cs-more cs-refs"><summary>Sources</summary><ol>${refs}${(c.authorRefs||[]).map(r=>`<li>${h.esc(r)} <span class="cs-flag">(author-provided)</span></li>`).join("")}${community && !(c.authorRefs||[]).length ? "<li>The author gave no references.</li>" : ""}</ol></details>`;
+    showOnly(box);
+    box.querySelector("#csBack").addEventListener("click",()=>{
+      if(current.from){ const b=current.from; openBundle(b.bundle, b.token); return; }
+      showList(); const card=rootEl.querySelector(`.cs-card[data-id="${c.id}"]`); if(card) card.focus(); });
     box.querySelector("#csForm").addEventListener("submit",e=>{ e.preventDefault(); renderResult(c, regFromForm(c, box), box); });
-    box.querySelector("#csLink").addEventListener("click",()=> h.copyHash(encodeCaseLink(c.id, regFromForm(c, box))));
+    box.querySelector("#csLink").addEventListener("click",()=>{
+      if(community) encodeCommunityLink(c.spec, regFromForm(c, box)).then(h.copyHash); else h.copyHash(encodeCaseLink(c.id, regFromForm(c, box)));
+    });
     box.querySelector("#csPrint").addEventListener("click",()=> h.print());
     const sim=box.querySelector("#csSim");
     if(sim) sim.addEventListener("click",()=>{
-      const reg=regFromForm(c, box) || c.start, p=caseScenario(c, reg), d=drugOf(c.drug);
-      const win=t.kind==="table" ? {mec:t.mic, mtc:d.s.mtc} : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
-        : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
-      h.openScenario(p, Object.assign({duration:Math.min(336, p.nDoses*p.tau)}, win), c.drug);
+      // a Bayesian case opens the patient as the model predicts her, on the regimen the levels were drawn on, with the levels
+      const reg=regFromForm(c, box) || c.start, p=c.bayes ? bayesOf(c).prior : caseScenario(c, reg), win=caseWindow(c);
+      h.openScenario(p, Object.assign({duration:c.hd ? 3*c.hd.every : Math.min(336, p.nDoses*p.tau)}, win), c.drug);
     });
     if(link.reg) renderResult(c, link.reg, box);
     box.focus({preventScroll:true});
@@ -588,5 +1161,7 @@
   }
 
   return {CASES, caseById, caseScenario, context, achievable, roundDose, gradeCase, gradeRounded, reference, walkthrough,
-    lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open};
+    caseOfDay, lateDose, missedDose, pheVmax, levelsOf, twoLevel, twoCmtOf, tableRow, mosteller, bayesOf, caseWindow, HINTS, encodeCaseLink, decodeCaseLink, tinfFor, metricsOf, mount, open,
+    COMMUNITY_VERSION, TEXT_LIMITS, AUTHOR_TAUS, AUTHOR_DRUG_IDS, checkSpec, communityCase, solveCase, packJSON, unpackJSON, encodeCommunityLink, decodeAnyCaseLink,
+    BUNDLE_VERSION, BUNDLE_MAX, checkBundle, encodeBundleLink, decodeBundleLink, itemId, IDENT, sha256Hex, completionPayload, completionCode, verifyCode};
 });

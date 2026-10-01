@@ -10,7 +10,8 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {PRACTICE_TOPICS, VIEW_DEFAULTS, WORKSHEET_SIZES, WS_VERSION, conc, derived, disposition, doseEvents, effectOf, effectStats, keOf,
-    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf}=PK;
+    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf, micStats,
+    cmToIn, ibwDevine, adjBW, patientOf}=PK;
   const {drawFrom, evenUp, nf, sig4, until}=PK.practiceHelpers;
 
   const step=s=>`<span class="step">${s}</span>`;
@@ -173,6 +174,18 @@
         viz:Object.assign({route:"iv", D, cmt:2}, set), view:{duration:evenUp(5*Math.LN2/q[1].k)}, check:p=> derived(p).CL};
     }},
     /* ----- repeated dosing ----- */
+    {id:"hdfall", topic:"single", since:8, gen(d){
+      // one IV dose, then a dialysis session: how far it lowers the level (no dose during it)
+      const D=d(100,1000,50), V=d(15,60,1), th=d(4,40,1), CLd=d(1,10,0.5), T=d(3,8,0.5), start=d(2,12,1);
+      const k=Math.LN2/th, kd=CLd/V, f=1-Math.exp(-(k+kd)*T), dur=evenUp(start+T+12);
+      return {type:"Hemodialysis · fall over a session", unit:"%", dp:1, ans:100*f,
+        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b> between sessions), a hemodialysis session with a dialysis clearance of <b>${CLd} L/h</b> runs for <b>${T} h</b>. By what percentage does the level fall over the session?`,
+        sol:[step(`During the session the clearances add, so the rate constants do: kₑ = ${LN2} / ${th} = ${nf(k,4)} h⁻¹ and CLd / V = ${CLd} / ${V} = ${nf(kd,4)} h⁻¹`),
+          step(`<b>Fall = 1 − e^(−(kₑ + CLd/V)·T)</b> = 1 − e^(−${nf(k+kd,4)} × ${T}) = <b>${nf(100*f,1)}%</b>`),
+          step(`Of that, the dialyzer accounts for CLd / (CL + CLd) = ${nf(100*kd/(k+kd),0)}%, and the body the rest. The dose and when the session starts don't change the fraction.`)],
+        viz:{route:"iv", dosing:"single", D, V, thalf:th, hd:1, hdcl:CLd, hdstart:start, hddur:T, hdevery:48}, view:{duration:dur}, at:start+T,
+        check:p=> 100*(1-PK.conc(p, start+T-1e-9)/PK.conc(p, start))};
+    }},
     {id:"t90", topic:"rep", gen(d){
       const th=d(2,12,1), t=Math.log2(10)*th, tau=Math.max(2,Math.min(24,th)), n=Math.min(20, Math.ceil(2*t/tau)+1);
       return {type:"Time to steady state", unit:"h", dp:1, ans:t,
@@ -253,6 +266,25 @@
         viz:{route:"iv", dosing:"repeated", D:+D.toFixed(1), tau, nDoses:n, thalf:th, V, pm:"clinical", age, sex, wt, ht:170, scr, fe, wtm:"actual"},
         view:{duration:evenUp(n*tau), zoom:"last"},
         check:p=> Dref*derived(p).CL/(Math.LN2/p.thalf*vOf(p))};
+    }},
+    {id:"crclwt", topic:"rep", since:9, gen(d){
+      // Cockcroft–Gault with the weight it is asked for: ideal (Devine), adjusted (ideal + 0.4 × the excess) or actual,
+      // in a heavy adult, where the three differ most
+      const x=until(()=>{ const sex=d(0,1,1) ? "F" : "M", ht=d(152,190,1), age=d(25,80,1), scr=d(0.6,2,0.1), ibw=ibwDevine(sex, cmToIn(ht));
+        const wt=d(Math.ceil(1.3*ibw), Math.min(200, Math.ceil(2.2*ibw)), 1), wtm=["ibw","adj","actual"][d(0,2,1)], adj=adjBW(ibw, wt);
+        const used=wtm==="ibw" ? ibw : wtm==="adj" ? adj : wt;
+        return {sex, ht, age, scr, ibw, wt, wtm, adj, used, crcl:crclCG(age, used, scr, sex)}; }, x=> x.ibw>=40 && x.wt>=1.3*x.ibw && x.crcl>=20 && x.crcl<=180);
+      const {sex, ht, age, scr, ibw, wt, wtm, adj, used, crcl}=x, inch=cmToIn(ht), they=sex==="F" ? "her" : "his";
+      const name={ibw:"<b>ideal body weight</b> (Devine)", adj:"<b>adjusted body weight</b> (ideal + 0.4 × the excess)", actual:"<b>actual body weight</b>"}[wtm];
+      const other=wtm==="actual" ? crclCG(age, ibw, scr, sex) : crclCG(age, wt, scr, sex);
+      return {type:"Creatinine clearance and body weight", unit:"mL/min", dp:0, ans:crcl,
+        q:`A <b>${age}-year-old ${sex==="F" ? "woman" : "man"}</b>, <b>${ht} cm</b> tall and weighing <b>${wt} kg</b>, has a serum creatinine of <b>${scr} mg/dL</b>. With ${they} ${name} in the Cockcroft–Gault equation, what is ${they} estimated creatinine clearance?`,
+        sol:[...(wtm==="actual" ? [] : [step(`Height ${ht} / 2.54 = ${nf(inch,1)} in, so the ideal body weight is ${sex==="F" ? "45.5" : "50"} + 2.3 × (${nf(inch,1)} − 60) = <b>${nf(ibw,1)} kg</b>`)]),
+          ...(wtm==="adj" ? [step(`Adjusted body weight = ${nf(ibw,1)} + 0.4 × (${wt} − ${nf(ibw,1)}) = <b>${nf(adj,1)} kg</b>`)] : []),
+          step(`<b>CrCl = (140 − age) × weight / (72 × SCr)</b>${sex==="F" ? " × 0.85" : ""} = (140 − ${age}) × ${nf(used,1)} / (72 × ${scr})${sex==="F" ? " × 0.85" : ""} = <b>${nf(crcl,0)} mL/min</b>`),
+          step(`With ${wtm==="actual" ? "the ideal weight" : "the actual weight"} instead it would be ${nf(other,0)} mL/min: the weight chosen moves the estimate ${nf(Math.max(other,crcl)/Math.min(other,crcl),1)}-fold, which is why dosing references say which weight they used.`)],
+        viz:{route:"iv", dosing:"single", D:500, V:30, thalf:4, pm:"clinical", age, sex, wt, ht, scr, fe:0.9, wtm}, view:{duration:24},
+        check:p=> patientOf(p).crcl};
     }},
     /* ----- infusions ----- */
     {id:"rate", topic:"inf", gen(d){
@@ -382,6 +414,20 @@
         viz:{route:"iv", D, V, thalf:th, teq, e0:0, emax:100, ec50, hill:1}, view:{duration:dur, pd:true}, at:t,
         check:p=> effectStats(p, dur, 50).tPeak};
     }},
+    {id:"idrss", topic:"pd", since:7, gen(d){
+      // an infusion long enough for both the level and the response to settle (14 half-lives of the slower)
+      const x=until(()=>({R:d(10,100,5), V:d(20,60,5), th:d(2,8,1), tout:d(2,12,1), ic50:d(1,10,0.5), imax:d(0.5,1,0.1)}), x=> 14*Math.max(x.th,x.tout)<=168);
+      const {R, V, th, tout, ic50, imax}=x, CL=Math.LN2*V/th, css=R/CL, f=css/(ic50+css), r=100*(1-imax*f);
+      return {type:"Indirect response · steady state", unit:"% of baseline", dp:1, ans:r,
+        q:`A drug is infused at a constant <b>${R} mg/h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). It inhibits the production of a response (an indirect response of type 1) with <b>Imax = ${imax}</b> and <b>IC50 = ${ic50} mg/L</b> (Hill slope 1). The response turns over with a half-life of <b>${tout} h</b>. Where does the response settle, as a percentage of its baseline?`,
+        sol:[step(`The level settles at <b>Css = R / CL</b>, with CL = ${LN2} × ${V} / ${th} = ${nf(CL,3)} L/h: Css = ${R} / ${nf(CL,3)} = <b>${nf(css,3)} mg/L</b>`),
+          step(`The drug's action there: f = Css / (IC50 + Css) = ${nf(css,3)} / (${ic50} + ${nf(css,3)}) = <b>${nf(f,4)}</b>`),
+          step(`At steady state production equals loss: kin·(1 − Imax·f) = kout·R, and R₀ = kin / kout, so <b>R = R₀·(1 − Imax·f)</b> = 100 × (1 − ${imax} × ${nf(f,4)}) = <b>${nf(r,1)}%</b>`),
+          step(`The turnover half-life (${tout} h) sets how long it takes to get there, not where it settles.`)],
+        // back-to-back 24-hour infusions: the same constant rate for the whole week
+        viz:{route:"inf", dosing:"repeated", D:R*24, tinf:24, tau:24, nDoses:7, V, thalf:th, idr:1, imax, ec50:ic50, hill:1, tout}, view:{duration:168, pd:true, mec:0, mtc:0}, at:168,
+        check:p=> PK.idr.at(p, 168, 168)};
+    }},
     /* ----- saturable (Michaelis–Menten) elimination ----- */
     // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
     // and the t90 formula assume. Vmax is for 70 kg.
@@ -469,6 +515,51 @@
           step(`By mouth the AUC would change by exactly 1/${m} = ${nf(1/m,3)} whatever the extraction, because oral AUC = fabs·D / (fu·CLint).`)],
         viz:{route:"iv", D:500, V:100, hep:1, qh:Q, fub:fu, clint:c1}, view:{duration:24}, at:0,
         check:p=> derived(p).auc/derived(Object.assign({}, p, {clint:c0})).auc};
+    }},
+    /* ----- antimicrobial PK/PD ----- */
+    // Each reads one interval at steady state (the regimen is charted to within 0.1% of it), with the MIC line on.
+    {id:"ftmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const x=until(()=>{ const D=d(250,2000,250), V=d(10,40,1), th=d(0.5,3,0.25), tau=pick([4,6,8,12]), fu=d(0.5,1,0.05), mic=pick([0.5,1,2,4,8,16]);
+        const k=Math.LN2/th, c0=D/V/(1-Math.exp(-k*tau)), thr=mic/fu;
+        return {D,V,th,tau,fu,mic,k,c0,thr,tr:c0*Math.exp(-k*tau),t:Math.log(c0/thr)/k}; }, x=> x.thr<0.8*x.c0 && x.thr>1.5*x.tr && ssFits(x.th,x.tau));
+      const {D,V,th,tau,fu,mic,k,c0,thr,tr,t}=x, n=Math.max(2, ssDoses(th,tau)), ft=100*t/tau, dur=evenUp(n*tau);
+      return {type:"Time above the MIC (fT>MIC)", unit:"%", dp:1, ans:ft,
+        q:`An antibiotic is given as a <b>${D} mg</b> IV bolus every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>, unbound fraction fu = <b>${fu}</b>). The organism's MIC is <b>${mic} mg/L</b>. At steady state, for what percentage of each dosing interval is the unbound level above the MIC?`,
+        sol:[step(`kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>`),
+          step(`The steady-state peak, just after a dose: <b>C₀,ss = (D / V) / (1 − e^(−kₑτ))</b> = (${D} / ${V}) / (1 − e^(−${nf(k,4)} × ${tau})) = <b>${nf(c0,2)} mg/L</b>. It falls to ${nf(tr,2)} mg/L before the next dose.`),
+          step(`The unbound level is fu × the total, so it is above the MIC while the total is above MIC / fu = ${mic} / ${fu} = <b>${nf(thr,3)} mg/L</b>.`),
+          step(`The total level falls to that point after <b>t = ln(C₀,ss / (MIC / fu)) / kₑ</b> = ln(${nf(c0,2)} / ${nf(thr,3)}) / ${nf(k,4)} = <b>${nf(t,3)} h</b>`),
+          step(`fT>MIC = t / τ = ${nf(t,3)} / ${tau} = <b>${nf(ft,1)}%</b>`)],
+        viz:{route:"iv", dosing:"repeated", D, V, thalf:th, tau, nDoses:n, fu}, view:{duration:dur, mec:0, mtc:0, mic}, at:(n-1)*tau+t,
+        check:p=> micStats(p, mic, dur).ft};
+    }},
+    {id:"cmaxmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const x=until(()=>{ const D=d(80,600,20), V=d(12,30,1), th=d(1.5,4,0.5), tau=pick([8,12,24]), tinf=pick([0.5,1]), mic=pick([0.25,0.5,1,2]);
+        const k=Math.LN2/th, CL=k*V, cmax=D/tinf/CL*(1-Math.exp(-k*tinf))/(1-Math.exp(-k*tau));
+        return {D,V,th,tau,tinf,mic,k,CL,cmax}; }, x=> ssFits(x.th,x.tau) && x.cmax/x.mic>=2 && x.cmax/x.mic<=60);
+      const {D,V,th,tau,tinf,mic,k,CL,cmax}=x, n=Math.max(2, ssDoses(th,tau)), r=cmax/mic, dur=evenUp(n*tau);
+      return {type:"Peak over MIC (Cmax/MIC)", unit:"×", dp:1, ans:r,
+        q:`An antibiotic is given as <b>${D} mg</b> infused over <b>${tinf} h</b> every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). The organism's MIC is <b>${mic} mg/L</b>. What is Cmax/MIC at steady state, using the total peak level?`,
+        sol:[step(`kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>, and CL = kₑ·V = <b>${nf(CL,3)} L/h</b>. The infusion runs at R = ${D} / ${tinf} = <b>${nf(D/tinf,1)} mg/h</b>.`),
+          step(`The peak comes as each infusion ends: <b>Cmax,ss = (R / CL)·(1 − e^(−kₑ·T)) / (1 − e^(−kₑτ))</b> = (${nf(D/tinf,1)} / ${nf(CL,3)}) × (1 − e^(−${nf(k,4)} × ${tinf})) / (1 − e^(−${nf(k,4)} × ${tau})) = <b>${nf(cmax,2)} mg/L</b>`),
+          step(`Cmax/MIC = ${nf(cmax,2)} / ${mic} = <b>${nf(r,1)}</b>`)],
+        viz:{route:"inf", dosing:"repeated", D, V, thalf:th, tau, tinf, nDoses:n}, view:{duration:dur, mec:0, mtc:0, mic}, at:(n-1)*tau+tinf,
+        check:p=> micStats(p, mic, dur).cmaxMic};
+    }},
+    {id:"aucmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const D=d(500,2000,250), tau=pick([8,12,24]), V=d(30,80,5), th=d(4,12,1), mic=pick([0.5,1,2]);
+      const k=Math.LN2/th, CL=k*V, daily=D*24/tau, auc=daily/CL, r=auc/mic, n=Math.max(2, ssDoses(th,tau)), dur=evenUp(n*tau);
+      return {type:"Exposure over MIC (AUC24/MIC)", unit:"h", dp:0, ans:r,
+        q:`An antibiotic is given as <b>${D} mg</b> infused over 1 h every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). The organism's MIC is <b>${mic} mg/L</b>. What is AUC24/MIC at steady state (AUC24 in mg·h/L, divided by the MIC in mg/L)?`,
+        sol:[step(`CL = ${LN2} × V / t½ = ${LN2} × ${V} / ${th} = <b>${nf(CL,3)} L/h</b>`),
+          step(`The daily dose is ${D} × 24 / ${tau} = <b>${nf(daily,0)} mg</b>, and at steady state <b>AUC24 = daily dose / CL</b> = ${nf(daily,0)} / ${nf(CL,3)} = <b>${nf(auc,1)} mg·h/L</b>`),
+          step(`AUC24/MIC = ${nf(auc,1)} / ${mic} = <b>${nf(r,0)}</b>`),
+          step(`The infusion time and the interval don't matter here: only the daily dose and the clearance do.`)],
+        viz:{route:"inf", dosing:"repeated", D, V, thalf:th, tau, tinf:1, nDoses:n}, view:{duration:dur, mec:0, mtc:0, mic},
+        check:p=> micStats(p, mic, dur).aucMic};
     }},
   ];
   // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).

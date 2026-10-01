@@ -3,6 +3,9 @@
    clearance and volume: CLᵢ = CL·e^ηCL and Vᵢ = V·e^ηV, η ~ N(0, ω²), ω² = ln(1 + CV²), so the scenario's values
    are the medians. With saturable (Michaelis–Menten) elimination the first variability is on Vmax instead:
    Vmaxᵢ = Vmax·e^ηCL, with Km fixed. A seeded generator makes a link reproduce the same patients.
+   With the effect charts on (o.pd), the same patients' effect (direct Emax, through the effect site when there is
+   a delay) or indirect response gets its own band: PK variability only, with each patient's EC50, Emax and
+   turnover the scenario's, so the band shows how the spread in level carries through to the effect.
    The page runs this as a Web Worker (it passes the engine's address in its first message); the tests require()
    it. The CVs are teaching assumptions, not drug-specific claims. Educational model, not for clinical dosing. */
 (function(root, factory){
@@ -17,7 +20,12 @@
         const m=e.data||{};
         if(!ready){
           if(typeof m.engine!=="string" || !/^pk-engine\.js\?v=[0-9a-f]{10}$/.test(m.engine)) return;
-          importScripts(m.engine); ready=true;
+          importScripts(m.engine);
+          // the dialysis model, when the page passes its own stamped address: without it, sessions would be ignored
+          if(typeof m.hd==="string" && /^pk-hd\.js\?v=[0-9a-f]{10}$/.test(m.hd)) importScripts(m.hd);
+          // and the indirect-response model, for the response band
+          if(typeof m.idr==="string" && /^pk-idr\.js\?v=[0-9a-f]{10}$/.test(m.idr)) importScripts(m.idr);
+          ready=true;
         }
         if(m.job){
           try{ root.postMessage({id:m.job.id, result:m.job.list.map(p=>api.population(root.PK, p, m.job.opts))}); }
@@ -71,6 +79,7 @@
     const q05=[], q50=[], q95=[];
     cols.forEach(c=>{ const s=Array.from(c).sort((a,b)=>a-b); q05.push(quantile(s,0.05)); q50.push(quantile(s,0.5)); q95.push(quantile(s,0.95)); });
     const out={n, t, q05, q50, q95, cvCL:o.cvCL, cvV:o.cvV, seed:o.seed};
+    if(o.pd) Object.assign(out, effectBand(PK, p, list, ev, t, cols));
     if(p.dosing==="repeated"){
       let hit=0, hitAuc=0, noSS=0, troughs=[], peaks=[];
       const F=p.route==="oral" ? p.F : 1, S=PK.saltOf(p), mm=p.kin==="mm";
@@ -92,5 +101,23 @@
     }
     return out;
   }
-  return {LIMITS, omega, normals, patients, quantile, population};
+  // The effect's band, and where the median moves furthest from its baseline: the effect's and the level's spread
+  // there (5th, 50th, 95th percentiles). An indirect response needs pk-idr.js; without it there is no band.
+  function effectBand(PK, p, list, ev, t, cols){
+    const idr=p.idr>0, n=list.length, G=t.length;
+    if(idr && !PK.idrModule && !PK.idr) return {};
+    const ecols=t.map(()=>new Float64Array(n));
+    list.forEach((q,j)=>{
+      if(idr){ const cr=PK.idr.course(q, t[G-1], null, 2000); for(let i=0;i<G;i++) ecols[i][j]=PK.idr.interp(cr, t[i]); }
+      else if(p.kin==="mm") for(let i=0;i<G;i++) ecols[i][j]=PK.effectOf(q, cols[i][j]);
+      else for(let i=0;i<G;i++) ecols[i][j]=PK.effectOf(q, PK.ceConc(q, t[i], ev));
+    });
+    const e05=[], e50=[], e95=[];
+    ecols.forEach(c=>{ const s=Array.from(c).sort((a,b)=>a-b); e05.push(quantile(s,0.05)); e50.push(quantile(s,0.5)); e95.push(quantile(s,0.95)); });
+    const base=idr ? PK.idr.R0 : p.e0;
+    let im=0; e50.forEach((e,i)=>{ if(Math.abs(e-base)>Math.abs(e50[im]-base)) im=i; });
+    const lv=Array.from(cols[im]).sort((a,b)=>a-b);
+    return {e05, e50, e95, eAt:{t:t[im], e:[e05[im], e50[im], e95[im]], c:[quantile(lv,0.05), quantile(lv,0.5), quantile(lv,0.95)], base}};
+  }
+  return {LIMITS, omega, normals, patients, quantile, population, effectBand};
 });

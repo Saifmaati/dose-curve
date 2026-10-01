@@ -6,40 +6,81 @@
 <title>DoseCurve validation</title>
 <meta name="description" content="How DoseCurve's pharmacokinetic engine is checked: an independent solver on a scenario matrix, analytic identities, stated tolerances, and how to rerun it.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>(function(){ var d=document.documentElement, t=(location.search.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
+  if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
+  if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
+  if(t==="light") d.classList.add("light");
+  // the 3D sphere: the reader's Effects choice, else off on a weak device (as in the app)
+  var s=null, n=navigator; try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){}
+  if(s==="off" || (!s && ((window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || n.deviceMemory<4 || n.hardwareConcurrency<4 || (n.connection && n.connection.saveData)))) d.classList.add("fx-off"); })();</script>
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"},"integrity":{"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js":"sha512-5y1OuWCUVXtYlPOwdMCvNr/Scu/rs2aBbVxO5q1Du9DzLe7X0QpPf1yxAV839cwp7ZqIDv/UrCm0O2oXxM+rMA==","https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js":"sha512-XHAcLGgLlaKvTJVfBh76iqQUVHJhHbsu+g/JhY0gQBrpYkg+L1MbYckDdUXkh4D/tsp/mVoPi+Art8oxizfddA=="}}</script>
+<link rel="preload" href="fonts/plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  :root{--bg:#070a14;--panel:#0d1220;--line:rgba(120,150,255,.18);--text:#c9d0e6;--muted:#8b94b0;--hi:#eef1fb;--ok:#3be58a;--no:#ff6b86;--accent:#7c6bff}
-  @media (prefers-color-scheme: light){ :root{--bg:#f6f7fb;--panel:#fff;--line:#d9deea;--text:#2b3350;--muted:#5d6682;--hi:#10152a;--ok:#12803f;--no:#b3203f;--accent:#4b3fd1} }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-  main{max-width:980px;margin:0 auto;padding:28px 16px 60px}
-  h1{font-size:28px;color:var(--hi);margin:6px 0 4px} h2{font-size:19px;color:var(--hi);margin:30px 0 8px}
-  a{color:var(--accent)} code,pre{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px}
-  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto}
-  .note{color:#d9a441} .muted{color:var(--muted)}
-  .summary{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:16px 0}
-  .summary b{color:var(--hi)} .big{font-size:20px;color:var(--hi);font-weight:600}
-  .ok{color:var(--ok)} .no{color:var(--no)}
-  table{border-collapse:collapse;width:100%;font-size:12.5px} caption{text-align:left;color:var(--muted);margin-bottom:6px}
-  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap} th:first-child,td:first-child{text-align:left}
-  thead th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--bg)}
-  .scroll:focus-visible,pre:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+  /* the app's tokens and type (docs/DESIGN.md), for its secondary pages */
+  @font-face{font-family:"IBM Plex Sans";src:url(fonts/plex-sans-latin.woff2) format("woff2");font-weight:100 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+  @font-face{font-family:"IBM Plex Mono";src:url(fonts/plex-mono-400-latin.woff2) format("woff2");font-weight:100 450;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+  @font-face{font-family:"IBM Plex Mono";src:url(fonts/plex-mono-500-latin.woff2) format("woff2");font-weight:451 900;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial"),local("ArialMT");font-weight:100 450;size-adjust:101%;ascent-override:101.5%;descent-override:27.2%;line-gap-override:0%}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial"),local("ArialMT");font-weight:451 550;size-adjust:103.1%;ascent-override:99.5%;descent-override:26.7%;line-gap-override:0%}
+  @font-face{font-family:"Plex Sans Fallback";src:local("Arial Bold"),local("Arial-BoldMT");font-weight:551 900;size-adjust:96.9%;ascent-override:105.8%;descent-override:28.4%;line-gap-override:0%}
+  @font-face{font-family:"Plex Mono Fallback";src:local("Courier New"),local("CourierNewPSMT");font-weight:100 900;size-adjust:100%;ascent-override:102.5%;descent-override:27.5%;line-gap-override:0%}
+  :root{color-scheme:dark;--c-page:#0B0D11;--c-surface:#12151B;--c-raised:#1C2029;--c-line:#2A303B;--c-text:#E8EBF0;--c-muted:#9AA3B2;--c-text-2:#C3C9D4;--c-line-strong:#626B7B;
+    --c-accent:#4CC7EE;--c-on-accent:#0B0D11;--c-accent-soft:rgba(76,199,238,.12);--c-ok:#6FC79B;--c-no:#F2697A;
+    --f-sans:"IBM Plex Sans","Plex Sans Fallback",system-ui,sans-serif;--f-mono:"IBM Plex Mono","Plex Mono Fallback",ui-monospace,monospace}
+  html.light{color-scheme:light;--c-page:#ECEEF1;--c-surface:#FFFFFF;--c-raised:#F4F5F7;--c-line:#D3D8DF;--c-text:#121720;--c-muted:#545E6D;--c-text-2:#2F3744;--c-line-strong:#7D8695;
+    --c-accent:#0670A3;--c-on-accent:#FFFFFF;--c-accent-soft:rgba(6,112,163,.08);--c-ok:#1A7D4E;--c-no:#BE2338}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--c-page);color:var(--c-text-2);font:15px/1.6 var(--f-sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--c-accent);outline-offset:2px}
+  a{color:var(--c-text);text-decoration-color:var(--c-line-strong);text-underline-offset:3px} a:hover{text-decoration-color:currentColor}
+  code,pre,kbd{font-family:var(--f-mono);font-size:13px}
+  .bar{max-width:980px;margin:0 auto;padding:0 16px;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px;color:var(--c-text);text-decoration:none;font-weight:600;font-size:17px}
+  .brand i{width:30px;height:30px;border-radius:6px;display:grid;place-items:center;color:var(--c-accent);background:var(--c-accent-soft)}
+  .brand em{font-style:normal;font-weight:400;color:var(--c-text-2)}
+  .bar>a:last-child{font-size:14px;font-weight:500;color:var(--c-muted)}
+  main{max-width:980px;margin:0 auto;padding:12px 16px 64px}
+  h1{font-size:clamp(28px,1.5vw + 20px,36px);font-weight:600;letter-spacing:-.015em;line-height:1.15;color:var(--c-text);margin:16px 0 10px}
+  h2{font-size:20px;font-weight:600;color:var(--c-text);margin:40px 0 10px;letter-spacing:-.005em} h3{font-size:15px;font-weight:600;color:var(--c-text);margin:20px 0 6px}
+  .muted{color:var(--c-muted)}
+  .note{display:flex;gap:8px;color:var(--c-muted);font-size:14px}
+  .note::before{content:"i";flex:0 0 auto;width:15px;height:15px;margin-top:3px;border-radius:50%;border:1.2px solid currentColor;font:500 10px/13px var(--f-mono);text-align:center}
+  @media print{ html{--c-page:#fff;--c-surface:#fff;--c-line:#bbb;--c-text:#000;--c-text-2:#000;--c-muted:#333;--c-ok:#000;--c-no:#000} }
+  pre{background:var(--c-surface);border:1px solid var(--c-line);border-radius:6px;padding:12px 14px;overflow-x:auto;color:var(--c-text)}
+  .summary{background:var(--c-surface);border:1px solid var(--c-line);border-radius:10px;padding:18px 20px;margin:20px 0}
+  .summary b{color:var(--c-text);font-weight:600} .big{font-size:20px;color:var(--c-text);font-weight:600}
+  .summary{min-height:232px} @media (max-width:900px){ .summary{min-height:262px} } @media (max-width:600px){ .summary{min-height:476px} .summary .big{min-height:64px} .summary>div:nth-child(2){min-height:240px} } @media (max-width:400px){ .summary>div:nth-child(2){min-height:288px} } @media (max-width:400px){ .summary{min-height:520px} }   /* held while the checks run */
+  .ok{color:var(--c-ok)} .no{color:var(--c-no)}
+  table{border-collapse:collapse;width:100%;font:12.5px/1.5 var(--f-mono)} caption{text-align:left;color:var(--c-muted);padding:10px 10px 8px;font:13px/1.5 var(--f-sans)}
+  th,td{padding:6px 10px;border-bottom:1px solid var(--c-line);text-align:right;white-space:nowrap} th:first-child,td:first-child{text-align:left}
+  td{color:var(--c-text)} thead th{font-family:var(--f-sans);color:var(--c-muted);font-weight:500;position:sticky;top:0;background:var(--c-surface)}
+  .scroll{overflow-x:auto;border:1px solid var(--c-line);border-radius:6px;max-height:70vh;background:var(--c-surface)}
   ul{padding-left:20px} li{margin:4px 0}
-  @media print{ :root{--bg:#fff;--panel:#fff;--line:#bbb;--text:#000;--muted:#333;--hi:#000;--ok:#000;--no:#000} .scroll{max-height:none;overflow:visible} thead th{position:static} }
+  @media print{ .scroll{max-height:none;overflow:visible} thead th{position:static} .vhero{display:none} }
+  .vhero{position:relative;height:min(70vh,620px);min-height:420px;overflow:hidden;background:var(--c-page);border-bottom:1px solid var(--c-line)}
+  .vword{position:absolute;left:0;right:0;top:50%;transform:translateY(-55%);margin:0;text-align:center;font-weight:600;font-size:clamp(64px,14.5vw,236px);letter-spacing:-.055em;line-height:1;color:var(--c-text);white-space:nowrap}
+  .vsphere{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  .vsphere svg{width:min(62vh,560px);height:min(62vh,560px);max-width:86vw;max-height:86vw}
+  .vsphere canvas{position:absolute;inset:0;width:100%;height:100%}
+  html.v3d .vsphere svg{display:none}
+  .vcap{position:absolute;left:0;right:0;bottom:22px;margin:0;text-align:center;font-size:15px;color:var(--c-text-2)}
 </style>
 </head>
 <body>
+<header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Dose<em>Curve</em></span></a><a href="./">Open the simulator</a></header>
+<!-- the sphere: one point per comparison below, lit as each passes; the word behind it is decorative (the summary says it) -->
+<section class="vhero" aria-hidden="true"><p class="vword" id="vWord">Validating</p><div class="vsphere" id="vSphere"><svg viewBox="-170 -170 340 340" id="vSvg"></svg></div><p class="vcap">Every comparison, run in your browser.</p></section>
 <main>
-<p><a href="./">← DoseCurve</a></p>
 <h1>Validation</h1>
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients.</p>
 
 <!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
-<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>Each scenario's peak, trough, area under the curve and time in window are being compared with the independent solver's, to the tolerances below.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
+<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 12 indirect responses at five times and at their largest change, and the 8 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
   <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve, and for an effect-site delay two more follow the effect-site level, dCe/dt = ke0·(C − Ce), and its area. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, and their effect-site levels from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
-  <li><b>A scenario matrix</b> of <span id="nScen">…</span> scenarios:
+  <li><b>A scenario matrix</b> of <span id="nScen">146</span> scenarios:
     <ul>
       <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
       <li>Regimens: single dose, repeated, with a loading dose, with a missed dose, and a custom schedule with irregular times, amounts and a missed dose.</li>
@@ -69,6 +110,10 @@
       <li>the Cockcroft–Gault and Devine hand values</li>
       <li>the time above a target effect across bolus jumps, in closed form</li>
     </ul></li>
+  <li><b>Bayesian individualization (MAP).</b> 20 scenarios with one to three measured levels (every route, single, repeated, loading and missed-dose regimens, normal and reduced kidney function, different prior CVs). The reference minimises the same objective, the squared standardised residuals plus the log-normal prior terms, with SciPy's Nelder–Mead on the ODE solver's predictions. The estimated clearance and volume must agree within 0.5%.</li>
+  <li><b>Antimicrobial PK/PD indices.</b> 12 regimens (piperacillin as 30-minute, 3-hour, 4-hour and continuous infusions, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; an oral and an IV-bolus regimen; two compartments). The reference runs each in the ODE solver until it repeats itself, then reads its last interval: the time the unbound level is above the MIC (crossings by bisection), the peak, and the area. fT&gt;MIC must agree within 0.01 percentage points, Cmax/MIC and AUC24/MIC within 0.01%. The test suite also holds fT&gt;MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.</li>
+  <li><b>Indirect responses.</b> 12 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination and a patient with reduced creatinine clearance. The reference integrates the response together with the drug in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
+  <li><b>Hemodialysis.</b> 8 scenarios with the dialysis clearance switched on during each session: an IV bolus, end-stage kidney disease with 8-hour sessions, oral and infused regimens, a session overlapping an infusion, a mixed-route schedule, loading and missed doses, and a fast dialyzer. The reference integrates the drug and the amount the dialyzer removes in one ODE system. The level at six times, and each session's level as it starts and ends and the amount it removes, must agree within 0.01%. The test suite also holds the model to mass balance: what the body clears plus what the dialyzer removes equals what was given.</li>
   <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
 <p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
@@ -78,46 +123,167 @@
 <thead><tr><th scope="col">Scenario</th><th scope="col">Peak (ref)</th><th scope="col">Peak Δ</th><th scope="col">Trough (ref)</th><th scope="col">Trough Δ</th><th scope="col">AUC (ref)</th><th scope="col">AUC Δ</th><th scope="col">In window (ref)</th><th scope="col">Δ pp</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
+<h2>Bayesian estimates (MAP)</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table" style="min-height:600px"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, DoseCurve's, and the difference.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Levels</th><th scope="col">CL prior (L/h)</th><th scope="col">CL MAP (ref)</th><th scope="col">CL Δ</th><th scope="col">V prior (L)</th><th scope="col">V MAP (ref)</th><th scope="col">V Δ</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
+<h2>Antimicrobial PK/PD indices</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="PK/PD indices table" style="min-height:384px"><table id="pkpdTbl"><caption>Each regimen at steady state: the reference value, DoseCurve's, and the difference.</caption>
+<thead><tr><th scope="col">Regimen</th><th scope="col">fT&gt;MIC (ref)</th><th scope="col">Δ pp</th><th scope="col">Cmax/MIC (ref)</th><th scope="col">Δ</th><th scope="col">AUC24/MIC (ref)</th><th scope="col">Δ</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
+<h2>Indirect responses</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:384px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Largest change (ref, %)</th><th scope="col">Δ</th><th scope="col">When (ref, h)</th><th scope="col">Δ h</th><th scope="col">Worst of 5 times</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
+<h2>Hemodialysis</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Hemodialysis table" style="min-height:276px"><table id="hdTbl"><caption>Each scenario: the largest difference in the level at six times, and in each session's levels and the amount it removed.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Sessions</th><th scope="col">First session removes (ref)</th><th scope="col">Worst level Δ</th><th scope="col">Worst session Δ</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
 <h2>How to reproduce</h2>
 <pre tabindex="0" aria-label="Commands to reproduce">node --test tests/                      # the engine, the cases and this comparison (Node 20, no dependencies)
 python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=19edaac954"></script>
+<script type="module">
+(async()=>{
+// The sphere: the points of a Fibonacci lattice, one per comparison, lit in the order the page runs them (a failed one
+// turns red). In 3D with Three.js when Effects are on; otherwise the front half as SVG dots. It turns with the scroll.
+const D=document.documentElement, svg=document.getElementById("vSvg"), word=document.getElementById("vWord"), still=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const tok=n=> getComputedStyle(D).getPropertyValue("--c-"+n).trim();
+const until=f=> new Promise(r=>{ const k=()=> f() ? r() : requestAnimationFrame(k); k(); });
+await until(()=> window.dcN);
+const N=window.dcN, pts=Array.from({length:N},(_,i)=>{ const y=1-2*(i+.5)/N, r=Math.sqrt(1-y*y), a=i*Math.PI*(3-Math.sqrt(5)); return [r*Math.cos(a), y, r*Math.sin(a)]; });
+const colorOf=i=>{ const c=window.dcChecks||[]; return i<c.length ? (c[i] ? tok("ok") : tok("no")) : tok("line"); };
+let draw;
+if(!D.classList.contains("fx-off") && window.WebGLRenderingContext){
+  try{
+    const THREE=await import("three"), host=document.getElementById("vSphere"), canvas=document.createElement("canvas"); host.appendChild(canvas);
+    const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true}), scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(32,1,.1,100);
+    camera.position.set(0,.4,11.5); camera.lookAt(0,0,0);
+    const pos=new Float32Array(N*3), col=new Float32Array(N*3); pts.forEach((p,i)=> pos.set([3*p[0],3*p[1],3*p[2]], i*3));
+    const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("color", new THREE.BufferAttribute(col,3));
+    const g=new THREE.Group(); scene.add(g);
+    g.add(new THREE.Points(geo, new THREE.PointsMaterial({size:.11, vertexColors:true, transparent:true, opacity:.95, depthWrite:false})));
+    g.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.97,3)), new THREE.LineBasicMaterial({color:new THREE.Color(tok("line")), transparent:true, opacity:.28})));
+    const size=()=>{ const w=host.clientWidth, h=host.clientHeight; renderer.setPixelRatio(Math.min(devicePixelRatio,1.75)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); };
+    addEventListener("resize", ()=>{ size(); draw(); }); size();
+    draw=()=>{ const c=new THREE.Color(); for(let i=0;i<N;i++){ c.set(colorOf(i)); col.set([c.r,c.g,c.b], i*3); } geo.attributes.color.needsUpdate=true;
+      g.rotation.y=.5+scrollY*.0025; g.rotation.x=.18; renderer.render(scene, camera); };
+    D.classList.add("v3d");
+  }catch(e){ draw=null; }
+}
+if(!draw){   // the front half, as SVG dots
+  const NS="http://www.w3.org/2000/svg", front=[];
+  pts.forEach((p,i)=>{ if(p[2]<-.05) return; const e=document.createElementNS(NS,"circle"); e.setAttribute("cx",150*p[0]); e.setAttribute("cy",-150*p[1]); e.setAttribute("r",1.3+1.5*p[2]); svg.appendChild(e); front.push([e,i]); });
+  draw=()=> front.forEach(([e,i])=> e.setAttribute("fill", colorOf(i)));
+}
+// lit as the checks finish, then still; it turns with the scroll
+let last=-1;
+const tick=()=>{ const n=(window.dcChecks||[]).length; if(n!==last){ last=n; draw(); } if(window.dcDone===undefined) requestAnimationFrame(tick); };
+tick();
+addEventListener("dc-done",()=>{ draw(); word.textContent=window.dcDone ? "Validated" : "Checked"; });
+if(window.dcDone!==undefined) word.textContent=window.dcDone ? "Validated" : "Checked";
+if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:true});
+})();
+</script>
+<script src="pk-engine.js?v=3056d0e45c" defer></script>
+<script src="pk-hd.js?v=adbb8a2d82" defer></script>
+<script src="pk-idr.js?v=f6002874d2" defer></script>
+<script src="pk-bayes.js?v=21a1045af5" defer></script>
 <script>
-(function(){
+// the engine files are deferred: the checks start once they have run
+document.addEventListener("DOMContentLoaded", function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
-  fetch("validation/reference-results.json?v=22dc7c5cbb").then(r=>r.json()).then(async REF=>{
+  // every comparison's result, in order, for the sphere at the top of the page
+  const mark=ok=>{ (window.dcChecks=window.dcChecks||[]).push(!!ok); return ok; };
+  fetch("validation/reference-results.json?v=3e5c9bbc7c").then(r=>r.json()).then(async REF=>{
+    window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
     document.getElementById("nScen").textContent=REF.scenarios.length;
-    // a dozen scenarios at a time, handing the page back in between so it never stalls
+    // four scenarios at a time, handing the page back in between so it never stalls
     const first=document.querySelector("#summary .big");
     for(let i=0;i<REF.scenarios.length;i++){
-      if(i && i%12===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
+      if(i && i%4===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
       const s=REF.scenarios[i];
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc,s.site), level=s.site==="effect" ? PK.ceConc : PK.conc;
       const m={peak:w.cmax, trough:level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
       const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
       const d={peak:pct(m.peak,r.peak), trough:pct(m.trough,r.trough), auc:pct(m.auc,r.auc), tin:m.tin-r.tin_pct};
       const ok=["peak","trough","auc"].every(k=>Math.abs(d[k])<=100*tol) && Math.abs(d.tin)<=tpp;
-      ["peak","trough","auc"].forEach(k=>{ total++; if(Math.abs(d[k])<=100*tol) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
-      total++; if(Math.abs(d.tin)<=tpp) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
+      ["peak","trough","auc"].forEach(k=>{ total++; if(mark(Math.abs(d[k])<=100*tol)) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
+      total++; if(mark(Math.abs(d.tin)<=tpp)) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
     }
     document.querySelector("#tbl tbody").innerHTML=rows.join("");
+    // the Bayesian (MAP) estimates: clearance and volume against the reference
+    let mapPass=0, mapTotal=0, mapWorst=0;
+    const tick=()=> new Promise(r=>setTimeout(r));   // hand the page back between heavier checks
+    const mapRows=[];
+    for(const s of (REF.map ? REF.map.scenarios : [])){ await tick(); mapRows.push((()=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), e=PK.bayes.estimate(p, p.lv, s.opts), r=s.reference;
+      const dCL=pct(e.CL,r.CL), dV=pct(e.V,r.V), ok=[dCL,dV].every(d=>Math.abs(d)<=100*REF.map.tolerance);
+      [dCL,dV].forEach(d=>{ mapTotal++; if(mark(Math.abs(d)<=100*REF.map.tolerance)) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.id)}</td><td>${p.lv.length}</td><td>${f(r.priorCL,3)}</td><td>${f(r.CL,3)}</td><td>${fd(dCL)}</td><td>${f(r.priorV,2)}</td><td>${f(r.V,2)}</td><td>${fd(dV)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    })()); }
+    document.querySelector("#mapTbl tbody").innerHTML=mapRows.join("");
+    pass+=mapPass; total+=mapTotal;
+    // the antimicrobial indices at steady state
+    let pkPass=0, pkTotal=0;
+    const P=REF.pkpd || {scenarios:[], tolerance:{}};
+    { const out=[]; for(const s of P.scenarios){ await tick(); out.push((()=>{
+      const m=PK.micStats(PK.normalizeScenario(PK.scenario(s.scenario)), s.mic, 24), r=s.reference;
+      const dft=m.ft-r.ft_pct, dc=pct(m.cmaxMic,r.cmax_mic), da=pct(m.aucMic,r.auc24_mic);
+      const oks=[Math.abs(dft)<=P.tolerance.ft_pp, Math.abs(dc)<=100*P.tolerance.ratio, Math.abs(da)<=100*P.tolerance.ratio], ok=oks.every(Boolean);
+      oks.forEach(o=>{ pkTotal++; if(mark(o)) pkPass++; });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.name)}</td><td>${f(r.ft_pct,2)}%</td><td>${Math.abs(dft)<0.0005 ? "0.000" : f(dft,3)}</td><td>${f(r.cmax_mic,3)}</td><td>${fd(dc)}</td><td>${f(r.auc24_mic,2)}</td><td>${fd(da)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    })()); } document.querySelector("#pkpdTbl tbody").innerHTML=out.join(""); }
+    pass+=pkPass; total+=pkTotal;
+    // indirect responses: at five times and at the largest change
+    let idPass=0, idTotal=0;
+    const D=REF.idr || {scenarios:[], tolerance:{}};
+    { const out=[]; for(const s of D.scenarios){ await tick(); out.push((()=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), st=PK.idr.stats(p, s.T), r=s.reference;
+      const worst=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.idr.at(p, s.T, +f*s.T), v))));
+      const de=pct(st.ext, r.ext), dt=st.tExt-r.t_ext;
+      const oks=[worst<=100*D.tolerance.rel, Math.abs(de)<=100*D.tolerance.rel, Math.abs(dt)<=D.tolerance.t_h], ok=oks.every(Boolean);
+      oks.forEach(o=>{ idTotal++; if(mark(o)) idPass++; });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.name)}</td><td>${f(r.ext,3)}</td><td>${fd(de)}</td><td>${f(r.t_ext,2)}</td><td>${Math.abs(dt)<0.0005 ? "0.000" : f(dt,3)}</td><td>${fd(worst)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    })()); } document.querySelector("#idrTbl tbody").innerHTML=out.join(""); }
+    pass+=idPass; total+=idTotal;
+    // hemodialysis: the level at six times, and each session's levels and removal
+    let hdPass=0, hdTotal=0;
+    const HDR=REF.hd || {scenarios:[], tolerance:{}};
+    { const out=[]; for(const s of HDR.scenarios){ await tick(); out.push((()=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), r=s.reference, tab=PK.hd.sessionTable(p, s.T).filter(x=>x.end<=s.T);
+      const wl=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.conc(p, +f*s.T-1e-9), v))));
+      const wsn=Math.max(0, ...r.sessions.flatMap((x,i)=> [pct(tab[i].pre,x.pre), pct(tab[i].post,x.post), pct(tab[i].removed,x.removed)].map(Math.abs)));
+      const oks=[wl<=100*HDR.tolerance.rel, wsn<=100*HDR.tolerance.rel], ok=oks.every(Boolean);
+      oks.forEach(o=>{ hdTotal++; if(mark(o)) hdPass++; });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.name)}</td><td>${r.sessions.length}</td><td>${f(r.sessions[0].removed,2)}</td><td>${fd(wl)}</td><td>${fd(wsn)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    })()); } document.querySelector("#hdTbl tbody").innerHTML=out.join(""); }
+    pass+=hdPass; total+=hdTotal;
+    window.dcDone=pass===total; window.dispatchEvent(new Event("dc-done"));
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
       `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
-      `<div>${REF.scenarios.length} scenarios × 4 numbers. Largest difference: ${small(worst.rel)}% (peak, trough or AUC) and ${small(worst.pp)} percentage points (time in window).</div>`+
+      `<div>${REF.scenarios.length} scenarios × 4 numbers, ${mapTotal/2} Bayesian estimates × 2 (clearance and volume), ${pkTotal/3} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), ${idTotal/3} indirect responses × 3 (five times, the largest change and its time), and ${hdTotal/2} dialysis scenarios × 2 (the levels, and each session's levels and removal). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
       `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
-})();
+});
 </script>
 </body>
 </html>

@@ -13,8 +13,8 @@ const near=(actual, expected, tol, msg)=>
   assert.ok(Math.abs(actual-expected)<=tol, `${msg?msg+": ":""}expected ${expected} ± ${tol}, got ${actual}`);
 const rel=(actual, expected, frac, msg)=> near(actual, expected, Math.abs(expected)*frac, msg);
 
-test("there are 6 to 12 cases, each with its patient, target, task, what else a pharmacist weighs, and sources", ()=>{
-  assert.ok(C.CASES.length>=6 && C.CASES.length<=12);
+test("there are 6 to 24 cases, each with its patient, target, task, what else a pharmacist weighs, and sources", ()=>{
+  assert.ok(C.CASES.length>=6 && C.CASES.length<=24);
   assert.equal(new Set(C.CASES.map(c=>c.id)).size, C.CASES.length);
   const words=/\b(safe|unsafe|best|recommended?)\b/i;
   C.CASES.forEach(c=>{
@@ -217,4 +217,44 @@ test("levetiracetam with reduced kidney function: creatinine clearance per 1.73 
   assert.ok(C.gradeCase(c,{D:1500, tau:12}).metrics.auc24>2.8*normal, "her current dose triples it");
   const w=C.walkthrough(c).join(" ");
   ["34.8 mL/min/1.73 m²", "250 to 750 mg every 12 hours", `${Math.round(normal)} for a woman of her size`].forEach(s=> assert.ok(w.includes(s), s));
+});
+
+test("Bayesian cases: levels drawn an hour apart mislead the two-level method, and the Bayesian estimate still leads on target", ()=>{
+  // vancomycin: the two-level AUC24 looks on target (no change); the true AUC24 on that regimen is above it
+  const v=C.caseById("vanc-bayes"), b=C.bayesOf(v);
+  assert.deepEqual(b.lv.map(l=>l.c), [41.8, 35.8]); assert.deepEqual(b.lv.map(l=>l.dt), [2.25, 3.25]);
+  assert.equal(b.sz.auc24.toFixed(0), "583"); assert.ok(b.sz.auc24>=400 && b.sz.auc24<=600, "the two-level estimate says: on target");
+  assert.equal((1500/b.trueCL).toFixed(0), "772", "the true AUC24 on 750 mg every 12 h");
+  assert.ok(Math.abs(b.est.CL/b.trueCL-1)<0.08, "the Bayesian clearance is within 8% of the truth");
+  assert.ok(Math.abs(b.sz.CL/b.trueCL-1)>Math.abs(b.est.CL/b.trueCL-1), "and closer than the two-level one");
+  assert.deepEqual(C.reference(v), {D:500, tau:12});
+  const g=C.gradeCase(v, {D:500, tau:12}); assert.ok(g.ok); assert.equal(g.metrics.auc24.toFixed(0), "514");
+  assert.equal(C.gradeCase(v, {D:750, tau:12}).hint, "aucHigh", "staying on the regimen the two-level estimate endorses misses");
+  // gentamicin: the second level is higher than the first, so the two-level method breaks; the Bayesian estimate doesn't
+  const gc=C.caseById("gent-bayes"), gb=C.bayesOf(gc);
+  assert.deepEqual(gb.lv.map(l=>l.c), [10.8, 11.2]);
+  assert.ok(gb.sz.broken && gb.sz.k<0);
+  assert.equal(gb.est.thalf.toFixed(1), "6.8"); assert.equal((Math.LN2*gb.trueV/gb.trueCL).toFixed(1), "10.6");
+  assert.deepEqual(C.reference(gc), {D:130, tau:24});
+  const gg=C.gradeCase(gc, {D:130, tau:24}); assert.ok(gg.ok);
+  assert.deepEqual([gg.metrics.peak.toFixed(1), gg.metrics.trough.toFixed(1)], ["7.5","1.6"]);
+  assert.equal(PK.ssProfile(gb.truth).ssTrough.toFixed(1), "8.2", "the trough on 120 mg every 8 h");
+  // "Open in simulator" gives the patient as the model predicts her (no premise), on the levels' regimen, with the levels
+  [v, gc].forEach(c=>{
+    const p=C.bayesOf(c).prior;
+    assert.deepEqual(p.lv, C.bayesOf(c).lv);
+    assert.equal(PK.derived(p).CL.toFixed(6), PK.bayes.priorOf(p).CL.toFixed(6));
+    assert.ok(Math.abs(PK.derived(p).CL-C.bayesOf(c).trueCL)>0.1, "the premise is left out");
+    assert.equal(p.D, c.current.D); assert.equal(p.tau, c.current.tau);
+    assert.ok(c.refs.includes("sheiner1979") && PK.SOURCES.sheiner1979.url.includes("10.1002/cpt1979263294"));
+  });
+});
+
+test("the case of the day is the same all day, is a real case, and every case comes round in turn", ()=>{
+  const {caseOfDay, CASES}=require("../cases.js");
+  const d=new Date(Date.UTC(2026,9,1,0,5)), e=new Date(Date.UTC(2026,9,1,23,55));
+  assert.equal(caseOfDay(d), caseOfDay(e), "one case for the whole day");
+  const seen=new Set();
+  for(let i=0;i<CASES.length;i++) seen.add(caseOfDay(new Date(Date.UTC(2026,9,1+i,12))).id);
+  assert.equal(seen.size, CASES.length, "every case once in as many days");
 });

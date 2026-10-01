@@ -67,20 +67,36 @@ test("NEEDS-SAIF lists the steps that need an account", ()=>{
 
 test("every file loaded on demand is named by its content hash in the page and precached under that name", ()=>{
   const crypto=require("node:crypto"), page=read("index.html"), sw=read("sw.js");
-  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js"].forEach(f=>{
+  ["cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js","pk-bayes.js","pk-idr.js","pk-sources.js","pk-hd.js","pk-sens.js","pk-tdm.js","pk-explain.js"].forEach(f=>{
     const h=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,f))).digest("hex").slice(0,10);
     assert.ok(page.includes(`${f}?v=${h}`), `index.html loads ${f}?v=${h}`);
     assert.ok(sw.includes(`./${f}?v=${h}`), `sw.js precaches ${f}?v=${h}`);
   });
   assert.equal(PK.GLOSSARY.length, require("../pk-glossary.js").length, "the engine reads the glossary file in Node");
+  // lesson links and lists work from the engine's own ids; every lesson has its texts in pk-lessons.js, and nothing else
+  const texts=require("../pk-lessons.js");
+  assert.deepEqual(Object.keys(texts).sort(), PK.LESSONS.map(L=>L.id).sort());
+  PK.LESSONS.forEach(L=> ["text","tryThis","objective","predict","challenge","matters"].forEach(k=> assert.ok(L[k], `${L.id}.${k}`)));
+  assert.ok(!/text:"[A-Z]/.test(read("pk-engine.js").slice(read("pk-engine.js").indexOf("const LESSONS"), read("pk-engine.js").indexOf("const TEMPLATES"))), "no lesson text left in the engine");
   // practice links are checked before pk-practice.js loads, against the engine's list of ids: the two agree
   assert.deepEqual(PK.PRACTICE_IDS, PK.PRACTICE.map(g=>g.id));
   assert.ok(page.includes("PK.PRACTICE_IDS.length") && !/PK\.PRACTICE\.length/.test(page), "the page counts kinds without loading them");
 });
 
+test("the page's own scripts parse (a syntax error there would stop the whole app, and no other test runs them)", ()=>{
+  // JavaScript only: plain and module scripts (not the JSON-LD metadata or the import map, which are JSON)
+  const js=html=> [...html.matchAll(/<script(?![^>]*src)(?![^>]*application\/ld\+json)(?![^>]*importmap)[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+  const page=read("index.html"), scripts=js(page);
+  assert.ok(scripts.length>=1);
+  scripts.forEach((src,i)=> assert.doesNotThrow(()=> new Function(src), `inline script ${i+1}`));
+  ["validation.html","404.html"].filter(f=>fs.existsSync(path.join(root,f))).forEach(f=>
+    js(read(f)).forEach((src,i)=> assert.doesNotThrow(()=> new Function(src), `${f} script ${i+1}`)));
+});
+
 test("the initial script payload stays within the plan's budget: +25% over the Phase 0 baseline of 318,996 bytes", ()=>{
   const page=read("index.html");
-  const inline=[...page.matchAll(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g)].reduce((s,m)=>s+Buffer.byteLength(m[1]),0);
+  // the import map is JSON that names Three.js for the 3D stage, which is outside this budget by design (DECISIONS)
+  const inline=[...page.matchAll(/<script(?![^>]*src)(?![^>]*importmap)[^>]*>([\s\S]*?)<\/script>/g)].reduce((s,m)=>s+Buffer.byteLength(m[1]),0);
   const total=inline+fs.statSync(path.join(root,"pk-engine.js")).size;
   assert.ok(total<=Math.floor(318996*1.25), `${total} bytes (${(100*total/318996-100).toFixed(1)}% over the baseline)`);
 });

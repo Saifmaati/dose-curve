@@ -154,7 +154,7 @@ test("every library value has a source or says it is unverified", ()=>{
     assert.ok(PK.UNITS[d.units], d.id);
     assert.ok(d.strengths.mg || d.strengths.round, `${d.id}: strengths or a rounding step`);
   }
-  Object.values(PK.SOURCES).forEach(s=> assert.ok(s.cite && (s.url===null || /^https:\/\/(doi\.org|dailymed\.nlm\.nih\.gov|www\.idsociety\.org)\//.test(s.url)), s.cite));
+  Object.values(PK.SOURCES).forEach(s=> assert.ok(s.cite && (s.url===null || /^https:\/\/(doi\.org|dailymed\.nlm\.nih\.gov|www\.idsociety\.org|www\.fda\.gov)\//.test(s.url)), s.cite));
   ["gent","vanc","dig","phe","theo","li"].forEach(id=> assert.ok(drug(id), `${id} is in the library`));
 });
 
@@ -201,7 +201,8 @@ test("v5 links carry the clinical patient and units; everything else keeps its o
   // a drug with its own units round-trips exactly, and so does its curve
   const dig=drugP("dig"), st=PK.decodeLink(PK.encodeLink({mode:"sim", s:dig, view:Object.assign({},V,{duration:336})}));
   assert.equal(st.view.duration, 336);
-  PK.PK_KEYS.filter(k=>k!=="events").forEach(k=> assert.equal(st.s[k], dig[k], k));
+  PK.PK_KEYS.filter(k=>k!=="events" && k!=="lv").forEach(k=> assert.equal(st.s[k], dig[k], k));
+  assert.deepEqual(st.s.lv, dig.lv, "measured levels (none)");
   const li=drugP("li"); assert.equal(PK.decodeLink(PK.encodeLink({mode:"sim", s:li, view:V})).s.S, li.S);
   // wider ranges need v5 too: an older page would clamp them
   ["thalf:30","V:200","wt:150"].forEach(kv=>{
@@ -288,4 +289,40 @@ test("lesson: time above the MIC (meropenem-like, every number the text, the tem
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:3.5})), false, "not quite");
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{tinf:0.5, tau:4, D:500})), false, "not by changing the regimen");
   assert.ok(PK.GLOSSARY.some(g=> g.lesson==="tmic" && /fT>MIC/.test(g.sym)));
+});
+
+test("lesson: which weight for CrCl (ideal, adjusted, actual) and the trough each predicts", ()=>{
+  const L=PK.LESSONS.find(l=>l.id==="wtcrcl"), at=wtm=> PK.normalizeScenario(scenario(Object.assign({}, L.cur, {wtm})));
+  const pt=PK.patientOf(at("actual"));
+  near(pt.ibw, 70.5, 0.05, "ideal body weight 70.5 kg (Devine, 175 cm)");
+  const want={ibw:[88,8.0,6.1], adj:[118,10.3,4.0], actual:[163,13.9,2.3]};
+  Object.entries(want).forEach(([w,[cr,cl,tr]])=>{
+    const p=at(w), d=PK.derived(p);
+    assert.equal(Math.round(PK.patientOf(p).crcl), cr, `${w}: CrCl ${cr} mL/min`);
+    near(d.CL, cl, 0.05, `${w}: clearance ${cl} L/h`); near(d.cminSS, tr, 0.05, `${w}: trough ${tr} mg/L`);
+    near(d.V, 91, 0.5, "the volume, by actual weight, is the same in each");
+  });
+  near(PK.derived(at("ibw")).thalfEff, 7.9, 0.05); near(PK.derived(at("actual")).thalfEff, 4.55, 0.01);
+  near(PK.derived(at("ibw")).cminSS/PK.derived(at("actual")).cminSS, 2.7, 0.01, "a 2.7-fold spread");
+  near(130/70.5, 1.8, 0.05, "actual is 1.8 times ideal");
+});
+
+test("practice: Cockcroft–Gault with the ideal, adjusted or actual weight is new in worksheet version 9, and earlier sheets don't change", ()=>{
+  const g=PK.PRACTICE.find(x=>x.id==="crclwt"); assert.equal(g.since, 9); assert.equal(g.topic, "rep");
+  const seen=new Set();
+  for(let s=1;s<=200;s++){
+    const p=PK.makeProblem({id:"crclwt", seed:s}), sc=PK.practiceScenario(p), pt=PK.patientOf(sc);
+    // independently: Devine, then the adjusted weight, then Cockcroft–Gault
+    const inch=sc.ht/2.54, ibw=(sc.sex==="F" ? 45.5 : 50)+2.3*(inch-60), adj=ibw+0.4*(sc.wt-ibw), w={ibw, adj, actual:sc.wt}[sc.wtm];
+    const cg=(140-sc.age)*w/(72*sc.scr)*(sc.sex==="F" ? 0.85 : 1);
+    near(p.ans, cg, 1e-9, `seed ${s}`); near(pt.crcl, cg, 1e-9, `seed ${s}: the simulator's own patient`);
+    assert.ok(sc.wt>=1.3*ibw && p.ans>=20 && p.ans<=180, `seed ${s}`);
+    seen.add(sc.wtm);
+  }
+  assert.deepEqual([...seen].sort(), ["actual","adj","ibw"], "all three weights come up");
+  // version-8 links (shared from 2.0 to 2.9) rebuild exactly: made with the 2.9.0 engine, before this kind
+  const V8={"all.15.99.8":["efft:3012898485","cmaxmic:3259124632","hepcl:1190380853","mmt90:2544774965","mmhalf:3300014323","ldinf:1953322744","auc2:679820681","effdur:89614955","tbelow:2776120598","mmdose:4252340193","cavg:2337938745","rate:1273533708","hepiv:3100495693","ct:3525797621","taumax:2145540502"]};
+  Object.entries(V8).forEach(([key, ids])=> assert.deepEqual(PK.makeWorksheet(PK.decodeTaskLink("#ws="+key)).problems.map(p=>p.id+":"+p.seed), ids, key));
+  const seen9=new Set(); for(let seed=1;seed<=40;seed++) PK.makeWorksheet({topic:"rep", count:10, seed}).problems.forEach(p=>seen9.add(p.id));
+  assert.ok(seen9.has("crclwt"), "version 9 sheets include it");
 });

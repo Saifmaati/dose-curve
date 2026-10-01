@@ -2,6 +2,239 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.9.0 (2026-10-01)
+
+The glossary, the README and the practice problems catch up with 2.4–2.8.
+
+- **Two glossary terms** (71): *Terminal half-life* (ln 2 / β, longer than the central compartment's own) and *Post-distribution peak* (drawn once distribution is over; When to sample gives the model's time, and the vancomycin guideline's two-level approach draws it 1–2 hours after the infusion, Rybak et al. 2020).
+- **A practice problem kind** (43): Cockcroft–Gault with the ideal (Devine), adjusted or actual weight of a heavy adult, worked step by step, ending with what the other weight would have given. It is new in worksheet version 9, so every worksheet link shared before keeps its exact problems (a test rebuilds a version-8 sheet).
+- **README images:** two new ones, the rebound after a dialysis session and population mode's band on the effect chart. Every chart image is retaken so its legend shows whole; until now each was clipped at the top.
+
+Every link kind, the new problem's included, opens with zero layout shift at 390 px. 387 tests in 22 files.
+
+## 2.8.0 (2026-10-01)
+
+Every lesson link scores 89 or more on mobile.
+
+- **Lesson links render faster.** A lesson link renders several times as its files arrive (the lesson's texts, the explanations, the stage), and each render recomputed the same window statistics, readouts and dose-by-dose peaks and troughs. The engine now keeps the last 64 of each. They are keyed by the scenario's link, so a changed setting always computes afresh, and by whether the dialysis model has loaded. Each caller gets its own copy. A repeated comparison takes 1.2 ms instead of 3.0.
+- **Results.** A Lighthouse run on all 36 lesson links found one below the floor of 85: the Bayesian-estimate lesson at 78 (73 with a layout shift on 2.4.0). It now scores 89, with blocking time 780 → 370 ms. The other low scorers rose too: continuous vs intermittent 88 → 94, piperacillin 87 → 94, gentamicin divided vs once daily 89 → 95, the CrCl lesson 91 → 94. Every link kind still opens with zero layout shift at 390 and 1440 px.
+
+Lighthouse on mobile: the root address 99, the validation page 99. 386 tests in 22 files.
+
+## 2.7.0 (2026-10-01)
+
+Hemodialysis with two compartments, and the rebound after each session.
+
+- **Dialysis works with two compartments.** The dialyzer clears the central compartment, and the central and peripheral amounts are carried exactly from one event to the next (a dose, an infusion's end, a session's start or end) through the two-compartment system's eigenvalues. Mass balance holds to 10⁻⁹: what was given is in the gut, in the two compartments, cleared by the body or removed by the dialyzer. A fine-step check agrees to 10⁻¹².
+- **The rebound.** After a session, drug moves back from the tissues and the level rises before the slow fall resumes. The session list gives the rebound's level, when it comes and the share of the fall it gives back. Example: 5.53 → 6.33 mg/L, 1.6 hours after a 4-hour session, 13% of the fall back. The fall per session is taken from the terminal phase, and its worked formula says so. The clearance for a stated fall is found by bisection.
+- **A new lesson, "Rebound after dialysis"** (36 lessons). It compares one compartment with two at the same clearance and total volume. The two-compartment level rises 14% in the 1.6 hours after the session, while the one-compartment level keeps falling. The session also removes less with two compartments (245 mg against 306), because the dialyzer only reaches the blood. The challenge: slow the return from the tissues until the rebound gives back a quarter of the fall. The glossary's "Post-dialysis rebound" now links to it.
+- **Validation:** 3 two-compartment dialysis scenarios added to the SciPy reference (11 in all; 718 comparisons on the validation page). The existing 8 changed by at most 2 parts in 10¹² with the solver's extra state.
+- **Links v12.** A scenario with both dialysis and two compartments makes a v12 link. An older link with both opens as it always did, with dialysis off, because before 2.7 it did nothing with two compartments.
+- The teaching guide's list of one-click comparisons is regenerated from the app (28; it said 18).
+- **Faster dialysis scenarios:** a level now takes a fifth of the time, since each scenario remembers its course while its settings are unchanged. The rebound lesson's link scores 89 on mobile and the dialysis lesson's 86 (83 with a layout shift on 2.4.0).
+- **"What changed" corrections.** It said the total AUC stays the same when only the compartments, the volume or the absorption rate change. With dialysis that's no longer true, because what a session removes follows the level. It now gives the actual difference, for example 9% higher with two compartments.
+
+385 tests in 22 files.
+
+## 2.6.0 (2026-10-01)
+
+Population mode carries through to the effect.
+
+- **The effect gets a population band.** With population mode and the effect charts both on, the effect chart shades the 5th–95th percentile of the same virtual patients' effect, with the median dotted. It covers a direct Emax, an effect-site delay and an indirect response. Only the levels vary, so the band shows how the spread in level carries through to the effect. The panel adds one sentence: at the moment the median effect is furthest from baseline, the effect's spread beside the level's. With the default drug at steady state, a 1.8-fold spread in level is 13 points of effect near the peak, while the troughs, lower on the curve, spread far wider. In Compare each scenario gets its own band.
+- Indirect responses are solved faster: each solver step reuses the level it has already computed at the half step and the step's end, with bit-identical results. Population bands use at most 2,000 steps per patient, within 0.05 points of the full solution. The worker loads the response model when it needs it.
+
+375 → 379 tests in 22 files. axe: no violations, the band included.
+
+## 2.5.0 (2026-10-01)
+
+Every link opens without the page moving, and the first view loads less.
+
+- **Lesson links no longer shift the page.** A lesson link showed the lesson before its texts arrived, and the texts then pushed the chart down. The shift reached 0.23 on phones (seven lessons above 0.1, the threshold Lighthouse flags) and dates from when the texts moved to their own file. A lesson link now shows once its texts (and any model it needs) are in place.
+- **`#cases` no longer shifts the page.** The case list filled in after the tab showed (a shift of 0.63). The tab now waits for the list, as a single case's link already did.
+- Every kind of link was measured at 390 and 1440 px: all 35 lessons, 40 practice kinds, 7 worksheet topics, each Fit the data and Hit the window kind, all 16 cases and each tab by name. Layout shift is 0 on every one.
+- **The "What changed" sentences moved to their own file** (`pk-explain.js`), unchanged: 526 of 526 scenario pairs give identical text before and after. The file loads just after the first paint, and a link that opens with a baseline or in Compare waits for it. The initial script falls from 24.7% to 18.0% over the Phase 0 baseline, which leaves room under the 25% budget for later features. The sentences now have tests of their own: the README's example word for word, every lesson's pair in both modes, and a single change to every library drug, all in descriptive words with no empty numbers.
+
+Lighthouse on mobile: the root address 99, a lesson link 90 (86 with a 0.16 shift before), `#cases` 97; accessibility 100, layout shift 0. 375 tests in 22 files.
+
+## 2.4.0 (2026-10-01)
+
+Teaching additions after the redesign: when to sample, a lesson on the weight in Cockcroft–Gault, a case of the day, and documents for contributors.
+
+- **When to sample.** Under the steady-state chart of any repeated regimen, a new section gives the dose from which the regimen's peak and trough are within 10% of steady state (and within 3%), and the model's sampling times in that interval. The trough is at its end, just before the next dose. The peak is at the end of an infusion, at the oral Tmax, or straight after a bolus. With two compartments it is the moment distribution is 90% complete: ln(9A/B)/(α − β) after the infusion ends, when the distribution phase is a tenth of the level. A **Show** button moves the time cursor to each time, widening the chart if needed. Example: for vancomycin 1 g over an hour every 12 h with two compartments, distribution is 90% complete 1.4 h after the infusion ends, inside the 1–2 hours the 2020 guideline gives for a post-distribution peak. These are the model's times, and the section says a protocol sets the real ones. The section loads when it opens (`pk-tdm.js`).
+- **A new lesson, "Which weight for CrCl"** (35 lessons). A 130 kg man, 175 cm tall (ideal weight 70.5 kg), on a drug 90% renally cleared. Cockcroft–Gault with his ideal, adjusted or actual weight gives a CrCl of 88, 118 or 163 mL/min and a predicted trough of 6.1, 4.0 or 2.3 mg/L: a 2.7-fold spread from one patient and one creatinine. The challenge asks for the interval that restores the ideal-weight trough when actual weight is used. The tests check every number in it.
+- **Case of the day.** The case list opens on one case, the same for everyone on a given date (it changes at midnight UTC), so a class can work one case together without a link.
+- **For contributors:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (the files, the rules the code keeps, the stage, validation) and [CONTRIBUTING.md](CONTRIBUTING.md). `node tools/stamp.js` restamps every file loaded on demand after a change.
+- Printing leaves out the pill, the masthead and the 3D stage.
+
+Lighthouse on mobile: the root address 96–99 over three runs, a two-compartment vancomycin link 94; accessibility 100 and layout shift 0. axe: no violations, including the new section in both themes. 371 tests in 21 files. The initial script is now 24.7% over the Phase 0 baseline, within the 25% budget.
+
+## 2.3.0 (2026-10-01)
+
+The redesign's last stage: validation, educators, README and link previews (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 14). A summary of the four 2.x releases is in [docs/REDESIGN_REPORT.md](docs/REDESIGN_REPORT.md).
+
+- **The validation page opens on a sphere of 712 points**, one per comparison the page runs against the independent solver, lighting as each one passes (a failed one would turn red), in 3D with Effects on and as SVG dots otherwise. Behind it, the word reads "Validating" while the checks run and "Validated" when every one has passed ("Checked" if any hasn't). It turns with the scroll.
+- **The educator page is a paper page** under the headline "For ··· educators", crossed by the default curve drawn from the engine.
+- **README:** new screenshots in the 2.x look (the opening screen, a lesson on paper, the population screen, and the simulator, Compare, lesson, case and validation images refreshed).
+- **Link previews:** a new image (the opening screen, rendered from the engine) and text with the current counts (34 lessons, 16 cases); a test keeps the counts current.
+- Long lesson titles fit their masthead (the headline sizes itself to its words).
+
+Lighthouse on mobile: the root address 99, validation 99 (desktop 100), educators 100; accessibility 100 and layout shift 0. axe: no violations. 362 tests in 20 files.
+
+## 2.2.0 (2026-10-01)
+
+The redesign's third stage: Lessons, Cases, Practice, Fit the data and Hit the window as paper pages (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 13).
+
+- **Paper pages.** Opening Lessons, Cases or Practice, or starting a lesson, a fit or a regimen task, turns the app to its paper palette: the top bar, the panels, the charts and the 3D ribbon, now solid graphite. The simulator and Compare stay dark. With the light theme everything is paper, as before.
+- **A masthead** over each one: a giant split headline with a short caption ("Guided ··· lessons, predict first, then check"; a lesson's own title, split, with "Lesson n of 34"; "Clinical ··· cases"; "Practice"; "Fit the ··· data"; "Hit the ··· window"). The ribbon crosses it, over the words and under the caption. The tab's own heading is unchanged for screen readers.
+- **Each case is a dossier:** the case facts in an open accordion, the measured levels in a dark panel, then the task, the walkthrough, what a pharmacist also weighs and the sources as accordions.
+- **The pill** follows these screens too: Start a lesson, Next lesson, Open a case, Check regimen, Check the answer, Next problem, New data set, New drug.
+- On a phone the page's own panel comes before the controls on these screens.
+- Links to a lesson, a case, a practice problem, a worksheet or a task open straight on their paper page, decided before the first paint; a case link shows the app once the case is on screen. Layout shift stays 0.
+- Faster: the lit graphite uses a lighter material, the sliding parts are placed once per frame, and the opening sequence's scenes are computed only when it is shown.
+
+Lighthouse on mobile: the root address 99, `#lessons` 97, a case link 96; accessibility 100 and layout shift 0. axe: no violations. 361 tests in 20 files.
+
+## 2.1.0 (2026-10-01)
+
+The redesign's second stage: the simulator and Compare on the 3D stage (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 12).
+
+- **The ribbon eases into a new shape** when a setting changes, over about a quarter of a second, instead of jumping; the window plane and the dose rings follow at once. With reduced motion it jumps.
+- **The time cursor rides the ribbon:** dragging across the chart, the arrow keys or Play move a marker along the 3D curve at the same moment (a point on the curve, a line down to the floor, a ring where it meets it).
+- **Population mode on the stage:** a cloud of the virtual patients' curves around the ribbon (up to 150 drawn), from the same sampler and seed as the app's population mode, so the cloud and the chart's bands describe the same patients.
+- **Compare:** A and B as two ribbons in their own colours, separated in depth.
+- On a phone, the stage steps back behind the app's text (it has no margins to sit in); the opening sequence is unchanged.
+
+Lighthouse on mobile: the root address 97, `#compare` 97; accessibility 100 and layout shift 0. axe: no violations. 360 tests in 20 files.
+
+## 2.0.0 (2026-10-01)
+
+DoseCurve's first visual redesign, the first of four 2.x releases (the plan and its storyboards are in [docs/DESIGN.md](docs/DESIGN.md)). The engine, the share links and the default scenario's numbers are unchanged.
+
+| Before (1.17.1) | After (2.0.0) |
+| --- | --- |
+| ![DoseCurve 1.17.1: gradient headline, glassy panels, cyan and violet glow](docs/img/v2-before.png) | ![DoseCurve 2.0.0: the split headline "Dose Curve" with the default curve as a 3D ribbon passing over it](docs/img/v2-after.png) |
+
+- **A 3D stage.** The current scenario's concentration–time curve is a ribbon in space, drawn live from the curve the chart has just computed, with the therapeutic window as a translucent plane and doses as rings that pulse. It glows on dark sections and turns to solid graphite on light ones. The camera moves to a framing for each tab and drifts with the scroll. It renders only when something changes.
+- **An opening sequence** on a first visit to the address itself (no `#` part): seven screens, each with one giant headline and a short caption, built from the engine. The default curve draws itself as its Cmax, AUC and time in the window count up; a regimen's doses pulse as the curve reaches them; 200 virtual patients draw in to their median; a two-compartment drug splits into its two phases; and a sphere of 584 points lights up as the engine is checked against the independent solver in your browser. ![The "Learn" screen: 200 graphite curves around their median on paper](docs/img/v2-after-learn.png) Any link with a `#` part, and any later visit, goes straight into the app; the DoseCurve wordmark brings the sequence back.
+- **Effects** in the top bar switches the 3D stage on or off (remembered in this browser). It starts off with reduced motion, under 4 GB of memory, under 4 processor cores or Save-Data. Without it, or without WebGL, a CSS version stands in: soft light and the same curve as a path in perspective. Phones get the single ribbon. Present mode and print stay plain.
+- **A new shell:** a top bar with the main links on the left, DoseCurve in the middle and the switches on the right, and one pill-shaped main action pinned at the bottom of every screen ("Open the simulator" in the sequence; in the app, the open tab's main action: set the baseline, swap A and B, start a lesson, open a case, check an answer).
+- **Type and colour:** IBM Plex Sans and IBM Plex Mono, served from this site (no request to Google), with fallbacks matched to their metrics so nothing moves when they arrive; tabular figures for every number. New colour tokens for a dark instrument theme and a light paper theme, each designed for its room. Panels are frosted glass over the stage, at an opacity that keeps every text colour at WCAG AA contrast whatever the stage shows.
+- **Charts drawn for the theme:** every chart now takes its colours from the theme, instead of the light theme inverting the dark charts; the PNG export matches the theme on screen, and printing always uses the paper colours. On phones the charts are drawn narrower so their labels stay readable.
+- **Controls:** segmented controls with a sliding thumb, a tab indicator that slides, sliders with a filled track and a value bubble while they move, switches for Effects, Population and the theme, readouts whose numbers run to their new value in 200 ms, a crosshair (both lines) on the chart.
+- **Copy:** sentence case throughout, no arrows appended to buttons, no decorative middle dots.
+- **Stable layout:** no layout shift on the root address or on any link: a link with a `#` part shows the app once it's applied, and the parts that load later (the practice problem, the validation summary) hold their space.
+- **Privacy:** the fonts no longer come from Google. With Effects on, the stage loads Three.js (a pinned copy, checked by hash) from cdnjs.cloudflare.com; the footer says so, and with Effects off it is never requested.
+- The validation, educator and 404 pages use the same type, colours and header.
+
+Lighthouse on mobile (simulated slow 4G): the root address 97, a deep link 98–99, validation 100, educators 100; accessibility 100 and layout shift 0 on every one. axe: no violations in 13 states of the app, in both themes, at 1280 and 390 px, or on the other pages. 359 tests in 20 files.
+
+## 1.17.1 (2026-09-30)
+
+Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan V2 (see [docs/BUILD_REPORT_V2.md](docs/BUILD_REPORT_V2.md)):
+
+- **Population mode on dialysis:** the bands now follow the sessions (the worker loads the dialysis model too).
+- **The Bayesian estimate on dialysis** says dialysis isn't covered, instead of assuming the clearance stays the same between levels.
+- **Peaks at a session's start or end:** the window's peak and the dose-by-dose peaks now treat each session edge as a kink, where they could miss a peak sitting exactly on one (by up to 4e-5). The indirect-response integrator steps to session edges too, with finer steps.
+- **Sensitivity off steady state** reads the AUC over the time window, not the first 24 hours (which is zero for a schedule that starts later); the button says AUC.
+- The glossary's post-dialysis rebound entry no longer gives a timing its sources don't state.
+
+## 1.17.0 (2026-09-30)
+
+- **A page for educators** (`educators.html`, linked from the footer and the README): what DoseCurve covers, how to run a class in ten minutes (pick material, write a case, make an assignment, collect completion codes), a link to every lesson (the same share link the app makes, which opens the lesson with its scenario and challenge) and every case, the practice topics, and privacy. Its numbers come from the app itself, and a test checks every link still opens what it says.
+- Links like `#practice`, `#lessons`, `#cases` and `#compare` open that tab.
+- **README screenshots** for the antimicrobial comparison, an indirect response, hemodialysis and the sensitivity chart, and a fresh one of the validation page (712 comparisons).
+- **The validation page** loads its scripts without blocking the first paint and hands the page back between each check, so it stays responsive while it runs; its summary keeps its size as the results arrive. Lighthouse on mobile: app 97–100, validation 97, educators 100 (desktop 100).
+- On the chart, an unbound-level label near the right edge sits left of its peak instead of being cut off.
+
+## 1.16.0 (2026-09-30)
+
+- **Sensitivity: which input matters most?** Under the readouts, each input is moved 20% down and 20% up, one at a time with everything else held: clearance (with the volume held, so the half-life follows), volume (with clearance held), F (capped at 1), kₐ, the dose and the dosing interval, plus k12 and k21 with two compartments and Vmax and Km for a saturable drug. The liver model sets clearance and F itself, so they aren't moved there.
+  - A tornado chart shows the change in AUC24, the peak, the trough or the time in the window, largest first, and a sentence names the input that matters most, with its numbers: for a regular regimen, "AUC24 at steady state is most sensitive to clearance and dosing interval: −20% changes it by +25.0%, +20% by −16.7%."
+  - A regular regimen is read at steady state; a single dose, a custom schedule or a regimen on dialysis over the time window (the AUC over the first 24 h, the window's peak and the level at its end).
+  - It is computed and drawn only while its panel is open, from its own file.
+- **One glossary term (69):** sensitivity analysis.
+- Tests hold it to the closed forms: clearance ±20% moves AUC24 at steady state by +25% and −16.7% for every route, one and two compartments and the clinical patient; the dose moves AUC24, the peak and the trough in proportion; the interval moves AUC24 like clearance; the volume leaves AUC24 alone, and moves an IV bolus's steady-state peak exactly as (D/V)/(1 − e^(−kτ)) says. Every input's sign is checked, and a saturable drug's exposure rises more than in proportion to the dose.
+
+## 1.15.0 (2026-09-30)
+
+- **Hemodialysis.** Under the patient, **Hemodialysis** adds sessions: the dialysis clearance, the session length, when the first starts and how often they repeat. While a session runs, the dialyzer's clearance adds to the body's own.
+  - Between any two events (a dose, an infusion's end, a session's start or end) the model is solved exactly, and the state is carried from one to the next, so the curve, the area and the amount each session removes (the dialysis clearance times the area under the concentration during it) are exact. It lives in its own file, loaded when dialysis is on.
+  - The chart marks each session. The panel lists, for each session in the window, the level as it starts and ends, the fall, the amount removed and the IV dose right after it that would restore the level, rounded.
+  - The readouts show the clearance off and on dialysis and the fall per session (each with its worked formula). The steady-state readouts give way, because sessions don't repeat with the doses.
+  - What changed, Compare, the inspector and links (version 11) include it. One compartment: there is no post-dialysis rebound, and the panel says so. The default dialysis clearance is a typical value, flagged unverified.
+- **A case (16 in all), *Gentamicin on hemodialysis*,** from the gentamicin label: an 8-hour session may lower the level by about 50% (the model's dialysis clearance is set to match), and the dose at the end of each session is 1 to 1.7 mg/kg. With 120 mg after each session, each session halves the level, from about 2.5 to 1.25 mg/L, and removes 15 to 18 mg. The walkthrough shows why the dose after a session is a full dose that rebuilds the peak, not a top-up of what the session removed.
+- **Lesson 10, *Hemodialysis sessions*** (34 in all), with a comparison (27): one dose in the same patient, with and without sessions. A session halves the level, the dialyzer doing 70% of the work while it runs; over all the sessions dialysis removes 18 of the 120 mg.
+- **A practice problem (42 kinds):** the fall over a dialysis session, 1 − e^(−(kₑ + CLd/V)·T). Worksheet pools are at version 8; version-7 links rebuild exactly.
+- **Two glossary terms (68):** dialysis clearance, and post-dialysis rebound (which the model doesn't show).
+- **Validated independently:** 8 dialysis scenarios in a SciPy ODE system with the dialysis clearance switched on during sessions agree within 0.01% on the level at six times and on each session's levels and amount removed (in practice to about one part in 10¹²); the validation page shows them (712 comparisons in all). The tests hold the model to mass balance (what the body clears plus what the dialyzer removes equals what was given), to the closed form during and between sessions, and to removal = ∫CLd·C dt.
+- A missing value in a readout now shows "—" instead of stopping the page.
+- The share card says 34 lessons.
+
+## 1.14.0 (2026-09-30)
+
+- **Indirect responses.** Under *Pharmacodynamics → How the effect is produced*, choose one of the four basic indirect response models (Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production (kin) or the loss (kout) of something the body makes. Set the response's turnover half-life, the maximum inhibition (Imax) or stimulation (Smax), EC50 and the Hill slope; with Imax = 1 and n = 1 the equations are the paper's.
+  - The effect chart shows the response as a percentage of its baseline (kin / kout = 100%), with the baseline marked. The concentration–effect chart shows the path the response takes against the level, around a dotted curve where it would settle if each level were held.
+  - The readouts give the largest change from baseline, when it comes, the plasma peak and the lag between them. Compare, What changed, the inspector and the CSV export show the response too. **Vary only** can hold the turnover apart.
+  - The response is integrated by the classical Runge–Kutta method on steps that meet every dose and infusion end, in its own file loaded only when a scenario uses it. The first page load doesn't grow.
+- **Lesson 27, *Indirect response*** (33 in all), with a comparison (26). A drug with warfarin's half-life (40 h), volume (0.14 L/kg) and absorption, acting the way warfarin acts on the synthesis of clotting factors, with the turnovers its label lists for factor VII (5 h) and factor II (60 h). After one dose the fast response bottoms out at 24 h (37% of baseline); the slow one only at 96 h (67%), the pattern the label describes. It uses no INR values. The challenge: reach 40% of baseline with the slow turnover and 25 mg doses, which takes daily doses, not a larger one.
+- **A practice problem (41 kinds):** where an indirect response settles under a constant infusion, R = R₀·(1 − Imax·f), checked against the simulated response after a week. Worksheet pools are at version 7; version-6 links rebuild exactly.
+- **Three glossary terms (66):** indirect response, response turnover and baseline response. The effect compartment's entry now cites its origin (Sheiner, Stanski and colleagues, 1979).
+- **Validated independently:** 12 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient), integrated with the drug in one SciPy ODE system, agree within 0.01% at five times and at the largest change (in practice to about one part in 10⁸), and on its time within 0.01 h; the validation page shows them (696 comparisons in all). The tests also check that the response stays at baseline exactly without drug, and that at a constant level it reaches the analytic plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).
+- Links with an indirect response are version 10. Every older link opens as before.
+- The share card says 33 lessons.
+
+## 1.13.0 (2026-09-30)
+
+- **Antimicrobial PK/PD.** Under the therapeutic window, enter the organism's MIC and the drug's unbound fraction (fu):
+  - **fT>MIC**, the share of each steady-state interval that the unbound level (fu × the total, taken as constant) stays above the MIC; **Cmax/MIC** and **AUC24/MIC** on the total level, with the unbound versions beside them. A single dose or a custom schedule is read over the time window, with the AUC over the first 24 hours.
+  - The chart draws the MIC line and the unbound level (dotted), and Compare lists the three indices for A and B.
+  - Each library antimicrobial names its index from a cited source: time above the MIC for piperacillin and meropenem (their labels), the peak ratio for gentamicin (Moore et al. 1987), AUC24/MIC for vancomycin (the 2020 guideline). A numeric target appears only where the source gives one (vancomycin's 400–600); otherwise the panel says why there is none.
+- **Piperacillin-tazobactam** joins the library (12 drugs), from its DailyMed label: half-life 0.84 h, volume 15.1 L (clearance 208 mL/min against the label's 207, and an AUC of 241 against 242 per 3 g), 30% bound, 68% excreted unchanged. Doses are the piperacillin in each: 3,000 mg in 3.375 g. Loading it sets the MIC to 16 mg/L, the FDA susceptible breakpoint for *Pseudomonas aeruginosa*. The dose range now reaches 4,000 mg; the slider stops at 2,000 unless a dose needs more.
+- **Two lessons (32 in all), in a new group, *Antimicrobial PK/PD*:**
+  - *Extended infusion:* the same 12 g a day keeps the unbound level above 16 mg/L for 47% of each interval as 30-minute infusions, 69% over 3 hours, and 100% as a continuous infusion, with the same AUC24/MIC of 60. The tip tries the extended-infusion scheme of Lodise et al. (2007): 57% on 9 g a day.
+  - *Once daily vs divided:* the same 480 mg of gentamicin a day gives a Cmax/MIC of 24.9 once daily against 9.3 divided, and an fT>MIC of 48% against 99.5%, with the same AUC24/MIC.
+  - Each has a matching comparison (25), and every number they state is tested.
+- **A practice topic, *Antimicrobial PK/PD* (40 kinds):** fT>MIC for an IV bolus at steady state, Cmax/MIC for an intermittent infusion, and AUC24/MIC. Worksheet pools are at version 6; version-5 links rebuild exactly.
+- **A case (15 in all):** *Piperacillin-tazobactam with reduced kidney function* reads the label's renal table (CrCl 31 mL/min: 2.25 g every 6 hours), then compares fT>MIC for 30-minute and 3-hour infusions and the extended-infusion scheme.
+- **Community cases** can set an fT>MIC target: the author's MIC and the least share of each interval. The solvability check stays exact (fT>MIC rises with the dose, so the grid is bisected).
+- **Five glossary terms (63):** minimum inhibitory concentration, unbound fraction, Cmax/MIC, AUC24/MIC, and extended infusion.
+- **Validated independently:** 12 regimens run to steady state in the SciPy solver agree on fT>MIC within 0.01 percentage points and on Cmax/MIC and AUC24/MIC within 0.01% (in practice about one part in a billion); the validation page shows them (660 comparisons in all). The tests also hold fT>MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.
+- Links that carry fu, an MIC or a dose above 2,000 mg are version 9. Every older link opens as before, including the 2,000 mg dose limit its page had.
+- The share card says 32 lessons.
+
+## 1.12.0 (2026-09-30)
+
+- **Write a case.** Under *Cases → For instructors*, an instructor describes a patient (age, sex, height, weight, serum creatinine), chooses a first-order drug from the library (optionally with their own half-life, volume or bioavailability, shown beside the library's), the regimens students may pick, and a target at steady state (a peak range with a trough limit, or an AUC24 range), with the setting, the task, notes and references (shown as author-provided).
+  - **Checked for a solution:** before a link is made, every regimen the choices allow is checked against the target (exactly: first-order levels scale with the dose, so each interval is simulated once), and the link is offered only when at least one meets it; the author sees how many do and one example.
+  - **Shared as a link:** the case travels in `#case=c1.…`, compressed where the browser can, and checked again when it opens. It is marked *Community case, unreviewed*. Every built-in case link opens exactly as before (a test checks each).
+- **Assignments.** An ordered list of up to 12 built-in cases, community cases and worksheets, in one link (`#bundle=b1.…`). Students work through it in the browser: cases are graded as they go, and worksheet answers are checked in the app. Progress stays in their browser.
+- **Completion codes.** At the end, a student enters the identifier the teacher gave them (not a name: letters, digits, - and _ only) and the class key, and gets a few readable lines (the assignment, the identifier, the items finished, the score and the date) with a code: an HMAC-SHA256 of those lines keyed by the class key, computed in the browser. **Verify a completion code** recomputes it. Nothing is sent anywhere; anyone who knows the key can make a code, and the page says so.
+- The teaching guide has a new section, *Run a class in ten minutes*, and the privacy notes cover assignments and codes.
+
+## 1.11.0 (2026-09-30)
+
+- **Individualize from levels (Bayesian).** Under the clinical patient, measured levels, each entered as hours after a given dose, give this patient's own clearance, volume and half-life. The estimate weighs each level against the patient model by its uncertainty, the approach of Sheiner et al. (*Clin Pharmacol Ther* 1979):
+  - a log-normal prior centred on the patient model (Cockcroft–Gault-adjusted clearance), with the population mode's CVs (30% on clearance, 20% on volume by default);
+  - each level's error SD √((10% of the level)² + (MEC / 10)²), a teaching assumption stated in the panel;
+  - the maximum a posteriori estimate, from a grid over ±3 prior SDs refined by Nelder–Mead, with 95% intervals from the Laplace approximation and how much of the prior's uncertainty the levels removed;
+  - beside it, the two-level estimate when two levels follow the same IV dose, and the dose for an AUC24 or trough target, rounded;
+  - the estimate is drawn dashed through the measured levels. Applying it (at the current dose or the new one) keeps the setup the levels were measured on as the baseline, because the levels belong to that regimen.
+  - One compartment and first-order elimination; two compartments and saturable drugs are left out, and the panel says so. The estimator is its own file, loaded when needed.
+- **Validated independently:** a SciPy implementation of the same objective, on the ODE solver's predictions, agrees on clearance and volume for 20 scenarios within 0.5% (in practice within 0.00003%); the validation page shows them (624 comparisons in all). Tests cover exact recovery with a wide prior, no levels giving the prior, the estimate lying between the prior and the levels, the grid against the optimizer, and the uncertainty falling as levels are added.
+- **Two cases (14 in all):**
+  - *Vancomycin: two levels an hour apart.* The two-level equations make his AUC24 look on target (583 mg·h/L) when it is 772; the Bayesian estimate from the same levels leads to 500 mg every 12 hours, an AUC24 of 514.
+  - *Gentamicin: when the second level comes back higher.* Assay error larger than the fall between two close levels gives a negative elimination rate, and the two-level method breaks; the Bayesian estimate gives 130 mg every 24 hours, on target.
+- **Lesson 30, *One level and a prior*** (a new group, *Levels and individualization*): one trough level weighed against the patient model estimates his clearance within 2%, where two levels an hour apart were 32% off. Three glossary terms (58): Bayesian estimate (MAP), prior, and uncertainty left (shrinkage).
+- Measured levels travel in links (version 8). Every older link opens as before.
+- A test now checks that the page's own scripts parse.
+- The share card says 30 lessons.
+
+## 1.10.0 (2026-09-30)
+
+- **A lighter first load.** Each lesson's explanation, tip, prediction and challenge now come from a separate file, `pk-lessons.js`, loaded with the Lessons tab or the first lesson opened (a lesson link loads it at once). The script the page needs before it can draw fell from 394.6 to 351.0 kB, from 23.7% to 10.0% over the Phase 0 baseline (the limit is 25%), which leaves room for the next models. The file is named by its content hash and saved for offline use like the other on-demand files.
+- Every lesson still opens from its link, the lists, the glossary and the comparisons, with the same numbers; a test checks that every lesson has all six of its texts and that no lesson text is left in the engine.
+- **Every release is tagged:** `v1.0.0` to `v1.9.0` now mark their merge commits on GitHub.
+
 ## 1.9.0 (2026-09-30)
 
 - **A liver model.** Under *Drug parameters*, **Clearance from: Liver model** replaces the half-life (and, by mouth, F) with the well-stirred model of the liver:

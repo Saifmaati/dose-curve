@@ -63,3 +63,32 @@ One line per task. Status is done, deferred or dropped. Times are the commit tim
 | 2026-09-30 14:10 | 1.9 | Lesson 26 on the default window; README screenshot of the effect-site delay | done | d79a368 |
 | 2026-09-30 15:30 | 1.9 | Liver model (well-stirred), lessons 27–29, practice topic (37 kinds, pool v5), glossary 55, links v7 | done | 4d08c50 |
 | 2026-09-30 15:40 | 1.9 | Version 1.9.0, cache v19, share card 29 lessons, build report section 18, decisions 76–77 | done | fe89e97 |
+| 2026-09-30 11:02 | 1.9 | Deployed 1.9.0: branch v1.9.0 by web upload (4 commits), fresh clone 294/294, CI green, PR #11 merged; live byte check, lessons 27–29 and practice live | done | da05093 |
+| 2026-09-30 14:35 | 1.10 | Lesson texts, predictions and challenges moved to lazily loaded pk-lessons.js; initial script +23.7% → +10.0% | done | e397d86 |
+| 2026-09-30 | 1.10 | Push access proven (scratch branch pushed and deleted); tags v1.0.0–v1.9.0 pushed; Releases and branch deletion blocked by the auto-mode check (NEEDS-SAIF) | done | — |
+| 2026-09-30 17:46 | 1.11 | Bayesian (MAP) engine in pk-bayes.js; measured levels in scenarios and v8 links; SciPy MAP reference (20 scenarios) on the validation page | done | 97229fe |
+| 2026-09-30 17:51 | 1.11 | Individualize from levels panel; estimate on the chart; applying it keeps the levels' regimen as the baseline; page-scripts-parse test | done | f1fbf1a |
+| 2026-09-30 18:03 | 1.11 | Bayesian cases (vancomycin, gentamicin), lesson 30, glossary 58, Sheiner 1979 source, share card | done | 10f4f4f |
+| 2026-09-30 18:14 | 1.12 | Instructor tools: write a case, assignments, completion codes and verification; class guide; privacy notes | done | 8813e6f |
+| 2026-09-30 18:14 | 1.12 | Assignment builder selects labelled (axe clean in both themes) | done | df5c499 |
+
+| 2026-09-30 20:19 | 1.13 | Antimicrobial PK/PD: MIC and fu, fT>MIC / Cmax/MIC / AUC24/MIC panel, chart and Compare; piperacillin-tazobactam; two lessons; practice topic; reduced-CrCl case; glossary 63; SciPy PK/PD reference; v9 links | done | c6ae185 |
+| 2026-09-30 20:22 | 1.13 | Community cases: fT>MIC target, solved by bisection | done | f242195 |
+| 2026-09-30 21:41 | 1.14 | Indirect responses (types 1–4) in pk-idr.js; response charts, readouts, Compare, What changed; lesson 27 (warfarin-like); comparison 26; practice idrss (pools v7); glossary 66; links v10 | done | 073456f |
+| 2026-09-30 21:45 | 1.14 | Drug sources and notes moved to lazily loaded pk-sources.js (initial script +18.2%) | done | edb3153 |
+| 2026-09-30 21:45 | 1.14 | SciPy indirect-response reference, 12 scenarios (696 comparisons) | done | bd9d1da |
+| 2026-09-30 22:25 | 1.15 | Hemodialysis in pk-hd.js (exact between events): session table, chart bands, readouts, What changed; case 16 (gentamicin on hemodialysis); lesson Hemodialysis sessions; comparison 27; practice hdfall (pools v8); glossary 68; links v11 | done | 73ce289 |
+| 2026-09-30 22:25 | 1.15 | SciPy dialysis reference, 8 scenarios (712 comparisons) | done | 24bbdde |
+| 2026-09-30 22:29 | 1.16 | Sensitivity analysis (±20%, tornado chart, dominant input) in pk-sens.js; glossary 69 | done | 0dc21be |
+| 2026-09-30 22:39 | 1.17 | Educator page, named tab links, README screenshots, validation page responsiveness, Lighthouse ≥95 everywhere | done | 618c40c |
+| 2026-09-30 22:52 | 1.17.1 | Phase I review fixes (dialysis in population mode and the Bayesian panel, session-edge peaks, sensitivity window AUC, glossary wording); 1,000-seed cross-check; BUILD_REPORT_V2; NEEDS-SAIF reduced | done | 8eddf8a |
+| 2026-10-01 00:38 | 2.0.0 | Redesign stage 1: tokens, IBM Plex (self-hosted), charts from tokens, controls, the 3D stage (Three.js, Effects), the seven-screen opening sequence, top bar and pill, glass, CLS 0 on every link | done | (this release) |
+| 2026-10-01 00:45 | 2.1.0 | Redesign stage 2: the ribbon eases into new curves, the cursor rides the ribbon, the population cloud from the app's sampler, Compare's two ribbons, phones step the stage back | done | (this release) |
+| 2026-10-01 01:08 | 2.2.0 | Redesign stage 3: paper pages for lessons, cases, practice, fit and hit the window; mastheads; case dossier with accordions and a dark levels panel; pill actions; faster paper rendering | done | (this release) |
+| 2026-10-01 01:19 | 2.3.0 | Redesign stage 4: the validation sphere (712 checks), the educator page on paper, README screenshots, link preview image and counts, masthead fitted to its words | done | (this release) |
+| 2026-10-01 01:45 | 2.4.0 | When to sample (pk-tdm.js), lesson "Which weight for CrCl" (35 lessons), case of the day, ARCHITECTURE.md, CONTRIBUTING.md, tools/stamp.js, print fixes | done | (this release) |
+| 2026-10-01 02:13 | 2.5.0 | Layout shift fixed on lesson links (up to 0.23) and #cases (0.63); all 107 link kinds CLS 0 at 390 and 1440; What changed sentences in pk-explain.js (script +24.7% to +18.0%) | done | (this release) |
+| 2026-10-01 02:22 | 2.6.0 | Population band on the effect chart (direct, delayed, indirect), spread sentence, faster indirect-response solver | done | (this release) |
+| 2026-10-01 02:53 | 2.7.0 | Hemodialysis with two compartments (exact), the rebound, lesson Rebound after dialysis (36 lessons), links v12, 3 SciPy dialysis scenarios (718 comparisons), What changed AUC sentences with dialysis | done | (this release) |
+| 2026-10-01 03:05 | 2.8.0 | Engine remembers window statistics, readouts and profiles; Bayesian lesson link 78 to 89, every lesson link 89+ on mobile | done | (this release) |
+| 2026-10-01 03:10 | 2.9.0 | Glossary 71 (terminal half-life, post-distribution peak); README rebound and effect-band images; chart images retaken with whole legends; practice kind Cockcroft–Gault by weight (43, worksheet v9) | done | (this release) |

@@ -257,7 +257,10 @@ test("scenarios round-trip through the link format", ()=>{
 
 test("decoding ignores unknown keys and bad values, and clamps numbers", ()=>{
   const p=PK.decodeScenario("D:99999,route:rectal,F:abc,nDoses:7.6,loadMult:3,evil:1,thalf:-2,missed:4");
-  assert.equal(p.D, 2000);
+  assert.equal(p.D, 4000);
+  // a link older than v9 clamps the dose to the 2,000 mg its page allowed
+  assert.equal(PK.decodeScenario("D:99999", 8).D, 2000); assert.equal(PK.decodeLink("v=8&s=D:3000").s.D, 2000);
+  assert.equal(PK.decodeLink("v=9&s=D:3000").s.D, 3000);
   assert.equal(p.route, "oral");
   assert.equal(p.F, 0.9);
   assert.equal(p.nDoses, 8);
@@ -334,8 +337,8 @@ test("malformed, truncated and oversized links degrade safely", ()=>{
   assert.equal(PK.decodeLink("v=1&m=cmp&a=D:40").a.D, 40, "a truncated value is still clamped into range");
   const st=PK.decodeLink("v=1&m=cmp&na="+"x".repeat(200000));
   assert.equal(st.nameA.length, 40);
-  assert.equal(PK.decodeLink("v=9&s=D:400").s.D, 400, "newer versions are read best-effort");
-  assert.equal(PK.decodeLink("v=9&s=D:400").newer, true, "and flagged");
+  assert.equal(PK.decodeLink("v=13&s=D:400").s.D, 400, "newer versions are read best-effort");
+  assert.equal(PK.decodeLink("v=13&s=D:400").newer, true, "and flagged");
   [1,2,3].forEach(v=> assert.equal(PK.decodeLink(`v=${v}&s=D:400`).newer, false, `v${v} is current`));
 });
 
@@ -1841,4 +1844,16 @@ test("lesson: dosing by weight", ()=>{
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:1000, V:36})), false, "only the dose may change");
   assert.equal(PK.challengeMet(L, PK.lessonScenario(L,{D:1000, wt:90})), false, "the weight stays 100 kg");
   const t=PK.TEMPLATES.find(x=>x.id==="weight"); assert.ok(t && t.lesson==="weight");
+});
+
+test("2.8: window statistics and readouts are remembered by the scenario's settings: copies, never stale", ()=>{
+  const p=PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6}));
+  const w1=PK.windowStats(p, 72, 2, 12), d1=PK.derived(p);
+  w1.auc=-1; d1.CL=-1;
+  assert.ok(PK.windowStats(p, 72, 2, 12).auc>0 && PK.derived(p).CL>0, "each caller gets its own copy");
+  p.D=1000;   // the same object, changed in place
+  const w2=PK.windowStats(p, 72, 2, 12), fresh=PK.windowStats(PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6, D:1000})), 72, 2, 12);
+  assert.deepEqual(w2, fresh); assert.ok(Math.abs(w2.auc/PK.windowStats(PK.normalizeScenario(PK.scenario({dosing:"repeated", tau:12, nDoses:6})), 72, 2, 12).auc-2)<1e-9, "twice the dose, twice the area");
+  assert.equal(PK.DEFAULTS.D, 500); assert.ok(Math.abs(PK.derived(p).auc/d1.auc-2)<1e-9, "the readouts follow the change too");
+  assert.notDeepEqual(PK.windowStats(p, 72, 2, 12), PK.windowStats(p, 48, 2, 12), "the window is part of it");
 });

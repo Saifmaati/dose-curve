@@ -1,6 +1,6 @@
 {
  "about": "Independent reference results for DoseCurve's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
- "generated": "2026-09-30",
+ "generated": "2026-10-01",
  "python": "3.9.6",
  "numpy": "2.0.2",
  "scipy": "1.13.1",
@@ -6216,5 +6216,2301 @@
    },
    "nonlinear": false
   }
- ]
+ ],
+ "map": {
+  "about": "Bayesian (MAP) estimates of CL (L/h) and V (L) for 20 scenarios with measured levels (scipy Nelder-Mead on ODE predictions).",
+  "tolerance": 0.005,
+  "scenarios": [
+   {
+    "id": "map-01-linear-iv-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 2,
+       "c": 7.65
+      },
+      {
+       "n": 1,
+       "dt": 8,
+       "c": 4.67
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.7,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 3.9414320722272276,
+     "V": 42.21192990531595,
+     "ofv": 0.5651910874734886,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-02-linear-iv-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 1,
+       "c": 10.81
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.4,
+     "Vx": 0.9
+    },
+    "reference": {
+     "CL": 5.107662642119378,
+     "V": 41.4859558978035,
+     "ofv": 0.19367739790946276,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-03-linear-iv-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 0.5,
+       "c": 22.71
+      },
+      {
+       "n": 4,
+       "dt": 11,
+       "c": 17.05
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.8,
+     "Vx": 1.1
+    },
+    "reference": {
+     "CL": 1.436194779090464,
+     "V": 37.39954106743852,
+     "ofv": 1.3990199207980611,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-04-linear-inf-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 3,
+       "dt": 1.5,
+       "c": 13.43
+      },
+      {
+       "n": 3,
+       "dt": 11.5,
+       "c": 7.88
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 0.6,
+     "Vx": 1.3
+    },
+    "reference": {
+     "CL": 2.937286105991081,
+     "V": 44.55879687559279,
+     "ofv": 3.383901031557187,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-05-linear-inf-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 6,
+       "dt": 11.9,
+       "c": 8.74
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 1.3,
+     "Vx": 0.8
+    },
+    "reference": {
+     "CL": 2.4068002518590563,
+     "V": 32.89537208557359,
+     "ofv": 1.1713782650933096,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-06-linear-oral-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 2,
+       "c": 5.78
+      },
+      {
+       "n": 1,
+       "dt": 6,
+       "c": 4.4
+      },
+      {
+       "n": 1,
+       "dt": 12,
+       "c": 2.71
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.9,
+     "Vx": 1.1
+    },
+    "reference": {
+     "CL": 4.15821184971581,
+     "V": 42.5973944838919,
+     "ofv": 0.5839037273414486,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-07-linear-oral-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 11.5,
+       "c": 2.28
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.2,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 5.46154897213371,
+     "V": 38.639977087285985,
+     "ofv": 0.3736920750414652,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-08-linear-oral-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 3,
+       "c": 22.71
+      },
+      {
+       "n": 7,
+       "dt": 11,
+       "c": 16.9
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 50,
+     "cvV": 30,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.75,
+     "Vx": 0.85
+    },
+    "reference": {
+     "CL": 1.2748393463134708,
+     "V": 30.720839752656858,
+     "ofv": 0.7707426131956918,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-09-linear-iv-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 6,
+       "c": 6.87
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 10,
+     "cvV": 10,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.0,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 4.427469337771883,
+     "V": 39.89856739195105,
+     "ofv": 0.4349965557977619,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-10-linear-inf-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 400.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 1.5,
+       "c": 6.26
+      },
+      {
+       "n": 1,
+       "dt": 5,
+       "c": 3.87
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.6,
+     "Vx": 1.4
+    },
+    "reference": {
+     "CL": 6.926488379964735,
+     "V": 53.312405673032,
+     "ofv": 4.7834310180083275,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-11-salt-iv-single-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 450.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 1,
+       "c": 12.08
+      },
+      {
+       "n": 1,
+       "dt": 10,
+       "c": 7.19
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.8,
+     "Vx": 0.9
+    },
+    "reference": {
+     "CL": 1.776528941492317,
+     "V": 27.976446042485854,
+     "ofv": 1.1867668203330466,
+     "priorCL": 2.3104906018664844,
+     "priorV": 30.0
+    }
+   },
+   {
+    "id": "map-12-salt-oral-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 6,
+       "dt": 2,
+       "c": 36.12
+      },
+      {
+       "n": 6,
+       "dt": 11.5,
+       "c": 30.36
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 1.1,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 0.7002705299655442,
+     "V": 26.35555107378821,
+     "ofv": 0.5225347228257946,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-13-salt-inf-repeated-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 3,
+       "dt": 1.2,
+       "c": 23.26
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 40,
+     "cvV": 25,
+     "prop": 0.1,
+     "add": 0.3,
+     "mec": 3.0
+    },
+    "truth": {
+     "CLx": 0.9,
+     "Vx": 0.7
+    },
+    "reference": {
+     "CL": 1.6956505057280045,
+     "V": 25.82368471704578,
+     "ofv": 1.2489370329336578,
+     "priorCL": 2.3104906018664844,
+     "priorV": 30.0
+    }
+   },
+   {
+    "id": "map-14-salt-iv-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 450.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 0.25,
+       "c": 25.91
+      },
+      {
+       "n": 2,
+       "dt": 11.75,
+       "c": 21.47
+      },
+      {
+       "n": 5,
+       "dt": 6,
+       "c": 47.49
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.65,
+     "Vx": 1.0
+    },
+    "reference": {
+     "CL": 0.45607776422450913,
+     "V": 24.295235927879585,
+     "ofv": 1.2256897584940916,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-15-linear-iv-loading-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "loadMult": 2,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 4,
+       "c": 10.1
+      },
+      {
+       "n": 3,
+       "dt": 11,
+       "c": 2.97
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 1.25,
+     "Vx": 1.15
+    },
+    "reference": {
+     "CL": 5.667663843192125,
+     "V": 45.44366275334,
+     "ofv": 1.2281676263934092,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-16-linear-oral-loading-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "loadMult": 2,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 10,
+       "c": 14.73
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.2,
+     "mec": 2.0
+    },
+    "truth": {
+     "CLx": 0.85,
+     "Vx": 0.95
+    },
+    "reference": {
+     "CL": 1.458941621103672,
+     "V": 32.888909993209694,
+     "ofv": 0.6250985240108564,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-17-linear-inf-missed-normal",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "simple",
+     "clFn": 100,
+     "wt": 70,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "missed": 3,
+     "lv": [
+      {
+       "n": 4,
+       "dt": 2,
+       "c": 9.42
+      },
+      {
+       "n": 4,
+       "dt": 11,
+       "c": 4.57
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.3,
+     "mec": 3.0
+    },
+    "truth": {
+     "CLx": 1.0,
+     "Vx": 1.3
+    },
+    "reference": {
+     "CL": 4.413769387487735,
+     "V": 47.41457956812527,
+     "ofv": 1.3551563288643906,
+     "priorCL": 4.620981203732969,
+     "priorV": 40.0
+    }
+   },
+   {
+    "id": "map-18-linear-iv-missed-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "iv",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "missed": 3,
+     "lv": [
+      {
+       "n": 2,
+       "dt": 3,
+       "c": 18.9
+      },
+      {
+       "n": 4,
+       "dt": 1,
+       "c": 27.36
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 0.7,
+     "Vx": 0.8
+    },
+    "reference": {
+     "CL": 1.2737688750924463,
+     "V": 29.66000788713555,
+     "ofv": 2.5543802080654956,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   },
+   {
+    "id": "map-19-salt-oral-single-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 9.0,
+     "V": 30.0,
+     "F": 0.95,
+     "ka": 0.6,
+     "fe": 0.9,
+     "S": 0.8,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "oral",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "single",
+     "D": 450.0,
+     "lv": [
+      {
+       "n": 1,
+       "dt": 4,
+       "c": 9.35
+      },
+      {
+       "n": 1,
+       "dt": 24,
+       "c": 6.13
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.1,
+     "mec": 1.0
+    },
+    "truth": {
+     "CLx": 1.3,
+     "Vx": 1.25
+    },
+    "reference": {
+     "CL": 0.75642446420171,
+     "V": 30.469366716450686,
+     "ofv": 1.8852412864290202,
+     "priorCL": 0.5779664734728512,
+     "priorV": 25.714285714285715
+    }
+   },
+   {
+    "id": "map-20-linear-inf-repeated-reduced",
+    "scenario": {
+     "kin": "linear",
+     "thalf": 6.0,
+     "V": 40.0,
+     "F": 0.8,
+     "ka": 1.0,
+     "fe": 0.7,
+     "S": 1.0,
+     "pm": "clinical",
+     "age": 75,
+     "sex": "F",
+     "wt": 60,
+     "ht": 160,
+     "scr": 1.8,
+     "wtm": "actual",
+     "alb": 4,
+     "route": "inf",
+     "tinf": 1.0,
+     "tau": 12,
+     "dosing": "repeated",
+     "D": 400.0,
+     "nDoses": 7,
+     "lv": [
+      {
+       "n": 5,
+       "dt": 1.1,
+       "c": 29.92
+      },
+      {
+       "n": 5,
+       "dt": 6,
+       "c": 25.59
+      },
+      {
+       "n": 5,
+       "dt": 11.9,
+       "c": 23.37
+      }
+     ]
+    },
+    "opts": {
+     "cvCL": 30,
+     "cvV": 20,
+     "prop": 0.1,
+     "add": 0.4,
+     "mec": 4.0
+    },
+    "truth": {
+     "CLx": 0.55,
+     "Vx": 1.2
+    },
+    "reference": {
+     "CL": 1.1192701755098171,
+     "V": 34.24375477617336,
+     "ofv": 3.2737464877177023,
+     "priorCL": 1.7792458546846832,
+     "priorV": 34.285714285714285
+    }
+   }
+  ]
+ },
+ "pkpd": {
+  "about": "fT>MIC (% of a steady-state interval with the unbound level above the MIC), Cmax/MIC and AUC24/MIC for 12 regimens, each run to steady state in the ODE solver.",
+  "tolerance": {
+   "ft_pp": 0.01,
+   "ratio": 0.0001
+  },
+  "scenarios": [
+   {
+    "name": "piperacillin 3 g q6h over 30 min, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 0.5
+    },
+    "reference": {
+     "ft_pct": 47.22032249579442,
+     "cmax_mic": 10.246889932371435,
+     "auc24_mic": 60.19191230198976
+    }
+   },
+   {
+    "name": "piperacillin 3 g q6h over 3 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 3
+    },
+    "reference": {
+     "ft_pct": 68.59723593033233,
+     "cmax_mic": 4.626792624079002,
+     "auc24_mic": 60.191912301989646
+    }
+   },
+   {
+    "name": "piperacillin 3 g q6h continuous (6 h), MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 6
+    },
+    "reference": {
+     "ft_pct": 100.0,
+     "cmax_mic": 2.5079963459162724,
+     "auc24_mic": 60.191912301988566
+    }
+   },
+   {
+    "name": "piperacillin 3 g q8h over 4 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 8,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 4
+    },
+    "reference": {
+     "ft_pct": 57.43268481162698,
+     "cmax_mic": 3.628266322300306,
+     "auc24_mic": 45.14393422649245
+    }
+   },
+   {
+    "name": "piperacillin 2 g q6h over 30 min, CrCl 31, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 62,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 2000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 0.5,
+     "pm": "clinical",
+     "age": 72,
+     "sex": "F",
+     "scr": 1.6,
+     "fe": 0.68
+    },
+    "reference": {
+     "ft_pct": 83.90962931665011,
+     "cmax_mic": 9.243551877813887,
+     "auc24_mic": 91.29130525724656
+    }
+   },
+   {
+    "name": "meropenem 1 g q8h over 30 min, MIC 2",
+    "mic": 2,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 8,
+     "tinf": 0.5,
+     "thalf": 1,
+     "V": 17,
+     "fu": 0.98
+    },
+    "reference": {
+     "ft_pct": 63.711600376526434,
+     "cmax_mic": 24.953686767888378,
+     "auc24_mic": 127.29662125490796
+    }
+   },
+   {
+    "name": "gentamicin 160 mg q8h over 30 min, MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 160,
+     "tau": 8,
+     "tinf": 0.5,
+     "thalf": 2.5,
+     "V": 18,
+     "fu": 0.85
+    },
+    "reference": {
+     "ft_pct": 99.51942301801608,
+     "cmax_mic": 9.313784379933471,
+     "auc24_mic": 96.17966939231303
+    }
+   },
+   {
+    "name": "gentamicin 480 mg q24h over 30 min, MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 480,
+     "tau": 24,
+     "tinf": 0.5,
+     "thalf": 2.5,
+     "V": 18,
+     "fu": 0.85
+    },
+    "reference": {
+     "ft_pct": 47.88481068946631,
+     "cmax_mic": 24.9329361818514,
+     "auc24_mic": 96.17966939259736
+    }
+   },
+   {
+    "name": "vancomycin 1 g q12h over 1 h, MIC 8",
+    "mic": 8,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 12,
+     "tinf": 1,
+     "thalf": 4.8,
+     "V": 28,
+     "fu": 0.45
+    },
+    "reference": {
+     "ft_pct": 53.35280704568248,
+     "cmax_mic": 5.049569058169816,
+     "auc24_mic": 61.82978746473418
+    }
+   },
+   {
+    "name": "oral 500 mg q8h (F 0.9, ka 1), MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "oral",
+     "D": 500,
+     "tau": 8,
+     "F": 0.9,
+     "ka": 1.0,
+     "thalf": 1,
+     "V": 27,
+     "fu": 0.8
+    },
+    "reference": {
+     "ft_pct": 63.04558015358914,
+     "cmax_mic": 7.370569098654546,
+     "auc24_mic": 72.13475204444747
+    }
+   },
+   {
+    "name": "IV bolus 1 g q8h, MIC 4",
+    "mic": 4,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "iv",
+     "D": 1000,
+     "tau": 8,
+     "thalf": 2,
+     "V": 20,
+     "fu": 0.6
+    },
+    "reference": {
+     "ft_pct": 74.99999999963158,
+     "cmax_mic": 13.333333333324024,
+     "auc24_mic": 108.20212806657355
+    }
+   },
+   {
+    "name": "two compartments, 1 g q12h over 1 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 12,
+     "tinf": 1,
+     "thalf": 3,
+     "V": 14,
+     "cmt": 2,
+     "k12": 0.5,
+     "k21": 0.3,
+     "fu": 0.9
+    },
+    "reference": {
+     "ft_pct": 70.29734569386694,
+     "cmax_mic": 4.041000084529458,
+     "auc24_mic": 38.643617161409
+    }
+   }
+  ]
+ },
+ "idr": {
+  "about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
+  "tolerance": {
+   "rel": 0.0001,
+   "t_h": 0.01
+  },
+  "scenarios": [
+   {
+    "name": "type 1, warfarin-like single oral dose, turnover 60 h",
+    "T": 168,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 1,
+     "route": "oral",
+     "dosing": "single",
+     "D": 25,
+     "F": 1,
+     "ka": 1.2,
+     "thalf": 40,
+     "V": 9.8,
+     "idr": 1,
+     "imax": 1,
+     "tout": 60
+    },
+    "reference": {
+     "at": {
+      "0.125": 85.59959561336336,
+      "0.25": 75.82180125821436,
+      "0.5": 67.50864343652384,
+      "0.75": 68.79837818626476,
+      "1.0": 74.39457855024413
+     },
+     "ext": 67.15839937857479,
+     "t_ext": 96.16412069954393
+    }
+   },
+   {
+    "name": "type 1, the same with turnover 5 h",
+    "T": 168,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 1,
+     "route": "oral",
+     "dosing": "single",
+     "D": 25,
+     "F": 1,
+     "ka": 1.2,
+     "thalf": 40,
+     "V": 9.8,
+     "idr": 1,
+     "imax": 1,
+     "tout": 5
+    },
+    "reference": {
+     "at": {
+      "0.125": 37.27835479896598,
+      "0.25": 41.654156621543876,
+      "0.5": 59.34985949751017,
+      "0.75": 75.09310449246234,
+      "1.0": 86.16878583933168
+     },
+     "ext": 36.96923415663319,
+     "t_ext": 24.093144700052093
+    }
+   },
+   {
+    "name": "type 2, IV bolus, Imax 0.8",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "iv",
+     "dosing": "single",
+     "D": 500,
+     "V": 35,
+     "thalf": 4,
+     "idr": 2,
+     "imax": 0.8,
+     "tout": 6
+    },
+    "reference": {
+     "at": {
+      "0.125": 131.51583810795546,
+      "0.25": 138.5424910363934,
+      "0.5": 119.35785600372229,
+      "0.75": 106.06192865429844,
+      "1.0": 101.6596360603713
+     },
+     "ext": 138.81758362159448,
+     "t_ext": 10.930074143919981
+    }
+   },
+   {
+    "name": "type 3, infusions q8h, Smax 4",
+    "T": 72,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 400,
+     "tinf": 1,
+     "tau": 8,
+     "nDoses": 6,
+     "V": 35,
+     "thalf": 4,
+     "idr": 3,
+     "smax": 4,
+     "tout": 3
+    },
+    "reference": {
+     "at": {
+      "0.125": 300.840472871215,
+      "0.25": 353.7764606544686,
+      "0.5": 370.8601361288112,
+      "0.75": 269.2145808400294,
+      "1.0": 118.1696005094223
+     },
+     "ext": 371.1782561980006,
+     "t_ext": 43.92879052222207
+    }
+   },
+   {
+    "name": "type 4, oral q12h, Smax 2, Hill 2",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 2,
+     "ec50": 4,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 500,
+     "F": 0.9,
+     "ka": 1.2,
+     "tau": 12,
+     "nDoses": 8,
+     "V": 35,
+     "thalf": 6,
+     "idr": 4,
+     "smax": 2,
+     "tout": 10
+    },
+    "reference": {
+     "at": {
+      "0.125": 51.51189607749572,
+      "0.25": 41.92806791739066,
+      "0.5": 39.98784562281431,
+      "0.75": 39.910099319485425,
+      "1.0": 39.905846795180366
+     },
+     "ext": 37.2573794701531,
+     "t_ext": 90.22348455507623
+    }
+   },
+   {
+    "name": "type 1, two compartments, IV bolus",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "iv",
+     "dosing": "single",
+     "D": 800,
+     "V": 20,
+     "thalf": 3,
+     "cmt": 2,
+     "k12": 0.8,
+     "k21": 0.4,
+     "idr": 1,
+     "imax": 0.9,
+     "tout": 2
+    },
+    "reference": {
+     "at": {
+      "0.125": 46.40899771356167,
+      "0.25": 48.74009282301044,
+      "0.5": 65.74489753149095,
+      "0.75": 80.61434888164885,
+      "1.0": 90.18946668168027
+     },
+     "ext": 45.59011696726276,
+     "t_ext": 7.631858755212395
+    }
+   },
+   {
+    "name": "type 2, oral q24h, Imax 1, Hill 1.5",
+    "T": 120,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1.5,
+     "ec50": 4,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 300,
+     "F": 0.8,
+     "ka": 0.8,
+     "tau": 24,
+     "nDoses": 5,
+     "V": 40,
+     "thalf": 10,
+     "idr": 2,
+     "imax": 1,
+     "tout": 20
+    },
+    "reference": {
+     "at": {
+      "0.125": 119.76594276674713,
+      "0.25": 131.18031080001006,
+      "0.5": 153.73830186643235,
+      "0.75": 163.4402851329427,
+      "1.0": 163.80326224474152
+     },
+     "ext": 170.49316179638691,
+     "t_ext": 109.54650613980604
+    }
+   },
+   {
+    "name": "type 3, mixed-route custom schedule",
+    "T": 72,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "oral",
+     "dosing": "custom",
+     "F": 0.9,
+     "ka": 1.2,
+     "V": 35,
+     "thalf": 5,
+     "idr": 3,
+     "smax": 3,
+     "tout": 8,
+     "events": [
+      {
+       "t": 0,
+       "mg": 400,
+       "route": "oral"
+      },
+      {
+       "t": 12,
+       "mg": 300,
+       "route": "iv"
+      },
+      {
+       "t": 24,
+       "mg": 600,
+       "route": "inf",
+       "dur": 2
+      }
+     ]
+    },
+    "reference": {
+     "at": {
+      "0.125": 191.03837434565364,
+      "0.25": 234.7693702410836,
+      "0.5": 272.6996935872959,
+      "0.75": 183.42644721864605,
+      "1.0": 122.78549788769674
+     },
+     "ext": 274.6522366528496,
+     "t_ext": 33.83739108954778
+    }
+   },
+   {
+    "name": "type 4, 24 h infusion, Smax 6, fast turnover",
+    "T": 72,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "inf",
+     "dosing": "single",
+     "D": 1200,
+     "tinf": 24,
+     "V": 35,
+     "thalf": 4,
+     "idr": 4,
+     "smax": 6,
+     "tout": 1
+    },
+    "reference": {
+     "at": {
+      "0.125": 21.29962092942554,
+      "0.25": 20.094666106817723,
+      "0.5": 43.11095411915446,
+      "0.75": 92.13650788604457,
+      "1.0": 99.60636908159968
+     },
+     "ext": 19.928599815935932,
+     "t_ext": 24.004769344149004
+    }
+   },
+   {
+    "name": "type 1, saturable elimination, daily",
+    "T": 168,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 10,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 300,
+     "F": 1,
+     "ka": 0.4,
+     "tau": 24,
+     "nDoses": 7,
+     "V": 49,
+     "kin": "mm",
+     "vmax": 7,
+     "km": 4,
+     "idr": 1,
+     "imax": 1,
+     "tout": 24
+    },
+    "reference": {
+     "at": {
+      "0.125": 88.74727755381998,
+      "0.25": 79.73073279774128,
+      "0.5": 69.29604634154579,
+      "0.75": 65.33815987677168,
+      "1.0": 63.75980419436213
+     },
+     "ext": 62.748478515890376,
+     "t_ext": 159.31042688677627
+    }
+   },
+   {
+    "name": "type 2, clinical patient (CrCl), infusions q12h",
+    "T": 96,
+    "scenario": {
+     "wt": 60,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 15,
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 1000,
+     "tinf": 1,
+     "tau": 12,
+     "nDoses": 8,
+     "V": 28,
+     "thalf": 4.8,
+     "pm": "clinical",
+     "age": 70,
+     "sex": "F",
+     "scr": 1.4,
+     "fe": 0.83,
+     "idr": 2,
+     "imax": 0.7,
+     "tout": 12
+    },
+    "reference": {
+     "at": {
+      "0.125": 125.97448085182704,
+      "0.25": 148.83544134268766,
+      "0.5": 181.17589828944088,
+      "0.75": 199.91481518218237,
+      "1.0": 210.344107304688
+     },
+     "ext": 210.47855021911104,
+     "t_ext": 94.32422115825452
+    }
+   },
+   {
+    "name": "type 4, loading dose and a missed dose",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 2,
+     "missed": 4,
+     "hill": 1,
+     "ec50": 4,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 250,
+     "F": 1,
+     "ka": 1.0,
+     "tau": 8,
+     "nDoses": 10,
+     "V": 30,
+     "thalf": 6,
+     "idr": 4,
+     "smax": 1.5,
+     "tout": 4
+    },
+    "reference": {
+     "at": {
+      "0.125": 48.50206397211841,
+      "0.25": 49.87734206724818,
+      "0.5": 51.149002572914036,
+      "0.75": 50.21566604927266,
+      "1.0": 70.51139685005039
+     },
+     "ext": 48.25690155618287,
+     "t_ext": 19.961065889352554
+    }
+   }
+  ]
+ },
+ "hd": {
+  "about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 11 scenarios (3 of them two-compartment) with a dialysis clearance switched on during sessions.",
+  "tolerance": {
+   "rel": 0.0001
+  },
+  "scenarios": [
+   {
+    "name": "IV bolus, one session",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "iv",
+     "dosing": "single",
+     "D": 500,
+     "V": 20,
+     "thalf": 10,
+     "hdcl": 6,
+     "hdstart": 6,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 17.92444060144293,
+      "0.25": 3.2775598857501946,
+      "0.4": 1.9897982232875016,
+      "0.55": 1.2080014118440605,
+      "0.75": 0.6209814770702572,
+      "1.0": 0.2702978873299299
+     },
+     "sessions": [
+      {
+       "pre": 16.493848884661894,
+       "post": 3.764927650293481,
+       "removed": 206.79795218621885
+      }
+     ]
+    }
+   },
+   {
+    "name": "gentamicin-like, end-stage kidney disease, 8 h every 48 h",
+    "T": 144,
+    "scenario": {
+     "wt": 80,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "inf",
+     "dosing": "single",
+     "D": 120,
+     "tinf": 0.5,
+     "V": 18,
+     "thalf": 2.5,
+     "pm": "clinical",
+     "age": 64,
+     "sex": "M",
+     "scr": 7.5,
+     "fe": 1,
+     "hdcl": 1.25,
+     "hdstart": 40,
+     "hddur": 8,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 4.036959065605447,
+      "0.25": 2.3015444271214798,
+      "0.4": 0.8069915853447269,
+      "0.55": 0.46008070822686536,
+      "0.75": 0.13376382298003542,
+      "1.0": 0.03224766899740585
+     },
+     "sessions": [
+      {
+       "pre": 2.074090484362757,
+       "post": 1.0359266334109112,
+       "removed": 14.95425457622265
+      },
+      {
+       "pre": 0.3659420893103458,
+       "post": 0.18277368295198243,
+       "removed": 2.638453435353737
+      },
+      {
+       "pre": 0.06456498100658901,
+       "post": 0.03224766899740585,
+       "removed": 0.4655154488007298
+      }
+     ]
+    }
+   },
+   {
+    "name": "oral, repeated, sessions every 48 h",
+    "T": 144,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 400,
+     "F": 0.8,
+     "ka": 1.0,
+     "tau": 12,
+     "nDoses": 12,
+     "V": 40,
+     "thalf": 16,
+     "hdcl": 8,
+     "hdstart": 10,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 7.348121382173372,
+      "0.25": 8.152389939739265,
+      "0.4": 11.995061797963723,
+      "0.55": 11.172558491804441,
+      "0.75": 7.466698378550464,
+      "1.0": 10.402165601730115
+     },
+     "sessions": [
+      {
+       "pre": 5.421880074606412,
+       "post": 7.116720248052208,
+       "removed": 171.7178248505251
+      },
+      {
+       "pre": 11.789170806071386,
+       "post": 9.522531745869227,
+       "removed": 301.96446559386726
+      },
+      {
+       "pre": 12.146796824810647,
+       "post": 9.657656844393566,
+       "removed": 309.2799141157519
+      }
+     ]
+    }
+   },
+   {
+    "name": "infusions q12h, a session overlapping an infusion",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 1000,
+     "tinf": 2,
+     "tau": 12,
+     "nDoses": 8,
+     "V": 28,
+     "thalf": 20,
+     "hdcl": 5,
+     "hdstart": 23,
+     "hddur": 4,
+     "hdevery": 24
+    },
+    "reference": {
+     "at": {
+      "0.1": 26.514656668787687,
+      "0.25": 33.872990066802565,
+      "0.4": 61.88941967201686,
+      "0.55": 40.464762575055204,
+      "0.75": 37.80789441495317,
+      "1.0": 37.9551765705163
+     },
+     "sessions": [
+      {
+       "pre": 41.92350847318079,
+       "post": 41.35856338737873,
+       "removed": 850.7113698981952
+      },
+      {
+       "pre": 45.93815113624015,
+       "post": 43.06948673263394,
+       "removed": 904.7312642975379
+      },
+      {
+       "pre": 46.793612808685396,
+       "post": 43.434059490210984,
+       "removed": 916.242114225324
+      }
+     ]
+    }
+   },
+   {
+    "name": "mixed-route custom schedule",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "oral",
+     "dosing": "custom",
+     "F": 0.9,
+     "ka": 1.5,
+     "V": 30,
+     "thalf": 12,
+     "hdcl": 4,
+     "hdstart": 8,
+     "hddur": 5,
+     "hdevery": 44,
+     "events": [
+      {
+       "t": 0,
+       "mg": 500,
+       "route": "iv"
+      },
+      {
+       "t": 20,
+       "mg": 400,
+       "route": "oral"
+      },
+      {
+       "t": 50,
+       "mg": 600,
+       "route": "inf",
+       "dur": 3
+      }
+     ]
+    },
+    "reference": {
+     "at": {
+      "0.1": 7.73348528837424,
+      "0.25": 12.014164704866635,
+      "0.4": 5.242934744434168,
+      "0.55": 17.803789673212222,
+      "0.75": 3.610846392138485,
+      "1.0": 0.9027115980338755
+     },
+     "sessions": [
+      {
+       "pre": 10.499342082457577,
+       "post": 4.0383435869878195,
+       "removed": 135.24117876586558
+      },
+      {
+       "pre": 14.982041019624782,
+       "post": 8.588088442561823,
+       "removed": 273.3839890494695
+      }
+     ]
+    }
+   },
+   {
+    "name": "loading dose and a missed dose",
+    "T": 120,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 2,
+     "missed": 3,
+     "hd": 1,
+     "route": "iv",
+     "dosing": "repeated",
+     "D": 300,
+     "tau": 24,
+     "nDoses": 5,
+     "V": 25,
+     "thalf": 30,
+     "hdcl": 3,
+     "hdstart": 20,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 18.188598798545737,
+      "0.25": 17.872007461645524,
+      "0.4": 11.79112761353074,
+      "0.55": 7.779243081478726,
+      "0.75": 10.681772813676877,
+      "1.0": 7.56962459269142
+     },
+     "sessions": [
+      {
+       "pre": 15.11905259873918,
+       "post": 8.52954557242749,
+       "removed": 138.14006541716128
+      },
+      {
+       "pre": 7.427944940960292,
+       "post": 4.190540013644016,
+       "removed": 67.86779749313479
+      },
+      {
+       "pre": 13.417543923976803,
+       "post": 7.56962459269142,
+       "removed": 122.59368656143744
+      }
+     ]
+    }
+   },
+   {
+    "name": "vancomycin-like, reduced CrCl, short sessions",
+    "T": 168,
+    "scenario": {
+     "wt": 75,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "inf",
+     "dosing": "single",
+     "D": 1500,
+     "tinf": 1.5,
+     "V": 28,
+     "thalf": 4.8,
+     "pm": "clinical",
+     "age": 70,
+     "sex": "F",
+     "scr": 5,
+     "fe": 0.83,
+     "hdcl": 4,
+     "hdstart": 12,
+     "hddur": 3.5,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 17.335523918719886,
+      "0.25": 6.835447713422849,
+      "0.4": 1.690153703574462,
+      "0.55": 0.66643254178933,
+      "0.75": 0.12083481901649228,
+      "1.0": 0.01606588526510311
+     },
+     "sessions": [
+      {
+       "pre": 33.00596940764703,
+       "post": 18.18808652587501,
+       "removed": 348.11684174480274
+      },
+      {
+       "pre": 3.5162043281280884,
+       "post": 1.93762006420074,
+       "removed": 37.085714117934515
+      },
+      {
+       "pre": 0.3745895999734748,
+       "post": 0.20641926834096536,
+       "removed": 3.9508292237280784
+      }
+     ]
+    }
+   },
+   {
+    "name": "a fast dialyzer next to a slow body",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "iv",
+     "dosing": "single",
+     "D": 800,
+     "V": 50,
+     "thalf": 60,
+     "hdcl": 20,
+     "hdstart": 1,
+     "hddur": 8,
+     "hdevery": 24
+    },
+    "reference": {
+     "at": {
+      "0.1": 3.3106248506531744,
+      "0.25": 0.5677689541596647,
+      "0.4": 0.5224539800259903,
+      "0.55": 0.2746120136983896,
+      "0.75": 0.0175395037294569,
+      "1.0": 0.015269024851613182
+     },
+     "sessions": [
+      {
+       "pre": 15.816224325646335,
+       "post": 0.5877912833227203,
+       "removed": 740.0482213613873
+      },
+      {
+       "pre": 0.4885943895191659,
+       "post": 0.01815803299995494,
+       "removed": 22.86155036031539
+      }
+     ]
+    }
+   },
+   {
+    "name": "two compartments, IV bolus, rebound after a session",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "iv",
+     "dosing": "single",
+     "D": 1000,
+     "V": 20,
+     "thalf": 6,
+     "cmt": 2,
+     "k12": 0.8,
+     "k21": 0.4,
+     "hdcl": 8,
+     "hdstart": 6,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 12.38068546713146,
+      "0.25": 6.306224654560586,
+      "0.4": 4.943157180428618,
+      "0.55": 3.811243659005803,
+      "0.75": 2.6945229033022615,
+      "1.0": 1.7468307739919176
+     },
+     "sessions": [
+      {
+       "pre": 11.799048422507134,
+       "post": 5.534316209786833,
+       "removed": 244.69607997991204
+      }
+     ]
+    }
+   },
+   {
+    "name": "two compartments, daily infusions, sessions every 48 h",
+    "T": 120,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 1000,
+     "tinf": 1,
+     "tau": 24,
+     "nDoses": 5,
+     "V": 28,
+     "thalf": 30,
+     "cmt": 2,
+     "k12": 0.5,
+     "k21": 0.25,
+     "hdcl": 6,
+     "hdstart": 20,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 10.47775144477775,
+      "0.25": 18.505897871119902,
+      "0.4": 15.844446968284924,
+      "0.55": 23.842771263126775,
+      "0.75": 25.653574332471795,
+      "1.0": 19.679586432971483
+     },
+     "sessions": [
+      {
+       "pre": 9.860505290902195,
+       "post": 6.270944814451314,
+       "removed": 181.85697882556855
+      },
+      {
+       "pre": 23.485650998398835,
+       "post": 14.936079906496124,
+       "removed": 433.1452464514709
+      },
+      {
+       "pre": 30.944388444630103,
+       "post": 19.679586432971483,
+       "removed": 570.7065798696269
+      }
+     ]
+    }
+   },
+   {
+    "name": "two compartments, oral, slow return from the tissues",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 400,
+     "F": 0.8,
+     "ka": 1.2,
+     "tau": 12,
+     "nDoses": 8,
+     "V": 30,
+     "thalf": 12,
+     "cmt": 2,
+     "k12": 1.5,
+     "k21": 0.2,
+     "hdcl": 10,
+     "hdstart": 10,
+     "hddur": 5,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 1.1162678676876174,
+      "0.25": 1.7472792618153279,
+      "0.4": 4.62417852433398,
+      "0.55": 4.7012142122175336,
+      "0.75": 4.368761588383792,
+      "1.0": 5.842520001385036
+     },
+     "sessions": [
+      {
+       "pre": 1.1132535040684957,
+       "post": 1.8955223151483265,
+       "removed": 106.59905195822537
+      },
+      {
+       "pre": 4.488004683768087,
+       "post": 4.267077609418821,
+       "removed": 239.68542550592332
+      }
+     ]
+    }
+   }
+  ]
+ }
 }

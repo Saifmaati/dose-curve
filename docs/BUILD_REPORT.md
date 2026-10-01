@@ -252,3 +252,235 @@ There are 285 tests in 11 files. Lighthouse (gzip preview): 100 in every categor
 
 There are 294 tests in 12 files. The initial script is +23.7% over the Phase 0 baseline (limit +25%): the next release should move the lesson texts into a lazy module before adding more to the engine.
 
+## 19. 1.10.0
+
+1.9.0 was deployed and checked live (PR #11, merge da05093). Plan V2 (Phase A) started here; push access with `gh` works.
+
+| Item | Where to see it | Tests |
+| --- | --- | --- |
+| Lesson texts, predictions and challenges in lazily loaded `pk-lessons.js`; initial script 394.6 → 351.0 kB (+23.7% → +10.0% of the baseline) | Lessons tab; any lesson link | `release.test.js` (stamps, precache, every lesson's six texts, none left in the engine, budget) and every lesson test |
+| Tags v1.0.0–v1.9.0 on the recorded merge commits | GitHub → Tags | — |
+| GitHub Releases and merged-branch deletion | NEEDS-SAIF §1 and §6 | blocked by the auto-mode safety check |
+| Zenodo: repository 1343327284, no DOI until a Release exists | NEEDS-SAIF §2 | — |
+
+There are 294 tests in 12 files.
+
+## 20. 1.11.0 (Plan V2, Phase B)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Bayesian (MAP) individualization in `pk-bayes.js` (lazily loaded, stamped): log-normal prior from the patient model, combined error, grid + Nelder–Mead, Laplace 95% intervals, uncertainty left | Simulator → Clinical → Individualize from levels | `bayes.test.js` (wide-prior recovery within 0.1%, no levels = prior, between prior and levels, grid vs optimizer within 0.5%, SD falls with levels) |
+| SciPy MAP reference, 20 scenarios, on the validation page | validation.html | `bayes.test.js` (within 0.5%, regression guard 1e-5) |
+| Two-level estimate beside it; dose to an AUC24 or trough target; the estimate on the chart; applying it keeps the levels' regimen as the baseline | the panel | `bayes.test.js` |
+| Measured levels in scenarios and v8 links | Copy link | `bayes.test.js`, `clinical.test.js` |
+| Cases 13–14: vancomycin (two levels an hour apart) and gentamicin (the second level higher) | Cases tab | `cases.test.js` |
+| Lesson 30, *One level and a prior*; glossary 58 | Lessons → Levels and individualization | `bayes.test.js` (every number the text states) |
+| The page's scripts parse | — | `release.test.js` |
+
+There are 308 tests in 13 files. The initial script is +14.7% over the Phase 0 baseline (limit +25%).
+
+## 21. 1.12.0 (Plan V2, Phase C)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Write a case: checked spec, the author's values flagged, solvability over the regimen grid, community case in a compressed versioned link, marked unreviewed | Cases → For instructors → Write a case | `instructor.test.js` (every field round-trips, compressed and plain; the count matches grading every regimen; unsolvable refused; bad values named) |
+| Built-in case links unchanged | any `#case=` link | `instructor.test.js` (all 14, with and without a regimen) |
+| Assignments: bundle links, worksheets answered in the app, progress in the browser | Make an assignment; an assignment link | `instructor.test.js` (round trip, same worksheets, limits) |
+| Completion codes and the verify panel | the end of an assignment; Verify a completion code | `instructor.test.js` (HMAC-SHA256 checked with Node's crypto; a changed score, identifier, key or code fails) |
+| Teaching guide: run a class in ten minutes; privacy notes | docs/teaching-guide.md; footer | — |
+
+There are 314 tests in 14 files. The initial script is +14.8% over the Phase 0 baseline (limit +25%); the instructor tools live in the lazily loaded cases.js.
+
+## 22. 1.13.0 (Plan V2, Phase D)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Antimicrobial indices (`PK.micStats`): fT>MIC on the unbound level, Cmax/MIC, AUC24/MIC; steady state for a regular regimen, the window otherwise | Simulator → Antimicrobial PK/PD; the MIC line and dotted unbound level on the chart; Compare rows | `pkpd.test.js` (IV-bolus closed form over 200 random regimens; continuous infusion exactly 100% and 0%; both infusion crossings in closed form; MIC and fu scaling; loading and missed doses; window reading) |
+| SciPy reference: 12 regimens run to steady state | validation.html | `pkpd.test.js` (fT>MIC within 0.01 pp, ratios within 0.01%; observed ~1e-9) |
+| Each antimicrobial's index from its source; a numeric target only where cited (vancomycin) | the panel's *Index and target* | `pkpd.test.js` |
+| Piperacillin-tazobactam from its label (CL 208 vs 207 mL/min, AUC 241 vs 242) | Drug library | `pkpd.test.js`, `clinical.test.js` (every value sourced) |
+| v9 links: fu, the MIC, doses to 4,000 mg; older links clamp as before | Copy link | `pkpd.test.js`, `pk-engine.test.js` |
+| Lessons 30–31 (*Extended infusion*, *Once daily vs divided*), two comparisons | Lessons → Antimicrobial PK/PD | `pkpd.test.js` (every number the text, tip and comparison state; challenges hold their conditions) |
+| Practice topic (fT>MIC, Cmax/MIC, AUC24/MIC), worksheet pools v6 | Practice → Antimicrobial PK/PD | `pk-engine.test.js` (every answer against the model), `pkpd.test.js` (v5 sheets unchanged) |
+| Case 15: piperacillin-tazobactam with reduced kidney function | Cases tab | `cases.test.js` |
+| Community cases: an fT>MIC target, solved by bisection | Write a case | `instructor.test.js` (count equals grading every regimen, four drugs) |
+| Glossary 63 | Lessons → Glossary | `pk-engine.test.js` |
+
+There are 327 tests in 15 files. The initial script is +19.6% over the Phase 0 baseline (limit +25%). axe: no violations on the simulator with the panel open.
+
+## 23. 1.14.0 (Plan V2, Phase E)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Indirect responses, types 1–4 (Dayneka, Garg and Jusko 1993), in lazily loaded `pk-idr.js` (RK4 on dose-aligned steps, Hermite interpolation) | Simulator → Effect → *How the effect is produced*; response chart in % of baseline; response-vs-level loop with the plateau curve; readouts; Compare; What changed; inspector; CSV | `idr.test.js` (no drug: exactly 100; constant level: analytic plateau and time constant 1/kout or 1/(kout·(1 ∓ D)) to 1e-7; directions and lag of all four types; limits) |
+| SciPy reference: 12 indirect-response scenarios | validation.html (696 comparisons) | `idr.test.js` (0.01% at five times and the largest change, 0.01 h on its time; observed ~1e-8) |
+| v10 links with idr, tout, imax, smax; Vary only holds the turnover | Copy link | `idr.test.js`, `pk-engine.test.js` |
+| Lesson 27, *Indirect response* (warfarin-like, from the label), comparison 26 | Lessons → PK/PD concepts | `idr.test.js` (every number the text, tip and comparison state; the challenge's conditions) |
+| Practice kind *Indirect response · steady state* (worksheet pools v7) | Practice → Concentration–effect | `pk-engine.test.js` (every answer against the simulated response) |
+| Glossary 66 (indirect response, response turnover, baseline response; the effect compartment's 1979 origin) | Lessons → Glossary | `idr.test.js` |
+| The drug library's sources and notes in lazily loaded `pk-sources.js` | Drug information; antimicrobial panel; cases | `release.test.js` (stamped and precached), `clinical.test.js` |
+
+There are 335 tests in 16 files. The initial script is +18.2% over the Phase 0 baseline (limit +25%), down from +19.6% in 1.13.0. axe: no violations with the indirect-response charts open.
+
+## 24. 1.15.0 (Plan V2, Phase F)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Hemodialysis sessions in lazily loaded `pk-hd.js`: the dialysis clearance added while a session runs, solved exactly between events, with the area and the amount removed | Simulator → Patient → Hemodialysis; session bands on the chart; session table; readouts and worked formulas; What changed | `hd.test.js` (closed form before, during and after a session; mass balance for every route and schedule to 1e-9; removal = ∫CLd·C to 1e-8; no sessions in reach = no dialysis) |
+| SciPy reference: 8 dialysis scenarios | validation.html (712 comparisons) | `hd.test.js` (0.01%; observed ~1e-12) |
+| No steady state on dialysis: dose table off the curve, readouts switch | Steady-state panel; readouts | `hd.test.js` |
+| v11 links with hd, hdcl, hdstart, hddur, hdevery | Copy link | `hd.test.js`, `pk-engine.test.js` |
+| Case 16, *Gentamicin on hemodialysis* (label: 50% per 8-hour session, 1–1.7 mg/kg after each) | Cases tab | `hd.test.js`, `cases.test.js` |
+| Lesson 10, *Hemodialysis sessions*, comparison 27 | Lessons → PK fundamentals | `hd.test.js` (every number the text, tip and comparison state) |
+| Practice kind *fall over a session* (pools v8); glossary 68 | Practice → Single dose; Glossary | `pk-engine.test.js`, `hd.test.js` |
+
+There are 345 tests in 17 files. The initial script is +21.2% over the Phase 0 baseline (limit +25%); Phase G's sensitivity analysis goes entirely into a lazily loaded file. axe: no violations with the dialysis panel open.
+
+## 25. 1.16.0 (Plan V2, Phase G)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Sensitivity analysis in lazily loaded `pk-sens.js`: ±20% on each input, one at a time; tornado chart of AUC24, peak, trough or time in window; a sentence naming the dominant input | Simulator → under the readouts → *Sensitivity* | `sens.test.js` (CL ±20% → AUC24 +25% / −16.7% for five kinds of scenario; dose in proportion; interval like CL; V leaves AUC24 alone and moves the IV peak by the closed form; every sign; the inputs per scenario; F capped; window reading; saturable more than proportional; the sentence and the chart) |
+| Glossary 69 (sensitivity analysis) | Lessons → Glossary | `pk-engine.test.js` |
+
+There are 350 tests in 18 files. The initial script is +21.7% over the Phase 0 baseline (limit +25%). axe: no violations with the sensitivity panel open.
+
+## 26. 1.17.0 (Plan V2, Phase H)
+
+| Feature | Where to see it | Tests |
+| --- | --- | --- |
+| Educator landing page, built from the engine: counts, run a class, every lesson's share link and every case's link | educators.html (footer: For educators) | `educators.test.js` (counts are the app's; each lesson link equals the app's own and opens the lesson; each case link opens its case; the version) |
+| Named tab links (#practice, #lessons, #cases, #compare) | any page | `educators.test.js` |
+| README screenshots: antimicrobial, indirect response, hemodialysis, sensitivity, validation | README | `release.test.js` (images exist) |
+| Validation page: deferred scripts, checks yield between tasks, reserved space | validation.html | `release.test.js` (its scripts parse) |
+
+Lighthouse, mobile, on the gzip preview: app 97–100 in every category (desktop 100), validation 97 (TBT 0–190 ms, CLS 0.026), educators 100. There are 354 tests in 19 files; the initial script is +21.7% over the baseline.
+
+## 27. 1.17.1 (Plan V2, Phase I)
+
+| Fix | Found by | Tests |
+| --- | --- | --- |
+| Population bands follow dialysis sessions (the worker loads the dialysis model) | engineer review | `hd.test.js` |
+| The Bayesian estimate declines dialysis and says why | engineer review | `hd.test.js` |
+| Session edges as grid points for peaks; the indirect-response integrator steps to them | the 1,000-seed cross-check | `hd.test.js`, cross-check (peak now within 3e-15) |
+| Sensitivity off steady state reads the window AUC | the cross-check | `sens.test.js` |
+| The rebound glossary entry drops an unsourced timing | pharmacist review | — |
+
+The cross-check, its results and the plan's summary are in [BUILD_REPORT_V2.md](BUILD_REPORT_V2.md). There are 355 tests in 19 files; the initial script is +21.8% over the baseline.
+
+## 28. 2.0.0 (redesign, stage 1 of 4: shell, tokens, type, stage, opening sequence)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Tokens for a dark and a paper theme; IBM Plex Sans and Mono served from the site with metric-matched fallbacks | everywhere | contrast computed for every text token (docs/DESIGN.md §1); CLS 0 |
+| Charts from the theme's tokens (no invert filter); PNG export and print in the right palette | the simulator, Light theme, Download PNG, Print | screenshots in both themes; print to PDF from dark |
+| Controls: sliding segment thumb and tab indicator, slider fill and bubble, switches, readout tweening, two-line crosshair | the simulator | `a11y.test.js`; axe |
+| The 3D stage (stage.js + Three.js 0.186.1 from cdnjs, import map with sha512); its CSS version | behind the app; Effects in the top bar | `stage.test.js` (pinned, hashed, never precached, loaded by hash) |
+| The opening sequence: seven screens from the engine, the sphere of 584 checks run in the browser | the root address on a first visit | `stage.test.js` (numbers are the engine's; one heading and a 3–5 word caption per screen; disclaimer) |
+| Top bar, pinned main-action pill, glass panels at a computed contrast floor | everywhere | axe in 13 states × 2 themes × 2 widths |
+| Layout held on every link with a # part, the practice problem, the validation summary | `#practice`, `#compare`, a lesson link, `#case=gent`, validation.html | layout-shift trace: 0 on each |
+| Validation, educator and 404 pages restyled | those pages | Lighthouse 100; axe |
+
+Lighthouse on mobile, gzip preview: root 97, `#practice` 98, `#case=gent` 99, validation 100, educators 100 (desktop root 100); accessibility 100 and CLS 0 on each. axe: no violations. 359 tests in 20 files. The initial script is +23.1% over the Phase 0 baseline (limit +25%); the stylesheet is 83 KB (limit 250 KB); stage.js (31 KB) and Three.js load after the first paint.
+
+The brief for this release changed twice while it was being built; DECISIONS 116–117 record how, and that the last brief's reference image wasn't on the machine.
+
+## 29. 2.1.0 (redesign, stage 2 of 4: simulator and compare)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The ribbon eases into each new curve; rebuilt only when the set of curves changes | the simulator, any slider | screenshots; no script errors over 17 states |
+| The time cursor on the ribbon (drag, keys, Play) | the simulator | `stage.test.js` (the page hands the cursor over) |
+| The population cloud from the worker's sampler and seed | Population | `stage.test.js` (same sampler, ω and order) |
+| Compare: two ribbons separated in depth | Compare | screenshots |
+| Phones: the stage at 30% under the app's text | 390 px | axe; screenshots |
+
+Lighthouse on mobile: root 97, `#compare` 97; accessibility 100 and CLS 0. axe: no violations. 360 tests in 20 files.
+
+## 30. 2.2.0 (redesign, stage 3 of 4: lessons, cases, practice, fit and hit the window)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Paper palette for the paper pages, set before the first paint on their links | Lessons, Cases, Practice, a lesson, Fit, Hit the window | layout-shift trace: 0 on `#lessons`, `#practice`, `#p=…`, `#case=…`; screenshots in both themes |
+| Mastheads with split headlines and 3–5 word captions | the same | `stage.test.js` (captions, decorative masthead, the lesson title stays the heading) |
+| Case dossier: facts and sources as accordions, levels in a dark panel | a case | `stage.test.js` (markup); `cases.test.js` |
+| The pill on the paper pages | the same | screenshots |
+| Lambert graphite, placement once per frame, the sequence's scenes only when shown | — | Lighthouse (below) |
+
+Lighthouse on mobile: root 99, `#lessons` 97, `#case=vanc-lv` 96; accessibility 100 and CLS 0. (A run while a preview tab kept animating in the background read 57–84 for the same build and for 2.1.0; with the tab closed both read 99.) axe: no violations. 361 tests in 20 files.
+
+## 31. 2.3.0 (redesign, stage 4 of 4: validation, educators, README, link previews)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The validation sphere: 712 points lit by the page's own results; "Validated" only when all pass | validation.html | `stage.test.js` (every counter records; the count is the reference's; the word's rule; same pinned Three.js) |
+| The educator page on paper with the engine's curve | educators.html | `educators.test.js` |
+| README screenshots in the 2.x look | README | `release.test.js` (images exist) |
+| Link preview image and counts | index.html meta | `stage.test.js` (counts are the app's) |
+| Masthead type fitted to its words | a long lesson title | screenshots |
+
+Lighthouse on mobile: root 99, validation 99 (desktop 100), educators 100; accessibility 100 and CLS 0. axe: no violations. 362 tests in 20 files.
+
+## 32. 2.4.0 (after the redesign: when to sample, a lesson, case of the day, contributor docs)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| When to sample: steady state within 10% and 3%, the peak's and trough's times, Show buttons | Simulator, any repeated regimen, under the steady-state chart | `tdm.test.js` (closed forms for one compartment, the engine's curve at the named dose and the one before, the distribution share read off the curve's slope, loading and missed doses, scenarios left alone, wording) |
+| Lesson "Which weight for CrCl" | Lessons, PK fundamentals | `clinical.test.js` (IBW, CrCl, clearance, trough, volume, half-life, the 2.7-fold spread), the lessons' prediction and challenge checks |
+| Case of the day | Cases | `cases.test.js` (the same case all day in UTC, the next case the next day, every case in turn) |
+| ARCHITECTURE.md, CONTRIBUTING.md, `tools/stamp.js` | docs | `release.test.js` (stamps) |
+| Print leaves out the pill, masthead and stage | Print preview | the print stylesheet |
+
+Lighthouse on mobile: root 96–99 (three runs), a two-compartment vancomycin link 94; accessibility 100 and CLS 0. axe: no violations, the new section included, in both themes at 1280 and 390. 371 tests in 21 files. Initial script +24.7% of the 25% budget.
+
+Not done: pediatric allometry with maturation (DECISIONS 143), until its parameters are verified against their sources.
+
+## 33. 2.5.0 (every link without layout shift; explanations in their own file)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Lesson links wait for their texts | any lesson's link | all 35 lesson links, CLS 0 at 390 and 1440 (was up to 0.23) |
+| `#cases` waits for the case list | `#cases` | CLS 0 (was 0.63) |
+| Every link kind measured | 107 links | CLS 0 on each, at both widths |
+| "What changed" sentences in `pk-explain.js` | set a baseline, or Compare | `explain.test.js`; 526 of 526 pairs identical to the inline version |
+
+Lighthouse on mobile: root 99, a lesson link 90, `#cases` 97; accessibility 100, CLS 0. 375 tests in 22 files. Initial script +18.0% of the 25% budget.
+
+## 34. 2.6.0 (population mode on the effect chart)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The effect's population band (direct, delayed, indirect response) and the spread sentence | Population and Effect both on | `population.test.js` (percentiles are the Emax of the level's; saturation narrows the band; delayed and indirect bands start at baseline and stay in bounds) |
+| Faster indirect responses; capped steps for bands | an indirect response; with population mode | `population.test.js` (within 0.05 points), bit-identical courses before and after |
+
+axe: no violations. 379 tests in 22 files.
+
+## 35. 2.7.0 (hemodialysis with two compartments; the rebound)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Exact two-compartment dialysis | Two compartments with Hemodialysis on | `hd.test.js` (equals the engine's two-compartment curve when no session falls in the window; mass balance; one-compartment limit), SciPy reference (3 new scenarios) |
+| The rebound in the session list; fall per session; clearance for a fall | the session list and the Fall per session readout | `hd.test.js` |
+| Lesson "Rebound after dialysis" | Lessons, PK fundamentals | `hd.test.js` (every number it states), the lessons' prediction and challenge checks |
+| Links v12 | a link with both | `hd.test.js` (v12; a v11 link opens with dialysis off) |
+| What changed: AUC sentences with dialysis | the rebound lesson | the lesson's own output (9% higher) |
+
+All 36 lesson links CLS 0 at 390 and 1440. 385 tests in 22 files.
+
+## 36. 2.8.0 (every lesson link at 89 or more on mobile)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Remembered window statistics, readouts and profiles | any lesson link | `pk-engine.test.js` (copies; a value changed in place gives the new result; the window is part of the key); Lighthouse on the lesson links |
+
+Lighthouse on mobile: all 36 lesson links measured on 2.7.0 (87–95, the Bayesian lesson 78); on 2.8.0 the seven lowest 89–95, the Bayesian lesson 89; root 99, validation 99. CLS 0 on all 108 links at 390. 386 tests in 22 files.
+
+## 37. 2.9.0 (glossary, README and practice catch up)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Glossary: Terminal half-life, Post-distribution peak (71 terms) | Lessons, glossary | the glossary tests (lesson links, wording) |
+| README: rebound and effect-band images; chart images retaken with whole legends | README | `release.test.js` (every image the README names exists) |
+| Practice kind: Cockcroft–Gault with ideal, adjusted or actual weight (43 kinds, worksheet version 9) | Practice, repeated dosing | `clinical.test.js` (200 seeds against an independent Devine, adjusted-weight and Cockcroft–Gault calculation and the simulator's own patient; a version-8 sheet rebuilds exactly) |
+
+CLS 0 on all 75 practice, worksheet, task, case and tab links at 390. 387 tests in 22 files.
