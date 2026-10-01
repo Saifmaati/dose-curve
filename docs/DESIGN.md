@@ -362,3 +362,12 @@ caption. The ribbon crosses the masthead, over the words and under the caption; 
 Camera: high, so the ribbon runs across the masthead above the panels' top edge (Cases a little to the right,
 Practice further and dimmer). On narrow screens the page's panel comes before the controls. The simulator and
 Compare stay dark; leaving a lesson or task returns them.
+
+## 14. Storyboard: 2.3 validation, educators, README and link previews
+
+| Screen | Section | Picture | Words | Camera and motion |
+| --- | --- | --- | --- | --- |
+| Validation | Dark (paper in the light theme) | A sphere of 712 points, one per comparison the page runs against the independent solver, on a faint wireframe; each lights as its check passes (a failed check would turn red) | "Validating" behind the sphere while the checks run, then "Validated" when all pass ("Checked" if any fails); the page's own heading, summary and tables follow | The sphere turns a little as the visitor scrolls; nothing moves on its own except points lighting as checks finish. Without WebGL or with Effects off, the front half of the sphere as SVG dots, lighting the same way |
+| Educators | Paper, always | The default curve as a graphite line drawn from the engine, crossing the headline | "For ··· educators", caption "Teach pharmacokinetics with it." | Still |
+| README | — | New screenshots: the opening sequence, the simulator, a lesson, a case dossier, the validation sphere | — | — |
+| Link previews (OG) | Dark | The first screen of the sequence: "Dose ··· Curve" with the ribbon passing between, rendered from the engine | the caption | — |

@@ -90,3 +90,16 @@ test("2.2: the paper pages: a decorative masthead per screen, short captions, th
   assert.match(C, /<details class="cs-more cs-refs"><summary>Sources<\/summary>/);
   assert.equal((C.match(/<dt>Levels<\/dt><dd class="cs-lv">/g)||[]).length, 2);
 });
+
+test("2.3: link previews state the app's own counts; the validation page's sphere counts every comparison it runs", ()=>{
+  const og=(page.match(/<meta property="og:description" content="([^"]*)">/)||[])[1];
+  assert.ok(og.includes(`${PK.LESSONS.length} guided lessons`) && og.includes(`${C.CASES.length} graded clinical cases`), og);
+  assert.ok(fs.existsSync(path.join(root,"og-image.png")));
+  const v=read("validation.html"), REF=require("../validation/reference-results.json");
+  const counters=(v.match(/\bif\(mark\(/g)||[]).length;
+  assert.equal(counters, 6, "every counter records its result for the sphere");
+  assert.match(v, /window\.dcN=4\*REF\.scenarios\.length\+2\*REF\.map\.scenarios\.length\+3\*REF\.pkpd\.scenarios\.length\+3\*REF\.idr\.scenarios\.length\+2\*REF\.hd\.scenarios\.length;/);
+  assert.match(v, /word\.textContent=window\.dcDone \? "Validated" : "Checked"/, "the word says Validated only when every check passed");
+  assert.match(v, /<section class="vhero" aria-hidden="true"><p class="vword" id="vWord">Validating<\/p>/);
+  assert.ok(v.includes(page.match(/<script type="importmap">[\s\S]*?<\/script>/)[0]), "the same pinned Three.js");
+});

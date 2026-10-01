@@ -9,7 +9,11 @@
 <script>(function(){ var d=document.documentElement, t=(location.search.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
   if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
-  if(t==="light") d.classList.add("light"); })();</script>
+  if(t==="light") d.classList.add("light");
+  // the 3D sphere: the reader's Effects choice, else off on a weak device (as in the app)
+  var s=null, n=navigator; try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){}
+  if(s==="off" || (!s && ((window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || n.deviceMemory<4 || n.hardwareConcurrency<4 || (n.connection && n.connection.saveData)))) d.classList.add("fx-off"); })();</script>
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"},"integrity":{"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js":"sha512-5y1OuWCUVXtYlPOwdMCvNr/Scu/rs2aBbVxO5q1Du9DzLe7X0QpPf1yxAV839cwp7ZqIDv/UrCm0O2oXxM+rMA==","https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js":"sha512-XHAcLGgLlaKvTJVfBh76iqQUVHJhHbsu+g/JhY0gQBrpYkg+L1MbYckDdUXkh4D/tsp/mVoPi+Art8oxizfddA=="}}</script>
 <link rel="preload" href="fonts/plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   /* the app's tokens and type (docs/DESIGN.md), for its secondary pages */
@@ -52,11 +56,20 @@
   td{color:var(--c-text)} thead th{font-family:var(--f-sans);color:var(--c-muted);font-weight:500;position:sticky;top:0;background:var(--c-surface)}
   .scroll{overflow-x:auto;border:1px solid var(--c-line);border-radius:6px;max-height:70vh;background:var(--c-surface)}
   ul{padding-left:20px} li{margin:4px 0}
-  @media print{ .scroll{max-height:none;overflow:visible} thead th{position:static} }
+  @media print{ .scroll{max-height:none;overflow:visible} thead th{position:static} .vhero{display:none} }
+  .vhero{position:relative;height:min(70vh,620px);min-height:420px;overflow:hidden;background:var(--c-page);border-bottom:1px solid var(--c-line)}
+  .vword{position:absolute;left:0;right:0;top:50%;transform:translateY(-55%);margin:0;text-align:center;font-weight:600;font-size:clamp(64px,14.5vw,236px);letter-spacing:-.055em;line-height:1;color:var(--c-text);white-space:nowrap}
+  .vsphere{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  .vsphere svg{width:min(62vh,560px);height:min(62vh,560px);max-width:86vw;max-height:86vw}
+  .vsphere canvas{position:absolute;inset:0;width:100%;height:100%}
+  html.v3d .vsphere svg{display:none}
+  .vcap{position:absolute;left:0;right:0;bottom:22px;margin:0;text-align:center;font-size:15px;color:var(--c-text-2)}
 </style>
 </head>
 <body>
 <header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Dose<em>Curve</em></span></a><a href="./">Open the simulator</a></header>
+<!-- the sphere: one point per comparison below, lit as each passes; the word behind it is decorative (the summary says it) -->
+<section class="vhero" aria-hidden="true"><p class="vword" id="vWord">Validating</p><div class="vsphere" id="vSphere"><svg viewBox="-170 -170 340 340" id="vSvg"></svg></div><p class="vcap">Every comparison, run in your browser.</p></section>
 <main>
 <h1>Validation</h1>
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients.</p>
@@ -136,6 +149,48 @@ python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
+<script type="module">
+(async()=>{
+// The sphere: the points of a Fibonacci lattice, one per comparison, lit in the order the page runs them (a failed one
+// turns red). In 3D with Three.js when Effects are on; otherwise the front half as SVG dots. It turns with the scroll.
+const D=document.documentElement, svg=document.getElementById("vSvg"), word=document.getElementById("vWord"), still=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const tok=n=> getComputedStyle(D).getPropertyValue("--c-"+n).trim();
+const until=f=> new Promise(r=>{ const k=()=> f() ? r() : requestAnimationFrame(k); k(); });
+await until(()=> window.dcN);
+const N=window.dcN, pts=Array.from({length:N},(_,i)=>{ const y=1-2*(i+.5)/N, r=Math.sqrt(1-y*y), a=i*Math.PI*(3-Math.sqrt(5)); return [r*Math.cos(a), y, r*Math.sin(a)]; });
+const colorOf=i=>{ const c=window.dcChecks||[]; return i<c.length ? (c[i] ? tok("ok") : tok("no")) : tok("line"); };
+let draw;
+if(!D.classList.contains("fx-off") && window.WebGLRenderingContext){
+  try{
+    const THREE=await import("three"), host=document.getElementById("vSphere"), canvas=document.createElement("canvas"); host.appendChild(canvas);
+    const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true}), scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(32,1,.1,100);
+    camera.position.set(0,.4,11.5); camera.lookAt(0,0,0);
+    const pos=new Float32Array(N*3), col=new Float32Array(N*3); pts.forEach((p,i)=> pos.set([3*p[0],3*p[1],3*p[2]], i*3));
+    const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("color", new THREE.BufferAttribute(col,3));
+    const g=new THREE.Group(); scene.add(g);
+    g.add(new THREE.Points(geo, new THREE.PointsMaterial({size:.11, vertexColors:true, transparent:true, opacity:.95, depthWrite:false})));
+    g.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.97,3)), new THREE.LineBasicMaterial({color:new THREE.Color(tok("line")), transparent:true, opacity:.28})));
+    const size=()=>{ const w=host.clientWidth, h=host.clientHeight; renderer.setPixelRatio(Math.min(devicePixelRatio,1.75)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); };
+    addEventListener("resize", ()=>{ size(); draw(); }); size();
+    draw=()=>{ const c=new THREE.Color(); for(let i=0;i<N;i++){ c.set(colorOf(i)); col.set([c.r,c.g,c.b], i*3); } geo.attributes.color.needsUpdate=true;
+      g.rotation.y=.5+scrollY*.0025; g.rotation.x=.18; renderer.render(scene, camera); };
+    D.classList.add("v3d");
+  }catch(e){ draw=null; }
+}
+if(!draw){   // the front half, as SVG dots
+  const NS="http://www.w3.org/2000/svg", front=[];
+  pts.forEach((p,i)=>{ if(p[2]<-.05) return; const e=document.createElementNS(NS,"circle"); e.setAttribute("cx",150*p[0]); e.setAttribute("cy",-150*p[1]); e.setAttribute("r",1.3+1.5*p[2]); svg.appendChild(e); front.push([e,i]); });
+  draw=()=> front.forEach(([e,i])=> e.setAttribute("fill", colorOf(i)));
+}
+// lit as the checks finish, then still; it turns with the scroll
+let last=-1;
+const tick=()=>{ const n=(window.dcChecks||[]).length; if(n!==last){ last=n; draw(); } if(window.dcDone===undefined) requestAnimationFrame(tick); };
+tick();
+addEventListener("dc-done",()=>{ draw(); word.textContent=window.dcDone ? "Validated" : "Checked"; });
+if(window.dcDone!==undefined) word.textContent=window.dcDone ? "Validated" : "Checked";
+if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:true});
+})();
+</script>
 <script src="pk-engine.js?v=dfd6bd1f81" defer></script>
 <script src="pk-hd.js?v=b96f5ee841" defer></script>
 <script src="pk-idr.js?v=87885afef2" defer></script>
@@ -146,7 +201,10 @@ document.addEventListener("DOMContentLoaded", function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
+  // every comparison's result, in order, for the sphere at the top of the page
+  const mark=ok=>{ (window.dcChecks=window.dcChecks||[]).push(!!ok); return ok; };
   fetch("validation/reference-results.json?v=fee9fced8e").then(r=>r.json()).then(async REF=>{
+    window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
@@ -161,8 +219,8 @@ document.addEventListener("DOMContentLoaded", function(){
       const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
       const d={peak:pct(m.peak,r.peak), trough:pct(m.trough,r.trough), auc:pct(m.auc,r.auc), tin:m.tin-r.tin_pct};
       const ok=["peak","trough","auc"].every(k=>Math.abs(d[k])<=100*tol) && Math.abs(d.tin)<=tpp;
-      ["peak","trough","auc"].forEach(k=>{ total++; if(Math.abs(d[k])<=100*tol) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
-      total++; if(Math.abs(d.tin)<=tpp) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
+      ["peak","trough","auc"].forEach(k=>{ total++; if(mark(Math.abs(d[k])<=100*tol)) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
+      total++; if(mark(Math.abs(d.tin)<=tpp)) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
     }
@@ -174,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function(){
     for(const s of (REF.map ? REF.map.scenarios : [])){ await tick(); mapRows.push((()=>{
       const p=PK.normalizeScenario(PK.scenario(s.scenario)), e=PK.bayes.estimate(p, p.lv, s.opts), r=s.reference;
       const dCL=pct(e.CL,r.CL), dV=pct(e.V,r.V), ok=[dCL,dV].every(d=>Math.abs(d)<=100*REF.map.tolerance);
-      [dCL,dV].forEach(d=>{ mapTotal++; if(Math.abs(d)<=100*REF.map.tolerance) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
+      [dCL,dV].forEach(d=>{ mapTotal++; if(mark(Math.abs(d)<=100*REF.map.tolerance)) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.id)}</td><td>${p.lv.length}</td><td>${f(r.priorCL,3)}</td><td>${f(r.CL,3)}</td><td>${fd(dCL)}</td><td>${f(r.priorV,2)}</td><td>${f(r.V,2)}</td><td>${fd(dV)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
     })()); }
@@ -187,7 +245,7 @@ document.addEventListener("DOMContentLoaded", function(){
       const m=PK.micStats(PK.normalizeScenario(PK.scenario(s.scenario)), s.mic, 24), r=s.reference;
       const dft=m.ft-r.ft_pct, dc=pct(m.cmaxMic,r.cmax_mic), da=pct(m.aucMic,r.auc24_mic);
       const oks=[Math.abs(dft)<=P.tolerance.ft_pp, Math.abs(dc)<=100*P.tolerance.ratio, Math.abs(da)<=100*P.tolerance.ratio], ok=oks.every(Boolean);
-      oks.forEach(o=>{ pkTotal++; if(o) pkPass++; });
+      oks.forEach(o=>{ pkTotal++; if(mark(o)) pkPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${f(r.ft_pct,2)}%</td><td>${Math.abs(dft)<0.0005 ? "0.000" : f(dft,3)}</td><td>${f(r.cmax_mic,3)}</td><td>${fd(dc)}</td><td>${f(r.auc24_mic,2)}</td><td>${fd(da)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
     })()); } document.querySelector("#pkpdTbl tbody").innerHTML=out.join(""); }
@@ -200,7 +258,7 @@ document.addEventListener("DOMContentLoaded", function(){
       const worst=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.idr.at(p, s.T, +f*s.T), v))));
       const de=pct(st.ext, r.ext), dt=st.tExt-r.t_ext;
       const oks=[worst<=100*D.tolerance.rel, Math.abs(de)<=100*D.tolerance.rel, Math.abs(dt)<=D.tolerance.t_h], ok=oks.every(Boolean);
-      oks.forEach(o=>{ idTotal++; if(o) idPass++; });
+      oks.forEach(o=>{ idTotal++; if(mark(o)) idPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${f(r.ext,3)}</td><td>${fd(de)}</td><td>${f(r.t_ext,2)}</td><td>${Math.abs(dt)<0.0005 ? "0.000" : f(dt,3)}</td><td>${fd(worst)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
     })()); } document.querySelector("#idrTbl tbody").innerHTML=out.join(""); }
@@ -213,11 +271,12 @@ document.addEventListener("DOMContentLoaded", function(){
       const wl=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.conc(p, +f*s.T-1e-9), v))));
       const wsn=Math.max(0, ...r.sessions.flatMap((x,i)=> [pct(tab[i].pre,x.pre), pct(tab[i].post,x.post), pct(tab[i].removed,x.removed)].map(Math.abs)));
       const oks=[wl<=100*HDR.tolerance.rel, wsn<=100*HDR.tolerance.rel], ok=oks.every(Boolean);
-      oks.forEach(o=>{ hdTotal++; if(o) hdPass++; });
+      oks.forEach(o=>{ hdTotal++; if(mark(o)) hdPass++; });
       const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
       return `<tr><td>${esc(s.name)}</td><td>${r.sessions.length}</td><td>${f(r.sessions[0].removed,2)}</td><td>${fd(wl)}</td><td>${fd(wsn)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
     })()); } document.querySelector("#hdTbl tbody").innerHTML=out.join(""); }
     pass+=hdPass; total+=hdTotal;
+    window.dcDone=pass===total; window.dispatchEvent(new Event("dc-done"));
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
       `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+

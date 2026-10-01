@@ -8,6 +8,14 @@
 
 > Educational model, not for clinical dosing. DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a direct Emax effect for learning and demonstration. Its validation checks that it solves its own model correctly, not that the model predicts real patients.
 
+![The opening screen: the word DoseCurve split across the screen, with the default curve as a 3D ribbon drawn from the model passing between the halves, and its Cmax, AUC and time in the window](docs/img/opening.png)
+
+Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. A first visit opens on a short scrolling introduction; any shared link goes straight to what it names. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
+
+| A lesson, on paper | 200 virtual patients around their median |
+| --- | --- |
+| ![A lesson's page: its title as a giant headline with the lesson's curve crossing it, over the lesson bar and the controls](docs/img/lesson-paper.png) | ![The "Learn" screen of the introduction: 200 graphite curves from the population mode drawing in to their median](docs/img/opening-learn.png) |
+
 ![A saturable-elimination lesson: phenytoin at 300 and 400 mg a day](docs/img/saturable-lesson.png)
 
 ## What it does

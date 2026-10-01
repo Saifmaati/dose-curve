@@ -2,6 +2,18 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.3.0 (2026-10-01)
+
+The redesign's last stage: validation, educators, README and link previews (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 14). A summary of the four 2.x releases is in [docs/REDESIGN_REPORT.md](docs/REDESIGN_REPORT.md).
+
+- **The validation page opens on a sphere of 712 points**, one per comparison the page runs against the independent solver, lighting as each one passes (a failed one would turn red), in 3D with Effects on and as SVG dots otherwise. Behind it, the word reads "Validating" while the checks run and "Validated" when every one has passed ("Checked" if any hasn't). It turns with the scroll.
+- **The educator page is a paper page** under the headline "For ··· educators", crossed by the default curve drawn from the engine.
+- **README:** new screenshots in the 2.x look (the opening screen, a lesson on paper, the population screen, and the simulator, Compare, lesson, case and validation images refreshed).
+- **Link previews:** a new image (the opening screen, rendered from the engine) and text with the current counts (34 lessons, 16 cases); a test keeps the counts current.
+- Long lesson titles fit their masthead (the headline sizes itself to its words).
+
+Lighthouse on mobile: the root address 99, validation 99 (desktop 100), educators 100; accessibility 100 and layout shift 0. axe: no violations. 362 tests in 20 files.
+
 ## 2.2.0 (2026-10-01)
 
 The redesign's third stage: Lessons, Cases, Practice, Fit the data and Hit the window as paper pages (storyboard in [docs/DESIGN.md](docs/DESIGN.md), section 13).

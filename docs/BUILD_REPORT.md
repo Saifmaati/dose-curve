@@ -408,3 +408,15 @@ Lighthouse on mobile: root 97, `#compare` 97; accessibility 100 and CLS 0. axe: 
 | Lambert graphite, placement once per frame, the sequence's scenes only when shown | — | Lighthouse (below) |
 
 Lighthouse on mobile: root 99, `#lessons` 97, `#case=vanc-lv` 96; accessibility 100 and CLS 0. (A run while a preview tab kept animating in the background read 57–84 for the same build and for 2.1.0; with the tab closed both read 99.) axe: no violations. 361 tests in 20 files.
+
+## 31. 2.3.0 (redesign, stage 4 of 4: validation, educators, README, link previews)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The validation sphere: 712 points lit by the page's own results; "Validated" only when all pass | validation.html | `stage.test.js` (every counter records; the count is the reference's; the word's rule; same pinned Three.js) |
+| The educator page on paper with the engine's curve | educators.html | `educators.test.js` |
+| README screenshots in the 2.x look | README | `release.test.js` (images exist) |
+| Link preview image and counts | index.html meta | `stage.test.js` (counts are the app's) |
+| Masthead type fitted to its words | a long lesson title | screenshots |
+
+Lighthouse on mobile: root 99, validation 99 (desktop 100), educators 100; accessibility 100 and CLS 0. axe: no violations. 362 tests in 20 files.

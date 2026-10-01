@@ -41,19 +41,19 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DoseCurve">
 <meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
-<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Compare regimens side by side, build dose schedules and learn with 23 guided lessons and 8 graded clinical cases. Free, educational, not for clinical dosing.">
+<meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond, in 2D and as a 3D curve drawn live from the model. Compare regimens, build dose schedules, and learn with 34 guided lessons and 16 graded clinical cases. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://saifmaati.github.io/dose-curve/">
 <meta property="og:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="DoseCurve, an interactive PK/PD simulator: a repeated-dosing concentration curve rising into a therapeutic window.">
+<meta property="og:image:alt" content="The word DoseCurve split across a dark screen, with a concentration–time curve drawn as a glowing 3D ribbon passing between the two halves, over a therapeutic window.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta name="twitter:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Free and educational.">
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.2.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.3.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -222,13 +222,13 @@
   .masthead .cap{position:relative;z-index:3;width:fit-content;text-shadow:0 0 2px var(--c-page),0 0 8px var(--c-page),0 0 14px var(--c-page)}   /* over it, kept legible */
   html.ed-app .masthead{display:block}
   html.ed-app .hero{display:none}
-  .masthead .split{font-size:clamp(56px,10vw,176px)}
+  .masthead .split{font-size:min(var(--mfs,10vw),176px)}
   .masthead .cap{margin:14px auto 0}
   .masthead .split:has(span:last-child:empty){justify-content:flex-start}
   html.ed-app #lsTitle{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}   /* the masthead shows it; it stays the lesson's heading */
   .hero{z-index:1} .app,.foot{position:relative;z-index:3}
   @media (max-width:960px){ html.ed-app .grid>.panel:not(.controls){order:-1} }   /* narrow screens: the lesson, case or problem comes before the controls */
-  @media (max-width:760px){ .masthead{padding:20px 0 24px} .masthead .split{font-size:clamp(44px,14vw,96px)} }
+  @media (max-width:760px){ .masthead{padding:20px 0 24px} .masthead .split{font-size:min(var(--mfp,14vw),96px)} }
   html.tone-light .top{--c-page:#F2F3F1; --c-raised:#E9EAE7; --c-line:#D6D9DC; --c-text:#14181F; --c-text-2:#2E3540; --c-line-strong:#7D8590; --c-surface:#FFFFFF}
   html.tone-light .pill{--c-accent:#14181F; --c-on-accent:#FFFFFF; --c-text:#14181F}
 
@@ -1781,7 +1781,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 2.2.0, updated 1 October 2026</span>
+        <span>Version 2.3.0, updated 1 October 2026</span>
       </nav>
     </footer>
   </div>
@@ -5674,7 +5674,9 @@
     const half=t=>{ const w=t.split(" "), k=Math.ceil(w.length/2); return [w.slice(0,k).join(" "), w.slice(k).join(" ")]; };
     const m=curTab==="ls" ? ["Guided","lessons","Predict first, then check."] : curTab==="cs" ? ["Clinical","cases","The patient's own numbers."] : curTab==="pr" ? ["Practice","","Generated, checked, explained."]
       : lesson ? [...half(lesson.title), byId("lsNum").textContent] : fit ? ["Fit the","data","Estimate from the measurements."] : win ? ["Hit the","window","Pick a dose and interval."] : null;
-    if(m){ byId("mastL").textContent=m[0]; byId("mastR").textContent=m[1]; byId("mastCap").textContent=m[2]; }
+    if(m){ byId("mastL").textContent=m[0]; byId("mastR").textContent=m[1]; byId("mastCap").textContent=m[2];
+      // sized to fit its words: side by side, or (narrow screens) a half per line
+      const s=byId("masthead").style; s.setProperty("--mfs", Math.min(10, 92/(.56*(m[0].length+m[1].length)+.3))+"vw"); s.setProperty("--mfp", Math.min(14, 92/(.56*Math.max(m[0].length,m[1].length)+.1))+"vw"); }
     if(ed!==edWas){ edWas=ed; D.classList.toggle("ed-app", ed); readK(); render(); }
     if(stage) stage.view(curTab==="sim" && task ? (lesson ? "lesson" : fit ? "fit" : "win") : curTab);
   }
