@@ -2,6 +2,16 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 1.17.1 (2026-09-30)
+
+Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan V2 (see [docs/BUILD_REPORT_V2.md](docs/BUILD_REPORT_V2.md)):
+
+- **Population mode on dialysis:** the bands now follow the sessions (the worker loads the dialysis model too).
+- **The Bayesian estimate on dialysis** says dialysis isn't covered, instead of assuming the clearance stays the same between levels.
+- **Peaks at a session's start or end:** the window's peak and the dose-by-dose peaks now treat each session edge as a kink, where they could miss a peak sitting exactly on one (by up to 4e-5). The indirect-response integrator steps to session edges too, with finer steps.
+- **Sensitivity off steady state** reads the AUC over the time window, not the first 24 hours (which is zero for a schedule that starts later); the button says AUC.
+- The glossary's post-dialysis rebound entry no longer gives a timing its sources don't state.
+
 ## 1.17.0 (2026-09-30)
 
 - **A page for educators** (`educators.html`, linked from the footer and the README): what DoseCurve covers, how to run a class in ten minutes (pick material, write a case, make an assignment, collect completion codes), a link to every lesson (the same share link the app makes, which opens the lesson with its scenario and challenge) and every case, the practice topics, and privacy. Its numbers come from the app itself, and a test checks every link still opens what it says.

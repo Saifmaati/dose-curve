@@ -356,3 +356,15 @@ There are 350 tests in 18 files. The initial script is +21.7% over the Phase 0 b
 
 Lighthouse, mobile, on the gzip preview: app 97–100 in every category (desktop 100), validation 97 (TBT 0–190 ms, CLS 0.026), educators 100. There are 354 tests in 19 files; the initial script is +21.7% over the baseline.
 
+## 27. 1.17.1 (Plan V2, Phase I)
+
+| Fix | Found by | Tests |
+| --- | --- | --- |
+| Population bands follow dialysis sessions (the worker loads the dialysis model) | engineer review | `hd.test.js` |
+| The Bayesian estimate declines dialysis and says why | engineer review | `hd.test.js` |
+| Session edges as grid points for peaks; the indirect-response integrator steps to them | the 1,000-seed cross-check | `hd.test.js`, cross-check (peak now within 3e-15) |
+| Sensitivity off steady state reads the window AUC | the cross-check | `sens.test.js` |
+| The rebound glossary entry drops an unsourced timing | pharmacist review | — |
+
+The cross-check, its results and the plan's summary are in [BUILD_REPORT_V2.md](BUILD_REPORT_V2.md). There are 355 tests in 19 files; the initial script is +21.8% over the baseline.
+
