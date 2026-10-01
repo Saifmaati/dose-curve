@@ -12,7 +12,7 @@ function stamp(file, into){
 }
 const PAGES=["index.html","sw.js","validation.html"];
 ["pk-engine.js","cases.js","pop-worker.js","pk-glossary.js","pk-math.js","pk-practice.js","pk-lessons.js","pk-bayes.js","pk-idr.js",
- "pk-sources.js","pk-hd.js","pk-sens.js","pk-tdm.js","pk-explain.js","ui-chartfx.js","ui-effect.js","ui-worksheet.js","validation/reference-results.json"].forEach(f=> stamp(f, PAGES));
+ "pk-sources.js","pk-hd.js","pk-sens.js","pk-tdm.js","pk-explain.js","ui-chartfx.js","ui-effect.js","ui-worksheet.js","validation-worker.js","validation/reference-results.json"].forEach(f=> stamp(f, PAGES));
 // stage.js carries the reference data's and the dialysis module's stamps itself, so it is stamped after them
 stamp("validation/reference-results.json", ["stage.js"]);
 stamp("pk-hd.js", ["stage.js"]);

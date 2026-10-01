@@ -578,3 +578,21 @@ reached with the tier-2 stage here; see DECISIONS 198 and 199.
 Lighthouse: the root mobile 94, `#app` mobile 95 and desktop 100; accessibility 100 and CLS 0. Layout shift 0 on
 twelve entry points at 390 and 1440 (0.0003 on the root). axe: no violations in either theme at 1280 or 390. 396
 tests.
+
+## 44. 2.16.0 (the validation checks in a worker)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| 718 checks in a Web Worker; the engine not loaded on the page | validation.html | `validation.test.js` (the worker's checks in Node, the addresses it accepts, precached); a browser run (718 of 718, done 0.35 s after load) |
+| The same checks on the page without a worker | validation.html with workers unavailable | a browser run with `Worker` disabled (718 of 718, no errors) |
+
+Lighthouse on the validation page (mobile, three runs each):
+
+| | Before | After |
+| --- | --- | --- |
+| Performance | 99, 100, 100 | 100, 99, 100 |
+| Main-thread script work | 1,079 ms | 162 ms |
+| Largest contentful paint | 1.5–1.7 s | 1.4 s |
+
+Blocking time is 80–90 ms both before and after: the one long task left is the sphere loading Three.js. Accessibility is 100 and CLS 0. 397 tests.
+

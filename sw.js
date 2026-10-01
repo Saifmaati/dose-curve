@@ -6,11 +6,11 @@
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v44";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v45";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
   "./cases.js?v=124759dd74",
-  "./pk-sens.js?v=0e00719e81","./ui-worksheet.js?v=8aafad02da","./ui-effect.js?v=be4a964029","./ui-chartfx.js?v=fbac72551a","./pk-explain.js?v=2b162bb1fe","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=9a7a3ea708","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=6f14268429","./validation.html","./educators.html","./stage.js?v=007633aeb7","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=3e5c9bbc7c"];
+  "./pk-sens.js?v=0e00719e81","./validation-worker.js?v=c52ca6c802","./ui-worksheet.js?v=8aafad02da","./ui-effect.js?v=be4a964029","./ui-chartfx.js?v=fbac72551a","./pk-explain.js?v=2b162bb1fe","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=f6002874d2","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=9a7a3ea708","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=6f14268429","./validation.html","./educators.html","./stage.js?v=007633aeb7","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=3e5c9bbc7c"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html","methods.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

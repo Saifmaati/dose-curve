@@ -4,20 +4,11 @@ Only these steps need your accounts or your judgment; everything else in Build P
 
 ## 1. Merge the release pull requests
 
-**Done to 2.9.0.** On 2026-10-01 the stack of release pull requests (#12–#30, 1.10.0 to 2.9.0) was merged through #30, and the live site serves 2.9.0. Later releases are pull requests again, each with green CI before it is merged. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
-
-| Release | Pull request |
-| --- | --- |
-| 2.10.0 | the pull request from branch `v2.10.0` |
-| 2.11.0 | the pull request from branch `v2.11.0` (after 2.10.0) |
-| 2.12.0 | the pull request from branch `v2.12.0` (after 2.11.0) |
-| 2.13.0 | the chart, rebuilt (the final brief, part 1), from `v2.13.0` |
-| 2.14.0 | the workspace (part 2), from `v2.14.0` |
-| 2.15.0 | motion and tabs (part 3), from `v2.15.0` |
+**Done to 2.15.0.** On 2026-10-01 the release pull requests #12–#36 (1.10.0 to 2.15.0) were merged, and the live site serves 2.15.0. Each later release is its own pull request with green CI; merge them in version order. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
 
 ## 2. GitHub Releases
 
-**Done for 1.10.0 to 2.9.0** (2026-10-01): each is tagged on its release's commit (2.9.0 on #30's merge commit), with its CHANGELOG section as the notes, and 2.9.0 is marked as the latest. Tags v1.0.0 to v1.9.0 exist but have no Release. To add them too (Zenodo archives each one, with its own DOI), from the repository folder:
+**Done for 1.10.0 to 2.15.0** (2026-10-01): each is tagged on its pull request's merge commit, with its CHANGELOG section as the notes, and 2.15.0 is marked as the latest. Claude Code makes each new release's Release once its pull request is merged. Tags v1.0.0 to v1.9.0 exist but have no Release. To add them too (Zenodo archives each one, with its own DOI), from the repository folder:
 
 ```bash
 for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0; do awk -v H="## $v " 'index($0,H)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > /tmp/dc-notes-$v.md; gh release create v$v --verify-tag --latest=false --title "DoseCurve $v" --notes-file /tmp/dc-notes-$v.md; done
@@ -39,10 +30,10 @@ Model and methods then says "Visit counting: on". GoatCounter is cookie-free and
 
 ## 5. Delete the merged branches
 
-Blocked for Claude Code ("Git Destructive"). All 30 release branches (and `two-compartment`) are merged into `main`, and every release's commit is kept by its tag. This deletes them on GitHub and then deletes the local branches that are fully merged (`git branch -d` refuses any that aren't):
+Blocked for Claude Code ("Git Destructive"). GitHub now deletes a pull request's branch when it is merged (2.10.0 onward went that way), but the 30 older release branches (and `two-compartment`) are still on GitHub. All are merged into `main`, and every release's commit is kept by its tag. This deletes them on GitHub, then deletes the local branches already merged into `main`. It leaves `main` and whichever branch is checked out alone, and doesn't switch branches:
 
 ```bash
-cd /Users/saifmaati/Desktop/dose-curve && git push origin --delete two-compartment v1.0 v1.2 v1.3 v1.4 v1.4.1 v1.5.0 v1.6.0 v1.7.0 v1.8.0 v1.9.0 v1.10.0 v1.11.0 v1.12.0 v1.13.0 v1.14.0 v1.15.0 v1.16.0 v1.17.0 v1.17.1 v2.0.0 v2.1.0 v2.2.0 v2.3.0 v2.4.0 v2.5.0 v2.6.0 v2.7.0 v2.8.0 v2.9.0 && git fetch --prune && git switch main && git pull --ff-only && git branch -d $(git branch --format='%(refname:short)' | sed 's#^heads/##' | grep -vxE 'main|v2\.10\.0')
+cd /Users/saifmaati/Desktop/dose-curve && git push origin --delete two-compartment v1.0 v1.2 v1.3 v1.4 v1.4.1 v1.5.0 v1.6.0 v1.7.0 v1.8.0 v1.9.0 v1.10.0 v1.11.0 v1.12.0 v1.13.0 v1.14.0 v1.15.0 v1.16.0 v1.17.0 v1.17.1 v2.0.0 v2.1.0 v2.2.0 v2.3.0 v2.4.0 v2.5.0 v2.6.0 v2.7.0 v2.8.0 v2.9.0 && git fetch --prune && git branch --merged origin/main --format='%(refname:lstrip=2)' | grep -vxE "main|$(git branch --show-current)" | xargs git branch -D
 ```
 
 To let Claude Code delete a release branch after its merge in future runs, allow `Bash(git push origin --delete:*)`.
