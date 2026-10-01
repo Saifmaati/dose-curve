@@ -19,6 +19,8 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `pk-hd.js` | Hemodialysis sessions, exact between events, with one or two compartments (the rebound after each session) | when a scenario uses dialysis |
 | `pk-sens.js` | Sensitivity analysis (±20% on each input) and its tornado chart | when its panel opens |
 | `pk-tdm.js` | When to sample: the dose from which a repeated regimen is within 10% of steady state, and the model's peak and trough times in that interval | when its section opens |
+| `ui-chartfx.js` | The concentration chart's motion: particles along the curve, the curve drawing itself, the doses' pulses, lit doses and intervals, the plane's tilt (2.13) | just after the first paint |
+| `ui-effect.js` | The effect charts: effect over time and the concentration–effect curve (2.13) | when the Effect switch is first on, or a link opens with it |
 | `pk-explain.js` | The sentences under "What changed" and in Compare: what moved between two scenarios and why, with the model's numbers | just after the first paint; a link that opens with a baseline waits for it |
 | `pk-sources.js` | The drug library's citations | when a drug's sources or a case's references show |
 | `cases.js` | The clinical cases, their grading, the case and assignment writers | when Cases or a case link opens |

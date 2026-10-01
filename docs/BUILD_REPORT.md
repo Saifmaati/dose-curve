@@ -530,3 +530,18 @@ Lighthouse: the root mobile 95 and desktop 98; `#app` mobile 91; accessibility 1
 axe: no violations in either theme at 1280 and 390, nor on the other pages. 393 tests. The README's opening, Learn
 and lesson images are retaken; its chart images follow the 2.13 chart.
 
+## 41. 2.13.0 (the chart, rebuilt)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Colour by state, core, glow, fill with grain, reflection | any scenario | `stage.test.js` (2.13); screenshots of the default, a regimen at steady state, a two-compartment log plot, population and compare at 1440 in both themes |
+| Particles by cumulative area; draw-on; Play's reveal, wake and pulses | the simulator; Play | `stage.test.js`; a browser run (Play at 4 s, a tick lit, the log switch) |
+| Each dose's own curve (sums to the total) | a repeated regimen | `stage.test.js` (the sum against PK.conc for oral with a loading dose, an infusion and two compartments) |
+| Window glass, hairline thresholds in the margin, labels that don't collide | any scenario | `stage.test.js`; screenshots |
+| Layered population glass (quartiles from the worker) | Population | `stage.test.js` (the quartiles inside the band) |
+| Effect charts as a lazy file | Effect | `a11y.test.js`; a browser run (the switch and a link) |
+
+Lighthouse: the root mobile 98, `#app` mobile 97 and desktop 100; accessibility 100 and CLS 0. Layout shift 0 on
+`#app`, `#lessons`, an effect link, a regimen link and a population link at 390 and 1440 (0.0003 on the root). axe:
+no violations. The first load is back within its +25% budget. 394 tests.
+
