@@ -13,6 +13,11 @@
   if(location.hash.length>1) d.classList.add("route-wait");
   // a lesson, a case, a practice problem, a worksheet or a task opens on its paper page: the palette is set now, not after
   if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
+  // (2.15) a link to a lesson, a case or practice asks for the files it needs now, so it opens without waiting for them
+  var pre=function(h){ var l=document.createElement("link"); l.rel="preload"; l.as="script"; l.href=h; document.head.appendChild(l); };
+  if(/[#&]l=/.test(location.hash)) pre("pk-lessons.js?v=a310a40fe4");
+  if(/^#(case|bundle)=|^#cases$/.test(location.hash)){ pre("cases.js?v=124759dd74"); pre("pk-bayes.js?v=21a1045af5"); pre("pk-sources.js?v=6b5fbf7ff9"); pre("pk-hd.js?v=adbb8a2d82"); }
+  if(/^#(practice$|p=|ws=)/.test(location.hash)) pre("pk-practice.js?v=71d1ec1677");
   // the root sequence: every visit to the root address with no # part, the first or the hundredth (a link with a # part,
   // #app included, opens the app directly); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
@@ -55,7 +60,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.14.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.15.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -156,6 +161,7 @@
   .skip{position:absolute;left:16px;top:-60px;z-index:50;padding:10px 14px;border-radius:var(--r-2);background:var(--c-text);color:var(--c-page);font-weight:600;text-decoration:none}
   .skip:focus{top:12px}
   #app:focus{outline:none}
+  #app,#lsView,#tplList,#wsView{scroll-margin-top:72px}   /* a jump to the app leaves the fixed top bar clear of its tabs (2.15) */
   .top-right{display:flex;align-items:center;gap:6px}
   .top .theme-btn{min-height:34px;font-size:13.5px}
   .top-link{display:inline-flex;align-items:center;min-height:36px;padding:0 10px;font-size:14px;font-weight:500;color:var(--c-muted);text-decoration:none;border-radius:var(--r-2)}
@@ -257,12 +263,17 @@
   .snap{position:absolute;left:0;width:1px;height:1px;pointer-events:none}   /* the resting frames; the stage settles on them gently */
   .snap:nth-of-type(1){top:18vh} .snap:nth-of-type(2){top:50vh} .snap:nth-of-type(3){top:82vh}
   .scene[data-scene="1"] .snap:nth-of-type(1){top:0}   /* the sequence starts on its opening frame */
-  /* the stage sets --in, --in2 and --out as the camera arrives and leaves; without it everything simply shows */
-  .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{opacity:calc(var(--in,1) * (1 - var(--out,0)));transform:translateY(calc((1 - var(--in,1)) * 28px - var(--out,0) * 36px));filter:blur(calc((1 - var(--in,1)) * 7px + var(--out,0) * 9px))}
-  .scene-pin>.small>:not(.hero-chip){opacity:calc(var(--in2,1) * (1 - var(--out,0)))}
-  .hero-ro>div{opacity:var(--ro,1);transform:translateY(calc((1 - var(--ro,1)) * 14px))}
-  html.settle .scene-pin>h1,html.settle .scene-pin>h2,html.settle .scene-pin>.cap,html.settle .scene-pin>.small>*,html.settle .hero-ro>div{transition:opacity .35s ease,filter .35s ease,transform .35s ease}
-  .hero-ro>div:nth-child(1){--ro:var(--ro1,1)} .hero-ro>div:nth-child(2){--ro:var(--ro2,1)} .hero-ro>div:nth-child(3){--ro:var(--ro3,1)}
+  /* the scenes' text crossfades with the virtual scroll (2.15): the stage's script marks each scene .on as its frame
+     arrives (.past once it has gone), and the stylesheet turns that into 0.8 s transitions of opacity and transform
+     alone; the hero's readouts land one by one. Without the script (html.seq-js unset) everything simply shows */
+  html.seq-js .scene-pin>h1,html.seq-js .scene-pin>h2,html.seq-js .scene-pin>.cap,html.seq-js .scene-pin>.small>:not(.hero-chip),html.seq-js .hero-ro>div{
+    opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1)}
+  html.seq-js .scene.past .scene-pin>h1,html.seq-js .scene.past .scene-pin>h2,html.seq-js .scene.past .scene-pin>.cap,html.seq-js .scene.past .scene-pin>.small>:not(.hero-chip){transform:translateY(-32px)}
+  html.seq-js .scene.on .scene-pin>h1,html.seq-js .scene.on .scene-pin>h2,html.seq-js .scene.on .scene-pin>.cap{opacity:1;transform:none}
+  html.seq-js .scene.on .scene-pin>.small>:not(.hero-chip){opacity:1;transform:none;transition-delay:.12s}
+  html.seq-js .scene.ro .hero-ro>div{opacity:1;transform:none}
+  html.seq-js .scene.ro .hero-ro>div:nth-child(2){transition-delay:.12s} html.seq-js .scene.ro .hero-ro>div:nth-child(3){transition-delay:.24s}
+  @media (prefers-reduced-motion: reduce){ html.seq-js .scene-pin>*,html.seq-js .scene-pin>.small>*,html.seq-js .hero-ro>div{transition:none} }
   /* the cold open: black, first light on the ribbon (the stage), the wordmark revealed by a mask; then a scroll cue */
   @property --mask{syntax:"<percentage>";inherits:false;initial-value:140%}
   @keyframes wordmark{from{--mask:-8%}to{--mask:140%}}
@@ -1218,6 +1229,22 @@
   .legend .lk.tox{height:1px;background:var(--c-mtc)}
   .legend .lk.mic{height:1px;background:var(--c-mic)}
   .legend .lk.popb{height:10px;width:14px;border-radius:2px;background:linear-gradient(color-mix(in srgb,var(--c-accent) 14%,transparent),color-mix(in srgb,var(--c-accent) 14%,transparent)) center/100% 50% no-repeat,color-mix(in srgb,var(--c-accent) 9%,transparent)}
+  /* (2.15) a tab's content crossfades in; the top nav's hairline slides to the open tab; dialogs open as glass sheets */
+  .tab-in{animation:tabIn .5s cubic-bezier(.22,1,.36,1)}
+  @keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .top-links{position:relative}
+  .top-links::after{content:"";position:absolute;left:0;bottom:6px;height:1px;width:var(--nw,0);transform:translateX(var(--nx,0));background:var(--c-accent);opacity:0;
+    transition:transform .45s cubic-bezier(.22,1,.36,1),width .45s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+  .top-links.ind::after{opacity:1}
+  html.in-intro .top-links::after{opacity:0}
+  .top-links a.on{color:var(--c-text)}
+  dialog.lib{background:linear-gradient(var(--glass-fill),var(--glass-fill)),color-mix(in srgb,var(--c-surface) 90%,transparent);-webkit-backdrop-filter:blur(24px) saturate(1.15);backdrop-filter:blur(24px) saturate(1.15);
+    border:1px solid var(--hair);border-radius:20px;box-shadow:inset 0 1px 0 var(--glass-hi),var(--glass-shadow)}
+  dialog.lib[open]{animation:sheetIn .45s cubic-bezier(.22,1,.36,1)}
+  @keyframes sheetIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+  dialog.lib::backdrop{background:color-mix(in srgb,var(--c-page) 45%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  @media (hover:hover) and (prefers-reduced-motion:no-preference){ .panel:hover{transform:translateY(-1px)} }
+  @media (prefers-reduced-motion: reduce){ .tab-in,dialog.lib[open]{animation:none} }
   /* the pill belongs to the landing; in the app the toolbar in the chart's head carries its actions */
   html:not(.in-intro) .pill{display:none}
 
@@ -2138,7 +2165,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.14.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.15.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -4662,7 +4689,7 @@
     return effectLoad;
   }
   function renderPd(curves, T0, T1){
-    byId("pdBox").hidden=!state.pd; byId("pdRow").hidden=!state.pd;
+    byId("pdBox").hidden=!state.pd || !effectUI; byId("pdRow").hidden=!state.pd || !effectUI;
     if(!state.pd) return;
     if(!effectUI){ loadEffect().then(render).catch(()=>{ byId("pdSub").textContent="The effect charts couldn't load. Check the connection."; }); return; }
     effectUI.renderPd(curves, T0, T1);
@@ -5586,11 +5613,27 @@
   byId("sharedReset").addEventListener("click",()=>{ history.replaceState(null,"",location.pathname+location.search); location.reload(); });
   // Pasting a different link into the same tab only changes the hash, so load it properly; moving between the root
   // sequence and the app (#app) by back and forward is the same page, so no reload (see STAGE)
+  // (2.15) the tabs' own addresses (#app, #compare, #lessons, #cases, #practice) move between tabs in the page too, so
+  // back and forward walk through the tabs a reader opened, without a reload
+  const TAB_OF={"#app":"sim", "#compare":"cmp", "#lessons":"ls", "#cases":"cs", "#practice":"pr"}, TAB_BTN={sim:"tabSim", cmp:"tabCmp", ls:"tabLs", cs:"tabCs", pr:"tabPr"};
+  let navFromHistory=false;
   window.addEventListener("hashchange",e=>{
-    const was=new URL(e.oldURL).hash, h=location.hash;
+    const was=new URL(e.oldURL).hash, h=location.hash, inPage=x=> x==="" || x in TAB_OF;
     if(ROOT_PAGE && (was==="" || was==="#app") && (h==="" || h==="#app")){ if(h) toApp(); else showSeq(); return; }
+    if(inPage(was) && h in TAB_OF){ navFromHistory=true; try{ byId(TAB_BTN[TAB_OF[h]]).click(); } finally{ navFromHistory=false; } return; }
     location.reload();
   });
+  function pushTab(which){
+    const h={sim:"#app", cmp:"#compare", ls:"#lessons", cs:"#cases", pr:"#practice"}[which];
+    if(navFromHistory || !h || location.hash===h || (location.hash && !(location.hash in TAB_OF))) return;
+    history.pushState({dc:1, tab:which}, "", location.pathname+location.search+h);
+  }
+
+  // (2.15) once the page is idle, the other tabs' files arrive ahead of a click, so a switch never waits for them
+  addEventListener("load",()=> setTimeout(()=>{
+    const c=navigator.connection; if(document.documentElement.classList.contains("embed") || (c && (c.saveData || /2g|3g/.test(c.effectiveType||"")))) return;
+    (window.requestIdleCallback || (f=>setTimeout(f,300)))(()=>{ loadLessons().catch(()=>{}); loadPractice().catch(()=>{}); loadCases().catch(()=>{}); }, {timeout:4000});
+  }, 3000));
 
   /* ================= WORKSPACE (2.14) ================= */
   // The rail: one button per section of the controls (its initial, in the display face); a click opens the rail on that
@@ -5834,7 +5877,7 @@
   /* ================= WORKSHEETS ================= */
   // A sheet of problems from the chosen topic (PK.makeWorksheet). On screen with an answers toggle; printed
   // black on white with the answer key on its own page. Its link (#ws=topic.count.seed) rebuilds it.
-  let ws=null, wsSize=10;
+  let wsSize=10;
   $("wsSizeSeg").innerHTML=PK.WORKSHEET_SIZES.map(n=>`<button data-n="${n}" aria-pressed="${n===wsSize}"${n===wsSize?' class="on"':""}>${n} problems</button>`).join("");
   $("wsSizeSeg").addEventListener("click",e=>{
     const b=e.target.closest("button[data-n]");
@@ -5842,43 +5885,13 @@
     wsSize=+b.dataset.n;
     $("wsSizeSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
   });
-  const topicTitle=id=> id ? PK.PRACTICE_TOPICS.find(t=>t.id===id).title : "All topics";
-  const wsLinkHash=()=> PK.encodeTaskLink({type:"worksheet", topic:ws.topic, count:ws.count, seed:ws.seed, v:ws.v});
-  const ansText=pr=> `${pr.ans.toFixed(pr.dp)}${pr.unit && pr.unit!=="(fraction)" ? " "+pr.unit : ""}`;
-  function showWorksheet(w, shared){
-    if(!shared) clearTaskHash();
-    ws=w;
-    $("wsTitle").textContent=`Worksheet: ${topicTitle(w.topic)}, ${w.count} problems`;
-    $("wsCode").textContent=`code ${wsLinkHash().slice(3)}`;
-    $("wsShared").hidden=!shared;
-    $("wsAnswers").setAttribute("aria-pressed","false"); $("wsAnswers").textContent="Show answers";
-    $("wsList").innerHTML=w.problems.map(pr=>`<li><span class="ws-type">${pr.type}</span><div>${pr.q}</div>`+
-      `<div class="ws-a" hidden>Answer: <b>${ansText(pr)}</b>${pr.sol.join("")}</div></li>`).join("");
-    $("wsView").hidden=false;
-    $("wsTitle").focus({preventScroll:true});
-    $("wsView").scrollIntoView({behavior:reduceMotion()?"auto":"smooth", block:"start"});
-  }
+  // the worksheet's view and print are ui-worksheet.js, loaded with the first worksheet (2.15)
+  const WS_SRC="ui-worksheet.js?v=8aafad02da";
+  let wsUI=null;
+  const loadWsUI=()=> wsUI ? Promise.resolve(wsUI) : new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=WS_SRC;
+    sc.onload=()=> window.DCWorksheet ? res(wsUI=window.DCWorksheet({$, PK, esc, copyHash, clearTaskHash, reduceMotion})) : rej(new Error("no worksheet")); sc.onerror=()=> rej(new Error("load")); document.head.appendChild(sc); });
+  const showWorksheet=(w, shared)=> loadWsUI().then(u=> u.show(w, shared));
   $("wsMake").addEventListener("click",()=> loadPractice().then(()=> showWorksheet(PK.makeWorksheet({topic:prTopic, count:wsSize}))).catch(practiceFailed));
-  $("wsAnswers").addEventListener("click",()=>{
-    const on=$("wsAnswers").getAttribute("aria-pressed")!=="true";
-    $("wsAnswers").setAttribute("aria-pressed", on); $("wsAnswers").textContent=on ? "Hide answers" : "Show answers";
-    $("wsList").querySelectorAll(".ws-a").forEach(a=> a.hidden=!on);
-  });
-  $("wsLink").addEventListener("click",()=>{ if(ws) copyHash(wsLinkHash()); });
-  $("wsClose").addEventListener("click",()=>{ ws=null; $("wsView").hidden=true; clearTaskHash(); $("wsMake").focus(); });
-  $("wsPrintBtn").addEventListener("click",()=>{
-    if(!ws) return;
-    const url=location.href.split("#")[0]+"#"+wsLinkHash();
-    $("wsPrint").innerHTML=`<h1>DoseCurve practice worksheet</h1>`+
-      `<p class="wp-meta">${esc(topicTitle(ws.topic))}, ${ws.count} problems, code ${esc(wsLinkHash().slice(3))}</p>`+
-      `<p class="wp-meta">Open it online: ${esc(url)}</p>`+
-      `<ol>${ws.problems.map(pr=>`<li><span class="wp-type">${pr.type}</span><div>${pr.q}</div><div class="wp-ans">Answer: ______________ ${pr.unit}</div></li>`).join("")}</ol>`+
-      `<section class="wp-key"><h2>Answer key</h2><ol>${ws.problems.map(pr=>`<li><b>${ansText(pr)}</b> (${pr.type})<div>${pr.sol.join("")}</div></li>`).join("")}</ol></section>`+
-      `<footer>Generated by DoseCurve, an educational pharmacokinetic simulation. Not for dosing real patients.</footer>`;
-    document.body.classList.add("ws-printing");
-    window.print();
-  });
-  window.addEventListener("afterprint",()=> document.body.classList.remove("ws-printing"));
 
   /* tabs: Simulator and Compare share one view in two modes */
   // Hero buttons: straight into lessons, a comparison, or the controls.
@@ -5923,8 +5936,15 @@
     if(ed!==edWas){ edWas=ed; D.classList.toggle("ed-app", ed); readK(); render(); }
     if(stage) stage.view(curTab==="sim" && task ? (lesson ? "lesson" : fit ? "fit" : "win") : curTab);
   }
+  let tabShown=null;
   function showTab(which){
+    // (2.15) a switch crossfades the content in 0.5 s (opacity and transform); the camera moves with it (mast, stage.view)
+    const viewOf=w=> w==="ls" ? "lsView" : w==="cs" ? "csView" : w==="pr" ? "prView" : "simView", into=$(viewOf(which));
+    if(tabShown!==null && tabShown!==which && into && !noMotion()){ into.classList.remove("tab-in"); void into.offsetWidth; into.classList.add("tab-in"); }
+    tabShown=which;
     pause(); curTab=which; mast();
+    const nav=document.querySelector(".top-links"), on=nav && nav.querySelector(`a[data-tab="${which==="cmp" ? "sim" : which}"]`);
+    if(nav){ nav.querySelectorAll("a").forEach(a=> a.classList.toggle("on", a===on)); if(on){ nav.style.setProperty("--nx", on.offsetLeft+10+"px"); nav.style.setProperty("--nw", on.offsetWidth-20+"px"); nav.classList.add("ind"); } else nav.classList.remove("ind"); }
     if(which==="sim"||which==="cmp") setMode(which);
     $("simView").style.display=(which==="sim"||which==="cmp")?"block":"none";
     $("lsView").className="lsv"+(which==="ls"?" show":"");
@@ -5938,11 +5958,11 @@
     });
     if(which==="sim"||which==="cmp") $("simView").setAttribute("aria-labelledby", which==="sim" ? "tabSim" : "tabCmp");
   }
-  $("tabSim").addEventListener("click",()=>showTab("sim"));
-  $("tabCmp").addEventListener("click",()=>showTab("cmp"));
-  $("tabLs").addEventListener("click",()=>showTab("ls"));
-  $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); });
-  $("tabCs").addEventListener("click",()=>openCases(null));
+  $("tabSim").addEventListener("click",()=>{ showTab("sim"); pushTab("sim"); });
+  $("tabCmp").addEventListener("click",()=>{ showTab("cmp"); pushTab("cmp"); });
+  $("tabLs").addEventListener("click",()=>{ showTab("ls"); pushTab("ls"); });
+  $("tabPr").addEventListener("click",()=>{ showTab("pr"); if(!prob) newProblem(); pushTab("pr"); });
+  $("tabCs").addEventListener("click",()=>{ openCases(null); pushTab("cs"); });
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
   const CASES_SRC="cases.js?v=124759dd74";
@@ -6023,7 +6043,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=5ec7411131";
+  const STAGE_SRC="stage.js?v=007633aeb7";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));

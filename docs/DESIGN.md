@@ -504,3 +504,14 @@ At 1100 px and wider, outside the paper pages, present mode and embeds:
 | Focus | F or the toolbar: the top bar, rail, tabs and everything but the head, legend, plot, HUD and inspector hidden; the plot as tall as the screen less 250 px |
 | Stage | centred behind the chart; the live ribbon, the window's glass plane, the doses' pulses and the glass figure (at 82%, beside the ribbon's end); a change drifts the camera up to 2.4 units toward its largest difference and back |
 
+## 21. 2.15: motion and tabs
+
+**One value.** The landing's virtual scroll eases toward the real one (lerp 0.1 a frame) and drives the camera, the
+scenes' objects and the headlines. A scene is `.on` while u is between −0.32 and 1 (the hero from the start), `.past`
+after; the hero's readouts (`.ro`) from u 0.58. Headlines, captions and small print fade and rise in 0.8 s,
+cubic-bezier(0.22, 1, 0.36, 1); small print 0.12 s later; the readouts 0.12 s apart. Opacity and transform only.
+
+**Tabs.** A switch crossfades the content in 0.5 s (opacity and 10 px of rise) while the camera moves to the tab's
+framing; the top nav's 1 px accent line slides under the open tab in 0.45 s. Back and forward walk the tabs' own
+addresses in the page. Dialogs open as glass sheets (20 px radius, 24 px blur, 0.45 s rise).
+

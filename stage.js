@@ -193,21 +193,28 @@ export function start(PK){
   }
   const toneAt=w=> D.classList.contains("light") || (w && w.inIntro ? w.scene && w.scene.dataset.tone==="light" : D.classList.contains("ed-app")) ? "light" : "dark";
   const toneOfScene=i=> D.classList.contains("light") || (scenes[i] && scenes[i].dataset.tone==="light") ? "light" : "dark";
-  // the scenes' text: in as its frame arrives, out as it leaves; the hero's readouts land one by one (beat 3)
-  let lastVars="";
-  // settle: once scrolling stops, every headline is either fully shown or fully gone (never left half faded)
-  function textVars(P, settle){
-    const still=stillQ.matches, out=[], r=v=> settle ? Math.round(v) : v;
+  // The virtual scroll (2.15): one value eased toward the real scroll each frame (lerp 0.1) and shared by the camera,
+  // the objects and the headlines. A scene's text crossfades in as its frame arrives and out as it leaves: classes the
+  // stylesheet turns into 0.8 s transitions of opacity and transform alone (cubic-bezier(0.22, 1, 0.36, 1)); the
+  // hero's readouts land one by one. Native scrolling is left alone, so a trackpad's momentum carries as usual.
+  let vP=null, vTarget=0, vRaf=0;
+  function vStep(){
+    vRaf=0;
+    if(vP===null || stillQ.matches) vP=vTarget; else vP+=(vTarget-vP)*0.1;
+    if(Math.abs(vTarget-vP)<2e-4) vP=vTarget;
+    sceneState(vP); if(three) three.setP(vP);
+    if(vP!==vTarget) vRaf=requestAnimationFrame(vStep);
+  }
+  const sceneOn=[], scenePast=[];
+  function sceneState(P){
+    const still=stillQ.matches;
     scenes.forEach((s,i)=>{
-      const u=P-2*i;
-      const vin=r(still || (i===0 && u<=0.06) ? 1 : band(u,-0.42,0.06)), vin2=r(still || (i===0 && u<=0.1) ? 1 : band(u,-0.3,0.18)), vout=r(still ? 0 : band(u,0.96,1.42));
-      s.style.setProperty("--in", vin.toFixed(3)); s.style.setProperty("--in2", vin2.toFixed(3)); s.style.setProperty("--out", vout.toFixed(3));
-      out.push(vin.toFixed(2), vout.toFixed(2));
-      if(i===0){ const ro=k=> still ? 1 : r(band(u, 0.6+0.08*k, 0.7+0.08*k));
-        [1,2,3].forEach(k=> s.style.setProperty("--ro"+k, ro(k-1).toFixed(3))); }
+      const u=P-2*i, on=still || (i===0 ? u<1.0 : u>-0.32 && u<1.0), past=!on && u>=1.0;
+      if(sceneOn[i]!==on){ sceneOn[i]=on; s.classList.toggle("on", on); }
+      if(scenePast[i]!==past){ scenePast[i]=past; s.classList.toggle("past", past); }
+      if(i===0) s.classList.toggle("ro", still || u>0.58);
     });
     if(P>0.04) D.classList.add("cued");
-    lastVars=out.join(",");
   }
   let drawn1=false;
   // scene 1's frame draws itself once, in time with the cold open (or at once under reduced motion); in 3D the stage
@@ -237,24 +244,22 @@ export function start(PK){
   function snapLater(){
     clearTimeout(snapTimer);
     if(!D.classList.contains("intro-on") || snapping) return;
-    D.classList.remove("settle");
     snapTimer=setTimeout(()=>{
       const w=where();
-      if(D.classList.contains("intro-on") && w.P>=-1){ D.classList.add("settle"); textVars(w.P, true); }
       if(!w.inIntro || w.P<0) return;
       if(stillQ.matches) return;
       const i=Math.floor(w.P/2), u=w.P-2*i; if(u>1.04) return;
       let best=null; (i===0 ? [0,.5,.82] : [.18,.5,.82]).forEach(r=>{ if(Math.abs(u-r)<.1 && (best===null || Math.abs(u-r)<Math.abs(u-best))) best=r; });
       if(best===null || Math.abs(u-best)<.006) return;
       snapping=true; scrollTo({top:intro.offsetTop+(2*i+best)*innerHeight, behavior:"smooth"}); setTimeout(()=>{ snapping=false; }, 700);
-    }, 240);
+    }, 320);   // (after a trackpad's momentum has run out)
   }
   let lastIn=null, lastTop=null;
   function onScroll(){
     const w=where(), top=toneAt(where(30));
     if(w.inIntro!==lastIn){ lastIn=w.inIntro; D.classList.toggle("in-intro", w.inIntro); setPill(); }
     if(top!==lastTop){ lastTop=top; D.classList.toggle("tone-light", top==="light" && !D.classList.contains("light")); }
-    if(D.classList.contains("intro-on") && w.P>=-1) textVars(w.P);
+    if(D.classList.contains("intro-on") && w.P>=-1){ D.classList.add("seq-js"); vTarget=w.P; if(!vRaf) vRaf=requestAnimationFrame(vStep); }
     if(w.inIntro && w.g>=6) runChecks();
     if(w.inIntro && w.g>=5) prepHd();   // the dialysis course (pk-hd.js), a scene ahead
     if(three) three.scroll(w);
@@ -941,8 +946,12 @@ export function start(PK){
       if(tone!==was){ tone=was; applyTone(); }
       SCENE_GROUPS.forEach((k,i)=>{ if(groups[k]) groups[k].visible=vis[i]; }); setVis();
     }
-    // the other tone waits until the cold open is over and the page is idle
-    const otherTone=()=> new Promise(res=>{ const go=()=> (window.requestIdleCallback || (f=>setTimeout(f,200)))(()=> precompile([tone==="light" ? "dark" : "light"]).then(res), {timeout:2500});
+    // the other tone waits until the cold open is over and the reader has stopped scrolling for a moment (its light
+    // environment is made in one piece of work that would stall a frame mid-scroll)
+    let lastScrollAt=0; addEventListener("scroll", ()=>{ lastScrollAt=performance.now(); }, {passive:true});
+    const otherTone=()=> new Promise(res=>{
+      const go=()=>{ if(performance.now()-lastScrollAt<700) return setTimeout(go, 250);
+        (window.requestIdleCallback || (f=>setTimeout(f,200)))(()=>{ if(performance.now()-lastScrollAt<700) return go(); precompile([tone==="light" ? "dark" : "light"]).then(res); }, {timeout:2500}); };
       setTimeout(go, Math.max(0, COLD_MS+600-performance.now())); });
     // a small marker riding a ribbon: the time a scene's object is showing
     function cursorDot(){
@@ -959,10 +968,13 @@ export function start(PK){
       for(let i=0;i<a.count;i++){ const c=i<Math.min(upto, sc.checks.length) ? (sc.checks[i] ? on : bad) : off; a.setXYZ(i, c.r, c.g, c.b); }
       a.needsUpdate=true; frame();
     }
-    // depth-sorted points (they're additive, but sorting keeps their brightest from flickering as the camera moves)
-    let sortAt=0;
+    // depth-sorted points (on paper they blend normally, so their order shows); re-sorted only when the camera has
+    // moved a fair way, and not more than twice a second (30,000 points: a sort is several milliseconds)
+    // (and only once the camera has come to rest, so a scroll through Learn never pays for one mid-flight)
+    let sortAt=0; const sortCam=new THREE.Vector3(1e9,0,0), lastCam=new THREE.Vector3();
     function sortPop(now){
-      if(!popPts || now-sortAt<160) return; sortAt=now;
+      const resting=camera.position.distanceTo(lastCam)<0.004; lastCam.copy(camera.position);
+      if(!popPts || !resting || now-sortAt<500 || camera.position.distanceTo(sortCam)<0.8) return; sortAt=now; sortCam.copy(camera.position);
       const geo=popPts.geometry, pos=geo.attributes.position.array, idx=geo.index.array, N=idx.length, cam=camera.position, ox=popPts.parent.position.x;
       const d=new Float32Array(N); for(let i=0;i<N;i++){ const dx=pos[i*3]+ox-cam.x, dy=pos[i*3+1]-cam.y, dz=pos[i*3+2]-cam.z; d[i]=dx*dx+dy*dy+dz*dz; }
       const ord=Array.from(idx).sort((a,b)=> d[b]-d[a]); idx.set(ord); geo.index.needsUpdate=true;
@@ -1005,7 +1017,7 @@ export function start(PK){
     const PH=[V(0,3.4,42),V(0,-3.6,0)], PHT=[V(FX,6.4,25),V(FX,-2.2,1.2)], PHV=[V(SX[2],12,33),V(SX[2],-8,3)], PHA=[V(APPX,3.4,42),V(APPX,-3.6,0)];
     const phoneAt=Pv=>{ const [a,b,u]=Pv<4.5 ? [PH,PHT,smooth((Pv-1)/1.2)] : [PHT,PHV,1]; return {p:a[0].clone().lerp(b[0],u), l:a[1].clone().lerp(b[1],u)}; };
     let mode="app", camFrom=null, camTo=null, camT0=0, camDur=900, scrollS=0, lastW=null;
-    let Psm=null, Ptg=0;   // the scroll position, smoothed (inertia)
+    let Psm=null, Ptg=0, vSetAt=0;   // the virtual scroll, set by the page's loop (setP)
     const camNow={p:V(0,0,0), l:V(0,0,0)};
     function target(){
       const portrait=phoneQ.matches && innerWidth<innerHeight;
@@ -1051,7 +1063,7 @@ export function start(PK){
       // the tone: the scene the camera is in (its frame), else the app's
       if(mode==="intro"){ const i=clamp(Math.floor((w.P+0.5)/2),0,scenes.length-1); setTone(toneOfScene(i)); } else setTone(toneAt(w));
       resize();
-      Ptg=Math.max(0, w.P); if(Psm===null || stillQ.matches) Psm=Ptg;
+      if(Psm===null || stillQ.matches){ Ptg=Math.max(0, w.P); Psm=Ptg; }
       const max=Math.max(1, D.scrollHeight-innerHeight), start=w.inIntro ? 0 : (D.classList.contains("intro-on") ? intro.offsetTop+intro.offsetHeight : 0);
       scrollS=clamp((scrollY-start)/Math.max(1,max-start),0,1);
       if(was!==mode && !quiet){ setVis(); moveTo(); return; }
@@ -1124,8 +1136,9 @@ export function start(PK){
         say("hdRm", String(Math.round(sc.rm7(ta)))); }
       if(G("s8")){ const U=u(7), k=still ? 1 : band(U,-0.1,.62); if(Math.abs(k-k6)>.004){ k6=k; light6(); }
         const a=still ? .3 : U*.9; on("s8","core").rotation.y=a; on("s8","ins").userData.mer.rotation.y=a;
-        const gl=on("s8","globe"), dist=camera.position.distanceTo(GLOBE_C), base=full ? 1 : (tone==="light" ? .26 : .17);
-        gl.material.opacity=base*(.06+.94*smooth((dist-3.2)/3)); gl.visible=gl.material.opacity>.01; }
+        const gl=on("s8","globe"), dist=camera.position.distanceTo(GLOBE_C), base=full && post ? 1 : (tone==="light" ? .26 : .17);
+        // (once nearly clear it is hidden: from inside, a transmissive sphere would shade the whole screen twice a frame)
+        gl.material.opacity=base*(.06+.94*smooth((dist-3.2)/3)); gl.visible=gl.material.opacity>base*0.12; }
     }
     function setVis(){
       const intro=mode==="intro";
@@ -1203,10 +1216,13 @@ export function start(PK){
       floorMat.uniforms.uHas.value=1;
     }
     const OFF={};   // debugging only (dosecurve.debug): parts switched off to find a fault
+    let reflN=0, moving=false;
     function renderFull(){
       if(!rt || rt.w!==renderer.domElement.width || rt.h!==renderer.domElement.height) makeTargets(renderer.domElement.width, renderer.domElement.height);
       renderer.setClearColor(0,0);
-      renderReflection();
+      // the floor's faint, blurred reflection is redrawn every other frame while the camera moves (one frame's lag in a
+      // 10% reflection can't be seen; the frame time it saves can) (2.15)
+      reflN++; if(!(moving && reflN%2) || floorMat.uniforms.uHas.value===0) renderReflection();
       if(OFF.shafts) shafts.visible=false; if(OFF.floor) floor.visible=false; if(OFF.dust) dust.visible=false;
       // the scene
       renderer.setRenderTarget(rt.main); renderer.clear(); renderer.render(scene, camera);
@@ -1229,22 +1245,30 @@ export function start(PK){
     /* rendering: continuous while the sequence moves (inertia, the cold open, dust), on demand in the app */
     let raf=0, focusSm=14, post=full, slow=[], lastNow=0;
     // a governor: if the frames run slow while the stage animates, the passes switch off (Effects stay on)
+    // (2.15) smoothness comes first: three frames over 20 ms within 4 s while the scene moves (or a slow average) and
+    // the passes switch off for the rest of the visit, the picture drawn directly as tier 1 draws it
+    let slowHits=[];
+    // (and the glass steps down with them: transmission is a whole extra render of the scene each frame)
+    const dropPasses=()=>{ post=false; renderer.toneMapping=THREE.ACESFilmicToneMapping; floorMat.uniforms.uHas.value=0; renderer.setRenderTarget(null);
+      scene.traverse(o=>{ [].concat(o.material||[]).forEach(m=>{ if(m && m.transmission>0){ m.transmission=0; m.transparent=true; m.opacity=Math.min(m.opacity, 0.22); m.depthWrite=false; m.needsUpdate=true; } }); });
+      Object.values(mats).forEach(M=> Object.values(M).forEach(m=>{ if(m && m.transmission>0){ m.transmission=0; m.transparent=true; m.opacity=Math.min(m.opacity, 0.22); m.needsUpdate=true; } })); };
     function govern(now){
       if(!post || !lastNow){ lastNow=now; return; }
       const dt=now-lastNow; lastNow=now; if(dt>250) return;   // a pause, not a slow frame
+      if(moving && dt>21){ slowHits.push(now); slowHits=slowHits.filter(t=> now-t<4000); if(slowHits.length>=3){ dropPasses(); return; } }
       slow.push(dt); if(slow.length<40) return;
       const avg=slow.reduce((a,b)=>a+b,0)/slow.length; slow=[];
-      if(avg>45){ post=false; renderer.toneMapping=THREE.ACESFilmicToneMapping; floorMat.uniforms.uHas.value=0; renderer.setRenderTarget(null); }
+      if(avg>45) dropPasses();
     }
     function frame(force){ if(!raf) raf=requestAnimationFrame(render); if(force){ const t=target(); camNow.p.copy(t.p); camNow.l.copy(t.l); } }
     let lastDraw=0;
     function render(now){
       raf=0; let busy=false; const still=stillQ.matches;
       // when only the dust drifts, 30 frames a second are enough
-      const moving=(mode==="intro" && Psm!==null && Math.abs(Ptg-Psm)>1e-4) || !!camFrom || !!morph || !!pulseAt || coldOn() || coldT()<COLD_MS+400;
+      moving=(mode==="intro" && now-vSetAt<60) || !!camFrom || !!morph || !!pulseAt || coldOn() || coldT()<COLD_MS+400;
       if(!moving && mode==="intro" && !still && now-lastDraw<31){ frame(); return; }
       lastDraw=now;
-      if(mode==="intro" && Psm!==null && !still){ const d=Ptg-Psm; if(Math.abs(d)>1e-4){ Psm+=d*.14; busy=true; } else Psm=Ptg; }
+      if(mode==="intro" && now-vSetAt<60) busy=true;   // the page's virtual scroll is moving (setP)
       if(mode==="intro" && (coldOn() || coldT()<COLD_MS+400) && !still) busy=true;
       if(camFrom && camTo){ const u=still ? 1 : clamp((now-camT0)/camDur,0,1), e=ease(u);
         camTo=target(); camNow.p.copy(camFrom.p).lerp(camTo.p,e); camNow.l.copy(camFrom.l).lerp(camTo.l,e); if(u<1) busy=true; else camFrom=null; }
@@ -1303,6 +1327,7 @@ export function start(PK){
     applyTone();
     return {
       setLive, scroll:w=>scroll(w), frame, light6,
+      setP:v=>{ Psm=Ptg=Math.max(0,v); vSetAt=performance.now(); frame(); },
       cursor:t=>{ curT=t; placeCursor(); placeFigure(); frame(); },
       draw1:()=> frame(),
       view:()=>{ if(mode==="app") moveTo(); },
@@ -1319,7 +1344,9 @@ export function start(PK){
   document.addEventListener("click",()=> setTimeout(setPill, 80));   // a case opened, an answer checked: the pill follows
   addEventListener("scroll",()=>{ if(!scrollRaf) scrollRaf=requestAnimationFrame(()=>{ scrollRaf=0; onScroll(); }); snapLater(); }, {passive:true});
   addEventListener("resize",()=> onScroll());
-  const prep=()=>{ if(D.classList.contains("intro-on")){ prepScenes(); paintFrames(); if(!D.classList.contains("fx-off") && !phoneQ.matches) setTimeout(runChecks, 2500); } };
+  // (the checks run once the page is idle, with or without the 3D stage: the SVG frame shows them too, and run on a
+  // scroll they cost a frame mid-sequence)
+  const prep=()=>{ if(D.classList.contains("intro-on")){ prepScenes(); paintFrames(); setTimeout(()=> (window.requestIdleCallback || (f=>setTimeout(f,100)))(runChecks, {timeout:3000}), 2500); } };
   prep(); onScroll(); setPill();
   load3d();
   // scene 1's frame draws on the cold open's clock (the CSS stage's SVG; the 3D ribbon keeps the same time)
