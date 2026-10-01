@@ -2,6 +2,32 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.12.0 (2026-10-01)
+
+The app rebuilt as an instrument panel: two typefaces with tabular figures, one restrained accent, glass and hairlines instead of boxes, and a chart drawn like an instrument.
+
+- **Type:**
+  - Inter for words and numbers (tabular lining figures) and Newsreader for display: chart titles and the large, light readout numbers. No monospace anywhere in the interface.
+  - Both are served from the site, preloaded, with metric-matched stand-ins so nothing shifts when they arrive. The giant headlines have a stand-in of their own.
+- **Colour:**
+  - One accent, champagne on the dark instrument and brass on paper, for the curve and the primary action only. Sky blue is retired.
+  - A second scenario is platinum (slate on paper). MEC and MTC are desaturated teal and rose.
+  - Every text colour keeps AA contrast against the page and the panels in both themes, checked by a test.
+- **Structure:** panels are glass: a hairline, a faint fill over the page's own colour, a 20 px blur, a top highlight and a deep shadow. Inside them, hairline rules replace nested boxes: worked panels, notes, case facts, scenario and case cards, the compare table.
+- **Controls:**
+  - Choices are text tabs, with the chosen one in a hairline pill that slides to it, and toggles are slimmer.
+  - The drug library is a hairline list: name left, regimen right.
+  - Sliders have a hairline track and a small glowing thumb. Their value is an editable field: type a number and press Enter. It is clamped to the slider's range, Escape restores it, and it is as wide as the longest value, so nothing jitters.
+- **The chart:**
+  - Hairline axes with tick marks, gridlines at 5%, and the window as a lighter band.
+  - MEC and MTC are solid hairlines labelled with their values.
+  - The curve is a soft glow, a 2 px stroke and a 1 px lighter core over a gradient fill.
+  - The peak is a ring with a leader to its value. The crosshair has a time chip on the axis and a glass value chip.
+  - A discrete change (a choice, a typed value, a drug) morphs the curve to its new shape over 300 ms. A slider's drag draws it as it moves, and so does reduced motion.
+- **Readouts** are one row of large light numbers divided by hairlines, with each unit under its number. The steady-state stats and "When to sample" use the same style, and the sensitivity tornado has thin bars on hairline rows.
+- **The pill** belongs to the landing only. In the app, a quiet toolbar in the chart's head carries Baseline, Compare and Share (the controls' own buttons are still there).
+- The landing's ribbon and objects take the new accent: champagne on deep blue-black.
+
 ## 2.11.0 (2026-10-01)
 
 Objects in the scenes, lit like product photography, each moving only by the engine's numbers. Two new scenes, Exposure and Rebound, make nine.

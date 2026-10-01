@@ -63,25 +63,28 @@
   }
   // The tornado chart as SVG, in the page's chart colours (k: its theme tokens; the dark theme's when not given).
   function svg(rk, k){
-    k=k || {line:"#2A303B", text:"#E8EBF0", muted:"#9AA3B2", accent:"#4CC7EE", mic:"#A89BFF"};
-    const W=760, row=34, top=28, H=top+rk.rows.length*row+32, mid=W/2+80, half=W-mid-80, pp=rk.metric.kind==="pp";
+    // the instrument's style (2.12): a hairline centre and row rules, thin bars, the +20% bar in the accent and the
+    // −20% bar in the neutral second colour, values in tabular figures
+    k=k || {line:"#22262E", text:"#ECEEF2", muted:"#8F96A3", accent:"#D8C29D", b:"#C2C9D4"};
+    const W=760, row=34, top=28, H=top+rk.rows.length*row+32, mid=W/2+80, half=W-mid-80, pp=rk.metric.kind==="pp", lo=k.b || k.muted;
     const mx=Math.max(1, ...rk.rows.map(r=>span(r[rk.metric.id])));
     const x=v=> mid+(v/mx)*half, fmt=v=> v==null ? "—" : (v>0 ? "+" : v<0 ? "−" : "")+Math.abs(v).toFixed(1)+(pp ? " pp" : "%");
-    const T=(a, txt, f)=> `<text ${a} font-family="IBM Plex ${f||"Sans"}">${txt}</text>`;
-    let g=`<line x1="${mid}" y1="${top-8}" x2="${mid}" y2="${H-20}" stroke="${k.muted}" stroke-width="1"/>`+
+    const T=(a, txt)=> `<text ${a} font-family="Inter" style="font-variant-numeric:tabular-nums">${txt}</text>`;
+    let g=`<line x1="${mid}" y1="${top-8}" x2="${mid}" y2="${H-20}" stroke="${k.text}" stroke-opacity="0.3" stroke-width="1"/>`+
       T(`x="${mid}" y="${top-12}" text-anchor="middle" font-size="12" fill="${k.muted}"`, "no change");
     rk.rows.forEach((r,i)=>{
       const y=top+i*row, v=r[rk.metric.id];
-      g+=T(`x="${mid-half-12}" y="${y+19}" text-anchor="end" font-size="15" fill="${k.text}"`, r.name+(r.capped ? " (capped at 1)" : ""));
-      [["lo",k.mic],["hi",k.accent]].forEach(([key,col],j)=>{
+      if(i) g+=`<line x1="${mid-half-200}" y1="${y}" x2="${W-10}" y2="${y}" stroke="${k.text}" stroke-opacity="0.06" stroke-width="1"/>`;
+      g+=T(`x="${mid-half-12}" y="${y+20}" text-anchor="end" font-size="14" fill="${k.text}"`, r.name+(r.capped ? " (capped at 1)" : ""));
+      [["lo",lo],["hi",k.accent]].forEach(([key,col],j)=>{
         const val=v[key]; if(val==null) return;
         const a=Math.min(x(0), x(val)), w=Math.max(1, Math.abs(x(val)-x(0)));
-        g+=`<rect x="${a}" y="${y+3+j*13}" width="${w}" height="12" rx="2" fill="${col}" opacity="0.85"/>`+
-          T(`x="${val>=0 ? a+w+5 : a-5}" y="${y+13+j*13}" text-anchor="${val>=0 ? "start" : "end"}" font-size="12" fill="${col}"`, fmt(val), "Mono");
+        g+=`<rect x="${a}" y="${y+7+j*11}" width="${w}" height="7" rx="3.5" fill="${col}" opacity="0.9"/>`+
+          T(`x="${val>=0 ? a+w+6 : a-6}" y="${y+14+j*11}" text-anchor="${val>=0 ? "start" : "end"}" font-size="11.5" fill="${col}"`, fmt(val));
       });
     });
-    g+=`<rect x="${mid-half}" y="${H-16}" width="12" height="10" fill="${k.mic}"/>`+T(`x="${mid-half+17}" y="${H-7}" font-size="13" fill="${k.muted}"`, "input −20%")+
-      `<rect x="${mid-half+120}" y="${H-16}" width="12" height="10" fill="${k.accent}"/>`+T(`x="${mid-half+137}" y="${H-7}" font-size="13" fill="${k.muted}"`, "input +20%");
+    g+=`<rect x="${mid-half}" y="${H-14}" width="12" height="6" rx="3" fill="${lo}"/>`+T(`x="${mid-half+17}" y="${H-7}" font-size="12.5" fill="${k.muted}"`, "input −20%")+
+      `<rect x="${mid-half+120}" y="${H-14}" width="12" height="6" rx="3" fill="${k.accent}"/>`+T(`x="${mid-half+137}" y="${H-7}" font-size="12.5" fill="${k.muted}"`, "input +20%");
     return {markup:g, height:H, width:W};
   }
   return {STEP, METRICS, inputs, outputs, analyse, ranked, svg};

@@ -146,7 +146,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pop-worker.js` | Population mode, run as a Web Worker |
 | `stage.js` | The 3D stage and the opening sequence (since 2.0; one world and one camera, with its own post-processing, since 2.10), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
 | `methods.html` | Model and methods: every equation the simulator solves (MathML), how routes and schedules are modelled, what the tests cover, the disclaimer and the privacy statements; built by `tools/methods.py` |
-| `fonts/` | IBM Plex Sans and Mono, served from the site |
+| `fonts/` | Inter and Newsreader, served from the site |
 | `tools/stamp.js` | Restamps the content hashes of the files loaded on demand (`node tools/stamp.js`) |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
 | `educators.html` | The page for instructors: what DoseCurve covers, how to run a class, and a link to every lesson and case |
@@ -162,7 +162,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.11.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.12.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 

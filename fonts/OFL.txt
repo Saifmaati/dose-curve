@@ -1,4 +1,8 @@
-Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+Inter: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Newsreader: Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader)
+
+The files in this folder are Google Fonts' Latin subsets of these fonts, further subset and with their weight axes
+narrowed (Inter 300 to 600; Newsreader 300 to 500 at its 72-point optical size) for this site; no glyph is changed.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 

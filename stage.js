@@ -128,7 +128,7 @@ export function start(PK){
     const x=t=> m.l+t/T*iw, y=c=> m.t+ih-((opt.log ? Math.log10(Math.max(c,opt.floor)) : c)-lo)/(hi-lo)*ih;
     const g={x, y, m, iw, ih, add:(tag,a)=> svg.appendChild(svgEl(tag,a)), path:(pts,a)=> svg.appendChild(svgEl("path", Object.assign({d:pts.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+" "+y(q.c).toFixed(1)).join(""), fill:"none"}, a)))};
     if(!opt.bare){ g.add("line",{x1:m.l, x2:W-m.r, y1:m.t+ih, y2:m.t+ih, stroke:k.line});
-      for(let i=0;i<=4;i++){ const t=T*i/4; g.add("text",{x:x(t), y:H-8, "text-anchor":"middle", "font-family":"IBM Plex Mono", "font-size":12, fill:k.muted}).textContent=(+(t+(opt.t0||0)).toFixed(1))+(i===4 ? " h" : ""); } }
+      for(let i=0;i<=4;i++){ const t=T*i/4; g.add("text",{x:x(t), y:H-8, "text-anchor":"middle", "font-family":"Inter", "font-size":12, fill:k.muted}).textContent=(+(t+(opt.t0||0)).toFixed(1))+(i===4 ? " h" : ""); } }
     return g;
   }
   const win=(g,k,mec,mtc)=>{ g.add("rect",{x:g.m.l, y:g.y(mtc), width:g.iw, height:g.y(mec)-g.y(mtc), fill:k.band, "fill-opacity":.1});
@@ -156,23 +156,23 @@ export function start(PK){
       g.path(sc.pa,{stroke:k.mic, "stroke-width":1.8, "stroke-dasharray":"6 5"}); g.path(sc.pb,{stroke:k.band, "stroke-width":1.8, "stroke-dasharray":"6 5"});
       g.path(sc.c4,{stroke:c, "stroke-width":2.6});
       [["distribution, α", sc.pa, k.mic, 18],["elimination, β", sc.pb, k.band, 150]].forEach(([lb,pts,col,i])=>
-        g.add("text",{x:g.x(pts[i].t)+8, y:g.y(pts[i].c)-8, "font-family":"IBM Plex Sans", "font-size":13, fill:col}).textContent=lb); }
+        g.add("text",{x:g.x(pts[i].t)+8, y:g.y(pts[i].c)-8, "font-family":"Inter", "font-size":13, fill:col}).textContent=lb); }
     if(n===6){   // the steady-state interval, both infusions; the time the 3-hour infusion's unbound level is above the MIC, shaded
       const top=Math.max(...sc.c6[0].map(q=>q.c))*1.08, g=frame(svg, sc.T6, top, k), thr=sc.ms6[0].thr, cv=sc.c6[1];
       cv.forEach((q,i)=>{ if(i && q.c>=thr) g.add("rect",{x:g.x(cv[i-1].t), y:g.y(q.c), width:Math.max(.6,g.x(q.t)-g.x(cv[i-1].t)), height:Math.max(0,g.y(thr)-g.y(q.c)), fill:k.mic, "fill-opacity":.16}); });
       g.add("line",{x1:g.m.l, x2:g.m.l+g.iw, y1:g.y(thr), y2:g.y(thr), stroke:k.mic, "stroke-dasharray":"5 4", "stroke-width":1.2});
       g.path(sc.c6[0],{stroke:k.ghost, "stroke-width":1.6, "stroke-dasharray":"4 4"}); g.path(cv,{stroke:c, "stroke-width":2.6, "stroke-linejoin":"round"});
-      g.add("text",{x:g.x(sc.T6)-4, y:g.y(thr)-8, "text-anchor":"end", "font-family":"IBM Plex Sans", "font-size":13, fill:k.mic}).textContent="MIC (unbound)"; }
+      g.add("text",{x:g.x(sc.T6)-4, y:g.y(thr)-8, "text-anchor":"end", "font-family":"Inter", "font-size":13, fill:k.mic}).textContent="MIC (unbound)"; }
     if(n===7){   // the session's hours shaded, the rebound ringed (pk-hd.js, loaded for it)
       if(!sc.c7){ prepHd().then(()=>{ if(sc.c7) paintFrame(7); }); return; }
       const g=frame(svg, sc.T7-HD_T0, 14, k, {t0:HD_T0}), r=sc.row7, at=t=> t-HD_T0, cv=sc.c7.filter(q=> q.t>=HD_T0).map(q=>({t:at(q.t), c:q.c}));
       g.add("rect",{x:g.x(at(r.start)), y:g.m.t, width:g.x(at(r.end))-g.x(at(r.start)), height:g.ih, fill:k.band, "fill-opacity":.1});
-      g.add("text",{x:g.x(at(r.start))+8, y:g.m.t+16, "font-family":"IBM Plex Sans", "font-size":13, fill:k.band}).textContent="dialysis";
+      g.add("text",{x:g.x(at(r.start))+8, y:g.m.t+16, "font-family":"Inter", "font-size":13, fill:k.band}).textContent="dialysis";
       g.path(cv,{stroke:c, "stroke-width":2.6, "stroke-linejoin":"round"});
       const tr=at(r.end+r.rebound.after);
       g.add("line",{x1:g.x(tr), x2:g.x(tr), y1:g.y(r.post), y2:g.y(r.rebound.level), stroke:k.mtc, "stroke-dasharray":"3 3"});
       g.add("circle",{cx:g.x(tr), cy:g.y(r.rebound.level), r:7, fill:"none", stroke:k.mtc, "stroke-width":1.6});
-      g.add("text",{x:g.x(tr)+12, y:g.y(r.rebound.level)-10, "font-family":"IBM Plex Sans", "font-size":13, fill:k.mtc}).textContent="rebound"; }
+      g.add("text",{x:g.x(tr)+12, y:g.y(r.rebound.level)-10, "font-family":"Inter", "font-size":13, fill:k.mtc}).textContent="rebound"; }
     if(n===8){
       if(!svg.firstChild) sphere(sc.nChecks).forEach(([x,y,z],i)=>{ if(z<-0.05) return; const e=svgEl("circle",{cx:300+150*x, cy:170-150*y, r:1.4+1.4*z}); e.dataset.i=i; svg.appendChild(e); });
       for(const el of svg.children){ const i=+el.dataset.i; el.setAttribute("fill", i<sc.checks.length ? (sc.checks[i] ? k.band : k.mtc) : k.line); }

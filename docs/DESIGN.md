@@ -428,3 +428,41 @@ time, the session's hours and the rebound).
 **Cost.** The vials' glass is a clear sheen without transmission (200 overlapping transmissive vials made 50–100 ms
 frames). Shaders compile group by group before the sequence plays, the other tone's once the cold open is over and
 the page is idle. pk-hd.js loads for the dialysis scene a scene ahead.
+
+## 18. 2.12: the instrument panel
+
+**Type.** Inter for every word and number, with tabular lining figures throughout (the body sets them). Newsreader,
+light, for display: the chart's title, the readouts' large numbers, the steady-state numbers, a worked readout's
+heading. Labels are small, muted and in sentence case (12 px); there are no bold boxed headers. The landing's giant
+headlines stay in the sans, at 600, with a stand-in measured on headline text.
+
+**Colour.** Dark: page #07090D, text #ECEEF2, muted #8F96A3; the accent champagne #D8C29D, for the live curve and the
+primary action only; scenario B platinum #C2C9D4; MEC #86B2B6, MTC #D38D8D, band #8DBEA4. Paper: page #EFEEEA,
+text #15171C, muted #5A5F69, accent brass #7A5B24, B slate #4B5567, MEC #2F6F78, MTC #A83E3E. Hairlines are 9–11%
+of the text colour (`--hair`), quieter rules 5–6% (`--hair-2`).
+
+**Glass and AA.** A panel is a 1 px hairline, a 20 px blur, a top inner highlight, a deep shadow, and a fill of 5.5%
+white over the page's own colour at 80%. The base matters: the 3D ribbon sits behind the chart, and a blurred glow
+through an 80% base raises the background to about #252424 at worst, where muted text is still about 5:1. On phones
+the panels are 94% opaque and unblurred. A test checks every text colour against the page, the surface and the
+raised colour in both themes (at least 4.5:1), the accent's own text, and the thresholds against the page (3:1).
+
+**Controls.** Segments: text, with the chosen one in a hairline pill that slides to it. Toggles: a 20 × 10 track.
+Sliders: a 1 px track, the filled part in the accent, an 11 px thumb with a soft glow; the value is an editable field
+(right-aligned, tabular, as wide as the range's longest value) with its unit muted beside it. Buttons are hairline
+pills; the primary action alone is filled with the accent. The drug library is a list on hairline rules.
+
+**The chart.** Hairline axes with tick marks, gridlines at 4–6%, the window as a lighter band (4% of the text colour),
+MEC and MTC as solid 1 px rules labelled with their values in the margin. Each curve is a 7 px glow (14%; 7% on
+paper), a 2 px stroke and a 1 px core mixed 45% toward white; the live curve stands over a vertical gradient of the
+accent (20% to nothing). The peak is a ring with a leader to its label, turned away from the chart's edges. The
+crosshair is two hairlines, a dot on each curve, a time chip on the axis and a glass value chip. A discrete change
+morphs the curves over 300 ms (ease-out cubic); a drag and reduced motion don't.
+
+**Readouts.** One row of large light numbers (Newsreader 300, 31 px), each label above in the sans and each unit under
+its number, divided by hairlines; on narrow screens the row wraps into a grid with the same rules.
+
+**The reference image.** The brief named a reference at ~/Downloads/dosecurve-reference.png. It was not on this
+machine at any point during 2.12, so the release follows the brief's words; screenshots before and after (simulator,
+compare, a lesson, a case; 1440 and 390; both themes) are in the release's pull request.
+

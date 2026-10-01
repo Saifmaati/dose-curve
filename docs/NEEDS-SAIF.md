@@ -11,6 +11,9 @@ Only these steps need your accounts or your judgment; everything else in Build P
 | 2.10.0 | the pull request from branch `v2.10.0` |
 | 2.11.0 | the pull request from branch `v2.11.0` (after 2.10.0) |
 | 2.12.0 | the pull request from branch `v2.12.0` (after 2.11.0) |
+| 2.13.0 | the chart, rebuilt (the final brief, part 1), from `v2.13.0` |
+| 2.14.0 | the workspace (part 2), from `v2.14.0` |
+| 2.15.0 | motion and tabs (part 3), from `v2.15.0` |
 
 ## 2. GitHub Releases
 
