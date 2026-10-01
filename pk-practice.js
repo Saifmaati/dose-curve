@@ -382,6 +382,20 @@
         viz:{route:"iv", D, V, thalf:th, teq, e0:0, emax:100, ec50, hill:1}, view:{duration:dur, pd:true}, at:t,
         check:p=> effectStats(p, dur, 50).tPeak};
     }},
+    {id:"idrss", topic:"pd", since:7, gen(d){
+      // an infusion long enough for both the level and the response to settle (14 half-lives of the slower)
+      const x=until(()=>({R:d(10,100,5), V:d(20,60,5), th:d(2,8,1), tout:d(2,12,1), ic50:d(1,10,0.5), imax:d(0.5,1,0.1)}), x=> 14*Math.max(x.th,x.tout)<=168);
+      const {R, V, th, tout, ic50, imax}=x, CL=Math.LN2*V/th, css=R/CL, f=css/(ic50+css), r=100*(1-imax*f);
+      return {type:"Indirect response · steady state", unit:"% of baseline", dp:1, ans:r,
+        q:`A drug is infused at a constant <b>${R} mg/h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). It inhibits the production of a response (an indirect response of type 1) with <b>Imax = ${imax}</b> and <b>IC50 = ${ic50} mg/L</b> (Hill slope 1). The response turns over with a half-life of <b>${tout} h</b>. Where does the response settle, as a percentage of its baseline?`,
+        sol:[step(`The level settles at <b>Css = R / CL</b>, with CL = ${LN2} × ${V} / ${th} = ${nf(CL,3)} L/h: Css = ${R} / ${nf(CL,3)} = <b>${nf(css,3)} mg/L</b>`),
+          step(`The drug's action there: f = Css / (IC50 + Css) = ${nf(css,3)} / (${ic50} + ${nf(css,3)}) = <b>${nf(f,4)}</b>`),
+          step(`At steady state production equals loss: kin·(1 − Imax·f) = kout·R, and R₀ = kin / kout, so <b>R = R₀·(1 − Imax·f)</b> = 100 × (1 − ${imax} × ${nf(f,4)}) = <b>${nf(r,1)}%</b>`),
+          step(`The turnover half-life (${tout} h) sets how long it takes to get there, not where it settles.`)],
+        // back-to-back 24-hour infusions: the same constant rate for the whole week
+        viz:{route:"inf", dosing:"repeated", D:R*24, tinf:24, tau:24, nDoses:7, V, thalf:th, idr:1, imax, ec50:ic50, hill:1, tout}, view:{duration:168, pd:true, mec:0, mtc:0}, at:168,
+        check:p=> PK.idr.at(p, 168, 168)};
+    }},
     /* ----- saturable (Michaelis–Menten) elimination ----- */
     // Each scenario runs as back-to-back 24 h infusions, a constant input, which is what Css = Km·R / (Vmax − R)
     // and the t90 formula assume. Vmax is for 70 kg.

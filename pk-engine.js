@@ -15,18 +15,20 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
-  // fu, the MIC and doses above 2,000 mg.
-  const VERSION=9;
+  // fu, the MIC and doses above 2,000 mg; 10 the indirect response models.
+  const VERSION=10;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu", "idr","tout","imax","smax"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
-  // effect site's equilibration half-life (0 = the effect follows plasma directly).
-  const PD_KEYS=["e0","emax","ec50","hill","teq"];
+  // effect site's equilibration half-life (0 = the effect follows plasma directly). idr 1–4 replaces the direct effect
+  // with an indirect response (pk-idr.js): the drug inhibits or stimulates the production or loss of a response whose
+  // turnover half-life is tout, by at most imax (inhibition, ≤ 1) or smax (stimulation), with EC50 and the Hill slope.
+  const PD_KEYS=["e0","emax","ec50","hill","teq","idr","tout","imax","smax"];
   // The patient (pm = patient mode): "simple" scales clearance by the organ-function slider (clFn); "clinical"
   // estimates creatinine clearance by Cockcroft–Gault from age, sex, weight and serum creatinine (mg/dL), and
   // scales the renally cleared fraction fe of clearance by it. ht is height in cm, alb albumin in g/dL, and wtm
@@ -36,14 +38,14 @@
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
     kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
-    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1});
+    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1, idr:0, tout:12, imax:1, smax:4});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
-    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1]};
+    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1],idr:[0,1,2,3,4]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,4000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
     age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
-    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1]};
+    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1],tout:[0.25,240],imax:[0.05,1],smax:[0.1,20]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km","cmt","k12","k21"];
@@ -56,6 +58,8 @@
   // A v8 page can't hold the unbound fraction fu (in plasma: the antimicrobial indices use it), the MIC, or a dose
   // above 2,000 mg, which it would clamp; links older than v9 are still read with that clamp.
   const V9_KEYS=["fu"];
+  // A v9 page can't hold an indirect response.
+  const V10_KEYS=["idr","tout","imax","smax"];
   const V8_MAX={D:2000};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
@@ -69,7 +73,7 @@
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
   const LOCKS=[["D","Dose"],["tau","Dosing interval"],["loadMult","Loading dose"],["missed","Missed dose"],["route","Route"],
     ["clFn","Organ function"],["thalf","Half-life"],["V","Volume"],["F","Bioavailability"],["ka","Absorption rate"],
-    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["teq","Effect-site delay"],["clint","Intrinsic clearance"],["qh","Liver blood flow"],["fub","Unbound fraction"],["scr","Serum creatinine"],["age","Age"]];
+    ["ec50","EC50"],["emax","Emax"],["hill","Hill slope"],["teq","Effect-site delay"],["tout","Response turnover"],["clint","Intrinsic clearance"],["qh","Liver blood flow"],["fub","Unbound fraction"],["scr","Serum creatinine"],["age","Age"]];
 
   const clamp=(v,[lo,hi])=>Math.min(hi,Math.max(lo,v));
   const round=(v,dp)=>Math.round(v*10**dp)/10**dp;
@@ -212,7 +216,11 @@
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
-    if(k==="teq") return s.kin!=="mm";
+    if(k==="teq") return s.kin!=="mm" && !(s.idr>0);
+    if(k==="e0"||k==="emax") return !(s.idr>0);
+    if(k==="tout") return s.idr>0;
+    if(k==="imax") return s.idr===1 || s.idr===2;
+    if(k==="smax") return s.idr===3 || s.idr===4;
     if(["age","sex","ht","scr","alb","wtm","fe"].includes(k)) return s.pm==="clinical";
     return true;
   }
@@ -955,6 +963,7 @@
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
       effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
       get mic(){ return once("mic",()=>micStats(p,view.mic,T)); },
+      get resp(){ return once("resp",()=> p.idr>0 && idrApi() ? idrApi().stats(p,T) : null); },
       at:t=> conc(p,t),
       reach:level=> once("r"+level,()=>{ for(let i=0;i<=T*100;i++){ if(conc(p,i/100)>=level) return i/100; } return null; })};
   }
@@ -1006,7 +1015,13 @@
       {key:"tin", name:"Time in window", unit:"% of window", a:100*wa.tIn/T, b:100*wb.tIn/T, kind:"pp", dp:0},
       {key:"tabove", name:"Time above MTC", unit:"% of window", a:100*wa.tAbove/T, b:100*wb.tAbove/T, kind:"pp", dp:0},
       {key:"tbelow", name:"Time below MEC", unit:"% of window", a:100*wa.tBelow/T, b:100*wb.tBelow/T, kind:"pp", dp:0});
-    if(pd!=null){
+    const R=(a.idr>0 || b.idr>0) && idrApi();
+    if(pd!=null && R){
+      const st=p=> p.idr>0 ? R.stats(p,T) : null, ra=st(a), rb=st(b);
+      rows.push(
+        {key:"rchange", name:"Largest change in response", unit:"% of baseline", a:ra && ra.change, b:rb && rb.change, kind:"pp", dp:1},
+        {key:"rtime", name:"Time of largest change", unit:"h", a:ra && ra.tExt, b:rb && rb.tExt, kind:"abs", dp:1});
+    } else if(pd!=null){
       const ea=effectStats(a,T,pd), eb=effectStats(b,T,pd);
       rows.push(
         {key:"epeak", name:"Peak effect", unit:"% of max", a:ea.peak, b:eb.peak, kind:"pp", dp:0},
@@ -1061,6 +1076,9 @@
     ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
     idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"},
     sheiner1979:{cite:"Sheiner LB, Beal S, Rosenberg B, Marathe VV. Forecasting individual pharmacokinetics. Clin Pharmacol Ther. 1979;26(3):294–305.", url:"https://doi.org/10.1002/cpt1979263294"},
+    dayneka1993:{cite:"Dayneka NL, Garg V, Jusko WJ. Comparison of four basic models of indirect pharmacodynamic responses. J Pharmacokinet Biopharm. 1993;21(4):457–478.", url:"https://doi.org/10.1007/BF01061691"},
+    sheinerStanski1979:{cite:"Sheiner LB, Stanski DR, Vozeh S, Miller RD, Ham J. Simultaneous modeling of pharmacokinetics and pharmacodynamics: application to d-tubocurarine. Clin Pharmacol Ther. 1979;25(3):358–371.", url:"https://doi.org/10.1002/cpt1979253358"},
+    warfarin:{cite:"Warfarin sodium tablets. Prescribing information, Amneal Pharmaceuticals. DailyMed (read 2026-09-30).", url:DM+"558b7a0d-5490-4c1b-802e-3ab3f1efe760"},
     zosyn:{cite:"ZOSYN (piperacillin and tazobactam) injection, GALAXY containers. Prescribing information, Baxter Healthcare Corporation. DailyMed (read 2026-09-30).", url:DM+"8db6bd91-2106-4bfd-8cc8-38aaf1e18d17"},
     fdaPtz:{cite:"U.S. Food and Drug Administration. FDA rationale for piperacillin-tazobactam breakpoints for Pseudomonas aeruginosa (review of CLSI document MR15, 2024), Table 1.", url:"https://www.fda.gov/drugs/development-resources/fda-rationale-piperacillin-tazobactam-breakpoints-pseudomonas-aeruginosa"},
     lodise2007:{cite:"Lodise TP Jr, Lomaestro B, Drusano GL. Piperacillin-tazobactam for Pseudomonas aeruginosa infection: clinical implications of an extended-infusion dosing strategy. Clin Infect Dis. 2007;44(3):357–363.", url:"https://doi.org/10.1086/510590"},
@@ -1300,6 +1318,12 @@
     {id:"delay", tag:"t½eq", title:"Effect delay (hysteresis)", sum:"The same levels, a later and lower effect.", baseLabel:"no delay",
      view:{duration:24,mec:2,mtc:12,pd:true,etgt:50},
      base:{teq:0}, cur:{teq:2}},
+    // a drug with warfarin's half-life, volume and absorption that inhibits the production of a response, as
+    // warfarin inhibits the synthesis of clotting factors; the turnovers are factor VII's and factor II's (its label)
+    {id:"idr", tag:"kin · kout", title:"Indirect response", sum:"When the effect waits for the body to clear what it has.", baseLabel:"turnover t½ 5 h",
+     view:{duration:168,mec:1,mtc:4,pd:true},
+     base:{route:"oral",dosing:"single",D:25,F:1,ka:1.2,thalf:40,V:9.8,ec50:1,idr:1,imax:1,tout:5},
+     cur:{route:"oral",dosing:"single",D:25,F:1,ka:1.2,thalf:40,V:9.8,ec50:1,idr:1,imax:1,tout:60}},
     {id:"hepx", tag:"E", title:"Hepatic extraction", sum:"Induction doubles a low-extraction drug's clearance.", baseLabel:"CLint 50 L/h",
      view:{duration:24,mec:2,mtc:20},
      base:{hep:1,route:"iv",D:500,V:35,fub:0.1,clint:50}, cur:{hep:1,route:"iv",D:500,V:35,fub:0.1,clint:100}},
@@ -1372,6 +1396,8 @@
      look:"B's clearance falls from 81.8 to 42.9 L/h, and its IV AUC almost doubles."},
     {id:"spacing", lesson:"spacing", title:"Evenly spaced vs bunched doses", nameA:"Every 6 h", nameB:"Four doses by 6 am",
      look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."},
+    {id:"idr", lesson:"idr", title:"Fast vs slow response turnover", nameA:"Turnover t½ 5 h", nameB:"Turnover t½ 60 h",
+     look:"The same dose of a slowly cleared drug. A falls to 37% of baseline at 24 h; B only to 67%, and not until 96 h, long after the level peaked at 3.6 h."},
     {id:"ptz", lesson:"ptz", title:"Piperacillin: 30-minute vs 3-hour infusion", nameA:"Over 30 min", nameB:"Over 3 h",
      look:"The same 3 g every 6 h. B peaks at 74 mg/L instead of 164, but its unbound level stays above the 16 mg/L MIC for 69% of each interval instead of 47%. AUC24/MIC is 60 for both."},
     {id:"gcmax", lesson:"gcmax", title:"Gentamicin: divided vs once daily", nameA:"160 mg every 8 h", nameB:"480 mg every 24 h",
@@ -1386,12 +1412,13 @@
     {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
   // its id, title, summary, group and scenarios, which is all the lists and links need.
-  let lessonMod=null, bayesMod=null;
+  let lessonMod=null, bayesMod=null, idrMod=null;
+  const idrApi=()=>{ if(!idrMod && typeof require==="function") idrMod=require("./pk-idr.js"); return idrMod; };
   function attachLessons(m){ lessonMod=m; LESSONS.forEach(L=> Object.assign(L, m[L.id])); }
   const lessonsFull=()=>{ if(!lessonMod && typeof require==="function") attachLessons(require("./pk-lessons.js")); return LESSONS; };
   // Grouped order: "Next lesson" and the numbering follow it.
@@ -1490,7 +1517,7 @@
       if(typeof DEFAULTS[k]==="string"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
       if(!isFinite(v)) return;
-      if(k==="loadMult"||k==="cmt"||k==="hep"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
+      if(k==="loadMult"||k==="cmt"||k==="hep"||k==="idr"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
       p[k]=clamp(v, legacy && V8_MAX[k] ? [RANGES[k][0], V8_MAX[k]] : RANGES[k]);
     });
@@ -1527,13 +1554,14 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV10=scen.some(p=>V10_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV9=view.mic>0 || scen.some(p=>V9_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V8_MAX).some(k=>p[k]>V8_MAX[k]));
     const usesV8=scen.some(p=>p.lv && p.lv.length>0);
     const usesV7=scen.some(p=>V7_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1687,10 +1715,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=6;
+  const WS_VERSION=7;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic","idrss"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
@@ -1942,6 +1970,7 @@
     get lessonModule(){ return lessonMod; }, set lessonModule(v){ attachLessons(v); },
     // Bayesian individualization (pk-bayes.js): loaded by the page when needed, required on first use in Node
     get bayes(){ if(!bayesMod && typeof require==="function") bayesMod=require("./pk-bayes.js"); return bayesMod; },
+    get idr(){ return idrApi(); }, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
     get bayesModule(){ return bayesMod; }, set bayesModule(v){ bayesMod=v; },
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,

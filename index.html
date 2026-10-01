@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.13.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.14.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -273,6 +273,7 @@
   .pop-h{color:var(--hi);font-weight:600;font-size:13px;margin-bottom:8px}
   .pop-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-bottom:8px}
   .pop-row label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+  .idr-sel{width:100%;margin:2px 0 6px;background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
   .pop-row input,.pop-row select{width:96px;background:rgba(var(--well-rgb),.8);color:var(--hi);border:1px solid var(--glass-line-2);border-radius:7px;padding:6px 8px;font:inherit;font-size:13px}
   .pop-out{color:var(--text-2);line-height:1.55;margin:4px 0} .pop-out b{color:var(--hi)}
   .pop-aucu{font-size:12px;color:var(--muted);padding-bottom:8px}
@@ -1135,6 +1136,14 @@
 
           <div class="sec" id="pdSec" hidden>
             <p class="sec-label">Pharmacodynamics</p>
+            <label class="clin-label" for="idrSel">How the effect is produced</label>
+            <select id="idrSel" class="idr-sel">
+              <option value="0">Directly by the level (Emax model)</option>
+              <option value="1">Indirectly: inhibits production (type 1)</option>
+              <option value="2">Indirectly: inhibits loss (type 2)</option>
+              <option value="3">Indirectly: stimulates production (type 3)</option>
+              <option value="4">Indirectly: stimulates loss (type 4)</option>
+            </select>
             <div id="pdSliders"></div>
             <div class="num-field pd-target">
               <label for="etgt"><span class="swatch" style="background:#3BE58A;box-shadow:0 0 8px #3BE58A"></span>Target effect (%)</label>
@@ -1142,6 +1151,7 @@
             </div>
             <details class="ev-model">
               <summary>How concentration becomes effect</summary>
+              <p><b>Indirect responses</b> (Dayneka, Garg and Jusko, 1993): the drug inhibits or stimulates the production (kin) or the loss (kout) of a response R, such as a protein the body makes and clears, with a turnover half-life ln 2 / kout. R is shown as a percentage of its baseline, kin / kout = 100%. With f = Cⁿ / (EC50ⁿ + Cⁿ): type 1, dR/dt = kin·(1 − Imax·f) − kout·R; type 2, kin − kout·(1 − Imax·f)·R; type 3, kin·(1 + Smax·f) − kout·R; type 4, kin − kout·(1 + Smax·f)·R. The response lags the level, and a slow turnover makes the lag longer. With Imax = 1 and n = 1 these are the paper's equations. The target effect applies to direct effects only.</p>
               <p>Effect follows the sigmoid Emax model, E = E₀ + Emax·Cⁿ / (EC50ⁿ + Cⁿ), as a percentage of the largest possible response. EC50 is the concentration that gives half of Emax (potency), Emax the ceiling (efficacy) and n how steeply the effect turns on around EC50. The effect follows plasma concentration instantly and fully reversibly. This simplified direct-effect model does not model delayed effects, tolerance, active metabolites, indirect responses, or any individual patient's outcome. The curve is an empirical description, not a mechanism.</p>
             </details>
           </div>
@@ -1596,7 +1606,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.13.0 · updated 30 September 2026</span>
+        <span>Version 1.14.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1666,7 +1676,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=995d68d29e" defer></script>
+<script src="pk-engine.js?v=1c318470a2" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1766,7 +1776,10 @@
     emax:{name:"Maximum effect",  sym:"Emax", step:1,   unit:"%", max:()=>100-state.e0},
     hill:{name:"Hill slope",      sym:"n",    step:0.1, unit:""},
     e0:  {name:"Baseline effect", sym:"E₀",   step:1,   unit:"%"},
-    teq: {name:"Effect-site delay", sym:"t½eq", step:0.1, unit:"h", fmt:v=> v>0 ? `equilibration t½ ${trim(v)} h` : "none: effect follows plasma"}
+    teq: {name:"Effect-site delay", sym:"t½eq", step:0.1, unit:"h", fmt:v=> v>0 ? `equilibration t½ ${trim(v)} h` : "none: effect follows plasma"},
+    tout:{name:"Response turnover", sym:"t½,out", log:true, unit:"h", fmt:v=>`t½ ${trim(v)} h`},
+    imax:{name:"Maximum inhibition", sym:"Imax", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% of the process`},
+    smax:{name:"Maximum stimulation", sym:"Smax", step:0.1, unit:"", fmt:v=>`up to ${trim(+(1+v).toFixed(2))}× the process`}
   };
 
   /* ================= PLOT ================= */
@@ -1845,6 +1858,20 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
+  const IDR_SRC="pk-idr.js?v=046041894a";
+  let idrLoad=null;
+  function loadIdr(){
+    if(PK.idrModule) return Promise.resolve();
+    if(!idrLoad) idrLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=IDR_SRC;
+      sc.onload=()=> PK.idrModule ? res() : rej(new Error("no idr"));
+      sc.onerror=()=>{ idrLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return idrLoad;
+  }
+  const IDR_NAME=["Direct (Emax model)","Inhibits production","Inhibits loss","Stimulates production","Stimulates loss"];
   const BAYES_SRC="pk-bayes.js?v=49979aea6b";
   let bayesLoad=null, bzCache={key:"", est:null};
   function loadBayes(){
@@ -2086,7 +2113,7 @@
     let lateLabels="";
     if(state.pd){
       const lines=[];   // one per distinct concentration: scenarios with the same PD settings share a line
-      curves.filter(cv=>!cv.ghost).forEach(cv=>{
+      curves.filter(cv=>!cv.ghost && !(cv.p.idr>0)).forEach(cv=>{
         const ct=PK.concForEffect(cv.p,state.etgt);
         if(ct===null || !(ct>0) || ct>=yTop) return;
         const same=lines.find(l=>l.ct===ct);
@@ -2646,6 +2673,7 @@
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
     missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""],
     ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],teq:["Effect-site t½","h"],
+    idr:["Effect model",""],tout:["Response turnover t½","h"],imax:["Imax",""],smax:["Smax",""],
     pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
     wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
     kin:["Elimination",""],vmax:["Vmax","mg/kg/day"],km:["Km","mg/L"],cmt:["Compartments",""],k12:["k12","h⁻¹"],k21:["k21","h⁻¹"],
@@ -2656,6 +2684,7 @@
     if(k==="D") return `${trim(s.D)} ${PK.unitsOf(s).dose}`;
     if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
     if(k==="teq") return s.teq>0 ? `${trim(s.teq)} h` : "none";
+    if(k==="idr") return IDR_NAME[s.idr];
     if(k==="hep") return s.hep ? "liver model" : "half-life";
     if(k==="lv") return s.lv.length ? s.lv.map(l=>`dose ${l.n} + ${trim(l.dt)} h: ${trim(l.c)}`).join("; ") : "none";
     if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
@@ -2878,11 +2907,20 @@
     if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
       ? "lags the plasma level more. It builds later, a plasma peak reaches it later and blunted, and as the level falls the effect stays above what that level alone would give."
       : "follows the plasma level more closely: it builds sooner, a plasma peak reaches it sooner and less blunted, and it falls with the level."}`);
+    if(a.idr!==b.idr) out.push(`How the effect is produced: ${IDR_NAME[a.idr].toLowerCase()} → <b>${IDR_NAME[b.idr].toLowerCase()}</b>. ${b.idr>0 ? "The response now follows the turnover of what the drug acts on, so it lags the level." : "The effect now follows the level directly."}`);
+    else if(b.idr>0){
+      if(a.tout!==b.tout) out.push(`Response turnover half-life ${trim(a.tout)} → ${trim(b.tout)} h: the response ${b.tout>a.tout ? "changes more slowly. It reaches its largest change later, and less of it if the level falls first, and takes longer to come back." : "follows the level more closely: it changes sooner and comes back sooner."}`);
+      if(a.imax!==b.imax && PK.isRelevant("imax",b)) out.push(`Maximum inhibition ${fmt(100*a.imax,0)}% → ${fmt(100*b.imax,0)}%: at high levels the drug can block ${b.imax>a.imax ? "more" : "less"} of the process.`);
+      if(a.smax!==b.smax && PK.isRelevant("smax",b)) out.push(`Maximum stimulation ${trim(a.smax)} → ${trim(b.smax)}: at high levels the process can run at up to ${trim(+(1+b.smax).toFixed(2))}× its baseline rate.`);
+    }
     if(diffs.length && diffs.every(k=>PK.PD_KEYS.includes(k))) out.push("The concentration curves are identical: only how the body responds to them changed.");
 
     const T=state.duration;
     let net=`<b>Net effect</b> over 0–${T} h: AUC ${pctTxt(wa.auc,wb.auc)}, peak ${pctTxt(wa.cmax,wb.cmax)}, time in window ${fmt(100*wa.tIn/T,0)}% → ${fmt(100*wb.tIn/T,0)}% of the window.`;
-    if(state.pd){
+    if(state.pd && a.idr>0 && b.idr>0 && PK.idrModule){
+      const ra=PK.idr.stats(a,T), rb=PK.idr.stats(b,T);
+      net+=` Largest change in response ${fmt(ra.change,0)} → ${fmt(rb.change,0)} points of baseline, at ${fmt(ra.tExt,1)} → ${fmt(rb.tExt,1)} h.`;
+    } else if(state.pd && !(a.idr>0) && !(b.idr>0)){
       const ea=PK.effectStats(a,T,state.etgt), eb=PK.effectStats(b,T,state.etgt);
       net+=` Peak effect ${fmt(ea.peak,0)}% → ${fmt(eb.peak,0)}%, at or above the ${state.etgt}% target for ${fmt(ea.tAbove,1)} → ${fmt(eb.tAbove,1)} h.`;
     }
@@ -2979,7 +3017,8 @@
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
     if(p.pm==="clinical") s+=` · CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
     else if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
-    if(state.pd) s+=` · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}${PK.keqOf(p)>0?` · effect-site t½ ${trim(p.teq)} h`:""}`;
+    if(state.pd && p.idr>0) s+=` · ${IDR_NAME[p.idr].toLowerCase()} · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc} · response turnover t½ ${trim(p.tout)} h`;
+    else if(state.pd) s+=` · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}${PK.keqOf(p)>0?` · effect-site t½ ${trim(p.teq)} h`:""}`;
     return s;
   }
   function renderScenarioCards(a,b){
@@ -3112,6 +3151,7 @@
   // With a delay the effect follows the effect-site level, which is given alongside.
   function effectTxt(p, c){
     if(!state.pd) return "";
+    if(p.idr>0) return PK.idrModule ? ` · response <b>${fmt(PK.idr.at(p,state.duration,cursorT),0)}%</b> of baseline (held at this level it would settle at ${fmt(PK.idr.plateau(p,c),0)}%)` : "";
     const delay=PK.keqOf(p)>0, ce=delay ? PK.ceConc(p,cursorT) : c, e=PK.effectOf(p,ce);
     return ` · effect <b>${fmt(e,0)}%</b> (${e>=state.etgt?"at or above":"below"} the ${state.etgt}% target${delay ? `; effect site ${fmt(ce,cdp(2))} ${U().conc}` : ""}${ce>0?`, ${delay?"Ce":"C"} = ${fmt(ce/p.ec50,2)}× EC50`:""})`;
   }
@@ -3924,17 +3964,36 @@
   function syncPd(){
     byId("pdBtn").setAttribute("aria-pressed", state.pd ? "true" : "false");
     byId("pdSec").hidden=!state.pd;
+    byId("idrSel").value=String(state.idr);
+    document.querySelector(".pd-target").hidden=state.idr>0;   // the target effect is for direct effects
   }
+  byId("idrSel").addEventListener("change",e=>{
+    state.idr=+e.target.value; state.drug=null; markDrug(); syncPd(); buildSliders(); changed(["idr"]);
+  });
   byId("pdBtn").addEventListener("click",()=>{ state.pd=!state.pd; syncPd(); render(); });
 
+  // With an indirect response the effect chart shows the response as a % of its baseline, from pk-idr.js.
+  const respOf=(cv,t,ce)=> cv.p.idr>0 ? PK.idr.at(cv.p, state.duration, t) : PK.effectOf(cv.p, ce);
+  let effTop=100;
   function renderPd(curves, T0, T1){
     byId("pdBox").hidden=!state.pd; byId("pdRow").hidden=!state.pd;
     if(!state.pd) return;
-    const iw=PW-EM.l-EM.r, ih=EH-EM.t-EM.b, x=t=> EM.l+((t-T0)/(T1-T0))*iw, y=e=> EM.t+ih-(e/100)*ih;
+    const resp=curves.some(cv=>cv.p.idr>0);
+    if(resp && !PK.idrModule){
+      effEl.innerHTML=`<text x="${PW/2}" y="${EH/2}" text-anchor="middle" font-family="Inter" font-size="12" fill="#8B94B0">Loading the response model…</text>`;
+      byId("pdStats").innerHTML=""; ecEl.innerHTML="";
+      loadIdr().then(render).catch(()=>{ effEl.innerHTML=`<text x="${PW/2}" y="${EH/2}" text-anchor="middle" font-family="Inter" font-size="12" fill="#8B94B0">The response model couldn't load. Check the connection.</text>`; });
+      return;
+    }
+    // the response's own scale: 0 to a round number above the highest value (100 for direct effects)
+    let top=100;
+    if(resp) curves.forEach(cv=> cv.raw.forEach(q=>{ const v=respOf(cv,q.t,q.ce); if(v>top) top=v; }));
+    effTop=resp ? Math.max(120, Math.ceil(top*1.1/20)*20) : 100;
+    const iw=PW-EM.l-EM.r, ih=EH-EM.t-EM.b, x=t=> EM.l+((t-T0)/(T1-T0))*iw, y=e=> EM.t+ih-(e/effTop)*ih;
     effY=y;
     let g=`<rect x="${EM.l}" y="${EM.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.20)"/>`+
-      `<rect x="${EM.l}" y="${y(100)}" width="${iw}" height="${y(state.etgt)-y(100)}" fill="rgba(59,229,138,0.06)"/>`;
-    [0,25,50,75,100].forEach(v=>{
+      (resp ? "" : `<rect x="${EM.l}" y="${y(100)}" width="${iw}" height="${y(state.etgt)-y(100)}" fill="rgba(59,229,138,0.06)"/>`);
+    (resp ? ticksRange(0,effTop,5) : [0,25,50,75,100]).forEach(v=>{
       g+=`<line x1="${EM.l}" y1="${y(v)}" x2="${PW-EM.r}" y2="${y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
         `<text x="${EM.l-9}" y="${y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${v}</text>`;
     });
@@ -3942,21 +4001,26 @@
       g+=`<line x1="${x(v)}" y1="${EM.t}" x2="${x(v)}" y2="${EH-EM.b}" stroke="rgba(120,150,255,0.06)"/>`+
         `<text x="${x(v)}" y="${EH-EM.b+16}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#7A84A3">${fmtAxis(v)}</text>`;
     });
-    g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${EFF}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
+    if(resp) g+=`<line x1="${EM.l}" y1="${y(100)}" x2="${PW-EM.r}" y2="${y(100)}" stroke="#C8D2FF" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.7"/>`+
+      `<text x="${PW-EM.r-4}" y="${y(100)-5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#C8D2FF">baseline 100%</text>`;
+    else g+=`<line x1="${EM.l}" y1="${y(state.etgt)}" x2="${PW-EM.r}" y2="${y(state.etgt)}" stroke="${EFF}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.75"/>`+
       `<text x="${PW-EM.r-4}" y="${y(state.etgt)-5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="${EFF}">target ${state.etgt}%</text>`;
     const order=mode==="cmp" ? [curves.find(cv=>cv.id!==cmp.edit), curves.find(cv=>cv.id===cmp.edit)] : curves.slice().reverse();
     order.forEach(cv=>{
-      const d="M "+cv.raw.map(q=>`${x(q.t)} ${y(PK.effectOf(cv.p,q.ce))}`).join(" L ");
+      const d="M "+cv.raw.map(q=>`${x(q.t)} ${y(respOf(cv,q.t,q.ce))}`).join(" L ");
       g+=cv.ghost ? `<path d="${d}" fill="none" stroke="#98A2C8" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>`
         : `<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
     });
     g+=`<text x="${EM.l+iw/2}" y="${EH-4}" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Time (h)</text>`+
-      `<text transform="translate(15 ${EM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">Effect (% of max)</text>`+
+      `<text transform="translate(15 ${EM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="11" fill="#8B94B0" font-weight="500">${resp ? (curves.every(cv=>cv.p.idr>0) ? "Response (% of baseline)" : "Effect or response (%)") : "Effect (% of max)"}</text>`+
       `<g id="effCursor" style="display:none"><line id="effCurLine" y1="${EM.t}" y2="${EH-EM.b}" stroke="#E8ECF8" stroke-width="1.4" opacity="0.7"/>`+
       curves.map((cv,i)=>`<circle class="effDot" data-i="${i}" r="4.5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2"/>`).join("")+`</g>`;
     effEl.innerHTML=g;
     const primary=curves.find(cv=>mode==="cmp" ? cv.id===cmp.edit : cv.primary);
-    byId("pdSub").textContent=`EC50 ${trim(primary.p.ec50)} ${U().conc} · Emax ${trim(primary.p.emax)}% · n ${trim(primary.p.hill)}${primary.p.e0?` · E₀ ${trim(primary.p.e0)}%`:""}${PK.keqOf(primary.p)>0?` · effect-site t½ ${trim(primary.p.teq)} h`:""}`;
+    const pp=primary.p;
+    byId("pdSub").textContent=pp.idr>0 ? `Indirect · ${IDR_NAME[pp.idr].toLowerCase()} · EC50 ${trim(pp.ec50)} ${U().conc} · ${pp.idr<3 ? `Imax ${fmt(100*pp.imax,0)}%` : `Smax ${trim(pp.smax)}`} · n ${trim(pp.hill)} · response turnover t½ ${trim(pp.tout)} h`
+      : `EC50 ${trim(pp.ec50)} ${U().conc} · Emax ${trim(pp.emax)}% · n ${trim(pp.hill)}${pp.e0?` · E₀ ${trim(pp.e0)}%`:""}${PK.keqOf(pp)>0?` · effect-site t½ ${trim(pp.teq)} h`:""}`;
+    effEl.setAttribute("aria-label", resp ? "Response over time, as a percentage of its baseline. Click or drag to move the time cursor." : "Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor.");
     renderSigmoid(curves, primary);
     renderPdStats(curves);
   }
@@ -3966,7 +4030,7 @@
   function renderSigmoid(curves, primary){
     const iw=EW-ECM.l-ECM.r, ih=ECH-ECM.t-ECM.b, ecs=curves.map(cv=>cv.p.ec50);
     const lo=Math.floor(Math.log10(Math.min(...ecs))-2), hi=Math.ceil(Math.log10(Math.max(...ecs))+2);
-    const X=c=> ECM.l+((Math.log10(Math.min(Math.max(c,10**lo),10**hi))-lo)/(hi-lo))*iw, Y=e=> ECM.t+ih-(e/100)*ih;
+    const X=c=> ECM.l+((Math.log10(Math.min(Math.max(c,10**lo),10**hi))-lo)/(hi-lo))*iw, Y=e=> ECM.t+ih-(e/effTop)*ih;
     ecMap={X,Y};
     let g=`<rect x="${ECM.l}" y="${ECM.t}" width="${iw}" height="${ih}" fill="none" stroke="rgba(120,150,255,0.20)"/>`;
     for(let k=lo;k<=hi;k++){
@@ -3974,10 +4038,11 @@
       g+=`<line x1="${xx}" y1="${ECM.t}" x2="${xx}" y2="${ECM.t+ih}" stroke="rgba(120,150,255,0.08)"/>`+
         `<text x="${xx}" y="${ECM.t+ih+15}" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#7A84A3">${v>=1?v:v.toPrecision(1)}</text>`;
     }
-    [0,50,100].forEach(v=>{
+    (effTop>100 ? ticksRange(0,effTop,4) : [0,50,100]).forEach(v=>{
       g+=`<line x1="${ECM.l}" y1="${Y(v)}" x2="${EW-ECM.r}" y2="${Y(v)}" stroke="rgba(120,150,255,0.09)"/>`+
         `<text x="${ECM.l-7}" y="${Y(v)+3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#7A84A3">${v}</text>`;
     });
+    if(primary.p.idr>0) return renderResponseLoop(curves, primary, g, {X, Y, lo, hi, iw, ih});
     g+=`<line x1="${ECM.l}" y1="${Y(state.etgt)}" x2="${EW-ECM.r}" y2="${Y(state.etgt)}" stroke="${EFF}" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
     const p=primary.p, col=effColor(primary), top=p.e0+p.emax, ct=PK.concForEffect(p,state.etgt);
     g+=`<line x1="${ECM.l}" y1="${Y(top)}" x2="${EW-ECM.r}" y2="${Y(top)}" stroke="${col}" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>`+
@@ -4018,9 +4083,44 @@
     ecEl.innerHTML=g;
   }
 
-  // Peak effect, when it comes, when the target is first reached and for how long, over the whole window.
+  // An indirect response against the plasma level: the curve where it would settle if each level were held (the
+  // plateau), and the path it takes over the window, a loop that runs behind the level.
+  function renderResponseLoop(curves, primary, g, S){
+    const {X, Y, lo, hi, iw, ih}=S, seen=new Set();
+    g+=`<line x1="${ECM.l}" y1="${Y(100)}" x2="${EW-ECM.r}" y2="${Y(100)}" stroke="#C8D2FF" stroke-width="1" stroke-dasharray="5 4" opacity="0.6"/>`;
+    curves.filter(cv=>cv.p.idr>0).forEach(cv=>{
+      const key=PK.PD_KEYS.filter(k=>k!=="tout").map(k=>cv.p[k]).join(",");
+      if(seen.has(key)) return; seen.add(key);
+      let d=""; for(let i=0;i<=160;i++){ const u=lo+(hi-lo)*i/160, v=Math.min(PK.idr.plateau(cv.p,10**u), effTop); d+=(i?" L ":"M ")+`${X(10**u)} ${Y(v)}`; }
+      g+=`<path d="${d}" fill="none" stroke="${effColor(cv)}" stroke-width="1.2" stroke-dasharray="2 4" opacity="${cv.ghost?0.5:0.8}"/>`;
+    });
+    curves.filter(cv=>cv.p.idr>0 && !cv.ghost).forEach(cv=>{
+      const col=effColor(cv), P=cv.raw.filter(q=>q.c>0).map(q=>[X(q.c), Y(respOf(cv,q.t,q.ce))]);
+      if(P.length>1) g+=`<path d="M ${P.map(xy=>xy.join(" ")).join(" L ")}" fill="none" stroke="${col}" stroke-width="2" opacity="0.9" stroke-linejoin="round"/>`;
+    });
+    byId("ecSub").textContent="response vs plasma level · dotted: where it would settle at a steady level · log scale";
+    ecEl.setAttribute("aria-label", "Response against plasma level on a log scale. The dotted curve is where the response would settle if each level were held; the solid path is the response over the window, which lags behind the level and loops around that curve. A dot marks the time cursor.");
+    g+=`<text x="${ECM.l+iw/2}" y="${ECH-6}" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Concentration (${U().conc}, log scale)</text>`+
+      `<text transform="translate(13 ${ECM.t+ih/2}) rotate(-90)" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#8B94B0">Response (%)</text>`+
+      curves.map((cv,i)=>`<circle class="ecDot" data-i="${i}" r="5" fill="${effColor(cv)}" stroke="#05070E" stroke-width="2" style="display:none"/>`).join("");
+    ecEl.innerHTML=g;
+  }
+
+  // Peak effect, when it comes, when the target is first reached and for how long, over the whole window. With an
+  // indirect response: its largest change from baseline, when that comes, and how long after the plasma peak.
   function renderPdStats(curves){
     const T=state.duration, tg=state.etgt, live=curves.filter(cv=>!cv.ghost);
+    if(live.some(cv=>cv.p.idr>0)){
+      const st=live.map(cv=> cv.p.idr>0 ? PK.idr.stats(cv.p,T) : null);
+      const val=(f,dp)=> st.map(e=> e==null ? "—" : fmt(f(e),dp)).join(" / "), who=mode==="cmp" ? "A / B · " : "";
+      byId("pdStats").innerHTML=[
+        {k:`${who}Largest change`, hot:1, v:val(e=>e.change,0), u:"% pts"},
+        {k:`${who}When`, v:val(e=>e.tExt,1), u:"h"},
+        {k:`${who}Plasma peak`, v:val(e=>e.tCmax,1), u:"h"},
+        {k:`${who}Lag behind it`, hot:1, v:val(e=>e.lag,1), u:"h"}
+      ].map(c=>`<div class="ro${c.hot?" hot":""}"><div class="ro-k">${c.k}</div><div class="ro-v">${c.v}<small>${c.u}</small></div></div>`).join("");
+      return;
+    }
     const st=live.map(cv=>PK.effectStats(cv.p,T,tg));
     const val=(f,dp)=> st.map(e=>{ const v=f(e); return v==null ? "never" : fmt(v,dp); }).join(" / ");
     const who=mode==="cmp" ? "A / B · " : "";
@@ -4043,13 +4143,13 @@
     const x=sx(cursorT);   // same width and side margins as the concentration chart
     g.querySelector("#effCurLine").setAttribute("x1",x); g.querySelector("#effCurLine").setAttribute("x2",x);
     g.querySelectorAll(".effDot").forEach(d=>{
-      const cv=plotCurves[+d.dataset.i], e=PK.effectOf(cv.p, PK.ceConc(cv.p,cursorT));
+      const cv=plotCurves[+d.dataset.i], e=respOf(cv, cursorT, PK.ceConc(cv.p,cursorT));
       d.setAttribute("cx",x); d.setAttribute("cy",effY(e));
     });
     // the dot sits at the plasma level and the effect: on the curve, or with a delay, on the loop
     ecEl.querySelectorAll(".ecDot").forEach(d=>{
       const cv=plotCurves[+d.dataset.i], c=conc(cv.p,cursorT);
-      d.setAttribute("cx",ecMap.X(c)); d.setAttribute("cy",ecMap.Y(PK.effectOf(cv.p,PK.ceConc(cv.p,cursorT))));
+      d.setAttribute("cx",ecMap.X(c)); d.setAttribute("cy",ecMap.Y(respOf(cv, cursorT, PK.ceConc(cv.p,cursorT))));
     });
   }
   effEl.addEventListener("pointerdown",e=>{
@@ -4178,7 +4278,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=c513a442f5";
+  const GLOSS_SRC="pk-glossary.js?v=6be21d6045";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4224,6 +4324,7 @@
     // the texts come from pk-lessons.js (and a lesson with levels needs the estimator, pk-bayes.js): filled at once
     // if they're here, else as soon as they load
     const needs=[]; if(!PK.lessonModule) needs.push(loadLessons()); if(L.cur.lv && L.cur.lv.length && !PK.bayesModule) needs.push(loadBayes());
+    if(L.cur.idr>0 && !PK.idrModule) needs.push(loadIdr());
     if(!needs.length) fillLesson(L);
     else {
       ["lsGoal","lsText","lsWhy","lsTry","lsChal","lsQ"].forEach(id=> byId(id).textContent=id==="lsGoal" ? "Loading the lesson…" : "");
@@ -4249,7 +4350,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=bdb7e20844";
+  const LESSON_SRC="pk-lessons.js?v=452e354145";
   let lessonLoad=null;
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -4974,7 +5075,8 @@
     const curves=chartCurves().map(cv=>({...cv, ev:doseEvents(cv.p)}));
     const cu=CSV_UNIT[U().id];
     let head=mode==="cmp" ? [`A_${cu}`,`B_${cu}`] : curves.map(cv=>cv.ghost?`baseline_${cu}`:`concentration_${cu}`);
-    if(state.pd) head=head.concat(mode==="cmp" ? ["A_effect_pct","B_effect_pct"] : curves.map(cv=>cv.ghost?"baseline_effect_pct":"effect_pct"));
+    const eName=cv=> cv.p.idr>0 ? "response_pct_of_baseline" : "effect_pct", eVal=(cv,t,ce)=> cv.p.idr>0 && PK.idrModule ? PK.idr.at(cv.p,state.duration,t) : PK.effectOf(cv.p,ce);
+    if(state.pd) head=head.concat(curves.map(cv=> mode==="cmp" ? `${cv.tag}_${eName(cv)}` : cv.ghost ? `baseline_${eName(cv)}` : eName(cv)));
     // with an effect-site delay, the effect-site level of each scenario that has one
     const delayed=state.pd ? curves.filter(cv=>PK.keqOf(cv.p)>0) : [];
     head=head.concat(delayed.map(cv=> mode==="cmp" ? `${cv.tag}_effect_site_${cu}` : cv.ghost ? `baseline_effect_site_${cu}` : `effect_site_${cu}`));
@@ -4988,7 +5090,7 @@
     for(let i=0;i<=N;i++){
       const t=Tend*i/N;
       const cs=curves.map(cv=>conc(cv.p,t,cv.ev)), ces=curves.map((cv,j)=> PK.keqOf(cv.p)>0 ? PK.ceConc(cv.p,t,cv.ev) : cs[j]);
-      csv+=t.toFixed(3)+","+cs.map(c=>c.toFixed(5)).concat(state.pd ? curves.map((cv,j)=>PK.effectOf(cv.p,ces[j]).toFixed(3)) : [],
+      csv+=t.toFixed(3)+","+cs.map(c=>c.toFixed(5)).concat(state.pd ? curves.map((cv,j)=>eVal(cv,t,ces[j]).toFixed(3)) : [],
         delayed.map(cv=> ces[curves.indexOf(cv)].toFixed(5))).join(",")+"\n";
     }
     download(new Blob([csv],{type:"text/csv"}), mode==="cmp"?"dosecurve_compare.csv":"dosecurve_data.csv");
@@ -5085,7 +5187,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=23ef65c7e9";
+  const PRACTICE_SRC="pk-practice.js?v=8a80374327";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();

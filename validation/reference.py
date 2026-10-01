@@ -16,6 +16,9 @@ The model:
     elimination  ke*A  (first-order), or Vmax*C/(Km + C) with C = A/V (Michaelis-Menten)
     effect site  dCe/dt = ke0*(C - Ce), ke0 = ln 2 / teq  (scenarios with an effect-site delay are read at the
                  effect site: its peak, trough, area and time in window)
+    indirect responses (Dayneka, Garg and Jusko 1993): a response R (100 = baseline) integrated with the drug,
+                 dR/dt = kin*(1 -/+ D(C)) - kout*R (types 1, 3) or kin - kout*(1 -/+ D(C))*R (types 2, 4),
+                 D(C) = max * C^n / (EC50^n + C^n), kin = 100*kout, kout = ln 2 / turnover half-life
     antimicrobial indices: a regimen run until it repeats itself (30 terminal half-lives), then its last interval
                  read for the time the unbound level fu*C is above the MIC, the peak over the MIC, and the area over
                  the interval scaled to 24 h over the MIC
@@ -259,6 +262,85 @@ def pkpd_matrix():
     ]
     return [{"name": n, "mic": mic, "scenario": dict(base, **sc)} for n, sc, mic in rows]
 
+# ---------------- indirect response models ----------------
+# The response integrated together with the drug (one ODE system, piecewise between doses), then read at five times
+# and at its largest change from baseline (a 0.002 h grid refined by golden-section search on the dense solution).
+def idr_course(p, t_end):
+    V = p["V"] * p["wt"] / 70.0
+    fac, S, F, ka = factor(p), p.get("S", 1.0), p.get("F", 1.0), p.get("ka", 1.0)
+    mm = p.get("kin") == "mm"
+    ke = math.log(2) / p["thalf"] * fac if not mm else None
+    vmax_h = p.get("vmax", 7) * p["wt"] / 24.0 * fac if mm else None
+    km = p.get("km", 4.0)
+    k12, k21 = (p["k12"], p["k21"]) if p.get("cmt") == 2 and not mm else (0.0, 0.0)
+    kout = math.log(2) / p["tout"]; kin = 100.0 * kout
+    ec50, n, typ = p.get("ec50", 4.0), p.get("hill", 1.0), p["idr"]
+    mx = p.get("imax", 1.0) if typ in (1, 2) else p.get("smax", 4.0)
+    ds = doses(p)
+    cuts = sorted({0.0, t_end} | {t for t, *_ in ds if t < t_end} | {t + d for t, _, r, d in ds if r == "inf" and t + d < t_end})
+
+    def rate(t):
+        return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
+
+    def rhs(t, y, R):
+        ag, a, ap, r = y
+        c = max(a, 0.0) / V
+        el = vmax_h * c / (km + c) if mm else ke * a
+        dr = mx * (c ** n / (ec50 ** n + c ** n) if c > 0 else 0.0)
+        dR = (kin * (1 - dr) - kout * r if typ == 1 else kin - kout * (1 - dr) * r if typ == 2
+              else kin * (1 + dr) - kout * r if typ == 3 else kin - kout * (1 + dr) * r)
+        return [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, k12 * a - k21 * ap, dR]
+
+    y = np.array([0.0, 0.0, 0.0, 100.0])
+    pieces = []
+    for s0, s1 in zip(cuts[:-1], cuts[1:]):
+        for t0, mg, r, d in ds:
+            if abs(t0 - s0) < 1e-12:
+                if r == "iv": y[1] += S * mg
+                elif r == "oral": y[0] += F * S * mg
+        sol = solve_ivp(rhs, (s0, s1), y, args=(rate(s0),), method="DOP853", rtol=1e-11, atol=1e-12, dense_output=True)
+        pieces.append((s0, s1, sol.sol))
+        y = sol.y[:, -1].copy()
+
+    def resp(t):
+        for s0, s1, f in pieces:
+            if s0 <= t <= s1: return float(f(t)[3])
+        return float(y[3])
+    return resp
+
+def idr_reference(p, T):
+    resp = idr_course(p, T)
+    grid = np.arange(0.0, T + 1e-9, 0.002)
+    rs = np.array([resp(t) for t in grid])
+    i = int(np.argmax(np.abs(rs - 100.0)))
+    lo, hi = grid[max(i - 1, 0)], grid[min(i + 1, len(grid) - 1)]
+    dev = lambda t: abs(resp(t) - 100.0)
+    for _ in range(80):
+        a, b = lo + (hi - lo) * 0.382, lo + (hi - lo) * 0.618
+        if dev(a) < dev(b): lo = a
+        else: hi = b
+    t_ext = (lo + hi) / 2 if dev((lo + hi) / 2) >= dev(grid[i]) else grid[i]
+    return {"at": {str(f): resp(f * T) for f in (0.125, 0.25, 0.5, 0.75, 1.0)}, "ext": resp(t_ext), "t_ext": float(t_ext)}
+
+def idr_matrix():
+    base = {"wt": 70, "loadMult": 1, "missed": 1, "hill": 1, "ec50": 4}
+    rows = [
+        ("type 1, warfarin-like single oral dose, turnover 60 h", 168, dict(route="oral", dosing="single", D=25, F=1, ka=1.2, thalf=40, V=9.8, ec50=1, idr=1, imax=1, tout=60)),
+        ("type 1, the same with turnover 5 h", 168, dict(route="oral", dosing="single", D=25, F=1, ka=1.2, thalf=40, V=9.8, ec50=1, idr=1, imax=1, tout=5)),
+        ("type 2, IV bolus, Imax 0.8", 48, dict(route="iv", dosing="single", D=500, V=35, thalf=4, idr=2, imax=0.8, tout=6)),
+        ("type 3, infusions q8h, Smax 4", 72, dict(route="inf", dosing="repeated", D=400, tinf=1, tau=8, nDoses=6, V=35, thalf=4, idr=3, smax=4, tout=3)),
+        ("type 4, oral q12h, Smax 2, Hill 2", 96, dict(route="oral", dosing="repeated", D=500, F=0.9, ka=1.2, tau=12, nDoses=8, V=35, thalf=6, hill=2, idr=4, smax=2, tout=10)),
+        ("type 1, two compartments, IV bolus", 48, dict(route="iv", dosing="single", D=800, V=20, thalf=3, cmt=2, k12=0.8, k21=0.4, idr=1, imax=0.9, tout=2)),
+        ("type 2, oral q24h, Imax 1, Hill 1.5", 120, dict(route="oral", dosing="repeated", D=300, F=0.8, ka=0.8, tau=24, nDoses=5, V=40, thalf=10, hill=1.5, idr=2, imax=1, tout=20)),
+        ("type 3, mixed-route custom schedule", 72, dict(route="oral", dosing="custom", F=0.9, ka=1.2, V=35, thalf=5, idr=3, smax=3, tout=8,
+            events=[{"t": 0, "mg": 400, "route": "oral"}, {"t": 12, "mg": 300, "route": "iv"}, {"t": 24, "mg": 600, "route": "inf", "dur": 2}])),
+        ("type 4, 24 h infusion, Smax 6, fast turnover", 72, dict(route="inf", dosing="single", D=1200, tinf=24, V=35, thalf=4, idr=4, smax=6, tout=1)),
+        ("type 1, saturable elimination, daily", 168, dict(route="oral", dosing="repeated", D=300, F=1, ka=0.4, tau=24, nDoses=7, V=49, kin="mm", vmax=7, km=4, ec50=10, idr=1, imax=1, tout=24)),
+        ("type 2, clinical patient (CrCl), infusions q12h", 96, dict(route="inf", dosing="repeated", D=1000, tinf=1, tau=12, nDoses=8, V=28, thalf=4.8, pm="clinical", age=70, sex="F", scr=1.4, fe=0.83, wt=60, ec50=15, idr=2, imax=0.7, tout=12)),
+        ("type 4, loading dose and a missed dose", 96, dict(route="oral", dosing="repeated", D=250, F=1, ka=1.0, tau=8, nDoses=10, loadMult=2, missed=4, V=30, thalf=6, idr=4, smax=1.5, tout=4)),
+    ]
+    return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
+
 # ---------------- Bayesian (MAP) individualization ----------------
 # Written from the method's statement in pk-bayes.js, not translated from it: the prior is log-normal around the
 # patient model's CL and V (omega = sqrt(ln(1 + CV^2))), each level has error SD sqrt((prop*c)^2 + add^2), and the
@@ -338,6 +420,7 @@ def map_matrix():
 
 def main():
     pkpd = [dict(s, reference=pkpd_reference(s["scenario"], s["mic"])) for s in pkpd_matrix()]
+    idr = [dict(s, reference=idr_reference(s["scenario"], s["T"])) for s in idr_matrix()]
     maps = []
     for s in map_matrix():
         m = map_estimate(s["scenario"], s["scenario"]["lv"], s["opts"])
@@ -360,10 +443,12 @@ def main():
                 "tolerance": 0.005, "scenarios": maps},
         "pkpd": {"about": "fT>MIC (% of a steady-state interval with the unbound level above the MIC), Cmax/MIC and AUC24/MIC for 12 regimens, each run to steady state in the ODE solver.",
                  "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
+        "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
+                "tolerance": {"rel": 0.0001, "t_h": 0.01}, "scenarios": idr},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:
         json.dump(doc, f, indent=1)
-    print(f"{len(rows)} scenarios, {len(maps)} MAP scenarios and {len(pkpd)} PK/PD scenarios written")
+    print(f"{len(rows)} scenarios, {len(maps)} MAP, {len(pkpd)} PK/PD and {len(idr)} indirect-response scenarios written")
 
 if __name__ == "__main__":
     main()
