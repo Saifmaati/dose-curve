@@ -17,7 +17,10 @@
   // goes straight into the app); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
     try{ s=localStorage.getItem("dosecurve.intro"); localStorage.setItem("dosecurve.intro","seen"); }catch(e){}
-    if(!s){ d.classList.add("intro-on"); if(!still) d.classList.add("hero-anim"); }
+    if(!s){ d.classList.add("intro-on"); if(!still){ d.classList.add("hero-anim"); d.classList.add("cold");
+      // the cold open: black, first light on the ribbon, the wordmark revealed; then a quiet scroll cue
+      var end=function(){ if(d.classList.contains("cold")){ d.classList.remove("cold"); d.classList.add("cue"); } };
+      setTimeout(end, 4200); var off=function(){ if(scrollY>8){ end(); removeEventListener("scroll", off); } }; addEventListener("scroll", off, {passive:true}); } }
   }
   // the 3D stage's effects: the reader's choice, else off on a weak device (reduced motion, little memory, few cores, Save-Data)
   try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){ s=null; }
@@ -240,7 +243,39 @@
   html.present.intro-on .hero{display:block}   /* present mode keeps the hero's heading for screen readers */
   html.intro-on body{padding-top:0}
   html.present .intro,html.embed .intro{display:none !important}
-  .scene{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:96px 40px 200px;overflow:hidden;overflow:clip}
+  /* each scene spans two screens of scroll; its frame stays pinned while the camera plays it (2.10) */
+  .scene{position:relative;height:200vh;height:200svh;overflow:clip}
+  .scene-pin{position:sticky;top:0;height:100vh;height:100svh;display:flex;flex-direction:column;justify-content:center;padding:96px 40px 200px;overflow:clip}
+  .snap{position:absolute;left:0;width:1px;height:1px;pointer-events:none;scroll-snap-align:start}
+  .snap:nth-of-type(1){top:18vh} .snap:nth-of-type(2){top:50vh} .snap:nth-of-type(3){top:82vh}
+  .scene[data-scene="1"] .snap:nth-of-type(1){top:0}   /* the sequence starts on its opening frame */
+  html.intro-on{scroll-snap-type:y proximity}
+  /* the stage sets --in, --in2 and --out as the camera arrives and leaves; without it everything simply shows */
+  .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{opacity:calc(var(--in,1) * (1 - var(--out,0)));transform:translateY(calc((1 - var(--in,1)) * 28px - var(--out,0) * 36px));filter:blur(calc((1 - var(--in,1)) * 7px + var(--out,0) * 9px))}
+  .scene-pin>.small>:not(.hero-chip){opacity:calc(var(--in2,1) * (1 - var(--out,0)))}
+  .hero-ro>div{opacity:var(--ro,1);transform:translateY(calc((1 - var(--ro,1)) * 14px))}
+  .hero-ro>div:nth-child(1){--ro:var(--ro1,1)} .hero-ro>div:nth-child(2){--ro:var(--ro2,1)} .hero-ro>div:nth-child(3){--ro:var(--ro3,1)}
+  /* the cold open: black, first light on the ribbon (the stage), the wordmark revealed by a mask; then a scroll cue */
+  @property --mask{syntax:"<percentage>";inherits:false;initial-value:140%}
+  @keyframes wordmark{from{--mask:-8%}to{--mask:140%}}
+  html.cold:not(.light) .scene[data-scene="1"]{background:#000}   /* the light theme opens on paper */
+  html.cold #scene1{-webkit-mask-image:linear-gradient(100deg,#000 calc(var(--mask) - 34%),transparent var(--mask));mask-image:linear-gradient(100deg,#000 calc(var(--mask) - 34%),transparent var(--mask));animation:wordmark 2.1s 1.15s cubic-bezier(.3,.55,.2,1) both}
+  html.cold .scene[data-scene="1"] .scene-pin>:not(h1){opacity:0}
+  .top{transition:opacity .9s ease} html.cold .top{opacity:0}
+  .scroll-cue{position:absolute;left:50%;bottom:168px;transform:translateX(-50%);margin:0;display:flex;flex-direction:column;align-items:center;gap:12px;font:500 11px/1 var(--f-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--c-text-2);opacity:0;transition:opacity 1.2s ease;pointer-events:none}
+  .scroll-cue::before{content:"Scroll"}
+  .scroll-cue::after{content:"";width:1px;height:46px;background:linear-gradient(var(--c-muted),transparent);transform-origin:top;animation:cue 2.6s cubic-bezier(.5,0,.3,1) infinite}
+  @keyframes cue{0%{transform:scaleY(0);opacity:1}55%{transform:scaleY(1);opacity:1}100%{transform:scaleY(1);opacity:0}}
+  html.cue .scroll-cue{opacity:1} html.cued .scroll-cue{opacity:0;transition-duration:.4s}
+  /* grain and a soft vignette over the sequence's frame (with the 3D stage) */
+  .film{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .8s ease;overflow:hidden}
+  html.stage3d.in-intro .film{opacity:1}
+  .film::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 120% 95% at 50% 46%,transparent 52%,rgba(2,4,10,.5) 100%)}
+  html.tone-light .film::before{background:radial-gradient(ellipse 120% 95% at 50% 46%,transparent 58%,rgba(20,24,32,.14) 100%)}
+  .film::after{content:"";position:absolute;inset:-60px;opacity:.07;mix-blend-mode:overlay;animation:grain .9s steps(6) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  @keyframes grain{0%{transform:translate(0,0)}17%{transform:translate(-22px,14px)}33%{transform:translate(18px,-26px)}50%{transform:translate(-30px,-8px)}67%{transform:translate(26px,22px)}83%{transform:translate(-8px,30px)}100%{transform:translate(0,0)}}
+  @media (prefers-reduced-motion: reduce){ .film::after,.scroll-cue::after{animation:none} }
   .split,.word{position:relative;z-index:1;margin:0;font-weight:600;font-size:clamp(64px,13.5vw,232px);line-height:.86;letter-spacing:-.055em;color:var(--c-text);white-space:nowrap}
   .split{display:flex;justify-content:space-between;gap:.25em}
   .word.bleed{margin-right:-.16em;text-align:right}
@@ -266,7 +301,7 @@
   #heroCmax{min-width:3ch} #heroAuc{min-width:4ch} #heroTin{min-width:2ch}
   .hero-ro small{font-size:13px;font-weight:400;color:var(--c-muted);letter-spacing:0;margin-left:5px}
   /* before the stage starts the count, the numbers wait (and show anyway after 5 s if it never runs) */
-  html.hero-anim .hero-ro dd{opacity:0;animation:heroShow 0s 5s forwards}
+  html.hero-anim .hero-ro dd{animation:none}
   @keyframes heroShow{to{opacity:1}}
   /* the 3D canvas: over the headlines in the sequence, behind the glass in the app */
   .stage-3d{position:fixed;inset:0;z-index:2;pointer-events:none}   /* over the hero and the masthead, under the panels */
@@ -276,7 +311,9 @@
   @media (max-width:760px){ html:not(.in-intro) .stage-3d,html:not(.in-intro) .stage-css svg{opacity:.3} }   /* phones: no margins, so the app's text sits over the stage; it steps back */
   /* phones: each scene stacks, picture first, then the headline, the caption and the small print */
   @media (max-width:760px){
-    .scene{justify-content:flex-start;padding:84px 16px 104px}
+    .scene-pin{justify-content:flex-start;padding:84px 16px 104px}
+    .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{filter:none}
+    .scroll-cue{bottom:118px}
     .scene-vis{position:relative;left:auto;top:auto;transform:none;width:100%;margin:0 0 28px}
     .split,.word{font-size:clamp(52px,17vw,120px)}
     .split{flex-direction:column;gap:0} .split > :last-child{text-align:right}
@@ -1099,6 +1136,7 @@
 </head>
 <body data-mode="sim">
 <a class="skip" href="#app">Skip to the simulator</a>
+<div class="film" aria-hidden="true"></div>
 <!-- the stage behind the page: the scenario's curve as a ribbon in 3D (stage.js), or its CSS version -->
 <div class="stage" id="stage" aria-hidden="true"><div class="stage-css"><svg id="stageSvg" viewBox="0 0 1000 420" preserveAspectRatio="none"><path class="halo"/><path class="core"/></svg></div></div>
 <header class="top" id="topBar">
@@ -1119,54 +1157,76 @@
 <button class="pill" id="pill" type="button">Open the simulator</button>
 <section class="intro" id="intro" aria-label="Introduction">
   <section class="scene" data-scene="1" data-tone="dark" aria-labelledby="scene1">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h1 class="split" id="scene1"><span>Dose</span><span>Curve</span></h1>
-    <p class="cap">Watch a dose move.</p>
-    <div class="small"><dl class="hero-ro" aria-label="The default scenario: 500 mg by mouth, half-life 4 h, window 2 to 12 mg/L">
-        <div><dt>Cmax</dt><dd><span id="heroCmax">9.3</span><small>mg/L</small></dd></div>
-        <div><dt>AUC</dt><dd><span id="heroAuc">74.2</span><small>mg·h/L</small></dd></div>
-        <div><dt>Time in window</dt><dd><span id="heroTin">48</span><small>%</small></dd></div>
-      </dl>
-      <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h1 class="split" id="scene1"><span>Dose</span><span>Curve</span></h1>
+      <p class="cap">Watch a dose move.</p>
+      <div class="small"><dl class="hero-ro" aria-label="The default scenario: 500 mg by mouth, half-life 4 h, window 2 to 12 mg/L">
+          <div><dt>Cmax</dt><dd><span id="heroCmax">9.3</span><small>mg/L</small></dd></div>
+          <div><dt>AUC</dt><dd><span id="heroAuc">74.2</span><small>mg·h/L</small></dd></div>
+          <div><dt>Time in window</dt><dd><span id="heroTin">48</span><small>%</small></dd></div>
+        </dl>
+        <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing. The default scenario: 500 mg by mouth, half-life 4 h, window 2–12 mg/L.</span></p><span class="scene-n" aria-hidden="true">01 / 07</span></div>
+    <p class="scroll-cue" aria-hidden="true"></p>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="2" data-tone="light" aria-labelledby="scene2">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="split" id="scene2"><span>Every</span> <span>dose</span></h2>
-    <p class="cap">drawn from the model.</p>
-    <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
-      <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
-      <p><b>Learn.</b> 36 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
-      <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="split" id="scene2"><span>Every</span> <span>dose</span></h2>
+      <p class="cap">drawn from the model.</p>
+      <div class="small"><p><b>Simulate.</b> Change a drug, a patient or a regimen and the concentration and effect curves respond.</p>
+        <p><b>Compare.</b> Set two regimens side by side, or freeze a baseline, and see what moved and why.</p>
+        <p><b>Learn.</b> 36 guided lessons ask for a prediction first, and 16 graded cases use each patient's own numbers.</p>
+        <p><b>Check.</b> The engine is compared with an independent solver on 146 scenarios, in your browser.</p><span class="scene-n" aria-hidden="true">02 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="3" data-tone="dark" aria-labelledby="scene3">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word bleed" id="scene3">Simulate</h2>
-    <p class="cap">Doses arrive as pulses.</p>
-    <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word bleed" id="scene3">Simulate</h2>
+      <p class="cap">Doses arrive as pulses.</p>
+      <div class="small"><p>500 mg by mouth every 8 hours, six doses, over 48 hours: each dose adds to what is left of the ones before.</p><span class="scene-n" aria-hidden="true">03 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="4" data-tone="light" aria-labelledby="scene4">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word" id="scene4">Learn</h2>
-    <p class="cap">200 patients, one median.</p>
-    <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode.</p><span class="scene-n" aria-hidden="true">04 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word" id="scene4">Learn</h2>
+      <p class="cap">200 patients, one median.</p>
+      <div class="small"><p>200 virtual patients on the default regimen, with clearance varying 30% and volume 20% between them, as in the app's population mode.</p><span class="scene-n" aria-hidden="true">04 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene ed" data-scene="5" data-tone="light" aria-labelledby="scene5">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word right" id="scene5">Cases</h2>
-    <p class="cap">Two phases, one patient.</p>
-    <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale.</p><span class="scene-n" aria-hidden="true">05 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word right" id="scene5">Cases</h2>
+      <p class="cap">Two phases, one patient.</p>
+      <div class="small"><p>16 graded cases. Here, a two-compartment drug after an IV bolus: its distribution and elimination phases, on a log scale.</p><span class="scene-n" aria-hidden="true">05 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="6" data-tone="dark" aria-labelledby="scene6">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="word behind" id="scene6">Validated</h2>
-    <p class="cap">Every check within tolerance.</p>
-    <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">06 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="word behind" id="scene6">Validated</h2>
+      <p class="cap">Every check within tolerance.</p>
+      <div class="small"><p>146 scenarios against an independent SciPy solver: 584 readings of peak, trough, AUC and time in the window, one point each.</p><span class="scene-n" aria-hidden="true">06 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
   <section class="scene" data-scene="7" data-tone="dark" aria-labelledby="scene7">
-    <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-    <h2 class="split" id="scene7"><span>Open</span> <span>DoseCurve</span></h2>
-    <p class="cap">Free, in your browser.</p>
-    <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">07 / 07</span></div>
+    <div class="scene-pin">
+      <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
+      <h2 class="split" id="scene7"><span>Open</span> <span>DoseCurve</span></h2>
+      <p class="cap">Free, in your browser.</p>
+      <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">07 / 07</span></div>
+    </div>
+    <span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span><span class="snap" aria-hidden="true"></span>
   </section>
 </section>
 
@@ -5671,7 +5731,7 @@
   /* ================= STAGE ================= */
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
-  const STAGE_SRC="stage.js?v=55e58173ac";
+  const STAGE_SRC="stage.js?v=bb5c38cbc0";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
