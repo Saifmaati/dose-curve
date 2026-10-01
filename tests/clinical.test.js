@@ -154,7 +154,7 @@ test("every library value has a source or says it is unverified", ()=>{
     assert.ok(PK.UNITS[d.units], d.id);
     assert.ok(d.strengths.mg || d.strengths.round, `${d.id}: strengths or a rounding step`);
   }
-  Object.values(PK.SOURCES).forEach(s=> assert.ok(s.cite && (s.url===null || /^https:\/\/(doi\.org|dailymed\.nlm\.nih\.gov|www\.idsociety\.org)\//.test(s.url)), s.cite));
+  Object.values(PK.SOURCES).forEach(s=> assert.ok(s.cite && (s.url===null || /^https:\/\/(doi\.org|dailymed\.nlm\.nih\.gov|www\.idsociety\.org|www\.fda\.gov)\//.test(s.url)), s.cite));
   ["gent","vanc","dig","phe","theo","li"].forEach(id=> assert.ok(drug(id), `${id} is in the library`));
 });
 

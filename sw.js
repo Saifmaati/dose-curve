@@ -10,8 +10,8 @@
 const CACHE="dosecurve-v22";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
-  "./cases.js?v=1dd6fa6c02",
-  "./pk-bayes.js?v=49979aea6b","./pk-lessons.js?v=45486c5cf5","./pk-practice.js?v=558540efae","./pk-math.js?v=42c8440065","./pk-glossary.js?v=8e7a91d3f0","./pop-worker.js?v=4b1fe43934","./validation.html","./validation/reference-results.json?v=e5667e9156"];
+  "./cases.js?v=871f6d619f",
+  "./pk-bayes.js?v=49979aea6b","./pk-lessons.js?v=bdb7e20844","./pk-practice.js?v=23ef65c7e9","./pk-math.js?v=42c8440065","./pk-glossary.js?v=c513a442f5","./pop-worker.js?v=4b1fe43934","./validation.html","./validation/reference-results.json?v=71c6a3d5a3"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

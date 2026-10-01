@@ -14,15 +14,16 @@
   // dose and a duration per infusion; 4 adds the concentration–effect (PK/PD) settings; 5 adds the clinical
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
-  // that can hold it, so links that older pages understand stay exactly as they were.
-  const VERSION=8;
+  // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
+  // fu, the MIC and doses above 2,000 mg.
+  const VERSION=9;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
   // effect site's equilibration half-life (0 = the effect follows plasma directly).
   const PD_KEYS=["e0","emax","ec50","hill","teq"];
@@ -35,14 +36,14 @@
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
     kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
-    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([])});
+    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
     pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
-  const RANGES={D:[25,2000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
+  const RANGES={D:[25,4000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
     age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
-    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1]};
+    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km","cmt","k12","k21"];
@@ -52,12 +53,17 @@
   // Settings a v6 page can't hold: clearance from the liver model.
   const V7_KEYS=["hep","qh","fub","clint","fabs"];
   // A v7 page can't hold measured levels (lv), which a v8 link carries.
+  // A v8 page can't hold the unbound fraction fu (in plasma: the antimicrobial indices use it), the MIC, or a dose
+  // above 2,000 mg, which it would clamp; links older than v9 are still read with that clamp.
+  const V9_KEYS=["fu"];
+  const V8_MAX={D:2000};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
-  // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none).
+  // makes them reproducible (pseed), and an optional AUC24 target (plo–phi; 0 = none). mic is the organism's MIC in
+  // the concentration unit (0 = none), shared by A and B like the window.
   const VIEW_DEFAULTS={duration:24,mec:2,mtc:12,scale:"lin",zoom:"full",pd:false,etgt:50,
-    pop:false,popn:200,pcl:30,pv:20,pseed:1,plo:0,phi:0};
-  const VIEW_RANGES={duration:[6,336],mec:[0,10000],mtc:[0,10000],etgt:[1,99],
+    pop:false,popn:200,pcl:30,pv:20,pseed:1,plo:0,phi:0,mic:0};
+  const VIEW_RANGES={duration:[6,336],mec:[0,10000],mtc:[0,10000],etgt:[1,99],mic:[0,10000],
     popn:[50,1000],pcl:[0,100],pv:[0,100],pseed:[1,4294967295],plo:[0,100000],phi:[0,100000]};
   const POP_KEYS=["popn","pcl","pv","pseed","plo","phi"];
   // Settings that "Vary only" can hold apart while every other setting is shared by A and B.
@@ -557,6 +563,46 @@
     return maxRunning>1 ? {maxRunning, from} : null;
   }
 
+  /* ================= ANTIMICROBIAL PK/PD INDICES ================= */
+  // Scenario p against an MIC (in its concentration unit). fT>MIC is the share of time the unbound level, fu·C, stays
+  // above the MIC, with fu, the unbound fraction in plasma, taken as constant (binding that doesn't saturate).
+  // Cmax/MIC and AUC24/MIC use the total level, as the vancomycin guideline's AUC24/MIC does; fu times each gives
+  // the unbound version. A regular regimen is read at steady state over one interval (the closed-form ssConc, which
+  // loading and missed doses don't change), with AUC24 = AUCτ × 24/τ. Any other regimen is read over the chart
+  // window [0, T]: the share of the window above the MIC, its peak, and the AUC over the first 24 hours.
+  function micStats(p, mic, T){
+    if(!(mic>0)) return null;
+    const fu=p.fu, thr=mic/fu;   // the total level at which the unbound level equals the MIC
+    const pack=(o, auc24)=> Object.assign(o, {fu, mic, thr, auc24, cmaxMic:o.cmax/mic, aucMic:auc24/mic, fcmaxMic:fu*o.cmax/mic, faucMic:fu*auc24/mic});
+    if(p.dosing!=="repeated" || (p.kin==="mm" && mmSteady(p).none)){
+      const w=windowStats(p, T, thr, Infinity);   // time in [thr, ∞) is the time above the MIC
+      return pack({ss:false, span:T, tAbove:w.tIn, ft:100*w.tIn/T, cmax:w.cmax}, windowStats(p, 24, thr, Infinity).auc);
+    }
+    // one steady-state interval on a fine grid plus the infusion's end (a kink); each crossing of thr is found by
+    // bisection on the curve, the area by Simpson's rule on each smooth step, and the peak refined between samples
+    const tau=p.tau, N=720, lvl=s=> ssConc(p, Math.min(s, tau-1e-9)), pts=new Set();
+    for(let i=0;i<=N;i++) pts.add(tau*i/N);
+    if(p.route==="inf"){ const e=p.tinf%tau; if(e>0) pts.add(e); }
+    const ts=[...pts].sort((a,b)=>a-b), cs=ts.map(lvl);
+    const cross=(a,b,up)=>{ for(let k=0;k<60;k++){ const m=(a+b)/2; if((lvl(m)>=thr)===up) b=m; else a=m; } return (a+b)/2; };
+    let tAbove=0, auc=0, im=0;
+    for(let i=1;i<ts.length;i++){
+      const a=ts[i-1], b=ts[i], ca=cs[i-1], cb=cs[i];
+      auc+=(ca+4*lvl((a+b)/2)+cb)/6*(b-a);
+      if(ca>=thr && cb>=thr) tAbove+=b-a;
+      else if(ca<thr && cb>=thr) tAbove+=b-cross(a,b,true);
+      else if(ca>=thr && cb<thr) tAbove+=cross(a,b,false)-a;
+      if(cb>cs[im]) im=i;
+    }
+    let cmax=cs[im];
+    if(im>0 && im<ts.length-1){
+      let lo=ts[im-1], hi=ts[im+1];
+      for(let k=0;k<60;k++){ const a=hi-(hi-lo)*0.6180339887, b=lo+(hi-lo)*0.6180339887; if(lvl(a)<lvl(b)) lo=a; else hi=b; }
+      cmax=Math.max(cmax, lvl((lo+hi)/2));
+    }
+    return pack({ss:true, span:tau, tAbove, ft:100*tAbove/tau, cmax, cmin:cs[cs.length-1]}, auc*24/tau);
+  }
+
   /* ================= SATURABLE (MICHAELIS–MENTEN) ELIMINATION ================= */
   // kin "mm": the body eliminates Vmax·C / (Km + C) per hour instead of kₑ·A. vmax is per kg per day (in the
   // dose's amount unit, after S) and km is in the concentration unit; organ function (or the clinical renal
@@ -908,6 +954,7 @@
       get css(){ return rep && p.kin==="mm" ? d().css : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
       effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
+      get mic(){ return once("mic",()=>micStats(p,view.mic,T)); },
       at:t=> conc(p,t),
       reach:level=> once("r"+level,()=>{ for(let i=0;i<=T*100;i++){ if(conc(p,i/100)>=level) return i/100; } return null; })};
   }
@@ -931,9 +978,10 @@
   // Metrics for scenario a vs scenario b over the same window. kind says how the change is expressed:
   // pct = % change, ratio = % change of a ratio, pp = percentage points, abs = hours, count = doses.
   // A null value means the metric doesn't apply (shown as "—").
-  // With pd (a target effect, %), the effect rows are added too.
+  // With pd (a target effect, %), the effect rows are added too, and with an MIC (in a's units), the antimicrobial
+  // indices (each scenario at steady state when it is a regular regimen, else over the window).
   // Both scenarios are read in a's units (the page converts b first when they differ).
-  function compareRows(a, b, T, mec, mtc, pd){
+  function compareRows(a, b, T, mec, mtc, pd, mic){
     const wa=windowStats(a,T,mec,mtc), wb=windowStats(b,T,mec,mtc), da=derived(a), db=derived(b), U=unitsOf(a);
     const rows=[{key:"cmax", name:"Peak (Cmax)", unit:U.conc, a:wa.cmax, b:wb.cmax, kind:"pct", dp:2+U.cdp}];
     if(a.dosing==="single" && b.dosing==="single") rows.push({key:"tmax", name:"Time of peak", unit:"h", a:wa.tmax, b:wb.tmax, kind:"abs", dp:1});
@@ -964,6 +1012,13 @@
         {key:"epeak", name:"Peak effect", unit:"% of max", a:ea.peak, b:eb.peak, kind:"pp", dp:0},
         {key:"eabove", name:`Time at or above ${pd}% effect`, unit:"h", a:ea.tAbove, b:eb.tAbove, kind:"abs", dp:1},
         {key:"eonset", name:`Reaches ${pd}% effect at`, unit:"h", a:ea.onset, b:eb.onset, kind:"abs", dp:1});
+    }
+    if(mic>0){
+      const ma=micStats(a,mic,T), mb=micStats(b,mic,T);
+      rows.push(
+        {key:"ftmic", name:"fT>MIC", unit:ma.ss && mb.ss ? "% of interval" : "%", a:ma.ft, b:mb.ft, kind:"pp", dp:1},
+        {key:"cmaxmic", name:"Cmax/MIC", unit:"×", a:ma.cmaxMic, b:mb.cmaxMic, kind:"ratio", dp:1},
+        {key:"aucmic", name:"AUC24/MIC", unit:"h", a:ma.aucMic, b:mb.aucMic, kind:"ratio", dp:0});
     }
     return {rows, wa, wb, da, db};
   }
@@ -1006,6 +1061,10 @@
     ibu:{cite:"Ibuprofen tablets 200 mg. OTC Drug Facts label, Aurohealth. DailyMed.", url:DM+"3b9773c6-42a0-4834-bef4-4fd60556af48"},
     idsaVanc:{cite:"Infectious Diseases Society of America. Vancomycin: therapeutic monitoring guideline summary (2020 revision).", url:"https://www.idsociety.org/practice-guideline/vancomycin/"},
     sheiner1979:{cite:"Sheiner LB, Beal S, Rosenberg B, Marathe VV. Forecasting individual pharmacokinetics. Clin Pharmacol Ther. 1979;26(3):294–305.", url:"https://doi.org/10.1002/cpt1979263294"},
+    zosyn:{cite:"ZOSYN (piperacillin and tazobactam) injection, GALAXY containers. Prescribing information, Baxter Healthcare Corporation. DailyMed (read 2026-09-30).", url:DM+"8db6bd91-2106-4bfd-8cc8-38aaf1e18d17"},
+    fdaPtz:{cite:"U.S. Food and Drug Administration. FDA rationale for piperacillin-tazobactam breakpoints for Pseudomonas aeruginosa (review of CLSI document MR15, 2024), Table 1.", url:"https://www.fda.gov/drugs/development-resources/fda-rationale-piperacillin-tazobactam-breakpoints-pseudomonas-aeruginosa"},
+    lodise2007:{cite:"Lodise TP Jr, Lomaestro B, Drusano GL. Piperacillin-tazobactam for Pseudomonas aeruginosa infection: clinical implications of an extended-infusion dosing strategy. Clin Infect Dis. 2007;44(3):357–363.", url:"https://doi.org/10.1086/510590"},
+    moore1987:{cite:"Moore RD, Lietman PS, Smith CR. Clinical response to aminoglycoside therapy: importance of the ratio of peak concentration to minimal inhibitory concentration. J Infect Dis. 1987;155(1):93–99.", url:"https://doi.org/10.1093/infdis/155.1.93"},
     rybakCid:{cite:"Rybak MJ, Le J, Lodise TP, et al. Executive summary: therapeutic monitoring of vancomycin for serious methicillin-resistant Staphylococcus aureus infections: a revised consensus guideline. Clin Infect Dis. 2020;71(6):1361–1364.", url:"https://doi.org/10.1093/cid/ciaa303"}
   };
   const UNVERIFIED="typical textbook value, unverified";
@@ -1050,6 +1109,7 @@
        ref("strengths","300, 450 mg","theo","each tablet contains 300 mg or 450 mg"),
        ref("smoking","clearance about +50%","theo","tobacco smoking increases clearance by about 50% in young adults")]},
     {id:"gent", name:"Gentamicin", sub:"120 mg IV inf q8h", kinetics:"linear", fe:1, fu:0.85, S:1, units:"mg", trough:2,
+     pkpd:{index:"cmax", src:"moore1987", note:"in 236 patients with gram-negative infections, higher peak-to-MIC ratios went with clinical response, in a graded way; the abstract names no single cut-off"},
      strengths:{form:"injection, 40 mg/mL", round:10},
      s:{route:"inf",dosing:"repeated",D:120,tinf:0.5,thalf:2.5,V:18,tau:8,nDoses:6,loadMult:1,mec:4,mtc:12,duration:48},
      refs:[ref("thalf","2.5 h"), ref("V","18 L (0.25 L/kg)","","gentamicin distributes in extracellular fluid (the label gives no number)"),
@@ -1058,14 +1118,16 @@
        ref("window","4–12 mg/L","gent","avoid prolonged peaks above 12 mcg/mL and troughs above 2 mcg/mL; a 1 to 1.5 mg/kg IM dose peaks at about 4 to 6 mcg/mL"),
        ref("strengths","40 mg/mL","gent","injection, 40 mg/mL"), ref("round","doses rounded to 10 mg","","a common convention")]},
     {id:"vanc", name:"Vancomycin", sub:"1 g IV inf q12h", kinetics:"linear", fe:0.83, fu:0.45, S:1, units:"mg",
+     pkpd:{index:"auc", lo:400, hi:600, src:"rybak", note:"an AUC24/MIC of 400 to 600, assuming an MIC of 1 mg/L, for serious MRSA infections"},
      strengths:{form:"injection", round:250},
-     s:{route:"inf",dosing:"repeated",D:1000,tinf:1,thalf:4.8,V:28,tau:12,nDoses:6,loadMult:1,mec:10,mtc:40,duration:72},
+     s:{route:"inf",dosing:"repeated",D:1000,tinf:1,thalf:4.8,V:28,tau:12,nDoses:6,loadMult:1,mec:10,mtc:40,duration:72,mic:1},
      refs:[ref("thalf","4.8 h","vanc","mean half-life 4 to 6 h; 4.8 h follows from the label's clearance, 0.058 L/kg/h, and a volume of 0.4 L/kg"),
        ref("V","28 L (0.4 L/kg)","vanc","distribution coefficient 0.3 to 0.43 L/kg"),
        ref("fe","0.83","vanc","renal clearance 0.048 of a total 0.058 L/kg/h"), ref("fu","0.45","vanc","about 55% protein-bound"),
        ref("dose","1 g every 12 hours","vanc","usual daily dose 2 g, as 500 mg every 6 hours or 1 g every 12 hours"),
        ref("window","10–40 mg/L","","an illustrative window; the 2020 guideline targets an AUC24 of 400–600 mg·h/L instead (see the vancomycin case)"),
        ref("target","AUC24 400–600 mg·h/L (MIC 1 mg/L)","rybak","AUC-guided dosing for serious MRSA infections"),
+       ref("MIC","1 mg/L","rybak","the MIC the guideline's AUC24 target assumes"),
        ref("strengths","5 g and 10 g bulk packages","vanc","pharmacy bulk package bottles containing the equivalent of 5 g or 10 g of vancomycin"),
        ref("round","doses rounded to 250 mg","","a common convention")]},
     {id:"dig", name:"Digoxin", sub:"250 mcg PO daily", kinetics:"linear", fe:0.6, fu:0.75, S:1, units:"mcg",
@@ -1115,8 +1177,9 @@
        ref("window","12–46 mg/L","","an illustrative teaching window; the label sets no therapeutic range"),
        ref("strengths","250, 500, 750, 1000 mg","keppra","250, 500, 750 and 1,000 mg film-coated, scored tablets")]},
     {id:"mero", name:"Meropenem", sub:"1 g IV inf q8h", kinetics:"linear", fe:0.7, fu:0.98, S:1, units:"mg",
+     pkpd:{index:"ft", src:"meropenem", note:"the percentage of the dosing interval that unbound meropenem exceeds the MIC correlates best with efficacy in animal and in vitro models"},
      strengths:{form:"vials", mg:[500,1000]},
-     s:{route:"inf",dosing:"repeated",D:1000,tinf:0.5,thalf:1,V:17,tau:8,nDoses:6,loadMult:1,mec:2,mtc:100,duration:48},
+     s:{route:"inf",dosing:"repeated",D:1000,tinf:0.5,thalf:1,V:17,tau:8,nDoses:6,loadMult:1,mec:2,mtc:100,duration:48,mic:2},
      refs:[ref("thalf","1 h","meropenem","elimination half-life approximately 1 hour with normal renal function"),
        ref("V","17 L","meropenem","the label gives no volume; 17 L reproduces its mean peak of about 49 mcg/mL at the end of a 30-minute infusion of 1 g (and 25 against about 23 mcg/mL for 500 mg)"),
        ref("fe","0.7","meropenem","approximately 70% (50% to 75%) of the dose is excreted unchanged within 12 hours"),
@@ -1124,10 +1187,28 @@
        ref("dose","1 g every 8 hours over 30 minutes","meropenem","1 gram every 8 hours by intravenous infusion over 15 to 30 minutes (intra-abdominal infections); Table 1 lengthens the interval and halves the dose as creatinine clearance falls"),
        ref("target","time above the MIC","meropenem","the percentage of the dosing interval that unbound meropenem exceeds the MIC correlates best with efficacy in animal and in vitro models"),
        ref("window","2–100 mg/L","","the lower edge an illustrative MIC of 2 mg/L; the top is set above the peaks, since the label names no toxic level"),
-       ref("strengths","500 mg and 1 g vials","meropenem","single-dose vials of 500 mg or 1 gram")]}
+       ref("strengths","500 mg and 1 g vials","meropenem","single-dose vials of 500 mg or 1 gram"),
+       ref("MIC","2 mg/L","","an illustrative MIC")]},
+    // Piperacillin, the component the model follows: 3.375 g of piperacillin-tazobactam contains 3 g of piperacillin.
+    {id:"pip", name:"Piperacillin-tazobactam", sub:"3.375 g IV inf q6h", kinetics:"linear", fe:0.68, fu:0.7, S:1, units:"mg",
+     pkpd:{index:"ft", src:"zosyn", note:"the pharmacodynamic parameter most predictive of clinical and microbiological efficacy is time above MIC"},
+     strengths:{form:"piperacillin in 2.25, 3.375 and 4.5 g containers", mg:[2000,3000,4000]},
+     s:{route:"inf",dosing:"repeated",D:3000,tinf:0.5,thalf:0.84,V:15.1,tau:6,nDoses:8,loadMult:1,mec:16,mtc:250,duration:24,mic:16},
+     refs:[ref("dose","3,000 mg piperacillin (3.375 g) every 6 hours over 30 minutes","zosyn","3.375 g every 6 hours (12 g piperacillin a day) by 30-minute infusion; 4.5 g every 6 hours for nosocomial pneumonia. Doses here are the piperacillin in each dose"),
+       ref("thalf","0.84 h","zosyn","Table 7, 3.375 g every 6 hours: half-life 0.84 h (0.7 to 1.2 h across studies)"),
+       ref("V","15.1 L","zosyn","Table 7, 3.375 g: volume 15.1 L, clearance 207 mL/min, AUC 242 mcg·h/mL; the model reproduces the AUC (241) but its 30-minute peak, 164 mg/L, is below the label's 242, since one compartment doesn't show the distribution still going on when the infusion ends"),
+       ref("fe","0.68","zosyn","68% of a dose is excreted unchanged in the urine"),
+       ref("fu","0.7","zosyn","approximately 30% bound to plasma proteins"),
+       ref("renal","CrCl 20–40 mL/min: 2.25 g every 6 hours; below 20: 2.25 g every 8 hours","zosyn","Table 1, all indications except nosocomial pneumonia; hemodialysis removes 30% to 40% of a dose"),
+       ref("target","time above the MIC","zosyn","time above MIC is the parameter most predictive of efficacy; the label gives no number for it"),
+       ref("MIC","16 mg/L","fdaPtz","the FDA susceptible breakpoint for Pseudomonas aeruginosa is ≤16/4 mcg/mL"),
+       ref("extended","3.375 g over 4 hours every 8 hours","lodise2007","the extended-infusion scheme one hospital adopted; the label gives 30-minute infusions"),
+       ref("window","16–250 mg/L","","the lower edge the MIC; the top is set above the peaks, since the label names no toxic level"),
+       ref("strengths","2.25, 3.375, 4.5 g","zosyn","2 g, 3 g or 4 g of piperacillin with 0.25, 0.375 or 0.5 g of tazobactam")]}
   ];
   // The settings loading a drug sets, completed with the drug's own fe, S and units.
-  const drugScenario=d=> Object.assign({cmt:1, hep:0}, d.s, {fe:d.fe, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
+  // Loading a drug also sets its unbound fraction (1 where the library has none) and its MIC (0 where it has none).
+  const drugScenario=d=> Object.assign({cmt:1, hep:0, mic:0}, d.s, {fe:d.fe, fu:d.fu==null ? 1 : d.fu, S:d.S, unit:d.units, kin:d.kinetics==="michaelis-menten" ? "mm" : "linear"});
 
   // Each lesson loads `base` as the baseline and `cur` as the live scenario (both merged over DEFAULTS).
   // The claims in each text are checked against the model in tests/pk-engine.test.js.
@@ -1230,8 +1311,17 @@
      base:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800}, cur:{hep:1,route:"iv",D:500,V:150,fub:0.5,clint:1800,qh:45}},
     {id:"bayes", tag:"MAP", title:"One level and a prior", sum:"A single well-timed level, weighed against the patient model.", baseLabel:"patient model, no levels",
      view:{duration:108,mec:10,mtc:40},
-     base:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83},
-     cur:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83,lv:[{n:8,dt:11.9,c:24.8}]}}
+     base:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83,fu:0.45},
+     cur:{route:"inf",dosing:"repeated",D:750,thalf:4.8,V:28,tinf:1.25,tau:12,nDoses:20,wt:82,pm:"clinical",age:66,scr:1.4,fe:0.83,fu:0.45,lv:[{n:8,dt:11.9,c:24.8}]}},
+    // piperacillin from its label (3 g in each 3.375 g dose), against the FDA breakpoint for P. aeruginosa
+    {id:"ptz", tag:"fT>MIC", title:"Extended infusion", sum:"The same 12 g a day, longer above the MIC.", baseLabel:"3 g over 30 min",
+     view:{duration:24,mec:16,mtc:250,mic:16},
+     base:{route:"inf",dosing:"repeated",D:3000,tinf:0.5,thalf:0.84,V:15.1,tau:6,nDoses:8,fu:0.7},
+     cur:{route:"inf",dosing:"repeated",D:3000,tinf:3,thalf:0.84,V:15.1,tau:6,nDoses:8,fu:0.7}},
+    {id:"gcmax", tag:"Cmax/MIC", title:"Once daily vs divided", sum:"The same daily dose: peak vs time above the MIC.", baseLabel:"160 mg every 8 h",
+     view:{duration:48,mec:1,mtc:30,mic:1},
+     base:{route:"inf",dosing:"repeated",D:160,tinf:0.5,thalf:2.5,V:18,tau:8,nDoses:9,fu:0.85},
+     cur:{route:"inf",dosing:"repeated",D:480,tinf:0.5,thalf:2.5,V:18,tau:24,nDoses:3,fu:0.85}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1281,7 +1371,11 @@
     {id:"hepq", lesson:"hepq", title:"Liver blood flow halved (IV)", nameA:"Q 90 L/h", nameB:"Q 45 L/h",
      look:"B's clearance falls from 81.8 to 42.9 L/h, and its IV AUC almost doubles."},
     {id:"spacing", lesson:"spacing", title:"Evenly spaced vs bunched doses", nameA:"Every 6 h", nameB:"Four doses by 6 am",
-     look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."}
+     look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."},
+    {id:"ptz", lesson:"ptz", title:"Piperacillin: 30-minute vs 3-hour infusion", nameA:"Over 30 min", nameB:"Over 3 h",
+     look:"The same 3 g every 6 h. B peaks at 74 mg/L instead of 164, but its unbound level stays above the 16 mg/L MIC for 69% of each interval instead of 47%. AUC24/MIC is 60 for both."},
+    {id:"gcmax", lesson:"gcmax", title:"Gentamicin: divided vs once daily", nameA:"160 mg every 8 h", nameB:"480 mg every 24 h",
+     look:"The same 480 mg a day. B's Cmax/MIC is 24.9 instead of 9.3, its fT>MIC 48% instead of 99.5%, and AUC24/MIC is 96 for both."}
   ];
 
   /* ---------- lesson structure: predict, explain, try, challenge ---------- */
@@ -1289,10 +1383,10 @@
   // checks live, and why the idea matters; pk-lessons.js holds them, with each lesson's explanation and tip.
   const LESSON_GROUPS=[{id:"pk",title:"PK fundamentals"},{id:"rep",title:"Repeated dosing and steady state"},
     {id:"custom",title:"Custom regimens"},{id:"inf",title:"Infusion and route"},{id:"pd",title:"PK/PD concepts"},
-    {id:"liver",title:"Liver and first pass"},{id:"tdm",title:"Levels and individualization"}];
+    {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","bayes":"tdm"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
@@ -1381,8 +1475,10 @@
     });
     return out;
   }
-  // Unknown keys and invalid values are ignored; numbers are clamped to their allowed range.
-  function decodeScenario(str){
+  // Unknown keys and invalid values are ignored; numbers are clamped to their allowed range, and for a link older
+  // than v9 to the range its page had (a dose of at most 2,000 mg), so it opens exactly as it did there.
+  function decodeScenario(str, version){
+    const legacy=version!==undefined && version<9;
     const p=scenario();
     String(str||"").split(",").forEach(pair=>{
       const i=pair.indexOf(":");
@@ -1396,13 +1492,14 @@
       if(!isFinite(v)) return;
       if(k==="loadMult"||k==="cmt"||k==="hep"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
-      p[k]=clamp(v,RANGES[k]);
+      p[k]=clamp(v, legacy && V8_MAX[k] ? [RANGES[k][0], V8_MAX[k]] : RANGES[k]);
     });
     return normalizeScenario(p);
   }
   function encodeView(v){
     const out=[];
     ["duration","mec","mtc"].forEach(k=>{ if(v[k]!==VIEW_DEFAULTS[k]) out.push(k+":"+v[k]); });
+    if(v.mic>0) out.push("mic:"+v.mic);
     if(v.scale==="log") out.push("scale:log");
     if(v.zoom==="last") out.push("zoom:last");
     if(v.pd) out.push("pd:1");
@@ -1430,12 +1527,13 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV9=view.mic>0 || scen.some(p=>V9_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V8_MAX).some(k=>p[k]>V8_MAX[k]));
     const usesV8=scen.some(p=>p.lv && p.lv.length>0);
     const usesV7=scen.some(p=>V7_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1464,9 +1562,9 @@
     // A scenario link without a version is read as version 1 (the first links had none to give).
     if(!q.v && !("s" in q) && q.m!=="cmp") return null;
     // Links pasted through chat apps sometimes arrive with ':' and ',' percent-encoded.
-    const sc=s=>decodeScenario(safe(s||""));
     const name=s=>s ? cleanName(safe(s),40) : "";
     const st={version:q.v ? parseInt(q.v,10)||VERSION : 1, mode:q.m==="cmp"?"cmp":"sim", view:decodeView(safe(q.w||""))};
+    const sc=s=>decodeScenario(safe(s||""), st.version);
     // a newer version is still read best-effort, but flagged so the page can say settings may be missing
     st.newer=st.version>VERSION;
     if(st.mode==="cmp"){
@@ -1561,7 +1659,7 @@
   // generator to its check, over many seeds.
   const PRACTICE_TOPICS=[{id:"single",title:"Single dose"},{id:"rep",title:"Repeated dosing"},
     {id:"inf",title:"Infusions"},{id:"pd",title:"Concentration–effect"},{id:"nl",title:"Saturable (Michaelis–Menten)"},
-    {id:"liver",title:"Liver and first pass"}];
+    {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"}];
   // mulberry32: a small seedable generator of numbers in [0, 1)
   function seededRandom(seed){
     let a=seed>>>0;
@@ -1589,10 +1687,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=5;
+  const WS_VERSION=6;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
@@ -1838,7 +1936,7 @@
   return {VERSION, PK_KEYS, DEFAULTS, CHOICES, RANGES, VIEW_DEFAULTS, VIEW_RANGES, LOCKS, EVENT_LIMITS, scenario,
     cloneScenario, cloneEvents, normalizeEvents, EVENT_ROUTES, routeOf, nextEventTime, duplicateEventTime, MOVE_STEP, snapTime, moveEvent, eventsKey, doseSchedule, inspectAt, extrema, sameSetting, isRelevant, eventsFromBasic, doseTotals,
     keOf, vOf, missedOf, disposition, bolusResp, oralResp, infResp, aucPerMg, singleConc, doseEvents, conc, derived, windowStats, ssConc, ssProfile, infusionOverlap, compareRows, diff,
-    PD_KEYS, effectOf, concForEffect, effectStats, keqOf, ceConc, hepOn, wellStirred, fOf, LEVEL_LIMITS, normalizeLevels, levelsKey,
+    PD_KEYS, micStats, effectOf, concForEffect, effectStats, keqOf, ceConc, hepOn, wellStirred, fOf, LEVEL_LIMITS, normalizeLevels, levelsKey,
     DRUGS, TEMPLATES, LESSON_GROUPS, lessonStats, lessonCheck, lessonScenario, challengeMet,
     get LESSONS(){ return lessonsFull(); },
     get lessonModule(){ return lessonMod; }, set lessonModule(v){ attachLessons(v); },

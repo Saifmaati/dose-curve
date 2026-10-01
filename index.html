@@ -81,7 +81,7 @@
     --cyan-rgb:61,242,224; --violet-rgb:124,107,255; --green-rgb:59,229,138; --line-rgb:120,150,255;
     --pink-rgb:243,131,227; --rose-rgb:255,92,122; --amber-rgb:255,182,61;
     --hi:#fff; --text-2:#B9BEDF; --text-3:#C9D0E6; --text-4:#C4CCE4; --text-5:#D6DCEF; --text-6:#B9C1D9;
-    --rose-text:#FF8FA3; --violet-text:#B7A9FF; --violet-text-2:#B7ADFF; --amber-text:#F2C46B; --green-text:#7BE0A8;
+    --rose-text:#FF8FA3; --violet-text:#B7A9FF; --violet-text-2:#B7ADFF; --amber-text:#F2C46B; --green-text:#7BE0A8; --mic:#7FD4FF;
     --a-line:#3DF2E0; --b-line:#F383E3;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -287,6 +287,8 @@
   .legend .lk.band{height:10px;width:10px;border-radius:2px;background:var(--green-band);border:1px solid rgba(var(--green-rgb),.5)}
   .legend .lk.tox{background:var(--rose)}
   .legend .lk.popb{height:10px;width:14px;border-radius:2px;background:rgba(var(--cyan-rgb),.22)}
+  .legend .lk.mic{height:2px;background:repeating-linear-gradient(90deg,var(--mic) 0 2px,transparent 2px 5px)}
+  .legend .lk.unb{height:2px;background:repeating-linear-gradient(90deg,var(--text-2) 0 2px,transparent 2px 5px)}
 
   .plot-box{position:relative;padding:8px 14px 4px}
   #plot{display:block;width:100%;height:auto;touch-action:none}
@@ -899,7 +901,7 @@
     --cyan-rgb:8,117,109; --violet-rgb:90,72,219; --green-rgb:18,122,67; --line-rgb:40,60,130;
     --pink-rgb:162,51,138; --rose-rgb:191,31,60; --amber-rgb:149,87,0;
     --hi:#0B1020; --text-2:#2C3452; --text-3:#28304D; --text-4:#313A58; --text-5:#212842; --text-6:#384061;
-    --rose-text:#AD1C36; --violet-text:#4A39C2; --violet-text-2:#4A39C2; --amber-text:#835000; --green-text:#0E6A38;
+    --rose-text:#AD1C36; --violet-text:#4A39C2; --violet-text-2:#4A39C2; --amber-text:#835000; --green-text:#0E6A38; --mic:#1F6E99;
     --a-line:#08756D; --b-line:#A2338A}
   html.light #plot,html.light #effPlot,html.light #ecPlot,html.light #ssPlot,html.light #evStrip{filter:invert(1) hue-rotate(180deg)}
   html.light .panel{box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 14px 36px rgba(20,30,70,.08)}
@@ -946,7 +948,7 @@
     --cyan-rgb:8,117,109; --violet-rgb:90,72,219; --green-rgb:18,122,67; --line-rgb:40,60,130;
     --pink-rgb:162,51,138; --rose-rgb:191,31,60; --amber-rgb:149,87,0;
     --hi:#0B1020; --text-2:#2C3452; --text-3:#28304D; --text-4:#313A58; --text-5:#212842; --text-6:#384061;
-    --rose-text:#AD1C36; --violet-text:#4A39C2; --violet-text-2:#4A39C2; --amber-text:#835000; --green-text:#0E6A38;
+    --rose-text:#AD1C36; --violet-text:#4A39C2; --violet-text-2:#4A39C2; --amber-text:#835000; --green-text:#0E6A38; --mic:#1F6E99;
     --a-line:#08756D; --b-line:#A2338A}
     html:not(.light) #plot,html:not(.light) #effPlot,html:not(.light) #ecPlot,html:not(.light) #ssPlot{filter:invert(1) hue-rotate(180deg)}
     body{background:#fff !important}
@@ -1157,6 +1159,26 @@
               </div>
             </div>
             <p class="win-warn" id="winWarn" role="status" hidden></p>
+          </div>
+
+          <div class="sec" id="micSec">
+            <p class="sec-label">Antimicrobial PK/PD</p>
+            <div class="window-row">
+              <div class="num-field">
+                <label for="mic"><span class="swatch" style="background:var(--mic);box-shadow:0 0 8px var(--mic)"></span><span id="micLabel">MIC (mg/L)</span></label>
+                <input type="number" id="mic" step="0.25" min="0" max="10000">
+              </div>
+              <div class="num-field">
+                <label for="fuIn">Unbound fraction fu</label>
+                <input type="number" id="fuIn" step="0.05" min="0.01" max="1">
+              </div>
+            </div>
+            <div class="clin-math" id="micOut" aria-live="polite"></div>
+            <details class="ev-model">
+              <summary>How the indices are read</summary>
+              <p>fT&gt;MIC is the share of time the unbound level (fu × the total level, drawn dotted) stays above the MIC, with fu taken as constant. Cmax/MIC and AUC24/MIC use the total level, as the 2020 vancomycin guideline's AUC24/MIC does; fu times each gives the unbound version. A repeated regimen is read at steady state over one dosing interval (a loading or missed dose doesn't change it), with AUC24 = the AUC over one interval × 24 / τ. A single dose or a custom schedule is read over the time window, with the AUC over the first 24 hours. AUC24/MIC has units of hours (mg·h/L ÷ mg/L) and is usually quoted without one.</p>
+            </details>
+            <p class="clin-note">The MIC is the organism's, measured in the laboratory; 0 turns these readouts off. Educational model, not for clinical dosing.</p>
           </div>
 
           <div class="sec">
@@ -1644,7 +1666,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=88174f9b1b" defer></script>
+<script src="pk-engine.js?v=995d68d29e" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1660,7 +1682,7 @@
   /* ================= STATE ================= */
   // `state` holds the scenario the controls are editing plus the view settings (window, thresholds, scale, zoom).
   const state = Object.assign({}, DEFAULTS, {events:[], scale:"lin", view:"full", mec:2, mtc:12, duration:24, drug:null,
-    pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt});
+    pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt, mic:PK.VIEW_DEFAULTS.mic});
   const POP_VIEW=["pop","popn","pcl","pv","pseed","plo","phi"];
   POP_VIEW.forEach(k=> state[k]=PK.VIEW_DEFAULTS[k]);
   const snapshot=()=>{ const o={}; PK_KEYS.forEach(k=>o[k]=state[k]); o.events=PK.cloneEvents(state.events); o.lv=(state.lv||[]).map(l=>({n:l.n, dt:l.dt, c:l.c})); return o; };
@@ -1697,7 +1719,8 @@
 
   const ALL=["oral","iv","inf"];
   const SLIDERS = {
-    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"], fmt:v=>`${trim(v)} ${U().dose}`},
+    // the slider stops at 2,000 unless a dose needs more (piperacillin's 3 g and 4 g doses)
+    D:    {name:"Dose",               sym:"D",   step:25,   unit:"mg",  routes:ALL, dosing:["single","repeated"], fmt:v=>`${trim(v)} ${U().dose}`, range:()=> state.D>2000 ? PK.RANGES.D : [25,2000]},
     F:    {name:"Bioavailability",    sym:"F",   step:0.05, unit:"",    routes:["oral"]},
     ka:   {name:"Absorption rate",    sym:"kₐ",  step:0.05, unit:"h⁻¹", routes:["oral"]},
     tinf: {name:"Infusion duration",  sym:"T·inf", step:0.25, unit:"h", routes:["inf"]},
@@ -1886,6 +1909,46 @@
     const ss=PK.bayes.steadyState(PK.normalizeScenario(p));
     return (bzTarget={kind:"auc", value:+ss.auc24.toPrecision(3), auto:`the AUC24 the patient model predicted for ${trim(ss.D)} ${U().dose} every ${trim(ss.tau)} h`});
   }
+  /* ---------- antimicrobial PK/PD ---------- */
+  const micEl=byId("mic"), fuEl=byId("fuIn");
+  function syncMic(){ micEl.value=state.mic; fuEl.value=state.fu; }
+  micEl.addEventListener("input",()=>{ const v=parseFloat(micEl.value); if(isFinite(v) && v>=0){ state.mic=Math.min(PK.VIEW_RANGES.mic[1], v); render(); } });
+  fuEl.addEventListener("input",()=>{
+    const v=parseFloat(fuEl.value);
+    if(isFinite(v) && v>=0.01 && v<=1){ state.fu=v; state.drug=null; markDrug(); changed(["fu"]); }
+  });
+  // The library drug a scenario still is (its half-life, volume and units unchanged), for the index its sources name.
+  const pkpdDrug=p=> DRUGS.find(d=> d.pkpd && p.kin==="linear" && !PK.hepOn(p) && d.s.thalf===p.thalf && d.s.V===p.V && d.units===p.unit);
+  const INDEX_NAME={ft:"fT>MIC", cmax:"Cmax/MIC", auc:"AUC24/MIC"};
+  function renderMic(){
+    byId("micLabel").textContent=`MIC (${U().conc})`;
+    const out=byId("micOut");
+    if(!(state.mic>0)){ out.textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
+    const curves=chartCurves(), u=U(), mic=state.mic;
+    const rows=curves.map(cv=>({cv, m:PK.micStats(cv.p, mic, state.duration)}));
+    const name=r=> mode==="cmp" ? `<span style="color:${r.cv.col.css}">${r.cv.tag}</span> ` : r.cv.ghost ? "Baseline: " : rows.length>1 ? "Now: " : "";
+    const when=m=> m.ss ? `at steady state, over one ${trim(m.span)} h interval` : `over the ${trim(m.span)} h window (not a repeated regimen)`;
+    let h=rows.map(r=>{ const m=r.m;
+      return `<div class="cm-h">${name(r)}${when(m)}</div>`+
+        `fT&gt;MIC <b>${fmt(m.ft, m.ft>=99.5 && m.ft<100 || m.ft>0 && m.ft<0.5 ? 1 : 0)}%</b> · Cmax/MIC <b>${fmt(m.cmaxMic,1)}</b> · ${m.ss ? "AUC24" : "AUC0–24"}/MIC <b>${fmt(m.aucMic,0)}</b><br>`+
+        `<span>Cmax ${fmt(m.cmax,cdp(1))} ${u.conc}, ${m.ss ? "AUC24" : "AUC0–24"} ${fmt(m.auc24,0)} ${u.auc}; unbound: fCmax/MIC ${fmt(m.fcmaxMic,1)}, fAUC/MIC ${fmt(m.faucMic,0)}</span>`; }).join("");
+    const fus=[...new Set(rows.map(r=>r.m.fu))];
+    h+=`<div class="cm-h">Where the unbound level crosses the MIC</div>`+fus.map(fu=>
+      `fu ${trim(fu)}: a total level of ${trim(mic)} / ${trim(fu)} = ${fmt(mic/fu,cdp(1))} ${u.conc}`).join("<br>");
+    // the index and any target come from the drug's sources, never from a general rule
+    const drugs=[...new Set(curves.filter(cv=>!cv.ghost).map(cv=>pkpdDrug(cv.p)))];
+    h+=`<div class="cm-h">Index and target</div>`+drugs.map(d=>{
+      if(!d) return "No library drug matches this scenario, so no index or target is named: published targets differ by drug class, organism and infection model, and DoseCurve shows one only where a cited source gives it.";
+      const P=d.pkpd, src=PK.SOURCES[P.src], cite=`<a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite.split(".")[0])}</a>`;
+      let t=`${esc(d.name)}: ${INDEX_NAME[P.index]}. Its source: ${esc(P.note)} (${cite}).`;
+      if(P.lo!=null){
+        const m=rows.find(r=>!r.cv.ghost && pkpdDrug(r.cv.p)===d).m, v=m.aucMic;
+        t+=` This scenario's ${INDEX_NAME[P.index]} is ${fmt(v,0)}: ${v<P.lo ? "below" : v>P.hi ? "above" : "within"} ${P.lo}–${P.hi}.`;
+      } else t+=" No number is given for it, so none is shown.";
+      return t; }).join("<br>");
+    out.innerHTML=h;
+  }
+
   function renderBayes(){
     const box=byId("bzBox"), p=snapshot(), rel=PK.isRelevant("lv",p);
     box.hidden=!(state.pm==="clinical");
@@ -1947,6 +2010,7 @@
     renderClin();
     renderHep();
     renderBayes();
+    renderMic();
     if(state.pop) queueMicrotask(renderPop); else byId("popPanel").hidden=true;
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
@@ -2074,6 +2138,12 @@
       g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="#FF5C7A" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"/>`;
       g+=`<text x="${PW-M.r-4}" y="${y-6}" text-anchor="end" font-family="JetBrains Mono" font-size="9.5" fill="#FF5C7A">MTC</text>`;
     }
+    // the MIC, labelled at the left (the MEC's label is at the right, and the two are often the same level)
+    if(state.mic>0 && state.mic<=yTop && (!isLog || state.mic>=yFloor)){
+      const y=sy(state.mic);
+      g+=`<line x1="${M.l}" y1="${y}" x2="${PW-M.r}" y2="${y}" stroke="#7FD4FF" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.9"/>`;
+      lateLabels+=`<text x="${M.l+6}" y="${y-6}" font-family="JetBrains Mono" font-size="9.5" fill="#7FD4FF" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">MIC ${trim(state.mic)} ${U().conc}</text>`;
+    }
 
     // dose events (repeated regimens and custom schedules). Simulator: ticks under the axis with D-labels, LD
     // for a loading dose, a cross for a missed dose. Compare: A's ticks sit just above the axis and B's just
@@ -2137,6 +2207,13 @@
       // labelled where it runs furthest above plasma (after its peak), just above the dashes: free space
       const at=cv.raw.reduce((m,q,i)=> q.ce-q.c>cv.raw[m].ce-cv.raw[m].c ? i : m, 0), q=cv.raw[at];
       if(q.ce>q.c) lateLabels+=`<text x="${Math.min(Math.max(sx(q.t), M.l+40), PW-M.r-40)}" y="${sy(q.ce)-7}" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="${col}" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+" · ":""}effect site</text>`;
+    });
+    // with an MIC and a bound drug: the unbound level, dotted, which is what fT>MIC reads against the MIC line
+    if(state.mic>0) curves.filter(cv=>!cv.ghost && cv.p.fu<1).forEach(cv=>{
+      const col=cv.col ? cv.col.line : "#7FD4FF", pts=cv.raw.map(q=>({x:sx(q.t), y:sy(cv.p.fu*q.c)}));
+      g+=`<path d="${polyline(pts)}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.95"/>`;
+      const at=cv.raw.reduce((m,q,i)=> q.c>cv.raw[m].c ? i : m, 0), q=cv.raw[at];
+      lateLabels+=`<text x="${Math.min(Math.max(sx(q.t)+8, M.l+40), PW-M.r-70)}" y="${sy(cv.p.fu*q.c)+14}" font-family="JetBrains Mono" font-size="9.5" fill="${col}" stroke="#05070E" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${cv.tag?cv.tag+" · ":""}unbound (fu ${trim(cv.p.fu)})</text>`;
     });
 
     g+=lateLabels;
@@ -2848,7 +2925,7 @@
     panel.style.display="block"; empty.style.display="none";
 
     // numbers in the units shown (either side converted when the two differ); settings compared as they are
-    const C=PK.compareRows(inShown(a),inShown(b),state.duration,state.mec,state.mtc,state.pd?state.etgt:null);
+    const C=PK.compareRows(inShown(a),inShown(b),state.duration,state.mec,state.mtc,state.pd?state.etgt:null,state.mic);
     const diffs=paramDiffs(a,b);
     const chips=diffs.map(k=>`<span class="chip">${PLABEL[k][0]} ${pval(k,a)} → <b>${pval(k,b)}</b></span>`);
     if(moved(C.da.CL,C.db.CL)) chips.push(`<span class="chip eff">CL ${fmt(C.da.CL,2)} → <b>${fmt(C.db.CL,2)} L/h</b></span>`);
@@ -2879,6 +2956,10 @@
     }
     items.push(`<div class="li"><span class="lk band"></span>Therapeutic</div>`, `<div class="li"><span class="lk tox"></span>Toxic</div>`);
     if(state.pop) items.push(`<div class="li"><span class="lk popb"></span>Middle 90% of patients</div>`);
+    if(state.mic>0){
+      items.push(`<div class="li"><span class="lk mic"></span>MIC</div>`);
+      if(chartCurves().some(cv=>!cv.ghost && cv.p.fu<1)) items.push(`<div class="li"><span class="lk unb"></span>Unbound level</div>`);
+    }
     byId("legend").innerHTML=items.join("");
   }
 
@@ -3387,7 +3468,7 @@
     setSegVal("doseSeg","dosing",state.dosing);
     setSegVal("loadSeg","load",state.loadMult);
     setSegVal("scaleSeg","scale",state.scale);
-    markDrug(); buildSliders(); syncWindow(); syncPd();
+    markDrug(); buildSliders(); syncWindow(); syncPd(); syncMic();
   }
 
   /* ================= CUSTOM SCHEDULE ================= */
@@ -4008,7 +4089,8 @@
   }
   // The selected drug's profile and where each value comes from.
   const REF_NAME={thalf:"Half-life", V:"Volume (70 kg)", F:"Bioavailability F", ka:"Absorption kₐ", fe:"Renal fraction fe", fu:"Unbound fraction fu",
-    S:"Salt factor S", window:"Window", strengths:"Strengths", round:"Dose rounding", dose:"Usual dose", target:"Target", smoking:"Smoking", model:"Model"};
+    S:"Salt factor S", window:"Window", strengths:"Strengths", round:"Dose rounding", dose:"Usual dose", target:"Target", smoking:"Smoking", model:"Model",
+    MIC:"MIC", renal:"Kidney function", extended:"Extended infusion"};
   // The measured-level tool shows while the scenario is still phenytoin's (saturable), even after edits.
   let lastDrug=null;
   function renderST(){
@@ -4096,7 +4178,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=8e7a91d3f0";
+  const GLOSS_SRC="pk-glossary.js?v=c513a442f5";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4130,7 +4212,7 @@
     exitFit(); exitWindow();
     Object.assign(state,DEFAULTS,L.base);
     baseline={p:snapshot(), label:L.baseLabel};
-    Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt, scale:PK.VIEW_DEFAULTS.scale},L.cur,L.view);   // a lesson sets the effect charts and the scale
+    Object.assign(state,DEFAULTS,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt, scale:PK.VIEW_DEFAULTS.scale, mic:PK.VIEW_DEFAULTS.mic},L.cur,L.view);   // a lesson sets the effect charts and the scale
     state.events=PK.cloneEvents(state.events);   // the lesson's own schedule is never edited
     state.view="full"; state.drug=null;
     lesson=L;
@@ -4167,7 +4249,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=45486c5cf5";
+  const LESSON_SRC="pk-lessons.js?v=bdb7e20844";
   let lessonLoad=null;
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -4503,7 +4585,7 @@
     cmp.a=PK.scenario(L.base); cmp.b=PK.scenario(L.cur);
     cmp.names={a:t.nameA, b:t.nameB};
     cmp.lock=""; cmp.edit="b";
-    Object.assign(state,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt},L.view);
+    Object.assign(state,{pd:PK.VIEW_DEFAULTS.pd, etgt:PK.VIEW_DEFAULTS.etgt, mic:PK.VIEW_DEFAULTS.mic},L.view);
     state.view="full"; state.drug=null;
     loadScenario(cmp.b);
     setTemplate(t);
@@ -4736,7 +4818,7 @@
 
   /* ================= SHARE LINKS ================= */
   function linkState(){
-    const view={duration:state.duration, mec:state.mec, mtc:state.mtc, scale:state.scale, zoom:state.view, pd:state.pd, etgt:state.etgt};
+    const view={duration:state.duration, mec:state.mec, mtc:state.mtc, scale:state.scale, zoom:state.view, pd:state.pd, etgt:state.etgt, mic:state.mic};
     POP_VIEW.forEach(k=> view[k]=state[k]);
     if(mode==="cmp"){
       cmp[cmp.edit]=snapshot();
@@ -4845,7 +4927,7 @@
   // scenario loaded from the library (which doesn't show the "opened from a shared link" notice).
   function applyLink(st, fromLibrary){
     pause(); cursorT=null; evSel=null;
-    const view={duration:st.view.duration, mec:st.view.mec, mtc:st.view.mtc, scale:st.view.scale, view:st.view.zoom, pd:st.view.pd, etgt:st.view.etgt};
+    const view={duration:st.view.duration, mec:st.view.mec, mtc:st.view.mtc, scale:st.view.scale, view:st.view.zoom, pd:st.view.pd, etgt:st.view.etgt, mic:st.view.mic};
     POP_VIEW.forEach(k=>{ if(st.view[k]!==undefined) view[k]=st.view[k]; });
     if(st.mode==="cmp"){
       showTab("cmp");                       // enters Compare if needed, keeping the simulator scenario aside
@@ -5003,7 +5085,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=558540efae";
+  const PRACTICE_SRC="pk-practice.js?v=23ef65c7e9";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();
@@ -5087,7 +5169,7 @@
     loadScenario(PK.practiceScenario(prob));
     const v=prob.view;
     Object.assign(state,{duration:v.duration, mec:v.mec, mtc:v.mtc, scale:v.scale, view:v.zoom==="last" ? "last" : "full",
-      pd:v.pd, etgt:v.etgt, drug:null});
+      pd:v.pd, etgt:v.etgt, mic:v.mic, drug:null});
     baseline=null; updateBaselineUI();   // an earlier baseline belongs to an unrelated scenario
     evSel=null;
     syncControls(); render();
@@ -5199,7 +5281,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=1dd6fa6c02";
+  const CASES_SRC="cases.js?v=871f6d619f";
   let casesReady=null, casesMounted=false;
   // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){

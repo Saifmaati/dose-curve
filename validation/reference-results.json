@@ -7271,5 +7271,286 @@
     }
    }
   ]
+ },
+ "pkpd": {
+  "about": "fT>MIC (% of a steady-state interval with the unbound level above the MIC), Cmax/MIC and AUC24/MIC for 12 regimens, each run to steady state in the ODE solver.",
+  "tolerance": {
+   "ft_pp": 0.01,
+   "ratio": 0.0001
+  },
+  "scenarios": [
+   {
+    "name": "piperacillin 3 g q6h over 30 min, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 0.5
+    },
+    "reference": {
+     "ft_pct": 47.22032249579442,
+     "cmax_mic": 10.246889932371435,
+     "auc24_mic": 60.19191230198976
+    }
+   },
+   {
+    "name": "piperacillin 3 g q6h over 3 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 3
+    },
+    "reference": {
+     "ft_pct": 68.59723593033233,
+     "cmax_mic": 4.626792624079002,
+     "auc24_mic": 60.191912301989646
+    }
+   },
+   {
+    "name": "piperacillin 3 g q6h continuous (6 h), MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 6
+    },
+    "reference": {
+     "ft_pct": 100.0,
+     "cmax_mic": 2.5079963459162724,
+     "auc24_mic": 60.191912301988566
+    }
+   },
+   {
+    "name": "piperacillin 3 g q8h over 4 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 3000,
+     "tau": 8,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 4
+    },
+    "reference": {
+     "ft_pct": 57.43268481162698,
+     "cmax_mic": 3.628266322300306,
+     "auc24_mic": 45.14393422649245
+    }
+   },
+   {
+    "name": "piperacillin 2 g q6h over 30 min, CrCl 31, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 62,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 2000,
+     "tau": 6,
+     "thalf": 0.84,
+     "V": 15.1,
+     "fu": 0.7,
+     "tinf": 0.5,
+     "pm": "clinical",
+     "age": 72,
+     "sex": "F",
+     "scr": 1.6,
+     "fe": 0.68
+    },
+    "reference": {
+     "ft_pct": 83.90962931665011,
+     "cmax_mic": 9.243551877813887,
+     "auc24_mic": 91.29130525724656
+    }
+   },
+   {
+    "name": "meropenem 1 g q8h over 30 min, MIC 2",
+    "mic": 2,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 8,
+     "tinf": 0.5,
+     "thalf": 1,
+     "V": 17,
+     "fu": 0.98
+    },
+    "reference": {
+     "ft_pct": 63.711600376526434,
+     "cmax_mic": 24.953686767888378,
+     "auc24_mic": 127.29662125490796
+    }
+   },
+   {
+    "name": "gentamicin 160 mg q8h over 30 min, MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 160,
+     "tau": 8,
+     "tinf": 0.5,
+     "thalf": 2.5,
+     "V": 18,
+     "fu": 0.85
+    },
+    "reference": {
+     "ft_pct": 99.51942301801608,
+     "cmax_mic": 9.313784379933471,
+     "auc24_mic": 96.17966939231303
+    }
+   },
+   {
+    "name": "gentamicin 480 mg q24h over 30 min, MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 480,
+     "tau": 24,
+     "tinf": 0.5,
+     "thalf": 2.5,
+     "V": 18,
+     "fu": 0.85
+    },
+    "reference": {
+     "ft_pct": 47.88481068946631,
+     "cmax_mic": 24.9329361818514,
+     "auc24_mic": 96.17966939259736
+    }
+   },
+   {
+    "name": "vancomycin 1 g q12h over 1 h, MIC 8",
+    "mic": 8,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 12,
+     "tinf": 1,
+     "thalf": 4.8,
+     "V": 28,
+     "fu": 0.45
+    },
+    "reference": {
+     "ft_pct": 53.35280704568248,
+     "cmax_mic": 5.049569058169816,
+     "auc24_mic": 61.82978746473418
+    }
+   },
+   {
+    "name": "oral 500 mg q8h (F 0.9, ka 1), MIC 1",
+    "mic": 1,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "oral",
+     "D": 500,
+     "tau": 8,
+     "F": 0.9,
+     "ka": 1.0,
+     "thalf": 1,
+     "V": 27,
+     "fu": 0.8
+    },
+    "reference": {
+     "ft_pct": 63.04558015358914,
+     "cmax_mic": 7.370569098654546,
+     "auc24_mic": 72.13475204444747
+    }
+   },
+   {
+    "name": "IV bolus 1 g q8h, MIC 4",
+    "mic": 4,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "iv",
+     "D": 1000,
+     "tau": 8,
+     "thalf": 2,
+     "V": 20,
+     "fu": 0.6
+    },
+    "reference": {
+     "ft_pct": 74.99999999963158,
+     "cmax_mic": 13.333333333324024,
+     "auc24_mic": 108.20212806657355
+    }
+   },
+   {
+    "name": "two compartments, 1 g q12h over 1 h, MIC 16",
+    "mic": 16,
+    "scenario": {
+     "wt": 70,
+     "dosing": "repeated",
+     "loadMult": 1,
+     "missed": 1,
+     "route": "inf",
+     "D": 1000,
+     "tau": 12,
+     "tinf": 1,
+     "thalf": 3,
+     "V": 14,
+     "cmt": 2,
+     "k12": 0.5,
+     "k21": 0.3,
+     "fu": 0.9
+    },
+    "reference": {
+     "ft_pct": 70.29734569386694,
+     "cmax_mic": 4.041000084529458,
+     "auc24_mic": 38.643617161409
+    }
+   }
+  ]
  }
 }

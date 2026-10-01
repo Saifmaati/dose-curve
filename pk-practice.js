@@ -10,7 +10,7 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {PRACTICE_TOPICS, VIEW_DEFAULTS, WORKSHEET_SIZES, WS_VERSION, conc, derived, disposition, doseEvents, effectOf, effectStats, keOf,
-    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf}=PK;
+    mmCss, mmSteady, normalizeScenario, scenario, seededRandom, ssConc, ssPeakTrough, twoLevelAUC, crclCG, renalFactor, vOf, fOf, micStats}=PK;
   const {drawFrom, evenUp, nf, sig4, until}=PK.practiceHelpers;
 
   const step=s=>`<span class="step">${s}</span>`;
@@ -469,6 +469,51 @@
           step(`By mouth the AUC would change by exactly 1/${m} = ${nf(1/m,3)} whatever the extraction, because oral AUC = fabs·D / (fu·CLint).`)],
         viz:{route:"iv", D:500, V:100, hep:1, qh:Q, fub:fu, clint:c1}, view:{duration:24}, at:0,
         check:p=> derived(p).auc/derived(Object.assign({}, p, {clint:c0})).auc};
+    }},
+    /* ----- antimicrobial PK/PD ----- */
+    // Each reads one interval at steady state (the regimen is charted to within 0.1% of it), with the MIC line on.
+    {id:"ftmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const x=until(()=>{ const D=d(250,2000,250), V=d(10,40,1), th=d(0.5,3,0.25), tau=pick([4,6,8,12]), fu=d(0.5,1,0.05), mic=pick([0.5,1,2,4,8,16]);
+        const k=Math.LN2/th, c0=D/V/(1-Math.exp(-k*tau)), thr=mic/fu;
+        return {D,V,th,tau,fu,mic,k,c0,thr,tr:c0*Math.exp(-k*tau),t:Math.log(c0/thr)/k}; }, x=> x.thr<0.8*x.c0 && x.thr>1.5*x.tr && ssFits(x.th,x.tau));
+      const {D,V,th,tau,fu,mic,k,c0,thr,tr,t}=x, n=Math.max(2, ssDoses(th,tau)), ft=100*t/tau, dur=evenUp(n*tau);
+      return {type:"Time above the MIC (fT>MIC)", unit:"%", dp:1, ans:ft,
+        q:`An antibiotic is given as a <b>${D} mg</b> IV bolus every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>, unbound fraction fu = <b>${fu}</b>). The organism's MIC is <b>${mic} mg/L</b>. At steady state, for what percentage of each dosing interval is the unbound level above the MIC?`,
+        sol:[step(`kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>`),
+          step(`The steady-state peak, just after a dose: <b>C₀,ss = (D / V) / (1 − e^(−kₑτ))</b> = (${D} / ${V}) / (1 − e^(−${nf(k,4)} × ${tau})) = <b>${nf(c0,2)} mg/L</b>. It falls to ${nf(tr,2)} mg/L before the next dose.`),
+          step(`The unbound level is fu × the total, so it is above the MIC while the total is above MIC / fu = ${mic} / ${fu} = <b>${nf(thr,3)} mg/L</b>.`),
+          step(`The total level falls to that point after <b>t = ln(C₀,ss / (MIC / fu)) / kₑ</b> = ln(${nf(c0,2)} / ${nf(thr,3)}) / ${nf(k,4)} = <b>${nf(t,3)} h</b>`),
+          step(`fT>MIC = t / τ = ${nf(t,3)} / ${tau} = <b>${nf(ft,1)}%</b>`)],
+        viz:{route:"iv", dosing:"repeated", D, V, thalf:th, tau, nDoses:n, fu}, view:{duration:dur, mec:0, mtc:0, mic}, at:(n-1)*tau+t,
+        check:p=> micStats(p, mic, dur).ft};
+    }},
+    {id:"cmaxmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const x=until(()=>{ const D=d(80,600,20), V=d(12,30,1), th=d(1.5,4,0.5), tau=pick([8,12,24]), tinf=pick([0.5,1]), mic=pick([0.25,0.5,1,2]);
+        const k=Math.LN2/th, CL=k*V, cmax=D/tinf/CL*(1-Math.exp(-k*tinf))/(1-Math.exp(-k*tau));
+        return {D,V,th,tau,tinf,mic,k,CL,cmax}; }, x=> ssFits(x.th,x.tau) && x.cmax/x.mic>=2 && x.cmax/x.mic<=60);
+      const {D,V,th,tau,tinf,mic,k,CL,cmax}=x, n=Math.max(2, ssDoses(th,tau)), r=cmax/mic, dur=evenUp(n*tau);
+      return {type:"Peak over MIC (Cmax/MIC)", unit:"×", dp:1, ans:r,
+        q:`An antibiotic is given as <b>${D} mg</b> infused over <b>${tinf} h</b> every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). The organism's MIC is <b>${mic} mg/L</b>. What is Cmax/MIC at steady state, using the total peak level?`,
+        sol:[step(`kₑ = ${LN2} / ${th} = <b>${nf(k,4)} h⁻¹</b>, and CL = kₑ·V = <b>${nf(CL,3)} L/h</b>. The infusion runs at R = ${D} / ${tinf} = <b>${nf(D/tinf,1)} mg/h</b>.`),
+          step(`The peak comes as each infusion ends: <b>Cmax,ss = (R / CL)·(1 − e^(−kₑ·T)) / (1 − e^(−kₑτ))</b> = (${nf(D/tinf,1)} / ${nf(CL,3)}) × (1 − e^(−${nf(k,4)} × ${tinf})) / (1 − e^(−${nf(k,4)} × ${tau})) = <b>${nf(cmax,2)} mg/L</b>`),
+          step(`Cmax/MIC = ${nf(cmax,2)} / ${mic} = <b>${nf(r,1)}</b>`)],
+        viz:{route:"inf", dosing:"repeated", D, V, thalf:th, tau, tinf, nDoses:n}, view:{duration:dur, mec:0, mtc:0, mic}, at:(n-1)*tau+tinf,
+        check:p=> micStats(p, mic, dur).cmaxMic};
+    }},
+    {id:"aucmic", topic:"abx", since:6, gen(d){
+      const pick=(list)=> list[Math.round(d(0,list.length-1,1))];
+      const D=d(500,2000,250), tau=pick([8,12,24]), V=d(30,80,5), th=d(4,12,1), mic=pick([0.5,1,2]);
+      const k=Math.LN2/th, CL=k*V, daily=D*24/tau, auc=daily/CL, r=auc/mic, n=Math.max(2, ssDoses(th,tau)), dur=evenUp(n*tau);
+      return {type:"Exposure over MIC (AUC24/MIC)", unit:"h", dp:0, ans:r,
+        q:`An antibiotic is given as <b>${D} mg</b> infused over 1 h every <b>${tau} h</b> (V = <b>${V} L</b>, t½ = <b>${th} h</b>). The organism's MIC is <b>${mic} mg/L</b>. What is AUC24/MIC at steady state (AUC24 in mg·h/L, divided by the MIC in mg/L)?`,
+        sol:[step(`CL = ${LN2} × V / t½ = ${LN2} × ${V} / ${th} = <b>${nf(CL,3)} L/h</b>`),
+          step(`The daily dose is ${D} × 24 / ${tau} = <b>${nf(daily,0)} mg</b>, and at steady state <b>AUC24 = daily dose / CL</b> = ${nf(daily,0)} / ${nf(CL,3)} = <b>${nf(auc,1)} mg·h/L</b>`),
+          step(`AUC24/MIC = ${nf(auc,1)} / ${mic} = <b>${nf(r,0)}</b>`),
+          step(`The infusion time and the interval don't matter here: only the daily dose and the clearance do.`)],
+        viz:{route:"inf", dosing:"repeated", D, V, thalf:th, tau, tinf:1, nDoses:n}, view:{duration:dur, mec:0, mtc:0, mic},
+        check:p=> micStats(p, mic, dur).aucMic};
     }},
   ];
   // A problem: from one topic (or any), of one kind (or any), from a seed (or a random one).

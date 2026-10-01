@@ -105,6 +105,27 @@
      also:"The infection and its site, the organism's actual MIC, whether kidney function is changing, dialysis (the table doesn't cover it), seizure risk, and interacting drugs such as valproic acid, whose levels meropenem can lower.",
      refs:["meropenem","cg"]},
 
+    {id:"ptz-renal", drug:"pip", title:"Piperacillin-tazobactam with reduced kidney function", tag:"Penicillin · label renal table · fT>MIC",
+     patient:{age:72, sex:"F", ht:160, wt:62, scr:1.6},
+     indication:"A complicated intra-abdominal infection, with Pseudomonas aeruginosa among the organisms considered: the MIC is taken as 16 mg/L, the FDA susceptible breakpoint. She was started on the usual 3.375 g every 6 hours, infused over 30 minutes, and her kidney function is reduced.",
+     target:{kind:"table", mic:16, unbound:true, rows:[{gt:40, tau:6, D:3000}, {ge:20, tau:6, D:2000}, {ge:0, tau:8, D:2000}],
+       why:"The label's Table 1 (all indications except nosocomial pneumonia) sets the dose by Cockcroft–Gault creatinine clearance: above 40 mL/min, 3.375 g every 6 hours; 20 to 40, 2.25 g every 6 hours; below 20, 2.25 g every 8 hours. Doses here are the piperacillin in each, 3,000 or 2,000 mg. The label names time above the MIC as the index most predictive of efficacy; the model reads it on the unbound level (fu 0.7, from the label's 30% binding)."},
+     choices:{step:1000, min:2000, max:4000, taus:[6,8,12], tinf:0.5},
+     start:{D:3000, tau:6},
+     task:"Work out her creatinine clearance, find her row in the label's renal table, and choose the piperacillin dose and interval it gives. Then compare fT>MIC with the same regimen infused over 3 hours.",
+     plan(x){ const row=tableRow(this.target, x.crcl), D=row.D, ft=(reg, tinf)=> PK.micStats(Object.assign(caseScenario(this, reg), tinf ? {tinf} : {}), this.target.mic, 24);
+       const cur=ft(this.start), nxt=ft({D, tau:row.tau}), ext=ft({D, tau:row.tau}, 3), lod=ft({D:3000, tau:8}, 4), k0=LN2/drugOf("pip").s.thalf;
+       const norm=PK.micStats(PK.normalizeScenario(PK.scenario(PK.drugScenario(drugOf("pip")))), this.target.mic, 24), mg=v=> v.toLocaleString("en-US");
+       return {reg:{D, tau:row.tau}, steps:[
+         `Her creatinine clearance, ${nf(x.crcl,0)} mL/min, falls in the label's row for ${row.gt!==undefined ? `more than ${row.gt}` : row.ge===20 ? "20 to 40" : "less than 20"} mL/min: <b>${row.D===3000 ? "3.375 g" : "2.25 g"} every ${row.tau} hours</b>, so ${mg(D)} mg of piperacillin every ${row.tau} h.`,
+         `Why less drug is needed: with 68% of piperacillin excreted unchanged by the kidneys, her clearance factor is (1 − 0.68) + 0.68 × ${nf(x.crcl,0)} / 120 = ${nf(x.factor,2)}, so her half-life is ${nf(x.th,2)} h instead of ${nf(LN2/k0,2)} h.`,
+         `The unbound level (fu 0.7) is above the 16 mg/L MIC while the total level is above 16 / 0.7 = ${nf(16/0.7,1)} mg/L. On the 3,000 mg every 6 hours she started on, that is ${nf(cur.ft,0)}% of each interval, with an AUC24 of ${nf(cur.auc24,0)} mg·h/L, ${nf(cur.auc24/norm.auc24,1)} times the ${nf(norm.auc24,0)} of the same regimen with normal kidneys. On ${mg(D)} mg every ${row.tau} hours it is ${nf(nxt.ft,0)}%, with an AUC24 of ${nf(nxt.auc24,0)}. With normal kidneys, 3,000 mg every 6 hours over 30 minutes gives ${nf(norm.ft,0)}%: her slower clearance keeps each dose above the MIC for longer.`,
+         `The same ${mg(D)} mg every ${row.tau} hours infused over 3 hours gives ${nf(ext.ft,0)}% with the same AUC24. For comparison, the extended-infusion scheme of Lodise et al. (3.375 g over 4 hours every 8 hours) gives ${nf(lod.ft,0)}% in her, with an AUC24 of ${nf(lod.auc24,0)} mg·h/L. The label's table is written for 30-minute infusions.`]};
+     },
+     wrong:[{reg:{D:3000, tau:6}, hint:"tableDose"}, {reg:{D:2000, tau:8}, hint:"tableInterval"}],
+     also:"The infection's source and severity, the organism's measured MIC, whether her kidney function is changing, dialysis (hemodialysis removes 30% to 40% of a dose and has its own row in the label), the sodium each dose carries (65 mg per gram of piperacillin), and her other drugs: kidney injury has been reported more often when piperacillin-tazobactam is given with vancomycin.",
+     refs:["zosyn","fdaPtz","lodise2007","cg"]},
+
     {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
@@ -335,7 +356,8 @@
   // The window a case opens the simulator with (and whose lower bound sets the Bayesian estimate's additive error).
   function caseWindow(c){
     const t=c.target, d=drugOf(c.drug);
-    return t.kind==="table" ? {mec:t.mic, mtc:d.s.mtc} : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
+    // a case read on the unbound level against an MIC opens with that MIC, so the simulator's readouts are the case's
+    return t.kind==="table" ? Object.assign({mec:t.mic, mtc:d.s.mtc}, t.unbound ? {mic:t.mic} : {}) : t.kind==="pt" ? {mec:t.troughMin!=null ? t.troughMin : t.peak[0], mtc:t.peak[1]} : t.kind==="at" ? {mec:t.range[0], mtc:t.range[1]}
       : t.kind==="css" ? {mec:t.css[0], mtc:t.css[1]} : {mec:d.s.mec, mtc:d.s.mtc};
   }
   // Bayesian cases: levels drawn on the current regimen from the patient as he really is (the premise), each with the
@@ -420,7 +442,9 @@
     else m.auc24=PK.derived(p).auc*24/p.tau;
     if(c.target.kind==="at" && !m.none) m.atLevel=PK.ssConc(p, Math.min(c.target.at, p.tau-1e-9));
     // the share of a steady-state interval above the MIC (sampled finely; shown to the nearest percent)
-    if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
+    // (with `unbound`, the unbound level's share, read exactly by micStats; the meropenem case keeps its total level)
+    if(c.target.unbound) m.aboveMic=PK.micStats(p, c.target.mic, 24).ft;
+    else if(c.target.mic!=null && !m.none){ let n=0; const N=4000; for(let i=0;i<N;i++) if(PK.ssConc(p, p.tau*(i+0.5)/N)>=c.target.mic) n++; m.aboveMic=100*n/N; }
     // hours each interval spends below 1 mg/L at steady state (the drug-free stretch of extended-interval dosing)
     if(!m.none && p.unit==="mg"){ let below=0; const N=240; for(let i=0;i<N;i++){ if(PK.ssConc(p, p.tau*(i+0.5)/N)<1) below+=p.tau/N; } m.below1=below; }
     return m;
@@ -445,7 +469,7 @@
       const doseOk=Math.abs(perKg-t.perKg)<=0.35+1e-9, tauOk=!!band && reg.tau===band[1];
       ok=doseOk && tauOk; hint=ok ? null : !doseOk ? "hartfordDose" : "hartfordInterval";
     } else if(t.kind==="table"){
-      const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-t.dose*row.frac)<1e-9;
+      const row=tableRow(t, tableCrcl(t, p)), tauOk=reg.tau===row.tau, doseOk=row.lo!=null ? reg.D>=row.lo-1e-9 && reg.D<=row.hi+1e-9 : Math.abs(reg.D-(row.D!=null ? row.D : t.dose*row.frac))<1e-9;
       ok=tauOk && doseOk; hint=ok ? null : !tauOk ? "tableInterval" : "tableDose";
     } else if(t.kind==="at"){
       const lo=m.atLevel<t.range[0], hi=m.atLevel>t.range[1], pkHi=m.peak>=t.peakMax;

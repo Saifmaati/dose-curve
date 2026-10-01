@@ -16,6 +16,9 @@ The model:
     elimination  ke*A  (first-order), or Vmax*C/(Km + C) with C = A/V (Michaelis-Menten)
     effect site  dCe/dt = ke0*(C - Ce), ke0 = ln 2 / teq  (scenarios with an effect-site delay are read at the
                  effect site: its peak, trough, area and time in window)
+    antimicrobial indices: a regimen run until it repeats itself (30 terminal half-lives), then its last interval
+                 read for the time the unbound level fu*C is above the MIC, the peak over the MIC, and the area over
+                 the interval scaled to 24 h over the MIC
     V = V70 * weight / 70
     clearance factor: simple mode, organ function % / 100; clinical mode, (1 - fe) + fe * CrCl / 120, where
     CrCl = (140 - age) * weight / (72 * SCr), * 0.85 for women (Cockcroft-Gault)
@@ -53,7 +56,7 @@ def doses(p):
         return out
     return [(e["t"], e["mg"], e.get("route", route), e.get("dur", tinf)) for e in p["events"] if e.get("status", "given") == "given"]
 
-def simulate(p):
+def simulate(p, t_end=T_END):
     V = p["V"] * p["wt"] / 70.0
     fac, S, F, ka = factor(p), p.get("S", 1.0), p.get("F", 1.0), p.get("ka", 1.0)
     mm = p.get("kin") == "mm"
@@ -63,7 +66,7 @@ def simulate(p):
     k12, k21 = (p["k12"], p["k21"]) if p.get("cmt") == 2 and not mm else (0.0, 0.0)
     ke0 = math.log(2) / p["teq"] if p.get("teq", 0) > 0 and not mm else None
     ds = doses(p)
-    cuts = sorted({0.0, T_END} | {t for t, *_ in ds if t < T_END} | {t + d for t, _, r, d in ds if r == "inf" and t + d < T_END})
+    cuts = sorted({0.0, t_end} | {t for t, *_ in ds if t < t_end} | {t + d for t, _, r, d in ds if r == "inf" and t + d < t_end})
 
     def rate(t):
         return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
@@ -95,7 +98,7 @@ def simulate(p):
 
     def conc(t):
         for s0, s1, f in pieces:
-            if s0 <= t < s1 or (t == s1 == T_END):
+            if s0 <= t < s1 or (t == s1 == t_end):
                 return level(f(t))
         return level(y)
 
@@ -191,6 +194,71 @@ def matrix():
         out.append({"id": f"{dname}-mixed-custom-effect", "drug": dname, "route": "mixed", "regimen": "custom", "patient": "reduced", "site": "effect", "scenario": p})
     return out
 
+# ---------------- antimicrobial PK/PD indices ----------------
+# Steady state by brute force: enough doses for 30 terminal half-lives (checked to repeat to 1e-9), then the final
+# interval sampled every tau/20000 h, each crossing of MIC/fu refined by bisection on the dense ODE solution, the peak
+# by golden-section search, and the area from the solver's accumulated-area state.
+def pkpd_reference(p, mic):
+    fac = factor(p)
+    ke = math.log(2) / p["thalf"] * fac
+    if p.get("cmt") == 2:   # the slowest of the two exponentials sets how long steady state takes
+        a, b = ke + p["k12"] + p["k21"], ke * p["k21"]
+        ke = (a - math.sqrt(a * a - 4 * b)) / 2
+    tau = p["tau"]
+    n = int(math.ceil(30 * math.log(2) / ke / tau)) + 2
+    q = dict(p, dosing="repeated", nDoses=n, loadMult=1, missed=1)
+    t_end = n * tau
+    conc, _, pieces, level = simulate(q, t_end)
+    t0, t1 = (n - 1) * tau, t_end
+    assert abs(conc(t0 - 1e-9) - conc(t0 - tau - 1e-9)) <= 1e-9 * max(1.0, conc(t0 - 1e-9)), "not yet at steady state"
+    fu, thr = p.get("fu", 1.0), mic / p.get("fu", 1.0)
+    grid = np.linspace(t0, t1, 20001)
+    cs = np.array([conc(t) for t in grid[:-1]] + [conc(t1 - 1e-12)])
+    def cross(a, b):
+        up = conc(a) < thr
+        for _ in range(80):
+            m = (a + b) / 2
+            if (conc(m) >= thr) == up: b = m
+            else: a = m
+        return (a + b) / 2
+    above = 0.0
+    for k in range(1, len(grid)):
+        c0, c1 = cs[k - 1], cs[k]
+        if c0 >= thr and c1 >= thr: above += grid[k] - grid[k - 1]
+        elif c0 < thr <= c1: above += grid[k] - cross(grid[k - 1], grid[k])
+        elif c1 < thr <= c0: above += cross(grid[k - 1], grid[k]) - grid[k - 1]
+    i = int(np.argmax(cs))
+    lo, hi = grid[max(i - 1, 0)], grid[min(i + 1, len(grid) - 1)]
+    for _ in range(80):
+        a, b = lo + (hi - lo) * 0.382, lo + (hi - lo) * 0.618
+        if conc(a) < conc(b): lo = a
+        else: hi = b
+    cmax = max(cs[i], conc((lo + hi) / 2))
+    def area_at(t):
+        for s0, s1, f in pieces:
+            if s0 <= t <= s1: return f(t)[2]
+    auc24 = (area_at(t1) - area_at(t0)) * 24 / tau
+    return {"ft_pct": 100 * above / tau, "cmax_mic": cmax / mic, "auc24_mic": auc24 / mic}
+
+def pkpd_matrix():
+    base = {"wt": 70, "dosing": "repeated", "loadMult": 1, "missed": 1}
+    pip = dict(route="inf", D=3000, tau=6, thalf=0.84, V=15.1, fu=0.7)
+    rows = [
+        ("piperacillin 3 g q6h over 30 min, MIC 16", dict(pip, tinf=0.5), 16),
+        ("piperacillin 3 g q6h over 3 h, MIC 16", dict(pip, tinf=3), 16),
+        ("piperacillin 3 g q6h continuous (6 h), MIC 16", dict(pip, tinf=6), 16),
+        ("piperacillin 3 g q8h over 4 h, MIC 16", dict(pip, tinf=4, tau=8), 16),
+        ("piperacillin 2 g q6h over 30 min, CrCl 31, MIC 16", dict(pip, D=2000, tinf=0.5, wt=62, pm="clinical", age=72, sex="F", scr=1.6, fe=0.68), 16),
+        ("meropenem 1 g q8h over 30 min, MIC 2", dict(route="inf", D=1000, tau=8, tinf=0.5, thalf=1, V=17, fu=0.98), 2),
+        ("gentamicin 160 mg q8h over 30 min, MIC 1", dict(route="inf", D=160, tau=8, tinf=0.5, thalf=2.5, V=18, fu=0.85), 1),
+        ("gentamicin 480 mg q24h over 30 min, MIC 1", dict(route="inf", D=480, tau=24, tinf=0.5, thalf=2.5, V=18, fu=0.85), 1),
+        ("vancomycin 1 g q12h over 1 h, MIC 8", dict(route="inf", D=1000, tau=12, tinf=1, thalf=4.8, V=28, fu=0.45), 8),
+        ("oral 500 mg q8h (F 0.9, ka 1), MIC 1", dict(route="oral", D=500, tau=8, F=0.9, ka=1.0, thalf=1, V=27, fu=0.8), 1),
+        ("IV bolus 1 g q8h, MIC 4", dict(route="iv", D=1000, tau=8, thalf=2, V=20, fu=0.6), 4),
+        ("two compartments, 1 g q12h over 1 h, MIC 16", dict(route="inf", D=1000, tau=12, tinf=1, thalf=3, V=14, cmt=2, k12=0.5, k21=0.3, fu=0.9), 16),
+    ]
+    return [{"name": n, "mic": mic, "scenario": dict(base, **sc)} for n, sc, mic in rows]
+
 # ---------------- Bayesian (MAP) individualization ----------------
 # Written from the method's statement in pk-bayes.js, not translated from it: the prior is log-normal around the
 # patient model's CL and V (omega = sqrt(ln(1 + CV^2))), each level has error SD sqrt((prop*c)^2 + add^2), and the
@@ -269,6 +337,7 @@ def map_matrix():
     return out
 
 def main():
+    pkpd = [dict(s, reference=pkpd_reference(s["scenario"], s["mic"])) for s in pkpd_matrix()]
     maps = []
     for s in map_matrix():
         m = map_estimate(s["scenario"], s["scenario"]["lv"], s["opts"])
@@ -289,10 +358,12 @@ def main():
         "scenarios": rows,
         "map": {"about": "Bayesian (MAP) estimates of CL (L/h) and V (L) for 20 scenarios with measured levels (scipy Nelder-Mead on ODE predictions).",
                 "tolerance": 0.005, "scenarios": maps},
+        "pkpd": {"about": "fT>MIC (% of a steady-state interval with the unbound level above the MIC), Cmax/MIC and AUC24/MIC for 12 regimens, each run to steady state in the ODE solver.",
+                 "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:
         json.dump(doc, f, indent=1)
-    print(f"{len(rows)} scenarios and {len(maps)} MAP scenarios written")
+    print(f"{len(rows)} scenarios, {len(maps)} MAP scenarios and {len(pkpd)} PK/PD scenarios written")
 
 if __name__ == "__main__":
     main()
