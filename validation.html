@@ -72,6 +72,7 @@
   <li><b>Bayesian individualization (MAP).</b> 20 scenarios with one to three measured levels (every route, single, repeated, loading and missed-dose regimens, normal and reduced kidney function, different prior CVs). The reference minimises the same objective, the squared standardised residuals plus the log-normal prior terms, with SciPy's Nelder–Mead on the ODE solver's predictions. The estimated clearance and volume must agree within 0.5%.</li>
   <li><b>Antimicrobial PK/PD indices.</b> 12 regimens (piperacillin as 30-minute, 3-hour, 4-hour and continuous infusions, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; an oral and an IV-bolus regimen; two compartments). The reference runs each in the ODE solver until it repeats itself, then reads its last interval: the time the unbound level is above the MIC (crossings by bisection), the peak, and the area. fT&gt;MIC must agree within 0.01 percentage points, Cmax/MIC and AUC24/MIC within 0.01%. The test suite also holds fT&gt;MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.</li>
   <li><b>Indirect responses.</b> 12 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination and a patient with reduced creatinine clearance. The reference integrates the response together with the drug in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
+  <li><b>Hemodialysis.</b> 8 scenarios with the dialysis clearance switched on during each session: an IV bolus, end-stage kidney disease with 8-hour sessions, oral and infused regimens, a session overlapping an infusion, a mixed-route schedule, loading and missed doses, and a fast dialyzer. The reference integrates the drug and the amount the dialyzer removes in one ODE system. The level at six times, and each session's level as it starts and ends and the amount it removes, must agree within 0.01%. The test suite also holds the model to mass balance: what the body clears plus what the dialyzer removes equals what was given.</li>
   <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
 <p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
@@ -96,13 +97,19 @@
 <thead><tr><th scope="col">Scenario</th><th scope="col">Largest change (ref, %)</th><th scope="col">Δ</th><th scope="col">When (ref, h)</th><th scope="col">Δ h</th><th scope="col">Worst of 5 times</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
+<h2>Hemodialysis</h2>
+<div class="scroll" tabindex="0" role="region" aria-label="Hemodialysis table"><table id="hdTbl"><caption>Each scenario: the largest difference in the level at six times, and in each session's levels and the amount it removed.</caption>
+<thead><tr><th scope="col">Scenario</th><th scope="col">Sessions</th><th scope="col">First session removes (ref)</th><th scope="col">Worst level Δ</th><th scope="col">Worst session Δ</th><th scope="col">Within</th></tr></thead>
+<tbody></tbody></table></div>
+
 <h2>How to reproduce</h2>
 <pre tabindex="0" aria-label="Commands to reproduce">node --test tests/                      # the engine, the cases and this comparison (Node 20, no dependencies)
 python3 -m pip install numpy scipy
 python3 validation/reference.py         # regenerates validation/reference-results.json</pre>
 <p class="muted">This page runs the same comparison as <code>tests/validation.test.js</code> in your browser, with the engine the site ships.</p>
 </main>
-<script src="pk-engine.js?v=ad34452205"></script>
+<script src="pk-engine.js?v=40b7c66597"></script>
+<script src="pk-hd.js?v=b96f5ee841"></script>
 <script src="pk-idr.js?v=046041894a"></script>
 <script src="pk-bayes.js?v=49979aea6b"></script>
 <script>
@@ -110,7 +117,7 @@ python3 validation/reference.py         # regenerates validation/reference-resul
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
-  fetch("validation/reference-results.json?v=8f92e74ccd").then(r=>r.json()).then(async REF=>{
+  fetch("validation/reference-results.json?v=fee9fced8e").then(r=>r.json()).then(async REF=>{
     const {T,mec,mtc}=REF.window, rows=[];
     let pass=0, total=0, worst={rel:0, pp:0};
     const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
@@ -167,10 +174,23 @@ python3 validation/reference.py         # regenerates validation/reference-resul
       return `<tr><td>${esc(s.name)}</td><td>${f(r.ext,3)}</td><td>${fd(de)}</td><td>${f(r.t_ext,2)}</td><td>${Math.abs(dt)<0.0005 ? "0.000" : f(dt,3)}</td><td>${fd(worst)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
     }).join("");
     pass+=idPass; total+=idTotal;
+    // hemodialysis: the level at six times, and each session's levels and removal
+    let hdPass=0, hdTotal=0;
+    const HDR=REF.hd || {scenarios:[], tolerance:{}};
+    document.querySelector("#hdTbl tbody").innerHTML=HDR.scenarios.map(s=>{
+      const p=PK.normalizeScenario(PK.scenario(s.scenario)), r=s.reference, tab=PK.hd.sessionTable(p, s.T).filter(x=>x.end<=s.T);
+      const wl=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.conc(p, +f*s.T-1e-9), v))));
+      const wsn=Math.max(0, ...r.sessions.flatMap((x,i)=> [pct(tab[i].pre,x.pre), pct(tab[i].post,x.post), pct(tab[i].removed,x.removed)].map(Math.abs)));
+      const oks=[wl<=100*HDR.tolerance.rel, wsn<=100*HDR.tolerance.rel], ok=oks.every(Boolean);
+      oks.forEach(o=>{ hdTotal++; if(o) hdPass++; });
+      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
+      return `<tr><td>${esc(s.name)}</td><td>${r.sessions.length}</td><td>${f(r.sessions[0].removed,2)}</td><td>${fd(wl)}</td><td>${fd(wsn)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
+    }).join("");
+    pass+=hdPass; total+=hdTotal;
     const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
     document.getElementById("summary").innerHTML=
       `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
-      `<div>${REF.scenarios.length} scenarios × 4 numbers, ${mapTotal/2} Bayesian estimates × 2 (clearance and volume), ${pkTotal/3} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), and ${idTotal/3} indirect responses × 3 (five times, the largest change and its time). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
+      `<div>${REF.scenarios.length} scenarios × 4 numbers, ${mapTotal/2} Bayesian estimates × 2 (clearance and volume), ${pkTotal/3} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), ${idTotal/3} indirect responses × 3 (five times, the largest change and its time), and ${hdTotal/2} dialysis scenarios × 2 (the levels, and each session's levels and removal). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
       `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
 })();

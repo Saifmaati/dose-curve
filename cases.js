@@ -126,6 +126,27 @@
      also:"The infection's source and severity, the organism's measured MIC, whether her kidney function is changing, dialysis (hemodialysis removes 30% to 40% of a dose and has its own row in the label), the sodium each dose carries (65 mg per gram of piperacillin), and her other drugs: kidney injury has been reported more often when piperacillin-tazobactam is given with vancomycin.",
      refs:["zosyn","fdaPtz","lodise2007","cg"]},
 
+    {id:"gent-hd", drug:"gent", title:"Gentamicin on hemodialysis", tag:"Aminoglycoside · dose after each session",
+     patient:{age:64, sex:"M", ht:175, wt:80, scr:7.5},
+     hd:{every:48, dur:8, fall:0.5},
+     indication:"End-stage kidney disease, on hemodialysis for 8 hours every 48 hours, with a gram-negative infection. He has had a first dose; the next is due at the end of tonight's session.",
+     target:{kind:"perkg", lo:1, hi:1.7,
+       why:"The label: an eight-hour hemodialysis may reduce serum concentrations of gentamicin by approximately 50%, and the dose at the end of each dialysis period is 1 to 1.7 mg/kg, depending on the severity of infection."},
+     choices:{step:10, min:40, max:300, taus:[48], tinf:0.5},
+     start:{D:200, tau:48},
+     task:"Choose the dose to give at the end of each session. Then compare it with the amount a session removes, and look at the levels before and after each session.",
+     plan(x){ const r=x.round(1.5*this.patient.wt), p=caseScenario(this, {D:r, tau:48}), m=metricsOf(this, p), s=m.sessions[m.sessions.length-1], th=LN2/PK.keOf(p);
+       return {reg:{D:r, tau:48}, steps:[
+         `Between sessions he clears gentamicin only through his own kidneys: with a creatinine clearance of ${nf(x.crcl,1)} mL/min, ${nf(100*x.factor,1)}% of the reference clearance, ${nf(PK.derived(p).CL,2)} L/h, a half-life of ${nf(th,0)} h.`,
+         `The label says an eight-hour session may lower the level by about 50%. In the model that takes a dialysis clearance of ${nf(p.hdcl,2)} L/h on top of his own, while the session runs.`,
+         `The label's dose at the end of each session is 1 to 1.7 mg/kg: ${nf(this.patient.wt,0)} to ${nf(1.7*this.patient.wt,0)} mg for ${this.patient.wt} kg. 1.5 mg/kg is <b>${nf(r,0)} mg</b> (rounded to 10 mg), after each session.`,
+         `On it, each dose peaks at ${m.peaks.map(v=>nf(v,1)).join(", then ")} mg/L. Before the third session the level is ${nf(s.pre,2)} mg/L, and the session takes it to ${nf(s.post,2)} mg/L, removing ${nf(s.removed,0)} mg.`,
+         `Replacing only what the session removed, about ${nf(s.supplement,0)} mg, would bring the level back to ${nf(s.pre,2)} mg/L, not to a peak. After a session ${nf(100*s.post/m.peaks[m.peaks.length-1],0)}% of the peak before it is left, so the dose at the end of each session is a full dose that rebuilds the peak, not a top-up.`]};
+     },
+     wrong:[{reg:{D:200, tau:48}, hint:"perkgHigh"}, {reg:{D:60, tau:48}, hint:"perkgLow"}],
+     also:"His residual kidney function, the dialysis method (the label notes that the amount removed varies with it), when levels are drawn (gentamicin returning from the tissues after a session raises the level again; this model has no rebound), the severity of the infection, and hearing and balance, which aminoglycosides can damage, more so with renal impairment.",
+     refs:["gent","cg"]},
+
     {id:"gent-ext", drug:"gent", title:"Gentamicin once daily (extended interval)", tag:"Aminoglycoside · Hartford approach",
      patient:{age:45, sex:"F", ht:165, wt:65, scr:0.8},
      indication:"A Gram-negative infection, with the same drug given two ways: once daily at a high dose, or conventionally every 8 h.",
@@ -340,7 +361,17 @@
     if(c.over) Object.assign(p, c.over);   // a community case's own values in place of the library's (shown as the author's)
     // enough doses to show the approach to steady state inside two weeks
     p.nDoses=Math.max(2, Math.min(20, Math.floor(336/p.tau)));
+    if(c.hd) return PK.normalizeScenario(PK.scenario(hdScenario(c, p)));
     return PK.normalizeScenario(PK.scenario(p));
+  }
+  // A dialysis case: a dose at the end of each session (as an infusion), three sessions apart, and the dialysis
+  // clearance that makes one session lower the level by the fraction the label states.
+  function hdScenario(c, p){
+    const h=c.hd, q=Object.assign({}, p, {dosing:"custom", hd:1, hdstart:h.every-h.dur, hddur:h.dur, hdevery:h.every});
+    q.events=[0,1,2].map(i=>({t:i*h.every, mg:p.D, route:"inf", dur:p.tinf, type:"maintenance", status:"given"}));
+    const r=PK.normalizeScenario(PK.scenario(q));
+    q.hdcl=+((-Math.log(1-h.fall)/h.dur-PK.keOf(r))*PK.vOf(r)).toFixed(3);
+    return q;
   }
   // The same patient with two compartments: half the volume central, the same clearance (k10 doubles).
   const twoCmtOf=p=> PK.normalizeScenario(Object.assign({}, p, {cmt:2, V:p.V/2, thalf:p.thalf/2, k12:0.545, k21:0.545}));
@@ -431,6 +462,8 @@
     choice:"Compare how many half-lives the extra hours are for each drug: the one with more of them falls further.",
     tableInterval:"The interval doesn't match the label's row for this creatinine clearance: find the row, then use its interval.",
     tableDose:"The interval matches the row, but the dose doesn't: use the dose (or the range of doses) the row gives.",
+    perkgLow:"Below the label's dose for the end of each dialysis session: work out mg/kg from the body weight.",
+    perkgHigh:"Above the label's dose for the end of each dialysis session: work out mg/kg from the body weight.",
     ftLow:"The unbound level is above the MIC for less of each interval than the target: shorten the interval, or raise the dose."
   };
   // The label table's row for a creatinine clearance (rows in order: gt, then ge thresholds).
@@ -439,6 +472,11 @@
   const mosteller=(ht, wt)=> Math.sqrt(ht*wt/3600);
   const tableCrcl=(t, p)=>{ const cr=PK.patientOf(p).crcl; return t.bsa ? cr*1.73/mosteller(p.ht, p.wt) : cr; };
   function metricsOf(c, p){
+    if(c.hd){
+      // each session's levels and the peak after each dose, read off the curve with the sessions in it
+      const rows=PK.hd.sessionTable(p, 3*c.hd.every), peaks=p.events.map(e=> PK.conc(p, e.t+e.dur));
+      return {sessions:rows, peaks, peak:Math.max(...peaks), pre:rows[rows.length-1].pre, post:rows[rows.length-1].post, perKg:p.events[0].mg/p.wt};
+    }
     const ss=PK.ssProfile(p), m={peak:ss.ssPeak, trough:ss.ssTrough, none:!!(ss.mm && ss.mm.none)};
     if(p.kin==="mm"){ m.css=ss.mm.css; m.avg=ss.mm.avg; m.auc24=m.none ? null : 24*ss.mm.avg; }
     else m.auc24=PK.derived(p).auc*24/p.tau;
@@ -470,6 +508,9 @@
       const perKg=reg.D/p.wt, band=t.bands.find(b=>PK.patientOf(p).crcl>=b[0]);
       const doseOk=Math.abs(perKg-t.perKg)<=0.35+1e-9, tauOk=!!band && reg.tau===band[1];
       ok=doseOk && tauOk; hint=ok ? null : !doseOk ? "hartfordDose" : "hartfordInterval";
+    } else if(t.kind==="perkg"){
+      const pk=reg.D/c.patient.wt;
+      ok=pk>=t.lo-1e-9 && pk<=t.hi+1e-9; hint=ok ? null : pk<t.lo ? "perkgLow" : "perkgHigh";
     } else if(t.kind==="ftmic"){
       ok=m.aboveMic>=t.ft-1e-9; hint=ok ? null : "ftLow";
     } else if(t.kind==="table"){
@@ -528,7 +569,7 @@
     const pl=c.plan(x), ref=reference(c), g=gradeCase(c, ref), u=PK.unitsOf(p);
     steps.push(...pl.steps);
     const m=g.metrics;
-    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="ftmic" ? `fT>MIC ${nf(m.aboveMic,1)}% of each interval, AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
+    steps.push(`Check ${nf(ref.D,1)} ${u.dose} every ${ref.tau} h in the model: ${c.target.kind==="table" ? `${m.aboveMic!=null ? `${nf(m.aboveMic,0)}% of each interval above the MIC, ` : ""}AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="auc" ? `AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="ftmic" ? `fT>MIC ${nf(m.aboveMic,1)}% of each interval, AUC24 ${nf(m.auc24,0)} mg·h/L` : c.target.kind==="perkg" ? `${nf(m.perKg,2)} mg/kg after each session; peaks ${m.peaks.map(v=>nf(v,1)).join(", ")} ${u.conc}` : c.target.kind==="css" ? `predicted steady state ${nf(m.css,1)} ${u.conc}` : c.target.kind==="at" ? `12-hour level ${nf(m.atLevel,2)} ${u.conc}, peak ${nf(m.peak,2)}` : `peak ${nf(m.peak,2)} ${u.conc}, trough ${nf(m.trough,2)} ${u.conc}`} — ${g.ok ? "on target" : "off target: " + g.hintText}`);
     if(c.id==="li"){ const md=missedDose(c, ref); steps.push(`If one dose is missed at steady state, the level before the next dose falls to ${nf(md.low,2)} mEq/L (from ${nf(md.usual,2)}), and regular dosing brings the troughs back within 5% of steady state after ${nf(md.recover/24,1)} days.`); }
     return steps;
   }
@@ -773,6 +814,7 @@
     if(t.kind==="css") return `Predicted steady-state level ${t.css[0]}–${t.css[1]} ${u}`;
     if(t.kind==="hartford") return `7 mg/kg, at the interval the Hartford bands give for this CrCl`;
     if(t.kind==="table") return `The dose and interval the label's renal table gives for this creatinine clearance`;
+    if(t.kind==="perkg") return `${t.lo} to ${t.hi} mg/kg at the end of each dialysis session (the label's range)`;
     if(t.kind==="ftmic") return `The unbound level above an MIC of ${t.mic} ${u} for at least ${t.ft}% of each interval at steady state (fT>MIC; unbound fraction ${PK.drugScenario(drugOf(c.drug)).fu} from the library)`;
     if(t.kind==="at") return `The ${t.at}-hour level at steady state ${t.range[0]}–${t.range[1]} ${u}, peak below ${t.peakMax} ${u}`;
     if(t.kind==="choice") return `A reasoning question, checked against the model`;
@@ -1017,7 +1059,11 @@
     const u=PK.unitsOf(g.p), m=g.metrics, f=(v,dp)=> v==null ? "—" : host.fmt(v,dp), cd=u.cdp;
     const rows=[];
     if(m.none) rows.push(["Steady state","none: input exceeds Vmax"]);
-    else {
+    else if(m.sessions){   // dialysis: per kg, the peaks, and the last session
+      const s=m.sessions[m.sessions.length-1];
+      rows.push(["Dose per kg", `${f(m.perKg,2)} mg/kg`], ["Peak after each dose", `${m.peaks.map(v=>f(v,1+cd)).join(", ")} ${u.conc}`],
+        [`Session ${s.n} (${s.start}–${s.end} h)`, `${f(s.pre,2+cd)} → ${f(s.post,2+cd)} ${u.conc}, ${f(s.removed,0)} ${u.amount} removed`]);
+    } else {
       if(c.target.kind==="css") rows.push(["Predicted Css", `${f(m.css,1+cd)} ${u.conc}`]);
       if(c.target.kind==="at") rows.push([`${c.target.at}-hour level`, `${f(m.atLevel,2)} ${u.conc}`]);
       rows.push(["Peak", `${f(m.peak,1+cd)} ${u.conc}`], ["Trough", `${f(m.trough,1+cd)} ${u.conc}`]);
@@ -1104,7 +1150,7 @@
     if(sim) sim.addEventListener("click",()=>{
       // a Bayesian case opens the patient as the model predicts her, on the regimen the levels were drawn on, with the levels
       const reg=regFromForm(c, box) || c.start, p=c.bayes ? bayesOf(c).prior : caseScenario(c, reg), win=caseWindow(c);
-      h.openScenario(p, Object.assign({duration:Math.min(336, p.nDoses*p.tau)}, win), c.drug);
+      h.openScenario(p, Object.assign({duration:c.hd ? 3*c.hd.every : Math.min(336, p.nDoses*p.tau)}, win), c.drug);
     });
     if(link.reg) renderResult(c, link.reg, box);
     box.focus({preventScroll:true});

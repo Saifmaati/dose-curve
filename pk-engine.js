@@ -15,15 +15,15 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
-  // fu, the MIC and doses above 2,000 mg; 10 the indirect response models.
-  const VERSION=10;
+  // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions.
+  const VERSION=11;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
   // view settings, shared by the two scenarios in a comparison.
   // dosing "custom" uses `events` instead of D/τ/n/load/missed; the other two ignore `events`.
   const PK_KEYS=["route","dosing","D","F","ka","thalf","V","tinf","tau","nDoses","loadMult","missed","wt","clFn","events",
-    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu", "idr","tout","imax","smax"];
+    "e0","emax","ec50","hill", "pm","age","sex","ht","scr","alb","wtm","fe","S","unit", "kin","vmax","km", "cmt","k12","k21", "teq", "hep","qh","fub","clint","fabs", "lv", "fu", "idr","tout","imax","smax", "hd","hdcl","hdstart","hddur","hdevery"];
   // Pharmacodynamic settings: the drug's concentration–effect relationship (sigmoid Emax model), and teq, the
   // effect site's equilibration half-life (0 = the effect follows plasma directly). idr 1–4 replaces the direct effect
   // with an indirect response (pk-idr.js): the drug inhibits or stimulates the production or loss of a response whose
@@ -38,14 +38,16 @@
     events:Object.freeze([]), e0:0, emax:100, ec50:4, hill:1,
     pm:"simple", age:40, sex:"M", ht:175, scr:0.8, alb:4, wtm:"actual", fe:1, S:1, unit:"mg",
     kin:"linear", vmax:7, km:4, cmt:1, k12:0.5, k21:0.5, teq:0,
-    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1, idr:0, tout:12, imax:1, smax:4});
+    hep:0, qh:90, fub:0.5, clint:20, fabs:1, lv:Object.freeze([]), fu:1, idr:0, tout:12, imax:1, smax:4,
+    hd:0, hdcl:5, hdstart:20, hddur:4, hdevery:48});
   const CHOICES={route:["oral","iv","inf"],dosing:["single","repeated","custom"],loadMult:[1,1.5,2],
-    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1],idr:[0,1,2,3,4]};
+    pm:["simple","clinical"],sex:["M","F"],wtm:["actual","ibw","adj"],unit:["mg","mcg","meq"],kin:["linear","mm"],cmt:[1,2],hep:[0,1],idr:[0,1,2,3,4],hd:[0,1]};
   // Numeric limits, shared with the sliders. missed = 1 means no dose is missed.
   const RANGES={D:[25,4000],F:[0.1,1],ka:[0.1,3],tinf:[0.25,96],thalf:[0.5,72],V:[5,600],tau:[2,24],
     nDoses:[2,20],missed:[1,19],wt:[40,200],clFn:[25,150],e0:[0,50],emax:[5,100],ec50:[0.1,100],hill:[0.5,5],
     age:[18,100],ht:[120,220],scr:[0.2,15],alb:[1,6],fe:[0,1],S:[0.001,1],vmax:[1,20],km:[0.5,30],k12:[0.05,5],k21:[0.05,5],teq:[0,12],
-    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1],tout:[0.25,240],imax:[0.05,1],smax:[0.1,20]};
+    qh:[20,200],fub:[0.01,1],clint:[0.5,5000],fabs:[0.1,1],fu:[0.01,1],tout:[0.25,240],imax:[0.05,1],smax:[0.1,20],
+    hdcl:[0.5,20],hdstart:[0,336],hddur:[1,8],hdevery:[12,168]};
   const INTEGER_KEYS=["nDoses","missed","age","ht"];
   // Settings a v4 page can't hold: anything clinical, or a value beyond its narrower ranges.
   const V5_KEYS=["pm","age","sex","ht","scr","alb","wtm","fe","S","unit","kin","vmax","km","cmt","k12","k21"];
@@ -60,6 +62,8 @@
   const V9_KEYS=["fu"];
   // A v9 page can't hold an indirect response.
   const V10_KEYS=["idr","tout","imax","smax"];
+  // A v10 page can't hold hemodialysis sessions.
+  const V11_KEYS=["hd","hdcl","hdstart","hddur","hdevery"];
   const V8_MAX={D:2000};
   // pd shows the effect charts; etgt is the target effect (% of the largest possible response).
   // Population mode (pop): n virtual patients (popn), CVs on clearance and volume in % (pcl, pv), the seed that
@@ -216,7 +220,9 @@
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
-    if(k==="teq") return s.kin!=="mm" && !(s.idr>0);
+    if(k==="teq") return s.kin!=="mm" && !(s.idr>0) && !hdOn(s);
+    if(k==="hd") return s.kin!=="mm" && s.cmt!==2;
+    if(k==="hdcl"||k==="hdstart"||k==="hddur"||k==="hdevery") return hdOn(s);
     if(k==="e0"||k==="emax") return !(s.idr>0);
     if(k==="tout") return s.idr>0;
     if(k==="imax") return s.idr===1 || s.idr===2;
@@ -257,6 +263,8 @@
   // that escapes the liver on its first pass, 1 − E. Oral F is the fraction absorbed times 1 − E. Blood and plasma
   // concentrations are taken as equal. Clearance and volume both scale with weight, so the half-life doesn't.
   const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm!=="clinical";
+  // Hemodialysis sessions (pk-hd.js) apply to first-order, one-compartment scenarios.
+  const hdOn=p=> p.hd===1 && p.kin!=="mm" && p.cmt!==2;
   function wellStirred(p){
     const fc=p.fub*p.clint, E=fc/(p.qh+fc);
     return {E, CL:p.qh*E, FH:1-E, fcl:fc};
@@ -376,6 +384,7 @@
   // Superposition of every dose actually given (or, for saturable elimination, the integrated curve).
   function conc(p, t, ev){
     if(p.kin==="mm") return t<0 ? 0 : mmConc(p,t);
+    if(hdOn(p)){ const m=hdApi(); if(m) return m.conc(p,t); }   // until the page has loaded it, the curve without sessions
     ev=ev||doseEvents(p);
     const terms=disposition(p);
     let sum=0;
@@ -445,6 +454,8 @@
       // full regimen's trough (no missed or loading dose) over the steady-state one
       d.fSS=twoCmt(p) ? conc(Object.assign({}, p, {missed:0, loadMult:1}), t1-1e-9)/ssConc(p, p.tau-1e-9) : 1-Math.exp(-k*p.nDoses*p.tau);
     }
+    // with dialysis: the area is summed segment by segment (pk-hd.js), and nothing settles into a steady state
+    if(hdOn(p) && hdApi()){ d.auc=hdApi().course(p).aucInf; if(p.dosing==="repeated"){ d.Rac=null; d.fSS=null; d.t90=null; } }
     return d;
   }
 
@@ -508,7 +519,7 @@
   // forever: the sum over every earlier dose, Σⱼ C₁(s + jτ). Each single-dose curve is a sum of exponentials
   // (once an infusion has stopped), so all but the first few terms form geometric series with exact sums.
   function ssConc(p, s){
-    if(p.dosing!=="repeated") return null;   // only a regular periodic regimen has a steady state
+    if(p.dosing!=="repeated" || hdOn(p)) return null;   // only a regular periodic regimen has a steady state (dialysis breaks it)
     if(p.kin==="mm"){ const m=mmSteady(p); return m.none ? null : m.at(s); }
     const terms=disposition(p), tau=p.tau, D=p.D*saltOf(p), geo=l=>1/(1-Math.exp(-l*tau));
     let c=0;
@@ -539,6 +550,13 @@
   function ssProfile(p){
     if(p.dosing!=="repeated") return null;
     if(p.kin==="mm") return mmProfile(p);
+    if(hdOn(p)){
+      // dialysis sessions don't repeat with the dosing interval, so each dose is read off the curve and there is no
+      // steady state to give
+      const ev=doseEvents(p), skip=missedOf(p), rows=[];
+      for(let i=0;i<p.nDoses;i++) rows.push({n:i+1, peak:peakIn(p, i*p.tau, (i+1)*p.tau, ev, 60)[0], trough:conc(p, (i+1)*p.tau-1e-9, ev), missed:i+1===skip});
+      return {rows, ssPeak:null, ssTrough:null, clears:false, swing:null, Rac:null, t90:null, dosesTo90:null, hd:true};
+    }
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
     // each interval's peak: a 60-point grid with its dose and infusion ends, refined between samples
     const peakTrough=(q,a,evq)=> [peakIn(q, a, a+tau, evq, S)[0], conc(q,a+tau-1e-9,evq)];
@@ -582,7 +600,7 @@
     if(!(mic>0)) return null;
     const fu=p.fu, thr=mic/fu;   // the total level at which the unbound level equals the MIC
     const pack=(o, auc24)=> Object.assign(o, {fu, mic, thr, auc24, cmaxMic:o.cmax/mic, aucMic:auc24/mic, fcmaxMic:fu*o.cmax/mic, faucMic:fu*auc24/mic});
-    if(p.dosing!=="repeated" || (p.kin==="mm" && mmSteady(p).none)){
+    if(p.dosing!=="repeated" || hdOn(p) || (p.kin==="mm" && mmSteady(p).none)){
       const w=windowStats(p, T, thr, Infinity);   // time in [thr, ∞) is the time above the MIC
       return pack({ss:false, span:T, tAbove:w.tIn, ft:100*w.tIn/T, cmax:w.cmax}, windowStats(p, 24, thr, Infinity).auc);
     }
@@ -871,7 +889,7 @@
   // dCe/dt = ke0·(C − Ce), and teq = ln 2 / ke0 is its equilibration half-life. Every plasma curve here is a
   // sum of exponentials after each dose, so Ce has a closed form too: each term e^(−λt) reaches the effect site
   // as ke0·∫₀ᵗ e^(−ke0(t−s))·e^(−λs) ds. Saturable elimination has no such form and keeps the direct link.
-  const keqOf=p=> p.teq>0 && p.kin!=="mm" ? Math.LN2/p.teq : 0;
+  const keqOf=p=> p.teq>0 && p.kin!=="mm" && !hdOn(p) ? Math.LN2/p.teq : 0;
   // ke0·∫₀ᵗ e^(−ke0(t−s))·e^(−λs) ds = ke0·(e^(−λt) − e^(−ke0·t)) / (ke0 − λ), with the difference written
   // through expm1 so that close rates lose no precision (and ke0·t·e^(−ke0·t) when they are equal)
   function linkExp(k0, lam, t){
@@ -958,7 +976,7 @@
     return {p,
       get cmax(){ return w().cmax; }, get tmax(){ return w().tmax; }, get tin(){ return 100*w().tIn/T; },
       get aucInf(){ return d().auc; }, get cl(){ return d().CL; }, get trough(){ return rep ? d().cminSS : null; }, get peakSS(){ return rep ? d().cmaxSS : null; },
-      get avgSS(){ return !rep ? null : p.kin==="mm" ? (d().mm.none ? null : d().mm.avg) : d().auc/p.tau; },
+      get avgSS(){ return !rep || hdOn(p) ? null : p.kin==="mm" ? (d().mm.none ? null : d().mm.avg) : d().auc/p.tau; },
       get css(){ return rep && p.kin==="mm" ? d().css : null; }, get swing(){ const s=ss(); return s ? s.swing : null; }, get rac(){ const s=ss(); return s ? s.Rac : null; },
       get top(){ return p.e0+p.emax; }, get epeak(){ return once("ep",()=>effectStats(p,T,view.etgt).peak); },
       effAbove:tg=> once("ea"+tg,()=>effectStats(p,T,tg).tAbove),
@@ -1223,7 +1241,12 @@
     {id:"gcmax", tag:"Cmax/MIC", title:"Once daily vs divided", sum:"The same daily dose: peak vs time above the MIC.", baseLabel:"160 mg every 8 h",
      view:{duration:48,mec:1,mtc:30,mic:1},
      base:{route:"inf",dosing:"repeated",D:160,tinf:0.5,thalf:2.5,V:18,tau:8,nDoses:9,fu:0.85},
-     cur:{route:"inf",dosing:"repeated",D:480,tinf:0.5,thalf:2.5,V:18,tau:24,nDoses:3,fu:0.85}}
+     cur:{route:"inf",dosing:"repeated",D:480,tinf:0.5,thalf:2.5,V:18,tau:24,nDoses:3,fu:0.85}},
+    // the gentamicin-on-dialysis case's patient and one dose; the dialysis clearance gives the label's 50% per 8 hours
+    {id:"hd", tag:"CLd", title:"Hemodialysis sessions", sum:"Clearance that comes and goes.", baseLabel:"no dialysis",
+     view:{duration:144,mec:1,mtc:12},
+     base:{route:"inf",dosing:"single",D:120,tinf:0.5,thalf:2.5,V:18,wt:80,pm:"clinical",age:64,sex:"M",ht:175,scr:7.5,fe:1},
+     cur:{route:"inf",dosing:"single",D:120,tinf:0.5,thalf:2.5,V:18,wt:80,pm:"clinical",age:64,sex:"M",ht:175,scr:7.5,fe:1,hd:1,hdcl:1.25,hdstart:40,hddur:8,hdevery:48}}
   ];
 
   // One-click comparisons: A is the lesson's baseline scenario, B its live scenario.
@@ -1276,6 +1299,8 @@
      look:"Same daily amount and the same AUC. B peaks higher and dips lower before the next day's doses."},
     {id:"idr", lesson:"idr", title:"Fast vs slow response turnover", nameA:"Turnover t½ 5 h", nameB:"Turnover t½ 60 h",
      look:"The same dose of a slowly cleared drug. A falls to 37% of baseline at 24 h; B only to 67%, and not until 96 h, long after the level peaked at 3.6 h."},
+    {id:"hd", lesson:"hd", title:"No dialysis vs hemodialysis", nameA:"No dialysis", nameB:"8-hour session at 40 h",
+     look:"The same 120 mg in end-stage kidney disease. B's session halves the level, from 2.07 to 1.04 mg/L by 48 h; over all its sessions dialysis removes 18 mg of the 120."},
     {id:"ptz", lesson:"ptz", title:"Piperacillin: 30-minute vs 3-hour infusion", nameA:"Over 30 min", nameB:"Over 3 h",
      look:"The same 3 g every 6 h. B peaks at 74 mg/L instead of 164, but its unbound level stays above the 16 mg/L MIC for 69% of each interval instead of 47%. AUC24/MIC is 60 for both."},
     {id:"gcmax", lesson:"gcmax", title:"Gentamicin: divided vs once daily", nameA:"160 mg every 8 h", nameB:"480 mg every 24 h",
@@ -1290,12 +1315,13 @@
     {id:"liver",title:"Liver and first pass"},{id:"abx",title:"Antimicrobial PK/PD"},{id:"tdm",title:"Levels and individualization"}];
 
   // Each lesson's group (its texts, prediction and challenge are in pk-lessons.js).
-  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
+  const LESSON_GROUP_OF={"route":"pk","vd":"pk","cl":"pk","twocmt":"pk","mm":"pk","crcl":"pk","hd":"pk","accum":"rep","load":"rep","weight":"pk","linear":"pk","flipflop":"pk","half":"rep","split":"rep","er":"rep","miss":"rep","spacing":"custom","inf":"inf","infdur":"inf","ldinf":"inf","cvi":"inf","tmic":"inf","potency":"pd","efficacy":"pd","hill":"pd","pdose":"pd","delay":"pd","idr":"pd","hepx":"liver","hepfp":"liver","hepq":"liver","ptz":"abx","gcmax":"abx","bayes":"tdm"};
   LESSONS.forEach(L=> L.group=LESSON_GROUP_OF[L.id]);
   // The texts, predictions and challenges live in pk-lessons.js: the page loads it when a lesson opens (it sets
   // PK.lessonModule), and in Node the engine reads it the first time LESSONS is used. Until then each lesson has
   // its id, title, summary, group and scenarios, which is all the lists and links need.
-  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null;
+  let lessonMod=null, bayesMod=null, idrMod=null, srcMod=null, hdMod=null;
+  function hdApi(){ if(!hdMod && typeof require==="function") hdMod=require("./pk-hd.js"); return hdMod; }
   // the sources: attached to the drugs when pk-sources.js loads (the page) or on first use (Node)
   function attachSources(m){ srcMod=m; DRUGS.forEach(d=>{ d.refs=m.REFS[d.id]; }); }
   const sourcesApi=()=>{ if(!srcMod && typeof require==="function") attachSources(require("./pk-sources.js")); return srcMod; };
@@ -1398,7 +1424,7 @@
       if(typeof DEFAULTS[k]==="string"){ if(CHOICES[k].includes(raw)) p[k]=raw; return; }
       let v=parseFloat(raw);
       if(!isFinite(v)) return;
-      if(k==="loadMult"||k==="cmt"||k==="hep"||k==="idr"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
+      if(k==="loadMult"||k==="cmt"||k==="hep"||k==="idr"||k==="hd"){ if(CHOICES[k].includes(v)) p[k]=v; return; }
       if(INTEGER_KEYS.includes(k)) v=Math.round(v);
       p[k]=clamp(v, legacy && V8_MAX[k] ? [RANGES[k][0], V8_MAX[k]] : RANGES[k]);
     });
@@ -1435,6 +1461,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV11=scen.some(p=>V11_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV10=scen.some(p=>V10_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV9=view.mic>0 || scen.some(p=>V9_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V8_MAX).some(k=>p[k]>V8_MAX[k]));
     const usesV8=scen.some(p=>p.lv && p.lv.length>0);
@@ -1442,7 +1469,7 @@
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1596,10 +1623,10 @@
   const WORKSHEET_SIZES=[5,10,15];
   // Worksheet pools are versioned so a shared sheet never changes: a link without a version rebuilds from the kinds
   // version 1 had, and each later kind records the version it arrived in (`since`).
-  const WS_VERSION=7;
+  const WS_VERSION=8;
   // The practice problems themselves live in pk-practice.js, loaded with the Practice tab (in Node, on first use).
   // Their ids stay here so a practice link can be checked before that file loads; a test keeps the two lists equal.
-  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","idrss","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
+  const PRACTICE_IDS=["ke","c0","ct","remain","thalf2","auc","cl","bioF","tmax","tbelow","thalfcl","cl2","hdfall","t90","rac","cavg","mdose","trough","taumax","renaladj","rate","infpct","infend","auc2","ldinf","clinf","effc","cfore","effdur","efft","effpk","idrss","mmcss","mmdose","mmt90","mmhalf","hepcl","hepf","hepiv","ftmic","cmaxmic","aucmic"];
   let practiceMod=null;
   const practiceApi=()=>{ if(!practiceMod && typeof require==="function") practiceMod=require("./pk-practice.js"); return practiceMod; };
   const practiceHelpers={drawFrom, evenUp, nf, sig4, until};
@@ -1724,7 +1751,12 @@
   const READOUT_KEYS_MM={single:["cmax","tmax","thalf","cl","v","auc","mgkg","ttr"],
     repeated:["peak","trough","css","t90","thalf","ratio","mgkg","ttr"],
     custom:["peakWin","tpeakWin","given","total","thalf","cl","aucWin","ttr"]};
-  const readoutKeys=p=> (p.kin==="mm" ? READOUT_KEYS_MM : READOUT_KEYS)[p.dosing];
+  // With dialysis, peaks are read off the curve, and the session's clearance and the fall it causes replace the
+  // steady-state readouts.
+  const READOUT_KEYS_HD={single:["peakWin","tpeakWin","thalf","cl","hdCl","hdFall","aucHd","ttr"],
+    repeated:["peak","trough","thalf","cl","hdCl","hdFall","mgkg","ttr"],
+    custom:["peakWin","tpeakWin","given","total","thalf","hdCl","hdFall","aucWin"]};
+  const readoutKeys=p=> (p.kin==="mm" ? READOUT_KEYS_MM : hdOn(p) ? READOUT_KEYS_HD : READOUT_KEYS)[p.dosing];
   // The worked readouts (metricMath) live in pk-math.js, loaded the first time a readout is opened.
   let mathFn=null;
 
@@ -1851,7 +1883,7 @@
     get lessonModule(){ return lessonMod; }, set lessonModule(v){ attachLessons(v); },
     // Bayesian individualization (pk-bayes.js): loaded by the page when needed, required on first use in Node
     get bayes(){ if(!bayesMod && typeof require==="function") bayesMod=require("./pk-bayes.js"); return bayesMod; },
-    get idr(){ return idrApi(); }, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
+    get idr(){ return idrApi(); }, get hd(){ return hdApi(); }, get hdModule(){ return hdMod; }, set hdModule(v){ hdMod=v; }, hdOn, get idrModule(){ return idrMod; }, set idrModule(v){ idrMod=v; },
     get bayesModule(){ return bayesMod; }, set bayesModule(v){ bayesMod=v; },
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
@@ -1871,5 +1903,5 @@
     PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
     crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, clFactor, UNITS, unitsOf, convertUnits, saltOf,
     get SOURCES(){ const m=sourcesApi(); return m ? m.SOURCES : {}; }, get sourcesModule(){ return srcMod; }, set sourcesModule(m){ attachSources(m); },
-    UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, sheinerTozer};
+    UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, READOUT_KEYS_HD, sheinerTozer};
 });

@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.14.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"1.15.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1132,6 +1132,15 @@
                 <p class="clin-note" id="bzNote">Teaching assumptions: the prior's CVs are the Population settings' (clearance 30%, volume 20% unless changed there); each level's error SD is √((10% of the level)² + (MEC / 10)²); one compartment, first-order elimination. Method: Sheiner et al., Clin Pharmacol Ther 1979. Educational model, not for clinical dosing.</p>
               </details>
             </div>
+            <div class="seg" id="hdSeg" role="group" aria-label="Hemodialysis" style="margin-top:10px">
+              <button data-hd="0" class="on">No dialysis</button>
+              <button data-hd="1">Hemodialysis</button>
+            </div>
+            <div id="hdPanel" hidden>
+              <div id="hdSliders"></div>
+              <div class="clin-math" id="hdOut" aria-live="polite"></div>
+              <p class="clin-note">Sessions add the dialyzer's clearance while they run (one compartment). Drug returning from the tissues after a session (rebound) isn't modelled. The default dialysis clearance is a typical value, unverified; the gentamicin case sets it from its label. Educational model, not for clinical dosing.</p>
+            </div>
           </div>
 
           <div class="sec" id="pdSec" hidden>
@@ -1606,7 +1615,7 @@
         <button class="foot-keys" id="keysFoot" aria-haspopup="dialog">Keyboard shortcuts</button>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Send feedback</a>
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=bug_report.md" target="_blank" rel="noopener">Report an issue</a>
-        <span>Version 1.14.0 · updated 30 September 2026</span>
+        <span>Version 1.15.0 · updated 30 September 2026</span>
       </nav>
     </footer>
   </div>
@@ -1676,7 +1685,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=ad34452205" defer></script>
+<script src="pk-engine.js?v=40b7c66597" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -1766,8 +1775,15 @@
     alb:{name:"Albumin (for phenytoin)", sym:"Alb", step:0.1, unit:"g/dL"},
     fe: {name:"Renal fraction", sym:"fe", step:0.05, unit:"", fmt:v=>`${Math.round(v*100)}% excreted unchanged`}
   };
+  // Hemodialysis sessions (pk-hd.js)
+  const HD_SLIDERS = {
+    hdcl:   {name:"Dialysis clearance", sym:"CLd", step:0.5, unit:"L/h"},
+    hdstart:{name:"First session starts at", sym:"t₁", step:1, unit:"h"},
+    hddur:  {name:"Session length", sym:"T", step:0.5, unit:"h"},
+    hdevery:{name:"A session every", sym:"Δt", step:1, unit:"h"}
+  };
   // Settings of the patient, not the drug: changing them keeps the drug selected.
-  const PATIENT_KEYS=["wt","clFn","age","ht","scr","alb"];
+  const PATIENT_KEYS=["hd","hdcl","hdstart","hddur","hdevery","wt","clFn","age","ht","scr","alb"];
   const WTM_NAME={actual:"actual weight", ibw:"ideal body weight", adj:"adjusted body weight"};
   const rangeOf=(k,cfg)=>{ const r=(cfg||SLIDERS[k]||{}).range; return typeof r==="function" ? r() : r || PK.RANGES[k]; };
   // EC50 spans three decades, so its slider moves on a log scale.
@@ -1870,6 +1886,32 @@
       document.head.appendChild(sc);
     });
     return idrLoad;
+  }
+  const HD_SRC="pk-hd.js?v=b96f5ee841";
+  let hdLoad=null;
+  function loadHd(){
+    if(PK.hdModule) return Promise.resolve();
+    if(!hdLoad) hdLoad=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=HD_SRC;
+      sc.onload=()=> PK.hdModule ? res() : rej(new Error("no hd"));
+      sc.onerror=()=>{ hdLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return hdLoad;
+  }
+  // The live scenario's sessions in the window: levels before and after, the fall, the amount removed, and the IV dose
+  // right after each that would bring the level back to where the session found it (rounded).
+  function renderHd(){
+    const p=snapshot(), out=byId("hdOut");
+    if(!PK.hdOn(p)) return;
+    if(!PK.hdModule){ out.textContent="Loading the dialysis model…"; return; }
+    const u=PK.unitsOf(p), T=state.duration, rows=PK.hd.sessionTable(p, T), f=PK.hd.sessionFraction(p), d=DRUGS.find(x=>x.id===lastDrug);
+    const step=d && d.units===p.unit && d.strengths.round || null, rnd=x=> step ? Math.round(x/step)*step : +x.toPrecision(2);
+    let h=`<div class="cm-h">Each session, with no dose during it</div>CL ${fmt(PK.derived(p).CL,2)} → <b>${fmt(PK.derived(p).CL+p.hdcl,2)} L/h</b> while it runs; the level falls <b>${fmt(100*f.fall,0)}%</b> over ${trim(p.hddur)} h, ${fmt(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`;
+    h+=`<div class="cm-h">Sessions in the ${trim(T)} h window</div>`+(rows.length ? rows.slice(0,8).map(r=>
+      `${r.n}. ${trim(r.start)}–${trim(r.end)} h: ${fmt(r.pre,cdp(1))} → <b>${fmt(r.post,cdp(1))}</b> ${u.conc} (−${fmt(100*r.fall,0)}%), ${fmt(r.removed,0)} ${u.amount} removed; to restore the level, about <b>${fmt(rnd(r.supplement),step || rnd(r.supplement)>=10 ? 0 : 1)} ${u.dose}</b> IV after it`).join("<br>") : "none starts in the window");
+    out.innerHTML=h;
   }
   const SOURCES_SRC="pk-sources.js?v=6b5fbf7ff9";
   let srcLoad=null;
@@ -2053,6 +2095,8 @@
     renderHep();
     renderBayes();
     renderMic();
+    if((mode==="cmp" ? Object.values(pair()) : [snapshot()]).some(p=>PK.hdOn(p)) && !PK.hdModule) loadHd().then(render).catch(()=>{});
+    renderHd();
     if(state.pop) queueMicrotask(renderPop); else byId("popPanel").hidden=true;
     const curves=chartCurves();
     const [T0,T1]=viewRange(), span=T1-T0, N=600;
@@ -2113,6 +2157,17 @@
       });
     });
 
+    let lateLabels="";   // labels drawn after the curves, with a dark halo
+    // dialysis sessions: a band across the chart for each, labelled once
+    curves.filter(cv=>!cv.ghost && PK.hdOn(cv.p) && PK.hdModule).forEach((cv,row)=>{
+      PK.hd.sessions(cv.p, T1).forEach((s,i)=>{
+        const a=Math.max(s.start,T0), b=Math.min(s.end,T1);
+        if(b<=a) return;
+        g+=`<rect x="${sx(a)}" y="${M.t}" width="${sx(b)-sx(a)}" height="${ih}" fill="rgba(255,182,61,0.07)"/>`;
+        if(i<12) lateLabels+=`<text x="${sx(a)+3}" y="${M.t+11+row*12}" font-family="JetBrains Mono" font-size="9" fill="#F2C46B">${cv.tag ? cv.tag+" " : ""}HD</text>`;
+      });
+    });
+
     // population mode: each scenario's 5th–95th percentile band, shaded, with its median dotted
     bands.forEach(({cv,r})=>{
       const idx=r.t.map((t,i)=>i).filter(i=> r.t[i]>=T0-1e-9 && r.t[i]<=T1+1e-9);
@@ -2125,7 +2180,6 @@
 
     // with the effect charts on: the concentration that gives the target effect, for each scenario shown. The
     // labels go on after the curves, with a dark halo, so a curve crossing the start of the line can't hide them.
-    let lateLabels="";
     if(state.pd){
       const lines=[];   // one per distinct concentration: scenarios with the same PD settings share a line
       curves.filter(cv=>!cv.ghost && !(cv.p.idr>0)).forEach(cv=>{
@@ -2393,7 +2447,7 @@
     if(v>=1) return (v%1===0?v.toFixed(0):v.toFixed(1));
     return v.toFixed(1);
   }
-  function fmt(v,dp){ return v.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
+  function fmt(v,dp){ return v==null ? "—" : v.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
   function trim(v){ return (v%1===0)? v.toString() : v.toFixed(2).replace(/0+$/,"").replace(/\.$/,""); }
   const cap=s=> s.charAt(0).toUpperCase()+s.slice(1);
 
@@ -2466,6 +2520,16 @@
       ];
     }
     if(p.kin==="mm") cards=mmCards(p, d, ws, ttr);
+    else if(PK.hdOn(p) && PK.hdModule){
+      // dialysis: peaks off the curve, the clearance off and on dialysis, and the fall one session causes
+      const off=[{k:"t½ off dialysis", v:fmt(d.thalfEff,1), u:"h"}, {k:"CL off dialysis", v:fmt(d.CL,2), u:"L/h"}],
+        on={k:"CL on dialysis", hot:1, v:fmt(d.CL+p.hdcl,2), u:"L/h"}, fall={k:"Fall per session", hot:1, v:fmt(100*PK.hd.sessionFraction(p).fall,0), u:"%"},
+        win=[{k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:U().conc}, {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"}];
+      cards=p.dosing==="single" ? [...win, ...off, on, fall, {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc}, {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}]
+        : p.dosing==="repeated" ? [{k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:U().conc}, {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:U().conc},
+            ...off, on, fall, {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg}, {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}]
+        : [...win, cards[2], cards[3], off[0], on, fall, {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:U().auc}];
+    }
     // each card opens its working (PK.metricMath); the keys follow the cards' order
     const keys=PK.readoutKeys(p);
     cards.forEach((c,i)=> c.key=keys[i]);
@@ -2492,7 +2556,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=42c8440065";
+  const MATH_SRC="pk-math.js?v=9864dcbd27";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -2662,7 +2726,11 @@
     if(mode==="cmp"){ stats.style.display="none"; return; }
     stats.style.display="";
     const S=series[0].S, p=series[0].p, last=S.rows[S.rows.length-1], u=U();
-    const items=S.mm ? (S.mm.none ? [
+    const items=S.hd ? [
+      ["Steady state", "none", "sessions don't repeat with the doses"],
+      ["Final peak", `${fmt(last.peak,cdp(1))} ${u.conc}`, `dose ${last.n}`],
+      ["Final trough", `${fmt(last.trough,cdp(1))} ${u.conc}`, "before the next dose"],
+      ["Fall per session", PK.hdModule ? `${fmt(100*PK.hd.sessionFraction(p).fall,0)}%` : "…", `over ${trim(p.hddur)} h, no dose during it`]] : S.mm ? (S.mm.none ? [
       ["Steady state", "none", "input exceeds Vmax"],
       ["Input ÷ Vmax", `${fmt(100*S.mm.ratio,0)}%`, `${fmt(24*S.mm.R,0)} of ${fmt(24*S.mm.Vmax,0)} ${u.amount}/day`],
       ["Final trough", `${fmt(last.trough,cdp(1))} ${u.conc}`, "still climbing"],
@@ -2688,6 +2756,7 @@
     V:["V (70 kg)","L"],tinf:["Infusion","h"],tau:["Interval τ","h"],nDoses:["Doses",""],loadMult:["Loading dose",""],
     missed:["Missed dose",""],wt:["Weight","kg"],clFn:["Organ function","%"],events:["Schedule",""],
     ec50:["EC50","mg/L"],emax:["Emax","%"],hill:["Hill n",""],e0:["E₀","%"],teq:["Effect-site t½","h"],
+    hd:["Hemodialysis",""],hdcl:["Dialysis CL","L/h"],hdstart:["First session","h"],hddur:["Session length","h"],hdevery:["Sessions every","h"],
     idr:["Effect model",""],tout:["Response turnover t½","h"],imax:["Imax",""],smax:["Smax",""],
     pm:["Patient model",""],age:["Age","years"],sex:["Sex",""],ht:["Height","cm"],scr:["SCr","mg/dL"],alb:["Albumin","g/dL"],
     wtm:["CrCl weight",""],fe:["fe",""],S:["Salt factor S",""],unit:["Units",""],
@@ -2700,6 +2769,7 @@
     if(k==="ec50") return `${trim(s.ec50)} ${PK.unitsOf(s).conc}`;
     if(k==="teq") return s.teq>0 ? `${trim(s.teq)} h` : "none";
     if(k==="idr") return IDR_NAME[s.idr];
+    if(k==="hd") return s.hd ? "on" : "off";
     if(k==="hep") return s.hep ? "liver model" : "half-life";
     if(k==="lv") return s.lv.length ? s.lv.map(l=>`dose ${l.n} + ${trim(l.dt)} h: ${trim(l.c)}`).join("; ") : "none";
     if(k==="pm") return s.pm==="clinical" ? "clinical" : "simple";
@@ -2850,7 +2920,7 @@
         else {
           txt+=`, so the clearance of ${a.fe===b.fe ? `a drug that is ${pc(b.fe)} renally excreted` : "the drug"} ${db.CL<da.CL?"fell":"rose"} <b>${fmt(Math.abs(db.CL/da.CL-1)*100,0)}%</b>`;
           if(dT) txt+=`; the half-life ${db.thalfEff>da.thalfEff?"rose":"fell"} from ${fmt(da.thalfEff,1)} h to ${fmt(db.thalfEff,1)} h`;
-          if(a.dosing==="repeated" && b.dosing==="repeated"){
+          if(a.dosing==="repeated" && b.dosing==="repeated" && !PK.hdOn(a) && !PK.hdOn(b)){
             const ta=PK.ssProfile(inShown(a)).ssTrough, tb=PK.ssProfile(inShown(b)).ssTrough;
             if(moved(ta,tb)) txt+=`; the steady-state trough ${tb>ta?"rose":"fell"} from ${fmt(ta,cdp(1))} to ${fmt(tb,cdp(1))} ${U().conc}`;
           }
@@ -2922,6 +2992,12 @@
     if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
       ? "lags the plasma level more. It builds later, a plasma peak reaches it later and blunted, and as the level falls the effect stays above what that level alone would give."
       : "follows the plasma level more closely: it builds sooner, a plasma peak reaches it sooner and less blunted, and it falls with the level."}`);
+    if(PK.hdOn(a)!==PK.hdOn(b)) out.push(PK.hdOn(b) ? `Hemodialysis: a ${trim(b.hddur)}-hour session every ${trim(b.hdevery)} h from ${trim(b.hdstart)} h adds a dialysis clearance of ${trim(b.hdcl)} L/h while it runs, so the level drops faster during each session.` : "Hemodialysis is off: the clearance no longer rises during sessions.");
+    else if(PK.hdOn(b) && PK.hdModule){
+      const fa=PK.hd.sessionFraction(a), fb=PK.hd.sessionFraction(b);
+      if(a.hdcl!==b.hdcl || a.hddur!==b.hddur) out.push(`Dialysis ${a.hdcl!==b.hdcl ? `clearance ${trim(a.hdcl)} → ${trim(b.hdcl)} L/h` : ""}${a.hdcl!==b.hdcl && a.hddur!==b.hddur ? ", " : ""}${a.hddur!==b.hddur ? `sessions ${trim(a.hddur)} → ${trim(b.hddur)} h` : ""}: each session lowers the level by ${fmt(100*fa.fall,0)}% → <b>${fmt(100*fb.fall,0)}%</b>.`);
+      if(a.hdstart!==b.hdstart || a.hdevery!==b.hdevery) out.push(`The sessions now start at ${trim(b.hdstart)} h and repeat every ${trim(b.hdevery)} h (were ${trim(a.hdstart)} and ${trim(a.hdevery)} h): when they fall against the doses decides which levels they lower.`);
+    }
     if(a.idr!==b.idr) out.push(`How the effect is produced: ${IDR_NAME[a.idr].toLowerCase()} → <b>${IDR_NAME[b.idr].toLowerCase()}</b>. ${b.idr>0 ? "The response now follows the turnover of what the drug acts on, so it lags the level." : "The effect now follows the level directly."}`);
     else if(b.idr>0){
       if(a.tout!==b.tout) out.push(`Response turnover half-life ${trim(a.tout)} → ${trim(b.tout)} h: the response ${b.tout>a.tout ? "changes more slowly. It reaches its largest change later, and less of it if the level falls first, and takes longer to come back." : "follows the level more closely: it changes sooner and comes back sooner."}`);
@@ -3031,6 +3107,7 @@
     if(missedOf(p)) s+=` · dose ${missedOf(p)} missed`;
     s+=` · t½ ${fmt(Math.LN2/keOf(p),1)} h`;
     if(p.pm==="clinical") s+=` · CrCl ${fmt(PK.patientOf(p).crcl,0)} mL/min (fe ${trim(p.fe)})`;
+    if(PK.hdOn(p)) s+=` · hemodialysis ${trim(p.hddur)} h every ${trim(p.hdevery)} h from ${trim(p.hdstart)} h, CLd ${trim(p.hdcl)} L/h`;
     else if(p.clFn!==100) s+=` · organ fn ${p.clFn}%`;
     if(state.pd && p.idr>0) s+=` · ${IDR_NAME[p.idr].toLowerCase()} · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc} · response turnover t½ ${trim(p.tout)} h`;
     else if(state.pd) s+=` · EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?` · Emax ${trim(p.emax)}%`:""}${p.hill!==1?` · n ${trim(p.hill)}`:""}${p.e0?` · E₀ ${trim(p.e0)}%`:""}${PK.keqOf(p)>0?` · effect-site t½ ${trim(p.teq)} h`:""}`;
@@ -3449,6 +3526,10 @@
     setSegVal("kinSeg","kin",state.kin);
     setSegVal("cmtSeg","cmt",state.cmt); byId("cmtSeg").hidden=state.kin==="mm";
     setSegVal("hepSeg","hep",state.hep); byId("hepSeg").hidden=!PK.isRelevant("hep", snapshot());
+    const hdl=byId("hdSliders"), hdNow=PK.hdOn(snapshot());
+    hdl.innerHTML=""; byId("hdPanel").hidden=!hdNow;
+    setSegVal("hdSeg","hd",state.hd); byId("hdSeg").hidden=!PK.isRelevant("hd", snapshot());
+    if(hdNow) Object.entries(HD_SLIDERS).forEach(([key,cfg])=> makeSlider(hdl,key,cfg));
     const dl=byId("pdSliders");
     dl.innerHTML="";
     Object.entries(PD_SLIDERS).forEach(([key,cfg])=>{ if(PK.isRelevant(key, snapshot())) makeSlider(dl,key,cfg); });
@@ -3508,6 +3589,7 @@
   seg("pmSeg","pm",v=>{ state.pm=v; buildSliders(); changed(["pm"]); });
   seg("kinSeg","kin",v=>{ state.kin=v; state.drug=null; markDrug(); buildSliders(); changed(["kin"]); });
   seg("cmtSeg","cmt",v=>{ state.cmt=+v; state.drug=null; markDrug(); buildSliders(); changed(["cmt"]); });
+  seg("hdSeg","hd",v=>{ state.hd=+v; buildSliders(); changed(["hd"]); });
   seg("hepSeg","hep",v=>{ state.hep=+v; state.drug=null; markDrug(); syncHep(); buildSliders(); changed(["hep","thalf","F"]); });
   seg("sexSeg","sex",v=>{ state.sex=v; changed(["sex"]); });
   seg("wtmSeg","wtm",v=>{ state.wtm=v; changed(["wtm"]); });
@@ -4294,7 +4376,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=6be21d6045";
+  const GLOSS_SRC="pk-glossary.js?v=3457f15be1";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4341,6 +4423,7 @@
     // if they're here, else as soon as they load
     const needs=[]; if(!PK.lessonModule) needs.push(loadLessons()); if(L.cur.lv && L.cur.lv.length && !PK.bayesModule) needs.push(loadBayes());
     if(L.cur.idr>0 && !PK.idrModule) needs.push(loadIdr());
+    if(L.cur.hd && !PK.hdModule) needs.push(loadHd());
     if(!needs.length) fillLesson(L);
     else {
       ["lsGoal","lsText","lsWhy","lsTry","lsChal","lsQ"].forEach(id=> byId(id).textContent=id==="lsGoal" ? "Loading the lesson…" : "");
@@ -4366,7 +4449,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=452e354145";
+  const LESSON_SRC="pk-lessons.js?v=ca97210b0e";
   let lessonLoad=null;
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -5203,7 +5286,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=8a80374327";
+  const PRACTICE_SRC="pk-practice.js?v=b7088f3efd";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();
@@ -5399,7 +5482,7 @@
   $("tabCs").addEventListener("click",()=>openCases(null));
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=5ab19e587f";
+  const CASES_SRC="cases.js?v=d11520d83e";
   let casesReady=null, casesMounted=false;
   // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){
@@ -5408,7 +5491,7 @@
       sc.src=CASES_SRC; sc.onload=()=> window.DCCases ? res(window.DCCases) : rej(new Error("no cases"));
       sc.onerror=()=> rej(new Error("load"));
       document.head.appendChild(sc);
-    }), loadBayes(), loadSources()]).then(([C])=>C).catch(err=>{ casesReady=null; throw err; });
+    }), loadBayes(), loadSources(), loadHd()]).then(([C])=>C).catch(err=>{ casesReady=null; throw err; });
     return casesReady;
   }
   const casesHost={esc, fmt, toast, copyHash, loadPractice:()=>loadPractice(),

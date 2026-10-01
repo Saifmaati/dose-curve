@@ -173,6 +173,18 @@
         viz:Object.assign({route:"iv", D, cmt:2}, set), view:{duration:evenUp(5*Math.LN2/q[1].k)}, check:p=> derived(p).CL};
     }},
     /* ----- repeated dosing ----- */
+    {id:"hdfall", topic:"single", since:8, gen(d){
+      // one IV dose, then a dialysis session: how far it lowers the level (no dose during it)
+      const D=d(100,1000,50), V=d(15,60,1), th=d(4,40,1), CLd=d(1,10,0.5), T=d(3,8,0.5), start=d(2,12,1);
+      const k=Math.LN2/th, kd=CLd/V, f=1-Math.exp(-(k+kd)*T), dur=evenUp(start+T+12);
+      return {type:"Hemodialysis · fall over a session", unit:"%", dp:1, ans:100*f,
+        q:`After a <b>${D} mg</b> IV bolus (V = <b>${V} L</b>, t½ = <b>${th} h</b> between sessions), a hemodialysis session with a dialysis clearance of <b>${CLd} L/h</b> runs for <b>${T} h</b>. By what percentage does the level fall over the session?`,
+        sol:[step(`During the session the clearances add, so the rate constants do: kₑ = ${LN2} / ${th} = ${nf(k,4)} h⁻¹ and CLd / V = ${CLd} / ${V} = ${nf(kd,4)} h⁻¹`),
+          step(`<b>Fall = 1 − e^(−(kₑ + CLd/V)·T)</b> = 1 − e^(−${nf(k+kd,4)} × ${T}) = <b>${nf(100*f,1)}%</b>`),
+          step(`Of that, the dialyzer accounts for CLd / (CL + CLd) = ${nf(100*kd/(k+kd),0)}%, and the body the rest. The dose and when the session starts don't change the fraction.`)],
+        viz:{route:"iv", dosing:"single", D, V, thalf:th, hd:1, hdcl:CLd, hdstart:start, hddur:T, hdevery:48}, view:{duration:dur}, at:start+T,
+        check:p=> 100*(1-PK.conc(p, start+T-1e-9)/PK.conc(p, start))};
+    }},
     {id:"t90", topic:"rep", gen(d){
       const th=d(2,12,1), t=Math.log2(10)*th, tau=Math.max(2,Math.min(24,th)), n=Math.min(20, Math.ceil(2*t/tau)+1);
       return {type:"Time to steady state", unit:"h", dp:1, ans:t,

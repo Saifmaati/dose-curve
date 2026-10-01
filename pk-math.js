@@ -9,7 +9,7 @@
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
   const {keOf, vOf, windowStats, missedOf, ssConc, doseEvents, conc, derived, unitsOf, saltOf, clFactor, patientOf, CRCL_REF,
-    vmaxOf, mmCss, mmHalfAt, MM_STEP, disposition, hepOn, wellStirred, fOf}=PK;
+    vmaxOf, mmCss, mmHalfAt, MM_STEP, disposition, hepOn, wellStirred, fOf, hdOn}=PK;
   const nf=(v,dp)=> String(+v.toFixed(dp));          // a number to dp decimals, without trailing zeros
   const twoCmt=p=> p.cmt===2 && p.kin!=="mm";
 
@@ -145,8 +145,19 @@
           t(`Peaks and troughs settle this many times higher than after the first dose.`)]}; }
       case "t90": return {title:"Time to 90% of steady state", value:3.32*th, steps:[
         m(`90% of steady state takes log₂10 ≈ 3.32 half-lives: 3.32 × ${n1(th)} = ${n1(3.32*th)} h`), t(`Neither the dose nor the interval changes it.`)]};
+      case "hdCl": { const CLd=p.hdcl, tot=CL+CLd;
+        return {title:"Clearance during a session", value:tot, steps:[m(`CL during dialysis = CL + CLd = ${n2(CL)} + ${n2(CLd)} = ${n2(tot)} L/h`),
+          m(`t½ during a session = 0.693 × V / ${n2(tot)} = 0.693 × ${n1(V)} / ${n2(tot)} = ${n2(Math.LN2*V/tot)} h, against ${n1(th)} h between sessions`),
+          t(`The dialyzer's clearance adds to the body's own only while a session runs.`)]}; }
+      case "hdFall": { const kd=p.hdcl/V, kt=k+kd, f=-Math.expm1(-kt*p.hddur);
+        return {title:"Fall over one session", value:100*f, steps:[m(`Fall = 1 − e^(−(kₑ + CLd/V)·T) = 1 − e^(−(${nk(k)} + ${nk(kd)}) × ${nf(p.hddur,2)}) = ${nf(100*f,1)}%`),
+          m(`Of that, the dialyzer removes CLd / (CL + CLd) = ${n2(p.hdcl)} / ${n2(CL+p.hdcl)} = ${nf(100*kd/kt,0)}%, and the body the rest`),
+          t(`That is with no dose given during the session. One compartment: drug returning from the tissues afterwards (rebound) isn't modelled.`)]}; }
+      case "aucHd": { const v=derived(p).auc;
+        return {title:"Total exposure (AUC∞) with dialysis", value:v, steps:[t(`During sessions the clearance is ${n2(CL+p.hdcl)} L/h, between them ${n2(CL)} L/h, so AUC = F·${Sd} / CL no longer holds. The area is summed exactly between each dose, infusion end and session edge.`),
+          m(`AUC∞ = ${n1(v)} ${U.auc}, against F·${Sd} / CL = ${n1(F*D/CL)} ${U.auc} with no dialysis`)]}; }
       case "peak": case "trough": {
-        const n=p.nDoses, x=Math.exp(-k*p.tau), simple=p.route==="iv" && p.loadMult===1 && !missedOf(p);
+        const n=p.nDoses, x=Math.exp(-k*p.tau), simple=p.route==="iv" && p.loadMult===1 && !missedOf(p) && !hdOn(p);
         const trough=key==="trough", title=trough ? "Trough after the last dose" : "Peak after the last dose";
         const ss=trough ? ssConc(p, p.tau-1e-9) : null;
         const steps=[t(`Each of the ${n} doses (every τ = ${p.tau} h) still adds what's left of it: the curve is their sum (superposition).`)];
@@ -160,9 +171,10 @@
           const ev=doseEvents(p);
           if(trough) value=conc(p, n*p.tau, ev);
           else value=derived(p).cmaxSS;   // the last interval searched, its kinks included, then refined
-          steps.push(t(`${p.route==="iv" ? "With a loading or missed dose" : oral ? "For oral doses" : "For infusions"} the sum has no short closed form, so it's added up dose by dose${trough ? "" : " and the last interval searched for its highest point"}: ${n2(value)} ${cu}.`));
+          steps.push(t(`${hdOn(p) ? "With dialysis sessions" : p.route==="iv" ? "With a loading or missed dose" : oral ? "For oral doses" : "For infusions"} the sum has no short closed form, so it's added up dose by dose${trough ? "" : " and the last interval searched for its highest point"}: ${n2(value)} ${cu}.`));
         }
-        if(trough) steps.push(t(`Given forever, the trough would settle at ${n2(ss)} ${cu}; this regimen has reached ${nf(Math.min(100,100*value/ss),0)}% of it.`));
+        if(hdOn(p)) steps.push(t(`Dialysis sessions don't repeat with the doses, so there is no steady state to compare with.`));
+        else if(trough) steps.push(t(`Given forever, the trough would settle at ${n2(ss)} ${cu}; this regimen has reached ${nf(Math.min(100,100*value/ss),0)}% of it.`));
         return {title, value, steps};
       }
       case "ttr": return {title:"Time in window", value:100*ws.tIn/ws.T, steps:[

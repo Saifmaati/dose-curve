@@ -22,6 +22,8 @@
   const givenOf=p=> p.dosing==="custom" ? p.events.filter(e=>e.status==="given") : [];
 
   const TEXTS={
+    hd:{text:"One 120 mg dose of gentamicin in the man from the case Gentamicin on hemodialysis: a creatinine clearance of 11 mL/min, so a half-life of 27 h between sessions. With no dialysis (dashed) the level is still 2.07 mg/L at 40 h and 1.68 mg/L at 48 h. An 8-hour session from 40 h, with the dialysis clearance (1.25 L/h) that gives the label's approximately 50% fall, takes it to 1.04 mg/L by 48 h. The session removes 15 mg, 70% of what leaves the body while it runs; his own kidneys clear the rest. Over all the sessions dialysis removes 18 mg, and the AUC falls from 224 to 190 mg·h/L. This model has no rebound: drug returning from the tissues after a session isn't shown.",
+      tryThis:"Shorten the session to 4 hours: each session now lowers the level by 29%."},
     route:{text:"Same 500 mg dose, two routes. The IV bolus (dashed) puts everything in plasma at t = 0, so it peaks instantly at D/V. The oral dose has to be absorbed first: its peak comes later and sits lower, and its AUC is smaller by the bioavailability factor F.",
       tryThis:"Push kₐ to 3 h⁻¹ and F to 1.0. The oral curve closes in on the IV one."},
     inf:{text:"The same 1 g given two ways. Pushed as a bolus it spikes past the toxic line. Spread over a 3 h infusion, the peak stays under it and arrives when the infusion ends. Total exposure (AUC) is identical because the same amount goes in.",
@@ -92,6 +94,14 @@
   };
 
   const GUIDE={
+    hd:{objective:"Calculate how far a dialysis session lowers the level, and how the dialyzer's clearance and the body's own share the work.",
+      predict:{q:"An 8-hour session starts at 40 h. Over the session, the level falls by…", choices:["About half","About a tenth","Almost all of it"], answer:0,
+        why:"While it runs, the clearances add: 1.25 L/h from the dialyzer and 0.54 L/h from his kidneys, a combined half-life of 8 h. One half-life: about half.",
+        decide:m=>{ const f=PK.hd.sessionFraction(m.cur.p).fall; return f>0.35 && f<0.65 ? 0 : f<=0.35 ? 1 : 2; },
+        show:m=>`Fall over the session: ${r0(100*PK.hd.sessionFraction(m.cur.p).fall)}%`},
+      challenge:{text:"Change only the dialysis clearance until one session lowers the level by at least 75%.",
+        goal:m=>{ const p=m.now.p; return PK.hdOn(p) && p.hddur===8 && p.D===120 && p.scr===7.5 && !!PK.hd && PK.hd.sessionFraction(p).fall>=0.75; }, solution:{hdcl:3.5}},
+      matters:"Dialysis can remove a large share of a drug the kidneys normally clear, within hours. How much depends on the dialyzer's clearance next to the body's own and on the session's length, which is why labels give a dose, or an extra dose, after each session."},
     route:{objective:"Explain why an oral dose peaks later and lower than the same IV bolus, and why its AUC is smaller.",
       predict:{q:"Compared with the IV bolus, the oral dose's total exposure (AUC) will be…", choices:HLS, answer:1,
         why:"Only the fraction F = 0.7 of the oral dose reaches the blood, so exposure falls by that fraction. Absorption speed changes the shape, not the total.",

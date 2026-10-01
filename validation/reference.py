@@ -19,6 +19,8 @@ The model:
     indirect responses (Dayneka, Garg and Jusko 1993): a response R (100 = baseline) integrated with the drug,
                  dR/dt = kin*(1 -/+ D(C)) - kout*R (types 1, 3) or kin - kout*(1 -/+ D(C))*R (types 2, 4),
                  D(C) = max * C^n / (EC50^n + C^n), kin = 100*kout, kout = ln 2 / turnover half-life
+    hemodialysis: during each session the elimination rate is ke + CLd/V; a fourth state accumulates CLd*C, the
+                 amount the dialyzer removes
     antimicrobial indices: a regimen run until it repeats itself (30 terminal half-lives), then its last interval
                  read for the time the unbound level fu*C is above the MIC, the peak over the MIC, and the area over
                  the interval scaled to 24 h over the MIC
@@ -341,6 +343,71 @@ def idr_matrix():
     ]
     return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
 
+# ---------------- hemodialysis ----------------
+# The model with a dialysis clearance switched on during each session (one ODE system, piecewise between doses,
+# infusion ends and session edges); the level at six times, each session's level as it starts and ends, and the
+# amount each removes (the integral of CLd*C).
+def hd_course(p, t_end):
+    V = p["V"] * p["wt"] / 70.0
+    fac, S, F, ka = factor(p), p.get("S", 1.0), p.get("F", 1.0), p.get("ka", 1.0)
+    ke = math.log(2) / p["thalf"] * fac
+    kd = p["hdcl"] / V
+    ses = []
+    t = p["hdstart"]
+    while t < t_end:
+        ses.append((t, t + p["hddur"])); t += p["hdevery"]
+    ds = doses(p)
+    cuts = sorted({0.0, t_end} | {t for t, *_ in ds if t < t_end} | {t + d for t, _, r, d in ds if r == "inf" and t + d < t_end}
+                  | {a for a, b in ses} | {b for a, b in ses if b < t_end})
+
+    def rate(t):
+        return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
+
+    def on(t):
+        return any(a <= t < b for a, b in ses)
+
+    def rhs(t, y, R, k_d):
+        ag, a, rem = y
+        return [-ka * ag, ka * ag + R - ke * a - k_d * a, k_d * a]
+
+    y = np.array([0.0, 0.0, 0.0])
+    pieces = []
+    for s0, s1 in zip(cuts[:-1], cuts[1:]):
+        for t0, mg, r, d in ds:
+            if abs(t0 - s0) < 1e-12:
+                if r == "iv": y[1] += S * mg
+                elif r == "oral": y[0] += F * S * mg
+        sol = solve_ivp(rhs, (s0, s1), y, args=(rate(s0), kd if on(s0) else 0.0), method="DOP853", rtol=1e-12, atol=1e-13, dense_output=True)
+        pieces.append((s0, s1, sol.sol))
+        y = sol.y[:, -1].copy()
+
+    def state(t):
+        for s0, s1, f in pieces:
+            if s0 <= t < s1: return f(t)
+        return y
+    return (lambda t: float(state(t)[1]) / V), (lambda t: float(state(t)[2])), ses
+
+def hd_reference(p, T):
+    c, rem, ses = hd_course(p, T)
+    eps = 1e-9
+    rows = [{"pre": c(a), "post": c(b - eps), "removed": rem(b - eps) - rem(a)} for a, b in ses if b <= T][:3]
+    return {"at": {str(f): c(f * T - eps) for f in (0.1, 0.25, 0.4, 0.55, 0.75, 1.0)}, "sessions": rows}
+
+def hd_matrix():
+    base = {"wt": 70, "loadMult": 1, "missed": 1, "hd": 1}
+    rows = [
+        ("IV bolus, one session", 48, dict(route="iv", dosing="single", D=500, V=20, thalf=10, hdcl=6, hdstart=6, hddur=4, hdevery=48)),
+        ("gentamicin-like, end-stage kidney disease, 8 h every 48 h", 144, dict(route="inf", dosing="single", D=120, tinf=0.5, V=18, thalf=2.5, wt=80, pm="clinical", age=64, sex="M", scr=7.5, fe=1, hdcl=1.25, hdstart=40, hddur=8, hdevery=48)),
+        ("oral, repeated, sessions every 48 h", 144, dict(route="oral", dosing="repeated", D=400, F=0.8, ka=1.0, tau=12, nDoses=12, V=40, thalf=16, hdcl=8, hdstart=10, hddur=4, hdevery=48)),
+        ("infusions q12h, a session overlapping an infusion", 96, dict(route="inf", dosing="repeated", D=1000, tinf=2, tau=12, nDoses=8, V=28, thalf=20, hdcl=5, hdstart=23, hddur=4, hdevery=24)),
+        ("mixed-route custom schedule", 96, dict(route="oral", dosing="custom", F=0.9, ka=1.5, V=30, thalf=12, hdcl=4, hdstart=8, hddur=5, hdevery=44,
+            events=[{"t": 0, "mg": 500, "route": "iv"}, {"t": 20, "mg": 400, "route": "oral"}, {"t": 50, "mg": 600, "route": "inf", "dur": 3}])),
+        ("loading dose and a missed dose", 120, dict(route="iv", dosing="repeated", D=300, tau=24, nDoses=5, loadMult=2, missed=3, V=25, thalf=30, hdcl=3, hdstart=20, hddur=4, hdevery=48)),
+        ("vancomycin-like, reduced CrCl, short sessions", 168, dict(route="inf", dosing="single", D=1500, tinf=1.5, V=28, thalf=4.8, wt=75, pm="clinical", age=70, sex="F", scr=5, fe=0.83, hdcl=4, hdstart=12, hddur=3.5, hdevery=48)),
+        ("a fast dialyzer next to a slow body", 48, dict(route="iv", dosing="single", D=800, V=50, thalf=60, hdcl=20, hdstart=1, hddur=8, hdevery=24)),
+    ]
+    return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
+
 # ---------------- Bayesian (MAP) individualization ----------------
 # Written from the method's statement in pk-bayes.js, not translated from it: the prior is log-normal around the
 # patient model's CL and V (omega = sqrt(ln(1 + CV^2))), each level has error SD sqrt((prop*c)^2 + add^2), and the
@@ -421,6 +488,7 @@ def map_matrix():
 def main():
     pkpd = [dict(s, reference=pkpd_reference(s["scenario"], s["mic"])) for s in pkpd_matrix()]
     idr = [dict(s, reference=idr_reference(s["scenario"], s["T"])) for s in idr_matrix()]
+    hd = [dict(s, reference=hd_reference(s["scenario"], s["T"])) for s in hd_matrix()]
     maps = []
     for s in map_matrix():
         m = map_estimate(s["scenario"], s["scenario"]["lv"], s["opts"])
@@ -445,10 +513,12 @@ def main():
                  "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
         "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
                 "tolerance": {"rel": 0.0001, "t_h": 0.01}, "scenarios": idr},
+        "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 8 scenarios with a dialysis clearance switched on during sessions.",
+               "tolerance": {"rel": 0.0001}, "scenarios": hd},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:
         json.dump(doc, f, indent=1)
-    print(f"{len(rows)} scenarios, {len(maps)} MAP, {len(pkpd)} PK/PD and {len(idr)} indirect-response scenarios written")
+    print(f"{len(rows)} scenarios, {len(maps)} MAP, {len(pkpd)} PK/PD, {len(idr)} indirect-response and {len(hd)} dialysis scenarios written")
 
 if __name__ == "__main__":
     main()
