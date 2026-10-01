@@ -484,3 +484,15 @@ Lighthouse on mobile: all 36 lesson links measured on 2.7.0 (87–95, the Bayesi
 | Practice kind: Cockcroft–Gault with ideal, adjusted or actual weight (43 kinds, worksheet version 9) | Practice, repeated dosing | `clinical.test.js` (200 seeds against an independent Devine, adjusted-weight and Cockcroft–Gault calculation and the simulator's own patient; a version-8 sheet rebuilds exactly) |
 
 CLS 0 on all 75 practice, worksheet, task, case and tab links at 390. 387 tests in 22 files.
+
+## 38. 2.10.0 (one world, one camera; Model and methods; a child patient)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| Pinned scenes, scroll-scrubbed camera, beats, strand, cold open | the root address, on every visit | `stage.test.js` (2.10: pinned scenes, cold-open rules, tiers, governor, no undefined shader steps); a 20-second capture (0 slow frames); screenshots at 1440 and 390 before and after |
+| Rendering: swept ribbon, glass, studio light, mirrored floor, dust, shafts, post-processing | the sequence and the app with Effects on | screenshots and the capture; axe 0 |
+| Model and methods (MathML), the four-line footer | footer → Model and methods | `release.test.js` (the footer's lines and links; the statements on methods.html; offline) |
+| Child patient (Rhodin 2009) | Patient → Child | `clinical.test.js` (half maturation at 47.7 weeks, 90% at one year, continuity with the adult, links v13) |
+| DOI in README, CITATION, methods | README badge | `release.test.js` |
+
+Lighthouse mobile: root 93; desktop 89 (Speed Index, the cold open). Accessibility 100, CLS 0 on the root and all 111 link kinds. 391 tests in 22 files.

@@ -9,6 +9,8 @@ Only these steps need your accounts or your judgment; everything else in Build P
 | Release | Pull request |
 | --- | --- |
 | 2.10.0 | the pull request from branch `v2.10.0` |
+| 2.11.0 | the pull request from branch `v2.11.0` (after 2.10.0) |
+| 2.12.0 | the pull request from branch `v2.12.0` (after 2.11.0) |
 
 ## 2. GitHub Releases
 
@@ -27,10 +29,10 @@ for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0; do a
 **Why:** it needs a GoatCounter account.
 
 1. Sign up at https://www.goatcounter.com and choose a site code, for example `dosecurve`.
-2. In `index.html`, set `const ANALYTICS_SITE_ID="dosecurve";` (search for `ANALYTICS_SITE_ID`).
+2. In `index.html` and `methods.html`, set `const ANALYTICS_SITE_ID="dosecurve";` (search for `ANALYTICS_SITE_ID`; in `tools/methods.py` too, so a rebuild keeps it).
 3. Commit the change.
 
-The footer then says "Visit counting: on". GoatCounter is cookie-free and receives only the page's path, never a link's settings. The privacy note in the footer already describes what is counted and what isn't.
+Model and methods then says "Visit counting: on". GoatCounter is cookie-free and receives only the page's path, never a link's settings. The privacy note in the footer already describes what is counted and what isn't.
 
 ## 5. Delete the merged branches
 

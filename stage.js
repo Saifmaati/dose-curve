@@ -148,15 +148,16 @@ export function start(PK){
   const toneOfScene=i=> D.classList.contains("light") || (scenes[i] && scenes[i].dataset.tone==="light") ? "light" : "dark";
   // the scenes' text: in as its frame arrives, out as it leaves; the hero's readouts land one by one (beat 3)
   let lastVars="";
-  function textVars(P){
-    const still=stillQ.matches, out=[];
+  // settle: once scrolling stops, every headline is either fully shown or fully gone (never left half faded)
+  function textVars(P, settle){
+    const still=stillQ.matches, out=[], r=v=> settle ? Math.round(v) : v;
     scenes.forEach((s,i)=>{
       const u=P-2*i;
-      const vin=still || (i===0 && u<=0.06) ? 1 : band(u,-0.42,0.06), vin2=still || (i===0 && u<=0.1) ? 1 : band(u,-0.3,0.18), vout=still ? 0 : band(u,0.96,1.42);
+      const vin=r(still || (i===0 && u<=0.06) ? 1 : band(u,-0.42,0.06)), vin2=r(still || (i===0 && u<=0.1) ? 1 : band(u,-0.3,0.18)), vout=r(still ? 0 : band(u,0.96,1.42));
       s.style.setProperty("--in", vin.toFixed(3)); s.style.setProperty("--in2", vin2.toFixed(3)); s.style.setProperty("--out", vout.toFixed(3));
       out.push(vin.toFixed(2), vout.toFixed(2));
-      if(i===0){ const r=k=> still ? 1 : band(u, 0.6+0.08*k, 0.7+0.08*k);
-        [1,2,3].forEach(k=> s.style.setProperty("--ro"+k, r(k-1).toFixed(3))); }
+      if(i===0){ const ro=k=> still ? 1 : r(band(u, 0.6+0.08*k, 0.7+0.08*k));
+        [1,2,3].forEach(k=> s.style.setProperty("--ro"+k, ro(k-1).toFixed(3))); }
     });
     if(P>0.04) D.classList.add("cued");
     lastVars=out.join(",");
@@ -181,6 +182,25 @@ export function start(PK){
   const coldStart=()=> Math.max(600, readyAt+120);
   const coldLight=()=> stillQ.matches || !D.classList.contains("intro-on") ? 1 : coldOn() || coldT()<COLD_MS ? smooth((coldT()-coldStart())/1500) : 1;
   const coldDraw=()=> stillQ.matches || !D.classList.contains("intro-on") ? 1 : coldOn() || coldT()<COLD_MS ? smooth((coldT()-coldStart()-100)/Math.max(900, Math.min(1900, COLD_MS-coldStart()-500))) : 1;
+  // gentle snap: when the scrolling stops close to a resting frame (within a tenth of a screen), settle on it; never
+  // during a scene change, never under reduced motion. (CSS proximity snapping, with frames this close together,
+  // behaved as mandatory and fought slow scrolling.)
+  let snapTimer=0, snapping=false;
+  function snapLater(){
+    clearTimeout(snapTimer);
+    if(!D.classList.contains("intro-on") || snapping) return;
+    D.classList.remove("settle");
+    snapTimer=setTimeout(()=>{
+      const w=where();
+      if(D.classList.contains("intro-on") && w.P>=-1){ D.classList.add("settle"); textVars(w.P, true); }
+      if(!w.inIntro || w.P<0) return;
+      if(stillQ.matches) return;
+      const i=Math.floor(w.P/2), u=w.P-2*i; if(u>1.04) return;
+      let best=null; (i===0 ? [0,.5,.82] : [.18,.5,.82]).forEach(r=>{ if(Math.abs(u-r)<.1 && (best===null || Math.abs(u-r)<Math.abs(u-best))) best=r; });
+      if(best===null || Math.abs(u-best)<.006) return;
+      snapping=true; scrollTo({top:intro.offsetTop+(2*i+best)*innerHeight, behavior:"smooth"}); setTimeout(()=>{ snapping=false; }, 700);
+    }, 240);
+  }
   let lastIn=null, lastTop=null;
   function onScroll(){
     const w=where(), top=toneAt(where(30));
@@ -218,18 +238,23 @@ export function start(PK){
     let forced=null; try{ forced=localStorage.getItem("dosecurve.fxtier"); }catch(e){}
     if(forced==="1" || forced==="2") return +forced;
     const n=navigator, gl2=!!window.WebGL2RenderingContext;
+    // (a software renderer is ruled out once the renderer exists, from its own context: see build)
     return !phoneQ.matches && gl2 && (n.hardwareConcurrency||4)>=6 && !(n.deviceMemory<8) ? 2 : 1;
   }
   function load3d(){
     if(three || threeLoading || !can3d()) return threeLoading;
-    return threeLoading=import("three").then(THREE=>{ threeLoading=null; if(!can3d()) return; readyAt=performance.now(); three=build(THREE, tierOf()); D.classList.add("stage3d"); three.setLive(); onScroll(); three.frame(true); })
+    return threeLoading=import("three").then(async THREE=>{ if(!can3d()){ threeLoading=null; return; } const t=build(THREE, tierOf()); t.setLive(); await t.ready(); threeLoading=null;
+        if(!can3d()){ t.dispose(); return; } three=t; readyAt=performance.now(); D.classList.add("stage3d"); onScroll(); three.frame(true); })
       .catch(()=>{ threeLoading=null; D.classList.remove("stage3d"); });
   }
   function build(THREE, tier){
-    const full=tier===2;
     const host3d=document.createElement("div"); host3d.className="stage-3d"; host3d.setAttribute("aria-hidden","true");
     const canvas=document.createElement("canvas"); host3d.appendChild(canvas);
-    const renderer=new THREE.WebGLRenderer({canvas, antialias:!full, alpha:true, powerPreference:"high-performance"});
+    const renderer=new THREE.WebGLRenderer({canvas, antialias:tier!==2, alpha:true, powerPreference:"high-performance"});
+    // a software renderer (no GPU) draws every pixel on the processor: never the full passes there
+    let soft=false;
+    try{ const g=renderer.getContext(), x=g.getExtension("WEBGL_debug_renderer_info"); soft=!!(x && /swiftshader|llvmpipe|software|softpipe|basic render/i.test(g.getParameter(x.UNMASKED_RENDERER_WEBGL))); }catch(e){}
+    const full=tier===2 && !soft;
     document.body.appendChild(host3d);
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -244,7 +269,7 @@ export function start(PK){
     const groups={};
     const disposeGroup=g=>{ if(!g) return; g.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) [].concat(o.material).forEach(m=>{ if(!m.userData.shared) m.dispose(); }); }); if(g.parent) g.parent.remove(g); };
     const GRAPHITE="#2C313A", BRONZE="#8C6A44";
-    const APPX=200;   // the app's own place in the world: the sequence flies there and the simulator is simply there
+    const APPX=120;   // the app's own place in the world: the sequence flies there and the simulator is simply there
 
     /* lights and a studio environment (PMREM), one per tone */
     const key=new THREE.DirectionalLight(0xfff1df, 2.4); key.position.set(-6, 10, 8);
@@ -255,6 +280,7 @@ export function start(PK){
     const pmrem=new THREE.PMREMGenerator(renderer);
     const envs={};
     function envOf(t){
+      if(!full) return null;
       if(envs[t]) return envs[t];
       const es=new THREE.Scene(), lit=t==="light";
       es.add(new THREE.Mesh(new THREE.BoxGeometry(30,30,30), new THREE.MeshBasicMaterial({side:THREE.BackSide, color:col(lit ? "#c9ced6" : "#04060b")})));
@@ -425,7 +451,7 @@ export function start(PK){
           if(uHas>.5){ vec4 r=texture2DProj(tRefl, vR); float k=uAmt*(1.-fog)*(1.-smoothstep(6.,42.,vD)); vec3 rc=min(r.rgb, vec3(1.2))*k; pm+=rc; a=clamp(a+max(r.a*k, max(rc.r,max(rc.g,rc.b))),0.,1.); }
           gl_FragColor=vec4(min(pm, vec3(a)), a);
         }`});
-    const floor=new THREE.Mesh(new THREE.PlaneGeometry(320, 60), floorMat); floor.rotation.x=-Math.PI/2; floor.position.set(110, 0, -6); floor.renderOrder=-1;
+    const floor=new THREE.Mesh(new THREE.PlaneGeometry(220, 60), floorMat); floor.rotation.x=-Math.PI/2; floor.position.set(60, 0, -6); floor.renderOrder=-1;
     scene.add(floor);
 
     /* dust: slow motes through the whole world, brighter where they catch the key light */
@@ -438,7 +464,7 @@ export function start(PK){
           vA=(.16+1.5*sc)*(1.-smoothstep(6.,48.,d))*smoothstep(.6,2.5,d); }`,
       fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(0.,.25,r))*vA*uA*.55; gl_FragColor=vec4(uColor*a,a); }`});
     const dust=(()=>{ const n=full ? 900 : 260, pos=new Float32Array(n*3), seed=new Float32Array(n), R=PK.seededRandom(7);
-      for(let i=0;i<n;i++){ pos.set([-20+250*R(), .2+8*R(), -14+24*R()], i*3); seed[i]=R(); }
+      for(let i=0;i<n;i++){ pos.set([-20+160*R(), .2+8*R(), -14+24*R()], i*3); seed[i]=R(); }
       const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("aSeed", new THREE.BufferAttribute(seed,1));
       const pts=new THREE.Points(geo, dustMat); pts.frustumCulled=false; pts.layers.enable(BLOOM); scene.add(pts); return pts; })();
 
@@ -450,7 +476,7 @@ export function start(PK){
         void main(){ float x=clamp(abs(vUv.x-.5)*2.,0.,1.); float a=pow(max(1.-x,0.),2.2)*smoothstep(0.,.25,vUv.y)*pow(max(vUv.y,0.),.6)*(1.-smoothstep(.55,1.,vUv.y))*uA*(.85+.15*sin(uTime*.3+vUv.y*3.));
           gl_FragColor=vec4(uColor*a,0.); }`});   // light only: the composite gives it alpha by its brightness
     const shafts=new THREE.Group(); scene.add(shafts);
-    [[-3.5,0],[ -1.2,.6],[37,0],[41,.4],[157,0],[161.5,.5]].forEach(([x,o])=>{
+    [[-3.5,0],[ -1.2,.6],[21,0],[25,.4],[93,0],[97.5,.5]].forEach(([x,o])=>{
       const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6+o, 22), shaftMat); m.position.set(x+2, 5.5, -4.5-o*3);
       m.rotation.z=Math.atan2(-LIGHT_DIR.x, -LIGHT_DIR.y)*-1; m.rotation.y=.35; shafts.add(m); });
 
@@ -495,11 +521,11 @@ export function start(PK){
     }
 
     /* the sequence's objects, placed along the x axis; the camera travels between them */
-    const SX=[0,40,80,120,160];
+    const SX=[0,24,48,72,96];   // close enough that the next scene comes into view as the camera travels
     let popPts=null;
     function buildIntro(){
       prepScenes();
-      ["s1","s3","s4","s5","s6"].forEach(k=>{ disposeGroup(groups[k]); delete groups[k]; });
+      ["s1","s3","s4","s5","s6","strand"].forEach(k=>{ disposeGroup(groups[k]); delete groups[k]; });
       const g1=groups.s1=new THREE.Group(); scene.add(g1);
       const r1=ribbon(sc.c1, sc.T1, 14, {curtain:!phoneQ.matches}); r1.name="r"; g1.add(r1);
       const h1=head(); g1.add(h1);
@@ -527,7 +553,7 @@ export function start(PK){
               float yc=clamp(aMed+(position.y-aMed)*.3, aLo, aHi); vec3 p=vec3(position.x, mix(position.y, yc, uCond), position.z*(1.-.85*uCond));
               vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=uScale/max(-mv.z,.5)*(1.+.6*(1.-shown));
               vA=shown*(1.-.6*uCond); }`,
-          fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.02,.25,r))*vA*uA*.5; gl_FragColor=vec4(uColor*a,a); }`});
+          fragmentShader:`uniform vec3 uColor; uniform float uA; varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.02,.25,r))*vA*uA*.36; gl_FragColor=vec4(uColor*a,a); }`});
         popPts=new THREE.Points(geo, m); popPts.name="cloud"; popPts.layers.enable(BLOOM); g4.add(popPts);
         // the band (the middle 90%) as a glass sheet, and the median as a ribbon
         const pos2=new Float32Array((n)*6), idx=[]; for(let i=0;i<n;i++){ pos2.set([X(sc.lo[i].t,24), yv(sc.lo[i].c), -.05, X(sc.hi[i].t,24), yv(sc.hi[i].c), -.05], i*6); if(i) idx.push(2*i-2,2*i-1,2*i, 2*i-1,2*i+1,2*i); }
@@ -545,11 +571,27 @@ export function start(PK){
       { const pts=sphere(sc.nChecks), pos=new Float32Array(pts.length*3), cols=new Float32Array(pts.length*3), off=col(P.line);
         pts.forEach(([x,y,z],i)=>{ pos.set([2.6*x,2.6*y,2.6*z], i*3); cols.set([off.r,off.g,off.b], i*3); });
         const geo=new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos,3)); geo.setAttribute("color", new THREE.BufferAttribute(cols,3));
-        const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true, vertexColors:true, uniforms:{uScale:{value:full ? 70 : 50}},
+        const m=new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, premultipliedAlpha:true, vertexColors:true, uniforms:{uScale:{value:full ? 44 : 34}},
           vertexShader:"uniform float uScale; varying vec3 vC; void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; gl_PointSize=uScale/max(-mv.z,.5); }",
-          fragmentShader:"varying vec3 vC; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.0,.25,r)); gl_FragColor=vec4(vC*a*1.6,a); }"});
+          fragmentShader:"varying vec3 vC; void main(){ vec2 c=gl_PointCoord-.5; float r=dot(c,c); if(r>.25) discard; float a=(1.-smoothstep(.0,.25,r)); a*=a; gl_FragColor=vec4(vC*a*2.2,a); }"});
         const pts3=new THREE.Points(geo, m); pts3.name="pts"; pts3.layers.enable(BLOOM); g6.add(pts3);
         g6.add(new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.58, 3)), new THREE.LineBasicMaterial({color:col(P.line), transparent:true, opacity:.18}))); }
+      // the strand: the ribbon travelling on between scenes, from the end of each curve to the start of the next, under the
+      // sphere and on to the simulator's own curve, so the camera always follows one object
+      { const st=groups.strand=new THREE.Group(); scene.add(st);
+        const endOf=(g,r,last)=>{ const k=last ? r.userData.n-1 : 0; return [g.position.x+r.userData.xs[k], r.userData.ys[k]]; };
+        const legs=[[endOf(g1,r1,1), endOf(g3,r3,0)], [endOf(g3,r3,1), endOf(groups.s4, groups.s4.getObjectByName("med"),0)],
+          [endOf(groups.s4, groups.s4.getObjectByName("med"),1), endOf(groups.s5, groups.s5.getObjectByName("r"),0)],
+          [endOf(groups.s5, groups.s5.getObjectByName("r"),1), [SX[4]-1, .16]], [[SX[4]+1, .16], [APPX-6, .05]]];
+        legs.forEach(([a,b])=>{ const n=72, xs=[], ys=[];
+          for(let i=0;i<n;i++){ const u=i/(n-1), e=u*u*(3-2*u); xs.push(lerp(a[0],b[0],u)); ys.push(lerp(a[1],b[1],e)+Math.sin(Math.PI*u)*.18); }
+          const geo=sweep(xs, ys, 0, .42), mD=new THREE.Mesh(geo, matsOf("dark").core), mL=new THREE.Mesh(geo, matsOf("light").core);
+          mD.layers.enable(BLOOM); mD.name="dark"; mL.name="light";
+          const leg=new THREE.Group(); leg.add(mD, mL); leg.userData.tone=t=>{ mD.visible=t!=="light"; mL.visible=t==="light"; }; leg.userData.tone(tone); st.add(leg); });
+        // under the sphere, the strand passes as a short, faint arc
+        const arc=[], ax=[], ay=[]; for(let i=0;i<40;i++){ const u=i/39; ax.push(lerp(SX[4]-1, SX[4]+1, u)); ay.push(.16); }
+        const ag=sweep(ax, ay, 0, .42), aD=new THREE.Mesh(ag, matsOf("dark").core), aL=new THREE.Mesh(ag, matsOf("light").core); aD.layers.enable(BLOOM);
+        const al=new THREE.Group(); al.add(aD, aL); al.userData.tone=t=>{ aD.visible=t!=="light"; aL.visible=t==="light"; }; al.userData.tone(tone); st.add(al); }
       setVis(); light6(); applyTone();
     }
     let k6=0;
@@ -577,7 +619,7 @@ export function start(PK){
       [[V(SX[2]-7,4.4,16),V(SX[2]-2.5,1.5,0)], [V(SX[2]-3,3,13),V(SX[2]-1.5,1.6,0)], [V(SX[2]+1,2.1,11.5),V(SX[2]+.5,1.5,0)]],
       [[V(SX[3]-8,3.4,12),V(SX[3]-4,2.4,0)], [V(SX[3]-4.2,2.6,7),V(SX[3]-3,2,0)], [V(SX[3]+2,3.8,13),V(SX[3]+1,2,0)]],
       [[V(SX[4]+.6,2.6,5.4),V(SX[4],2.4,0)], [V(SX[4]-1.2,2.8,7.8),V(SX[4],2.4,0)], [V(SX[4],3.4,12.5),V(SX[4],2.3,0)]],
-      [[V(SX[4]+16,3.2,15),V(APPX-4,1.8,0)], [V(APPX-9.5,5.4,18),V(APPX-.8,2.2,0)], [V(APPX-7.5,4.6,16),V(APPX-.6,2.6,0)]]];
+      [[V(SX[4]+10,3.2,15),V(APPX-4,1.8,0)], [V(APPX-9.5,5.4,18),V(APPX-.8,2.2,0)], [V(APPX-7.5,4.6,16),V(APPX-.6,2.6,0)]]];
     const KEYS=[]; REST.forEach((r,i)=> r.forEach((k,j)=> KEYS.push({P:2*i+[.18,.5,.82][j], p:k[0], l:k[1], scene:i})));
     const COLD=[V(-3.6,1.95,6.2),V(-5.1,2.3,0)];   // the cold open: close on the peak, in the dark
     const cr=(p0,p1,p2,p3,u,out)=>{ const u2=u*u, u3=u2*u;
@@ -615,8 +657,8 @@ export function start(PK){
       const f=FR[tab]||FR.sim, d=scrollS;
       return {p:f[0].clone().add(V(1.2*d,-0.9*d,0.8*d)), l:f[1].clone().add(V(1.2*d,-0.2*d,0))};
     }
-    // reduced motion: each scene holds one resting frame (the middle one); nothing travels
-    const restOf=Pv=>{ const i=clamp(Math.round((Pv-0.5)/2),0,REST.length-1); return 2*i+.5; };
+    // reduced motion: each scene holds one resting frame (its last, where every beat is complete); nothing travels
+    const restOf=Pv=>{ const i=clamp(Math.round((Pv-0.82)/2),0,REST.length-1); return 2*i+.82; };
     function moveTo(){ camFrom={p:camNow.p.clone(), l:camNow.l.clone()}; camTo=target(); camT0=performance.now(); frame(); }
 
     /* tone: materials, fog, environment and the floor follow the section the camera is in */
@@ -679,7 +721,7 @@ export function start(PK){
     }
     function setVis(){
       const intro=mode==="intro";
-      ["s1","s3","s4","s5","s6"].forEach(k=>{ if(groups[k]) groups[k].visible=intro; });
+      ["s1","s3","s4","s5","s6","strand"].forEach(k=>{ if(groups[k]) groups[k].visible=intro; });
       // the app's scenario appears as the sequence reaches it ("Open"), and stays
       if(groups.live) groups.live.visible=!intro || (lastW && lastW.P>12.4);
       shafts.visible=intro && !phoneQ.matches;
@@ -777,10 +819,23 @@ export function start(PK){
     }
 
     /* rendering: continuous while the sequence moves (inertia, the cold open, dust), on demand in the app */
-    let raf=0, focusSm=14;
+    let raf=0, focusSm=14, post=full, slow=[], lastNow=0;
+    // a governor: if the frames run slow while the stage animates, the passes switch off (Effects stay on)
+    function govern(now){
+      if(!post || !lastNow){ lastNow=now; return; }
+      const dt=now-lastNow; lastNow=now; if(dt>250) return;   // a pause, not a slow frame
+      slow.push(dt); if(slow.length<40) return;
+      const avg=slow.reduce((a,b)=>a+b,0)/slow.length; slow=[];
+      if(avg>45){ post=false; renderer.toneMapping=THREE.ACESFilmicToneMapping; floorMat.uniforms.uHas.value=0; renderer.setRenderTarget(null); }
+    }
     function frame(force){ if(!raf) raf=requestAnimationFrame(render); if(force){ const t=target(); camNow.p.copy(t.p); camNow.l.copy(t.l); } }
+    let lastDraw=0;
     function render(now){
       raf=0; let busy=false; const still=stillQ.matches;
+      // when only the dust drifts, 30 frames a second are enough
+      const moving=(mode==="intro" && Psm!==null && Math.abs(Ptg-Psm)>1e-4) || !!camFrom || !!morph || !!pulseAt || coldOn() || coldT()<COLD_MS+400;
+      if(!moving && mode==="intro" && !still && now-lastDraw<31){ frame(); return; }
+      lastDraw=now;
       if(mode==="intro" && Psm!==null && !still){ const d=Ptg-Psm; if(Math.abs(d)>1e-4){ Psm+=d*.14; busy=true; } else Psm=Ptg; }
       if(mode==="intro" && (coldOn() || coldT()<COLD_MS+400) && !still) busy=true;
       if(camFrom && camTo){ const u=still ? 1 : clamp((now-camT0)/camDur,0,1), e=ease(u);
@@ -808,7 +863,8 @@ export function start(PK){
         textness=Math.max(1-band(u,-0.42,0.1), band(u,0.96,1.4)); if(i===0 && u<.1) textness=0; }
       const dist=camNow.p.distanceTo(camNow.l), want=lerp(dist, dist*.32, textness);
       focusSm+= (want-focusSm)*(still ? 1 : .12);
-      if(full){ const U=compMat.uniforms; U.exposure.value=ex; U.focus.value=focusSm; U.aperture.value=mode==="intro" ? .6 : .25; U.bloomAmt.value=lit ? .3 : .8;
+      if(busy) govern(now); else lastNow=0;
+      if(post){ const U=compMat.uniforms; U.exposure.value=ex; U.focus.value=focusSm; U.aperture.value=mode==="intro" ? .6 : .25; U.bloomAmt.value=lit ? .3 : .8;
         U.gradeAmt.value=lit ? .25 : 1; U.ca.value=lit ? .0015 : mode==="intro" ? .006 : .003; renderFull(); }
       else { renderer.toneMappingExposure=ex; renderer.setRenderTarget(null); renderer.render(scene, camera); }
       if(busy && !document.hidden) frame();
@@ -839,6 +895,7 @@ export function start(PK){
       intro:()=>{ buildIntro(); },
       retheme:()=>{ K=tokensOf(D); Object.keys(mats).forEach(k=>{ Object.values(mats[k]).forEach(m=> m && m.dispose && m.dispose()); delete mats[k]; });
         tone=""; disposeGroup(groups.live); delete groups.live; if(D.classList.contains("intro-on")) buildIntro(); setTone(toneAt(lastW||where())); setLive(); },
+      ready:()=> (renderer.compileAsync ? renderer.compileAsync(scene, camera).catch(()=>{}) : Promise.resolve()),
       dispose:()=>{ Object.values(groups).forEach(disposeGroup); if(rt) Object.values(rt).forEach(t=> t && t.dispose && t.dispose()); Object.values(envs).forEach(t=>t.dispose()); pmrem.dispose(); renderer.dispose(); host3d.remove(); }
     };
   }
@@ -846,7 +903,7 @@ export function start(PK){
   /* ---------- wiring ---------- */
   let scrollRaf=0;
   document.addEventListener("click",()=> setTimeout(setPill, 80));   // a case opened, an answer checked: the pill follows
-  addEventListener("scroll",()=>{ if(!scrollRaf) scrollRaf=requestAnimationFrame(()=>{ scrollRaf=0; onScroll(); }); }, {passive:true});
+  addEventListener("scroll",()=>{ if(!scrollRaf) scrollRaf=requestAnimationFrame(()=>{ scrollRaf=0; onScroll(); }); snapLater(); }, {passive:true});
   addEventListener("resize",()=> onScroll());
   const prep=()=>{ if(D.classList.contains("intro-on")){ prepScenes(); paintFrames(); if(!D.classList.contains("fx-off") && !phoneQ.matches) setTimeout(runChecks, 2500); } };
   prep(); onScroll(); setPill();

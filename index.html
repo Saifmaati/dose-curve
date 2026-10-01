@@ -13,14 +13,13 @@
   if(location.hash.length>1) d.classList.add("route-wait");
   // a lesson, a case, a practice problem, a worksheet or a task opens on its paper page: the palette is set now, not after
   if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
-  // the root sequence: only a first, direct visit to the root address with no # part (any link, any return visit
-  // goes straight into the app); its readouts wait for their count unless motion is reduced
+  // the root sequence: every visit to the root address with no # part, the first or the hundredth (a link with a # part,
+  // #app included, opens the app directly); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
-    try{ s=localStorage.getItem("dosecurve.intro"); localStorage.setItem("dosecurve.intro","seen"); }catch(e){}
-    if(!s){ d.classList.add("intro-on"); if(!still){ d.classList.add("hero-anim"); d.classList.add("cold");
+    d.classList.add("intro-on"); if(!still){ d.classList.add("hero-anim"); d.classList.add("cold");
       // the cold open: black, first light on the ribbon, the wordmark revealed; then a quiet scroll cue
       var end=function(){ if(d.classList.contains("cold")){ d.classList.remove("cold"); d.classList.add("cue"); } };
-      setTimeout(end, 4200); var off=function(){ if(scrollY>8){ end(); removeEventListener("scroll", off); } }; addEventListener("scroll", off, {passive:true}); } }
+      setTimeout(end, 4200); var off=function(){ if(scrollY>8){ end(); removeEventListener("scroll", off); } }; addEventListener("scroll", off, {passive:true}); }
   }
   // the 3D stage's effects: the reader's choice, else off on a weak device (reduced motion, little memory, few cores, Save-Data)
   try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){ s=null; }
@@ -56,7 +55,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.9.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.10.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -246,14 +245,14 @@
   /* each scene spans two screens of scroll; its frame stays pinned while the camera plays it (2.10) */
   .scene{position:relative;height:200vh;height:200svh;overflow:clip}
   .scene-pin{position:sticky;top:0;height:100vh;height:100svh;display:flex;flex-direction:column;justify-content:center;padding:96px 40px 200px;overflow:clip}
-  .snap{position:absolute;left:0;width:1px;height:1px;pointer-events:none;scroll-snap-align:start}
+  .snap{position:absolute;left:0;width:1px;height:1px;pointer-events:none}   /* the resting frames; the stage settles on them gently */
   .snap:nth-of-type(1){top:18vh} .snap:nth-of-type(2){top:50vh} .snap:nth-of-type(3){top:82vh}
   .scene[data-scene="1"] .snap:nth-of-type(1){top:0}   /* the sequence starts on its opening frame */
-  html.intro-on{scroll-snap-type:y proximity}
   /* the stage sets --in, --in2 and --out as the camera arrives and leaves; without it everything simply shows */
   .scene-pin>h1,.scene-pin>h2,.scene-pin>.cap{opacity:calc(var(--in,1) * (1 - var(--out,0)));transform:translateY(calc((1 - var(--in,1)) * 28px - var(--out,0) * 36px));filter:blur(calc((1 - var(--in,1)) * 7px + var(--out,0) * 9px))}
   .scene-pin>.small>:not(.hero-chip){opacity:calc(var(--in2,1) * (1 - var(--out,0)))}
   .hero-ro>div{opacity:var(--ro,1);transform:translateY(calc((1 - var(--ro,1)) * 14px))}
+  html.settle .scene-pin>h1,html.settle .scene-pin>h2,html.settle .scene-pin>.cap,html.settle .scene-pin>.small>*,html.settle .hero-ro>div{transition:opacity .35s ease,filter .35s ease,transform .35s ease}
   .hero-ro>div:nth-child(1){--ro:var(--ro1,1)} .hero-ro>div:nth-child(2){--ro:var(--ro2,1)} .hero-ro>div:nth-child(3){--ro:var(--ro3,1)}
   /* the cold open: black, first light on the ribbon (the stage), the wordmark revealed by a mask; then a scroll cue */
   @property --mask{syntax:"<percentage>";inherits:false;initial-value:140%}
@@ -289,7 +288,7 @@
     font-size:13px;line-height:1.55;color:var(--c-muted)}
   .small p{margin:0;max-width:30em} .small b{color:var(--c-text);font-weight:600}
   .small .hero-ro{grid-column:span 2} .small .hero-chip{grid-column:span 2;margin:0}
-  .scene-n{position:absolute;right:0;top:-28px;font-family:var(--f-mono);font-size:12px;color:var(--c-muted)}
+  .scene-n{position:absolute;right:0;top:-28px;font-family:var(--f-mono);font-size:12px;color:var(--c-text-2)}
   .scene-vis{position:absolute;z-index:0;left:50%;top:44%;width:min(62vw,860px);aspect-ratio:600/340;transform:translate(-50%,-50%);opacity:.92}
   .scene-vis svg{display:block;width:100%;height:100%;overflow:visible}
   html.stage3d .scene-vis{visibility:hidden}
@@ -1852,7 +1851,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.9.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.10.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -5350,8 +5349,13 @@
   byId("linkBtn").addEventListener("click",copyLink);
   byId("sharedClose").addEventListener("click",()=>{ byId("sharedPill").hidden=true; });
   byId("sharedReset").addEventListener("click",()=>{ history.replaceState(null,"",location.pathname+location.search); location.reload(); });
-  // Pasting a different link into the same tab only changes the hash, so load it properly.
-  window.addEventListener("hashchange",()=>location.reload());
+  // Pasting a different link into the same tab only changes the hash, so load it properly; moving between the root
+  // sequence and the app (#app) by back and forward is the same page, so no reload (see STAGE)
+  window.addEventListener("hashchange",e=>{
+    const was=new URL(e.oldURL).hash, h=location.hash;
+    if(ROOT_PAGE && (was==="" || was==="#app") && (h==="" || h==="#app")){ if(h) toApp(); else showSeq(); return; }
+    location.reload();
+  });
 
   /* ================= BASELINE / EXPORT ================= */
   byId("pinBtn").addEventListener("click",()=>setBaseline());
@@ -5731,7 +5735,8 @@
   /* ================= STAGE ================= */
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
-  const STAGE_SRC="stage.js?v=bb5c38cbc0";
+  const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
+  const STAGE_SRC="stage.js?v=593d70c853";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
@@ -5742,12 +5747,26 @@
     syncFx(); if(stage) stage.fx();
   });
   // the root sequence's way into the app (its skip link and its last scene), and Home, which brings it back
-  const toApp=e=>{ if(e) e.preventDefault(); showTab("sim"); byId("app").scrollIntoView({block:"start"}); byId("app").focus({preventScroll:true}); };
+  function toApp(e){ if(e) e.preventDefault(); showTab("sim"); byId("app").scrollIntoView({block:"start"}); byId("app").focus({preventScroll:true}); }
+  // the sequence starts from its top: the browser's own scroll restoration would put back the app's place
+  function showSeq(){ D.classList.add("intro-on"); history.scrollRestoration="manual"; scrollTo(0,0); if(stage) stage.intro(); }
+  if(ROOT_PAGE && D.classList.contains("intro-on")) history.scrollRestoration="manual";
+  // The URL follows the reader between the sequence and the app: reaching the app (by scrolling, the pill, the skip
+  // link or the top bar) adds one entry, #app, above the sequence's, and later crossings replace it, so the browser's
+  // back from the app returns to the sequence, forward returns to the app, and a reload opens where the reader was.
+  const follow=app=>{
+    if(!ROOT_PAGE || !D.classList.contains("intro-on") || app===(location.hash==="#app") || (location.hash && location.hash!=="#app")) return;
+    const url=location.pathname+location.search+(app ? "#app" : "");
+    if(app && !(history.state && history.state.dc)) history.pushState({dc:1}, "", url); else history.replaceState({dc:1}, "", url);
+  };
+  if(ROOT_PAGE && "IntersectionObserver" in window) new IntersectionObserver(es=> es.forEach(x=>{
+    if(x.isIntersecting) follow(true); else if(x.boundingClientRect.top>0) follow(false); }), {rootMargin:"0px 0px -50% 0px"}).observe(byId("app"));
   // the pill: the screen's main action (stage.js), else into the simulator; the top bar's links open their tab
   byId("pill").addEventListener("click",()=>{ if(!(stage && stage.pill())) toApp(); });
   document.querySelectorAll(".top-links a[data-tab]").forEach(a=> a.addEventListener("click",e=>{
     e.preventDefault(); byId({sim:"tabSim", ls:"tabLs", cs:"tabCs"}[a.dataset.tab]).click(); byId("app").scrollIntoView({block:"start"}); }));
-  byId("homeLink").addEventListener("click",e=>{ e.preventDefault(); D.classList.add("intro-on"); scrollTo(0,0); if(stage) stage.intro(); });
+  // Home: a new entry for the root address (back returns to where the reader was), and the sequence from its start
+  byId("homeLink").addEventListener("click",e=>{ e.preventDefault(); if(location.hash) history.pushState({dc:1}, "", location.pathname+location.search); showSeq(); });
 
   // Visit counting, off unless ANALYTICS_SITE_ID is set to a GoatCounter site code (see docs/NEEDS-SAIF.md).
   // GoatCounter is cookie-free; only the page's path is sent, never the part after # (a scenario's settings)

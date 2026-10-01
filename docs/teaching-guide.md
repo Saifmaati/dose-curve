@@ -12,7 +12,7 @@ The [educator page](https://saifmaati.github.io/dose-curve/educators.html) has a
 
 For a projector, press **Present** (top right): the chart takes the whole width, the controls fold away, the 3D stage and the pinned action button go, and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **Light theme** switch gives the paper version (graphite curves on white); it follows the computer's own light or dark setting until you pick one, the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.
 
-Since 2.0 the curve also appears as a 3D ribbon behind the page, and a first visit to the site's address opens on a short scrolling introduction. Links you share with a `#` part (a lesson, a case, a scenario, `#practice`) skip the introduction and open straight in the app, so use those for a class. On an older classroom computer, or if the motion distracts, switch **Effects** off in the top bar: the page stays the same, without the 3D stage. It starts off by itself on low-memory devices and when the computer asks for reduced motion.
+Since 2.0 the curve also appears as a 3D ribbon behind the page, and every visit to the site's address opens on a short scrolling introduction. Links you share with a `#` part (a lesson, a case, a scenario, `#practice`) skip the introduction and open straight in the app, so use those for a class; `…/dose-curve/#app` opens the simulator itself. On an older classroom computer, or if the motion distracts, switch **Effects** off in the top bar: the page stays the same, without the 3D stage. It starts off by itself on low-memory devices and when the computer asks for reduced motion.
 
 With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, **L** switches to a log scale and **B** sets a baseline, as long as you're not typing in a field; **?** lists every key. These single-key shortcuts can be switched off in that list.
 
@@ -242,7 +242,8 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 - One well-mixed compartment, or two: a central compartment that exchanges with a peripheral one at rates k12 and k21, for every route. Elimination is from the central compartment, first-order (linear).
 - First-order oral absorption with bioavailability F, IV boluses, and zero-order infusions.
 - Superposition of every dose given, whether a regular regimen (with loading and missed doses) or a custom schedule mixing routes.
-- Body weight scales the volume. Clearance is scaled either by an organ-function percentage (Simple) or by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical).
+- Body weight scales the volume. Clearance is scaled by an organ-function percentage (Simple), by Cockcroft–Gault creatinine clearance acting on the renal fraction fe (Clinical), or, for a child, by size (weight^0.75) and renal maturation with postmenstrual age (Rhodin et al. 2009) acting on fe (Child).
+- Hemodialysis sessions (one or two compartments, with the rebound), indirect responses, population variability and a Bayesian estimate from measured levels.
 - Optionally, clearance from a liver model (the well-stirred model): liver blood flow Q, the unbound fraction in blood fu and the intrinsic clearance CLint give E = fu·CLint / (Q + fu·CLint), hepatic clearance Q·E and oral F = fabs·(1 − E). Blood and plasma concentrations are taken as equal.
 - A salt factor S for drugs dosed as a salt, and units per drug (mg/L, ng/mL, mEq/L).
 - Saturable (Michaelis–Menten) elimination, integrated numerically (RK4, 0.05 h steps, every dose at its exact time).
@@ -251,11 +252,13 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 **Left out:**
 
 - Three or more compartments, and two compartments with saturable elimination.
-- Indirect effects, tolerance and active metabolites, and an effect-site delay with saturable elimination.
-- Protein-binding changes beyond the liver model's unbound fraction: unbound levels aren't drawn, and the volume doesn't depend on fu. The liver model is for first-order drugs in the simple patient, and counts no gut-wall metabolism or renal clearance alongside it.
+- Tolerance and active metabolites, an effect-site delay with saturable elimination, and an indirect response driven by an effect site.
+- Protein-binding changes beyond a constant unbound fraction: the volume doesn't depend on fu. The liver model is for first-order drugs in the simple patient, and counts no gut-wall metabolism or renal clearance alongside it.
 - Covariates and correlated variability. Population mode draws clearance and volume independently, with teaching CVs.
 
-The drug presets use typical textbook values and are not prescribing information.
+- The maturation of non-renal clearance in children: it depends on the enzymes that clear each drug.
+
+The drug presets use typical textbook values and are not prescribing information. Every equation is on the [Model and methods](https://saifmaati.github.io/dose-curve/methods.html) page.
 
 ## Run a class in ten minutes
 

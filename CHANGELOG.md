@@ -2,6 +2,35 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.10.0 (2026-10-01)
+
+The opening sequence becomes one continuous film, and the long-form text moves to its own page.
+
+- **One world, one camera.** The seven scenes sit in one world, and one camera travels through them on a path through each scene's resting frames. The camera is scrubbed by the scroll with inertia smoothing, and when scrolling stops near a resting frame it settles there gently. Each scene spans two screens of scroll (14 in all); its frame is pinned while the camera plays its beats:
+  - **Hero:** the ribbon draws, the window rises, the readouts land one by one.
+  - **Simulate:** one dose, then a second stacking on what is left of the first, then the climb to steady state.
+  - **Learn:** 200 patients appear one by one as a cloud of points, then condense into the median and the band.
+  - **Cases:** the camera dives into the two-phase curve, the axis turns logarithmic in front of it, and the phases separate.
+  - **Validated:** the 584 checks light one by one, then the camera pulls back to the whole sphere.
+  - **Open:** the camera flies to the simulator, and its own curve is simply there.
+  A thinner strand of the ribbon runs from each scene to the next, so the camera always follows one object. Headlines reveal as the camera arrives and dissolve as it leaves, with the focus pulling between ribbon and text, and they settle fully shown or fully gone whenever scrolling stops.
+- **A cold open** before any scroll: black, first light on the ribbon as it draws, the wordmark revealed by a mask (about four seconds), then a quiet scroll cue. The skip link and the pill stay visible throughout.
+- **The sequence plays on every visit** to the address itself, not only the first: the remembered "seen" skip is gone. `#app` and every content link (a lesson, a case, practice, a share link, a worksheet) still open the app directly. Reaching the app from the sequence adds one history entry, so the browser's back returns to the sequence and forward to the app, without a reload; Home in the top bar brings the sequence back from anywhere.
+- **Rendering.**
+  - **The ribbon** is a swept mesh with thickness and bevelled edges: an emissive core with glow trails in dark scenes, clearcoated graphite (physically based) in light ones.
+  - **The window** is frosted glass with transmission.
+  - **The world:** a studio environment (PMREM) with a warm key, a cool rim and a soft fill; a floor with a faint grid receding into exponential fog and, on capable machines, a blurred mirror reflection; slow dust catching the key light; light shafts in dark scenes.
+  - **The 200-patient cloud** is depth-sorted additive points with size attenuation.
+  - **Post-processing**, all this site's own code since cdnjs carries only Three.js's core: selective bloom on emissive elements, depth of field with a rack focus, chromatic aberration at the edges, ACES tone mapping with exposure per scene, and a grade (deep blue-black with one warm accent). Grain and a soft vignette are a CSS layer.
+- **Tiers.** The full passes run only on a desktop with a GPU. A software renderer, a phone or a modest machine draws directly with simpler materials, and phones keep the single ribbon with the CSS frames. A governor switches the passes off if frames run slow, the pixel ratio is capped at 1.5, rendering pauses while the tab is hidden, and the intro's dust drifts at 30 fps when nothing else moves. Under reduced motion everything is still and each scene holds its last resting frame. Without Effects, the CSS and SVG stage is unchanged.
+- **Model and methods** (new page, `methods.html`, styled like the validation page). It has every equation the simulator solves as MathML, how routes and schedules are modelled, what the tests cover, the full disclaimer, the privacy, effects and visit-counting statements, and how to cite. It is linked from the footer and the validation page and kept for offline use.
+- **The footer** is four quiet lines on the stage: the mark; Model and methods, Validation, For educators, Teaching guide, Source, Feedback; "Educational model, not for clinical dosing"; the version and date.
+- **A child patient** (Patient → Child). Weight (0.5–80 kg, on a log slider), gestational age at birth and postnatal age give renal maturation and size by Rhodin et al., *Pediatr Nephrol* 2009 (GFR = 121.2 mL/min × (WT/70)^0.75 × PMA^3.4 / (47.7^3.4 + PMA^3.4), verified against the abstract). The drug's renal part follows that GFR; its non-renal part scales with size alone. The panel works the numbers through, and "What changed" explains a change in age or weight. Links v13; an older link keeps the 40 kg floor it had.
+- **The DOI** (10.5281/zenodo.23082408, all versions) is in the README (badge and How to cite), CITATION.cff and Model and methods. The CITATION and Zenodo abstracts describe the current model.
+- docs/NEEDS-SAIF.md records the merges and Releases as done; the merged branches' deletion is a command to paste.
+
+Lighthouse on mobile: the root address 93 (desktop 89: the cold open's black first second weighs on its Speed Index); accessibility 100 and layout shift 0, also on all 111 link kinds. axe: no violations. A 20-second capture of the sequence: 0 frames over 34 ms while scrolling. 391 tests in 22 files.
+
 ## 2.9.0 (2026-10-01)
 
 The glossary, the README and the practice problems catch up with 2.4–2.8.
