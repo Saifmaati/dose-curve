@@ -2,6 +2,38 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.19.0 (2026-10-01)
+
+Hemodialysis with saturable (Michaelis–Menten) elimination, and a smoother landing.
+
+- **Dialysis for saturable drugs.** The Hemodialysis setting now applies to saturable drugs too. During each session the engine's own Runge–Kutta integrator adds the dialyzer's loss, so dA/dt = input − Vmax·C/(Km + C) − CLd·C.
+  - The steps meet every session edge, and shorten where the rates are fast, so the method stays stable at extreme settings.
+  - The amount each session removes is CLd times the exact area under each step's curve.
+  - Mass balance holds to about 1e-8: what is in the gut and body, what the body eliminated and what the dialyzer removed add up to what was given.
+- **Every figure says which level it is read at.** The body's clearance falls as the level rises and the dialyzer's doesn't, so how far a session lowers the level depends on where it starts.
+  - The readouts read "t½ at trough", "CL+CLd at trough" and "Fall from trough" (or "at peak").
+  - The panel states the level, and what the fall would be from far above and far below Km.
+  - A session with no dose during it is solved in closed form.
+  - The session list gives each session's actual fall, what the dialyzer and the body each took, and the IV dose that restores the level the session found.
+- **No steady state is claimed with dialysis,** for either kinetics, since sessions don't repeat with the doses:
+  - The regimen note says so. For first-order dialysis it used to say "0% of steady state".
+  - Population mode no longer reports an attainment it can't read; it used to show "0%".
+- **Links v15.** A scenario with both saturable elimination and dialysis makes a v15 link. An older link with both opens as it always did, without dialysis, since dialysis did nothing for saturable drugs before.
+- **Validation:** four saturable dialysis scenarios added to the SciPy reference, making 15 dialysis scenarios and 735 comparisons on the validation page:
+  - an oral daily regimen with doses at the sessions' ends;
+  - infusions after a loading dose, with sessions overlapping them;
+  - a bolus far above Km;
+  - a mixed schedule with reduced kidney function.
+
+  Every existing reference value is bit-identical. A new test file holds the model to mass balance, the closed form of a session, continuity at session edges, and the supplement dose.
+- **No dialysis clearance is given for any saturable library drug.** None is sourced, and the model has no protein binding; the default 5 L/h stays marked "typical value, unverified".
+- **A smoother landing.** A trace of a full landing scroll found one 87 ms frame in the depth-sort of the population scene's 30,000 points. The sort ran whenever a reader paused mid-scroll. It is now a counting sort on 4,096 depth buckets, about a millisecond. A full scroll on the full 3D stage now drops 1–3 single 33 ms frames on this machine (about 14 in 2.15). The ones left come from the browser rasterising the page as the app scrolls in, with the stage off too.
+- **Fixed before release** (a four-reviewer review with a second reviewer checking each finding; 11 confirmed):
+  - the readouts crashed for a saturable drug on a custom schedule with dialysis;
+  - AUC∞ came out too low when drug was still in the gut at the cut-off;
+  - the worked readouts and "What changed" now name the dialyzer's term and each side's level;
+  - the 3D population view keeps to a stated subset of patients where a fast dialyzer in a very small body would block the page.
+
 ## 2.18.0 (2026-10-01)
 
 Interactive 3D charts. A **3D** switch joins Linear and Log in the chart's head. The 2D chart stays the precise instrument and the default; 3D is for exploring and presenting. Nothing in 3D is part of the first load: its code and Three.js arrive on the first press.

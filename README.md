@@ -26,7 +26,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 - First-order elimination, or saturable **Michaelis–Menten** elimination (Vmax, Km) integrated numerically. The readouts give the predicted steady state Km·R / (Vmax − R), the input as a share of Vmax, the level-dependent half-life and the time to 90% of steady state, and they say "No steady state: input rate exceeds Vmax" when that happens.
 - A **liver model** (optional): hepatic clearance and first-pass bioavailability from liver blood flow, the unbound fraction and intrinsic clearance (the well-stirred model), E = fu·CLint / (Q + fu·CLint), CL = Q·E and F = fabs·(1 − E), with the working shown.
 - **Individualize from levels** (Bayesian, in Clinical mode): measured levels, each tied to a dose, weighed against the patient model (maximum a posteriori, the approach of Sheiner et al. 1979), give the patient's own clearance, volume and half-life with 95% intervals, how much uncertainty the levels removed, the two-level estimate beside it, and the dose for an AUC24 or trough target.
-- **Hemodialysis:** sessions (their clearance, length and timing) add the dialyzer's clearance while they run. A table gives each session's level before and after, the amount removed and the IV dose that would restore the level. The readouts show the clearance on and off dialysis and the fall per session. With two compartments the level rebounds after each session as drug returns from the tissues, and the table gives the rebound's height and timing; the solution stays exact between events.
+- **Hemodialysis:** sessions (their clearance, length and timing) add the dialyzer's clearance while they run. A table gives each session's level before and after, the amount removed and the IV dose that would restore the level. The readouts show the clearance on and off dialysis and the fall per session. With two compartments the level rebounds after each session as drug returns from the tissues, and the table gives the rebound's height and timing; the solution stays exact between events. With saturable elimination (since 2.19) the sessions are integrated with the engine's own Runge–Kutta steps, and the fall per session is stated from a level, with what it would be far above and far below Km.
 - A **child** (since 2.10): weight, gestational age at birth and postnatal age give renal maturation and size by Rhodin et al. (2009): GFR = 121.2 × (WT/70)^0.75 × PMA^3.4 / (47.7^3.4 + PMA^3.4); the drug's renal part follows it, its non-renal part scales with size alone.
 - A **clinical patient**: age, sex, height, weight and serum creatinine give ideal and adjusted body weight (Devine), Cockcroft–Gault creatinine clearance, and the drug's clearance CL = CL_ref × [(1 − fe) + fe × CrCl / 120], with every step shown with its numbers.
 - A **drug library** of 12 teaching profiles (gentamicin, vancomycin, meropenem, piperacillin-tazobactam, digoxin, phenytoin, theophylline, lithium carbonate, levetiracetam and three more). Every value names its source (the FDA label on DailyMed, or a paper) or is marked "typical textbook value, unverified". Units follow the drug: digoxin in mcg and ng/mL, lithium in mEq/L, with salt factors applied.
@@ -92,7 +92,7 @@ And the antimicrobial indices: 12 regimens (piperacillin by 30-minute, extended 
 
 And the indirect responses: 15 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient, and three behind an effect-site delay) integrate the response with the drug in one ODE system. The response agrees within 0.01% at five times and at its largest change (in practice to about one part in 10⁸), and the time of that change within 0.01 h. The tests also check that it stays at baseline without drug, and that at a constant level it approaches the analytic plateau with time constant 1/kout.
 
-And hemodialysis: 11 scenarios (3 with two compartments, where the level rebounds) with the dialysis clearance switched on during each session. The level, and each session's levels and the amount it removes, agree within 0.01% (in practice to about one part in 10¹²). The tests also hold the model to mass balance: what the body clears plus what the dialyzer removes is what was given.
+And hemodialysis: 15 scenarios (3 with two compartments, where the level rebounds, and 4 with saturable elimination) with the dialysis clearance switched on during each session. The level, and each session's levels and the amount it removes, agree within 0.01% (in practice to about one part in 10¹²). The tests also hold the model to mass balance: what the body clears plus what the dialyzer removes is what was given.
 
 A standing cross-check runs in the test suite too. Seeded random scenarios cover routes, loading and missed doses, one and two compartments, custom schedules and saturable elimination. Every peak and trough in the dose table, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect (with and without an effect-site delay) are compared with dense scans of the engine's own curve. It has found and fixed four errors so far, each now with its own regression test:
 
@@ -142,7 +142,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-sens.js` | The sensitivity analysis and its tornado chart, loaded when its panel opens |
 | `pk-tdm.js` | When to sample: the model's steady-state, peak and trough times for a repeated regimen, loaded when its section opens |
 | `pk-explain.js` | The sentences under "What changed" and in Compare, loaded just after the first paint |
-| `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge, with one or two compartments), loaded when a scenario has dialysis on |
+| `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge, with one or two compartments; integrated with saturable elimination), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
 | `ui-chartfx.js`, `ui-effect.js`, `ui-worksheet.js`, `ui-panels.js` | The chart's motion, the effect charts, the worksheet view, and the MIC, dialysis and Bayesian panels' readings, each loaded when first needed |
@@ -166,7 +166,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.18.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.19.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 

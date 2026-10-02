@@ -15,8 +15,10 @@
   // patient (age, sex, height, creatinine, albumin), the renal fraction fe, the salt factor S, units, and the
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
-  // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions.
-  const VERSION=14;
+  // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions; 12 dialysis with
+  // two compartments; 13 the child model; 14 an indirect response behind an effect-site delay; 15 dialysis with
+  // saturable elimination.
+  const VERSION=15;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
@@ -223,7 +225,6 @@
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
     if(k==="teq") return s.kin!=="mm" && !hdOn(s);
-    if(k==="hd") return s.kin!=="mm";
     if(k==="hdcl"||k==="hdstart"||k==="hddur"||k==="hdevery") return hdOn(s);
     if(k==="e0"||k==="emax") return !(s.idr>0);
     if(k==="tout") return s.idr>0;
@@ -280,8 +281,9 @@
   // that escapes the liver on its first pass, 1 − E. Oral F is the fraction absorbed times 1 − E. Blood and plasma
   // concentrations are taken as equal. Clearance and volume both scale with weight, so the half-life doesn't.
   const hepOn=p=> p.hep===1 && p.kin!=="mm" && p.pm==="simple";
-  // Hemodialysis sessions (pk-hd.js) apply to first-order scenarios, with one or (since 2.7) two compartments.
-  const hdOn=p=> p.hd===1 && p.kin!=="mm";   // with one or (since links v12) two compartments
+  // Hemodialysis sessions (pk-hd.js): first-order scenarios with one or (since 2.7, links v12) two compartments, and
+  // since 2.19 (links v15) saturable ones, integrated with the dialyzer's clearance added during each session.
+  const hdOn=p=> p.hd===1;
   function wellStirred(p){
     const fc=p.fub*p.clint, E=fc/(p.qh+fc);
     return {E, CL:p.qh*E, FH:1-E, fcl:fc};
@@ -400,8 +402,8 @@
 
   // Superposition of every dose actually given (or, for saturable elimination, the integrated curve).
   function conc(p, t, ev){
-    if(p.kin==="mm") return t<0 ? 0 : mmConc(p,t);
     if(hdOn(p)){ const m=hdApi(); if(m) return m.conc(p,t); }   // until the page has loaded it, the curve without sessions
+    if(p.kin==="mm") return t<0 ? 0 : mmConc(p,t);
     ev=ev||doseEvents(p);
     const terms=disposition(p);
     let sum=0;
@@ -482,7 +484,7 @@
       d.fSS=twoCmt(p) ? conc(Object.assign({}, p, {missed:0, loadMult:1}), t1-1e-9)/ssConc(p, p.tau-1e-9) : 1-Math.exp(-k*p.nDoses*p.tau);
     }
     // with dialysis: the area is summed segment by segment (pk-hd.js), and nothing settles into a steady state
-    if(hdOn(p) && hdApi()){ d.auc=hdApi().course(p).aucInf; if(p.dosing==="repeated"){ d.Rac=null; d.fSS=null; d.t90=null; } }
+    if(hdOn(p) && hdApi()){ d.auc=hdApi().aucInf(p); if(p.dosing==="repeated"){ d.Rac=null; d.fSS=null; d.t90=null; } }
     return d;
   }
 
@@ -598,7 +600,6 @@
   }
   function ssProfileOf(p){
     if(p.dosing!=="repeated") return null;
-    if(p.kin==="mm") return mmProfile(p);
     if(hdOn(p)){
       // dialysis sessions don't repeat with the dosing interval, so each dose is read off the curve and there is no
       // steady state to give
@@ -606,6 +607,7 @@
       for(let i=0;i<p.nDoses;i++) rows.push({n:i+1, peak:peakIn(p, i*p.tau, (i+1)*p.tau, ev, 60)[0], trough:conc(p, (i+1)*p.tau-1e-9, ev), missed:i+1===skip});
       return {rows, ssPeak:null, ssTrough:null, clears:false, swing:null, Rac:null, t90:null, dosesTo90:null, hd:true};
     }
+    if(p.kin==="mm") return mmProfile(p);
     const ev=doseEvents(p), k=keOf(p), tau=p.tau, S=60, skip=missedOf(p);
     // each interval's peak: a 60-point grid with its dose and infusion ends, refined between samples
     const peakTrough=(q,a,evq)=> [peakIn(q, a, a+tau, evq, S)[0], conc(q,a+tau-1e-9,evq)];
@@ -689,7 +691,8 @@
   const vmaxOf=p=> p.vmax*p.wt/24*clFactor(p);   // amount per hour for this body
   // Integrates from `state` ({ag, a} at t0) over [t0, T] with the given doses ({t, mg, route, dur}), returning
   // the steps {t0, t1, g0, g1, a0, a1, f0, f1}: gut and body amounts at each end, and dA/dt there.
-  function mmIntegrate(p, doses, T, state, h0){
+  // kx (2.19): an extra first-order loss rate (1/h) over the whole span, the dialyzer's during a session (pk-hd.js).
+  function mmIntegrate(p, doses, T, state, h0, kx){
     const V=vOf(p), Vm=vmaxOf(p), Km=p.km, ka=p.ka, S=saltOf(p), F=p.F, t0=state ? state.t : 0;
     const cuts=new Set([t0, T]);
     doses.forEach(e=>{ if(e.t>=t0 && e.t<T) cuts.add(e.t); if(e.route==="inf" && e.t+e.dur>t0 && e.t+e.dur<T) cuts.add(e.t+e.dur); });
@@ -703,7 +706,7 @@
       let R=0;   // infusion input, constant between cuts
       doses.forEach(e=>{ if(e.route==="inf" && e.t<=s0 && s0<e.t+e.dur) R+=S*e.mg/e.dur; });
       const n=Math.max(1,Math.ceil((s1-s0)/(h0||MM_STEP)-1e-9)), h=(s1-s0)/n;
-      const da=(g,x)=> ka*g+R-elim(x);
+      const da=kx ? (g,x)=> ka*g+R-elim(x)-kx*x : (g,x)=> ka*g+R-elim(x);
       for(let j=0;j<n;j++){
         const ta=s0+j*h, g0=ag, a0=a, f0=da(g0,a0);
         const k1g=-ka*g0, k1a=f0;
@@ -833,15 +836,20 @@
     return NaN;
   }
   function mmDerived(p){
-    const V=vOf(p), Vm=vmaxOf(p), d={V, mgkg:p.D/p.wt, vmaxH:Vm, km:p.km};
+    const V=vOf(p), Vm=vmaxOf(p), d={V, mgkg:p.D/p.wt, vmaxH:Vm, km:p.km}, hd=hdOn(p) && hdApi();
     const peakOf=(t0,t1)=> peakIn(p,t0,t1);
     if(p.dosing==="repeated"){
       const t0=(p.nDoses-1)*p.tau, t1=p.nDoses*p.tau, [mx,tm]=peakOf(t0,t1);
       d.cmaxSS=mx; d.tmaxSS=tm; d.cminSS=conc(p,t1);
-      const m=mmSteady(p), t90=mmT90(p);
-      d.mm=m; d.css=m.css; d.t90=t90; d.Rac=null;
-      d.fSS=m.none ? null : d.cminSS/m.trough;
-      d.cAt=m.none ? d.cminSS : m.avg;   // the level the half-life and clearance below are read at
+      // with dialysis nothing settles into a steady state (the sessions don't repeat with the doses): the level the
+      // half-life and clearance are read at is the final trough
+      if(hd){ d.mm=null; d.css=d.t90=d.fSS=d.Rac=null; d.cAt=d.cminSS; }
+      else {
+        const m=mmSteady(p), t90=mmT90(p);
+        d.mm=m; d.css=m.css; d.t90=t90; d.Rac=null;
+        d.fSS=m.none ? null : d.cminSS/m.trough;
+        d.cAt=m.none ? d.cminSS : m.avg;   // the level the half-life and clearance below are read at
+      }
     } else if(p.dosing==="single"){
       const horizon=Math.max(24, 3*mmHalfAt(p,0)), [mx,tm]=peakOf(0,horizon);
       d.cmax=mx; d.tmax=tm; d.cAt=mx;
@@ -854,6 +862,7 @@
       d.cAt=mx;
     }
     d.thalfEff=mmHalfAt(p,d.cAt); d.CL=Vm/(p.km+d.cAt); d.ke=d.CL/V;
+    if(hd){ d.auc=hd.aucInf(p); return d; }   // with the sessions as they keep running (pk-hd.js)
     // the all-time exposure needs the curve followed until it has nearly gone: worked out only when asked for
     let auc;
     Object.defineProperty(d, "auc", {enumerable:true, get:()=> auc===undefined ? (auc=mmAucInf(p)) : auc});
@@ -1493,6 +1502,8 @@
     if(version!==undefined && version<13 && p.wt<40) p.wt=40;
     // before v14, an indirect response was driven by the plasma level whatever the effect-site delay said
     if(version!==undefined && version<14 && p.idr>0) p.teq=0;
+    // before v15, dialysis did nothing with saturable elimination: such a link opens as it always did
+    if(version!==undefined && version<15 && p.kin==="mm" && p.hd===1) p.hd=0;
     return normalizeScenario(p);
   }
   function encodeView(v){
@@ -1526,6 +1537,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV15=scen.some(p=>p.kin==="mm" && p.hd===1);
     const usesV14=scen.some(p=>p.idr>0 && p.teq>0);
     const usesV13=scen.some(p=>p.pm==="child" || p.wt<40 || V13_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV12=scen.some(p=>p.cmt===2 && p.hd===1);
@@ -1537,7 +1549,7 @@
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV14 ? 14 : usesV13 ? 13 : usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV15 ? 15 : usesV14 ? 14 : usesV13 ? 13 : usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));
@@ -1824,7 +1836,7 @@
   const READOUT_KEYS_HD={single:["peakWin","tpeakWin","thalf","cl","hdCl","hdFall","aucHd","ttr"],
     repeated:["peak","trough","thalf","cl","hdCl","hdFall","mgkg","ttr"],
     custom:["peakWin","tpeakWin","given","total","thalf","hdCl","hdFall","aucWin"]};
-  const readoutKeys=p=> (p.kin==="mm" ? READOUT_KEYS_MM : hdOn(p) ? READOUT_KEYS_HD : READOUT_KEYS)[p.dosing];
+  const readoutKeys=p=> (hdOn(p) && hdApi() ? READOUT_KEYS_HD : p.kin==="mm" ? READOUT_KEYS_MM : READOUT_KEYS)[p.dosing];
   // The worked readouts (metricMath) live in pk-math.js, loaded the first time a readout is opened.
   let mathFn=null;
 

@@ -17,9 +17,13 @@
       if(!PK.hdModule){ out.textContent="Loading the dialysis model…"; return; }
       const u=PK.unitsOf(p), T=state.duration, rows=PK.hd.sessionTable(p, T), f=PK.hd.sessionFraction(p), d=DRUGS.find(x=>x.id===ctx.lastDrug);
       const step=d && d.units===p.unit && d.strengths.round || null, rnd=x=> step ? Math.round(x/step)*step : +x.toPrecision(2);
-      let h=`<div class="cm-h">Each session, with no dose during it</div>CL ${fmt(PK.derived(p).CL,2)} → <b>${fmt(PK.derived(p).CL+p.hdcl,2)} L/h</b> while it runs; the level falls <b>${fmt(100*f.fall,0)}%</b> over ${trim(p.hddur)} h, ${fmt(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`;
+      // with saturable elimination (2.19) the body's clearance depends on the level and the dialyzer's doesn't, so the
+      // session's fall is read from a stated level, with what it would be far above and far below Km
+      const mm=p.kin==="mm", lvl=p.dosing==="repeated" ? "the final trough" : p.dosing==="custom" ? "the highest level" : "the peak";
+      let h=`<div class="cm-h">Each session, with no dose during it${mm ? `, from ${fmt(f.at,cdp(1))} ${u.conc} (${lvl})` : ""}</div>CL ${fmt(PK.derived(p).CL,2)} → <b>${fmt(PK.derived(p).CL+p.hdcl,2)} L/h</b> while it runs${mm ? " at that level" : ""}; the level falls <b>${fmt(100*f.fall,0)}%</b> over ${trim(p.hddur)} h, ${fmt(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`+
+        (mm ? `. From a level far above Km it would fall ${fmt(100*f.limits.high,0)}%, from one far below ${fmt(100*f.limits.low,0)}%: the body's clearance falls as the level rises, the dialyzer's does not` : "");
       h+=`<div class="cm-h">Sessions in the ${trim(T)} h window</div>`+(rows.length ? rows.slice(0,8).map(r=>
-        `${r.n}. ${trim(r.start)}–${trim(r.end)} h: ${fmt(r.pre,cdp(1))} → <b>${fmt(r.post,cdp(1))}</b> ${u.conc} (−${fmt(100*r.fall,0)}%), ${fmt(r.removed,0)} ${u.amount} removed; `+
+        `${r.n}. ${trim(r.start)}–${trim(r.end)} h: ${fmt(r.pre,cdp(1))} → <b>${fmt(r.post,cdp(1))}</b> ${u.conc} (${r.fall<0 ? "+" : "−"}${fmt(100*Math.abs(r.fall),0)}%), ${fmt(r.removed,0)} ${u.amount} removed${r.body!=null ? ` by the dialyzer and ${fmt(r.body,0)} by the body` : ""}; `+
         (r.rebound ? `with no dose it then rebounds to <b>${fmt(r.rebound.level,cdp(1))} ${u.conc}</b> ${fmt(r.rebound.after,1)} h later (${fmt(100*r.rebound.share,0)}% of the fall back) as drug returns from the tissues; ` : "")+
         `to restore the level${r.rebound ? " straight after the session" : ""}, about <b>${fmt(rnd(r.supplement),step || rnd(r.supplement)>=10 ? 0 : 1)} ${u.dose}</b> IV after it`).join("<br>") : "none starts in the window");
       out.innerHTML=h;

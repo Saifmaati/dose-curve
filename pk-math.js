@@ -18,8 +18,9 @@
     const n1=v=>nf(v,1), n2=v=>nf(v,2), perDay=v=>`${nf(v*24,0)} ${U.amount}/day`;
     const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
     const vmTxt=`Vmax = ${nf(p.vmax,2)} ${U.amount}/kg/day × ${p.wt} kg${clFactor(p)!==1 ? ` × ${nf(clFactor(p),3)}` : ""} = ${perDay(Vm)}`;
-    const atTxt=p.dosing==="repeated" ? (d.mm.none ? "the final trough" : "the average steady-state level") : p.dosing==="single" ? "the peak" : "the highest level";
-    const sampled=`Saturable elimination has no closed-form curve here: DoseCurve integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
+    const atTxt=p.dosing==="repeated" ? (!d.mm || d.mm.none ? "the final trough" : "the average steady-state level") : p.dosing==="single" ? "the peak" : "the highest level";
+    const sampled=hdOn(p) && PK.hdModule ? `Saturable elimination has no closed-form curve here: DoseCurve integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C while a session runs, in RK4 steps of at most ${MM_STEP} h that meet every session edge, and reads the result.`
+      : `Saturable elimination has no closed-form curve here: DoseCurve integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
     switch(key){
       case "thalf": return {title:"Half-life at this level", value:d.thalfEff, steps:[
         t(`With saturable elimination the half-life depends on the concentration. At ${atTxt}, C = ${n2(d.cAt)} ${cu}:`), m(vmTxt),
@@ -44,10 +45,25 @@
           t(c.ratio>=1 ? `At or above 100% the enzymes can't keep up: no steady state.` : `The closer this is to 100%, the more a small dose change moves the level.`)]}; }
       case "auc": return {title:"Total exposure (AUC∞)", value:d.auc, steps:[m(`AUC∞ = ${n1(d.auc)} ${U.auc}`), t(sampled),
         t(`It isn't F·D / CL here: clearance changes with the level, so doubling the dose more than doubles the AUC.`)]};
+      case "peakWin": case "tpeakWin": return {title:key==="peakWin" ? "Peak in the window" : "Time of the peak in the window", value:key==="peakWin" ? ws.cmax : ws.tmax,
+        steps:[m(`Peak = ${n2(ws.cmax)} ${cu} at ${n2(ws.tmax)} h`), t(sampled), t(`The doses' curves aren't added up here: with saturable elimination each dose changes how fast the others clear.`)]};
       case "cmax": case "tmax": return {title:key==="cmax" ? "Peak concentration (Cmax)" : "Time of the peak (tmax)", value:key==="cmax" ? d.cmax : d.tmax,
         steps:[m(`Cmax = ${n2(d.cmax)} ${cu} at ${n2(d.tmax)} h`), t(sampled)]};
+      // with dialysis (2.19): the clearance and the fall are read at a stated level, the area followed through the sessions
+      case "hdCl": return {title:"Clearance during a session", value:d.CL+p.hdcl, steps:[m(vmTxt),
+        m(`CL = Vmax / (Km + C) = ${n2(Vm)} / (${n2(Km)} + ${n2(d.cAt)}) = ${n2(d.CL)} L/h, at ${atTxt}`), m(`CL + CLd = ${n2(d.CL)} + ${n2(p.hdcl)} = ${n2(d.CL+p.hdcl)} L/h while a session runs`),
+        t(`The body's clearance falls as the level rises and the dialyzer's doesn't, so the dialyzer's share of the elimination grows with the level.`)]};
+      case "hdFall": { if(!PK.hd) return {title:"Fall over one session", value:null, steps:[t("Loading the dialysis model…")]};
+        const f=PK.hd.sessionFraction(p);
+        return {title:"Fall over one session", value:100*f.fall, steps:[
+          t(`With no dose during the session, dA/dt = −Vmax·A / (K + A) − kd·A (K = Km·V, kd = CLd / V) integrates exactly: D = (K/c)·ln(A₀/A₁) + (Vmax/(c·kd))·ln((c + kd·A₀)/(c + kd·A₁)), c = Vmax + kd·K.`),
+          m(`From C₀ = ${n2(f.at)} ${cu} (${atTxt}) over ${nf(p.hddur,2)} h: C₁ = ${n2(f.at*(1-f.fall))} ${cu}, a fall of ${nf(100*f.fall,1)}%, ${nf(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`),
+          t(`From far above Km it would fall ${nf(100*f.limits.high,1)}% (the dialyzer's clearance alone counts), from far below ${nf(100*f.limits.low,1)}% (first order). Each session's actual fall is in the session list.`)]}; }
+      case "aucHd": { const v0=derived(Object.assign({}, p, {hd:0})).auc;
+        return {title:"Total exposure (AUC∞) with dialysis", value:d.auc, steps:[t(`DoseCurve integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C during each session, in steps that meet every session edge, and follows the curve until it has nearly gone.`),
+          m(`AUC∞ = ${n1(d.auc)} ${U.auc}, against ${n1(v0)} ${U.auc} with no dialysis`)]}; }
       case "peak": case "trough": return {title:key==="peak" ? "Peak after the last dose" : "Trough after the last dose", value:key==="peak" ? d.cmaxSS : d.cminSS,
-        steps:[m(`${key==="peak" ? "Peak" : "Trough"} = ${n2(key==="peak" ? d.cmaxSS : d.cminSS)} ${cu}`), t(sampled)].concat(key==="trough" && !d.mm.none ? [t(`Given forever, the trough would settle at ${n2(d.mm.trough)} ${cu}.`)] : [])};
+        steps:[m(`${key==="peak" ? "Peak" : "Trough"} = ${n2(key==="peak" ? d.cmaxSS : d.cminSS)} ${cu}`), t(sampled)].concat(key==="trough" && d.mm && !d.mm.none ? [t(`Given forever, the trough would settle at ${n2(d.mm.trough)} ${cu}.`)] : [])};
     }
     return null;
   }
@@ -156,7 +172,7 @@
           m(`t½ during a session = 0.693 × V / ${n2(tot)} = 0.693 × ${n1(V)} / ${n2(tot)} = ${n2(Math.LN2*V/tot)} h, against ${n1(th)} h between sessions`),
           t(`The dialyzer's clearance adds to the body's own only while a session runs.`)]}; }
       case "hdFall": { const kd=p.hdcl/V, kt=k+kd, f=-Math.expm1(-kt*p.hddur);
-        if(p.cmt===2 && PK.hd){ const sf=PK.hd.sessionFraction(p);
+        if(twoCmt(p) && PK.hd){ const sf=PK.hd.sessionFraction(p);
           return {title:"Fall over one session", value:100*sf.fall, steps:[
             t(`With two compartments the fall depends on how the drug is spread as the session starts. Starting from the terminal phase (distribution over), the exact two-compartment solution gives a fall of ${nf(100*sf.fall,1)}% over ${nf(p.hddur,2)} h in the central level.`),
             m(`Of the drug eliminated during it, the dialyzer removes CLd / (CL + CLd) = ${n2(p.hdcl)} / ${n2(CL+p.hdcl)} = ${nf(100*kd/kt,0)}%, and the body the rest`),

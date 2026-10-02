@@ -50,7 +50,8 @@
         ? `<b>Same doses, different timing</b>: both schedules give ${tb.n} dose${tb.n===1?"":"s"} (${fmt(tb.mg,0)} ${U().dose}) within the window, so exposure differs only through when they are given.`
         : `<b>Different schedules</b>: within the window, ${ra} gives ${ta.n} dose${ta.n===1?"":"s"} (${fmt(ta.mg,0)} ${U().dose}) and ${rb} gives ${tb.n} (${fmt(tb.mg,0)} ${U().dose}). Exposure follows the total amount given and how the doses are spread over time.`);
     }
-    if(a.D!==b.D && mmA && mmB && a.dosing==="repeated" && b.dosing==="repeated"){
+    // (the predicted Css is a steady state, which dialysis sessions never reach: with dialysis the next branch, the AUC)
+    if(a.D!==b.D && mmA && mmB && a.dosing==="repeated" && b.dosing==="repeated" && !PK.hdOn(a) && !PK.hdOn(b)){
       const ca=PK.mmCss(a), cb=PK.mmCss(b), dp=Math.abs(b.D/a.D-1)*100;
       if(cb.css===null) out.push(`Dose ${a.D} → ${b.D} ${U().dose}: <b>no steady state</b>. The input rate, ${perDay(cb.R,b)}, now exceeds Vmax (${perDay(cb.Vmax,b)}), so the level keeps climbing for as long as dosing continues.`);
       else if(ca.css!==null){
@@ -65,8 +66,8 @@
     if(a.route==="oral" && b.route==="oral"){
       if(a.F!==b.F) out.push(`Bioavailability ${trim(a.F)} → ${trim(b.F)}. Only that fraction of the oral dose reaches circulation, so exposure changes by <b>${pctTxt(a.F,b.F)}</b> with the same shape.`);
       if(a.ka!==b.ka) out.push(b.ka>a.ka
-        ? `Faster absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): an earlier, higher peak. ${PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`
-        : `Slower absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): a later, flatter peak, which is the extended-release idea. ${PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`);
+        ? `Faster absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): an earlier, higher peak. ${mmA || mmB ? "The same amount is still absorbed, but with saturable elimination the total AUC moves too: clearance depends on the level the absorption builds." : PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`
+        : `Slower absorption (kₐ ${trim(a.ka)} → ${trim(b.ka)} h⁻¹): a later, flatter peak, which is the extended-release idea. ${mmA || mmB ? "The same amount is still absorbed, but with saturable elimination the total AUC moves too: clearance depends on the level the absorption builds." : PK.hdOn(a) || PK.hdOn(b) ? "The same amount is still absorbed, but with dialysis the total AUC can still move, because what each session removes follows the level while it runs." : "AUC doesn't change because the same amount is still absorbed."}`);
     }
     if(a.route==="inf" && b.route==="inf" && a.tinf!==b.tinf){
       out.push(b.tinf>a.tinf
@@ -230,10 +231,10 @@
     else if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
       ? "lags the plasma level more. It builds later, a plasma peak reaches it later and blunted, and as the level falls the effect stays above what that level alone would give."
       : "follows the plasma level more closely: it builds sooner, a plasma peak reaches it sooner and less blunted, and it falls with the level."}`);
-    if(PK.hdOn(a)!==PK.hdOn(b)) out.push(PK.hdOn(b) ? `Hemodialysis: a ${trim(b.hddur)}-hour session every ${trim(b.hdevery)} h from ${trim(b.hdstart)} h adds a dialysis clearance of ${trim(b.hdcl)} L/h while it runs, so the level drops faster during each session.` : "Hemodialysis is off: the clearance no longer rises during sessions.");
+    if(PK.hdOn(a)!==PK.hdOn(b)) out.push(PK.hdOn(b) ? `Hemodialysis: a ${trim(b.hddur)}-hour session every ${trim(b.hdevery)} h from ${trim(b.hdstart)} h adds a dialysis clearance of ${trim(b.hdcl)} L/h while it runs, so the level drops faster during each session.${mmB ? " With saturable elimination the dialyzer's share of each session's fall grows with the level, since its clearance doesn't saturate." : ""}` : "Hemodialysis is off: the clearance no longer rises during sessions.");
     else if(PK.hdOn(b) && PK.hdModule){
       const fa=PK.hd.sessionFraction(a), fb=PK.hd.sessionFraction(b);
-      if(a.hdcl!==b.hdcl || a.hddur!==b.hddur) out.push(`Dialysis ${a.hdcl!==b.hdcl ? `clearance ${trim(a.hdcl)} → ${trim(b.hdcl)} L/h` : ""}${a.hdcl!==b.hdcl && a.hddur!==b.hddur ? ", " : ""}${a.hddur!==b.hddur ? `sessions ${trim(a.hddur)} → ${trim(b.hddur)} h` : ""}: each session lowers the level by ${fmt(100*fa.fall,0)}% → <b>${fmt(100*fb.fall,0)}%</b>.`);
+      if(a.hdcl!==b.hdcl || a.hddur!==b.hddur) out.push(`Dialysis ${a.hdcl!==b.hdcl ? `clearance ${trim(a.hdcl)} → ${trim(b.hdcl)} L/h` : ""}${a.hdcl!==b.hdcl && a.hddur!==b.hddur ? ", " : ""}${a.hddur!==b.hddur ? `sessions ${trim(a.hddur)} → ${trim(b.hddur)} h` : ""}: each session lowers the level by ${fmt(100*fa.fall,0)}% → <b>${fmt(100*fb.fall,0)}%</b>${mmA && mmB ? ` (from ${fmt(fa.at,cdp(1))} ${PK.unitsOf(a).conc} and ${fmt(fb.at,cdp(1))} ${PK.unitsOf(b).conc}, the levels the readouts name)` : mmA || mmB ? ` (the saturable side's read from ${fmt((mmA ? fa : fb).at,cdp(1))} ${PK.unitsOf(mmA ? a : b).conc}, the level its readouts name)` : ""}.`);
       if(a.hdstart!==b.hdstart || a.hdevery!==b.hdevery) out.push(`The sessions now start at ${trim(b.hdstart)} h and repeat every ${trim(b.hdevery)} h (were ${trim(a.hdstart)} and ${trim(a.hdevery)} h): when they fall against the doses decides which levels they lower.`);
     }
     if(a.idr!==b.idr) out.push(`How the effect is produced: ${IDR_NAME[a.idr].toLowerCase()} → <b>${IDR_NAME[b.idr].toLowerCase()}</b>. ${b.idr>0 ? "The response now follows the turnover of what the drug acts on, so it lags the level." : "The effect now follows the level directly."}`);

@@ -8080,7 +8080,7 @@
   ]
  },
  "hd": {
-  "about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 11 scenarios (3 of them two-compartment) with a dialysis clearance switched on during sessions.",
+  "about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 15 scenarios (3 of them two-compartment, 4 with saturable elimination) with a dialysis clearance switched on during sessions.",
   "tolerance": {
    "rel": 0.0001
   },
@@ -8608,6 +8608,231 @@
        "pre": 4.488004683768087,
        "post": 4.267077609418821,
        "removed": 239.68542550592332
+      }
+     ]
+    }
+   },
+   {
+    "name": "saturable, oral daily, sessions every 48 h",
+    "T": 168,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "kin": "mm",
+     "route": "oral",
+     "dosing": "repeated",
+     "D": 300,
+     "S": 0.92,
+     "F": 1,
+     "ka": 0.4,
+     "tau": 24,
+     "nDoses": 7,
+     "V": 49,
+     "vmax": 7,
+     "km": 4,
+     "hdcl": 5,
+     "hdstart": 20,
+     "hddur": 4,
+     "hdevery": 48
+    },
+    "reference": {
+     "at": {
+      "0.1": 2.5316380861659016,
+      "0.25": 2.9304433185929137,
+      "0.4": 3.3331981859691737,
+      "0.55": 2.8887381792911566,
+      "0.75": 5.541139472195339,
+      "1.0": 1.760110228727419
+     },
+     "sessions": [
+      {
+       "pre": 2.051947256089824,
+       "post": 1.0062696220828156,
+       "removed": 29.493620090521365
+      },
+      {
+       "pre": 3.184278068730657,
+       "post": 1.6259708329255216,
+       "removed": 46.620527802603476
+      },
+      {
+       "pre": 3.3835853200662105,
+       "post": 1.7383360823468368,
+       "removed": 49.67513336468542
+      }
+     ]
+    }
+   },
+   {
+    "name": "saturable, infusions q12h after a double loading dose, sessions overlapping infusions",
+    "T": 96,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 2,
+     "missed": 1,
+     "hd": 1,
+     "kin": "mm",
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 250,
+     "tinf": 1,
+     "tau": 12,
+     "nDoses": 8,
+     "V": 50,
+     "vmax": 10,
+     "km": 6,
+     "hdcl": 8,
+     "hdstart": 23.5,
+     "hddur": 4,
+     "hdevery": 24
+    },
+    "reference": {
+     "at": {
+      "0.1": 6.861084139652771,
+      "0.25": 6.4468620703513775,
+      "0.4": 7.957719073150807,
+      "0.55": 4.625540713781963,
+      "0.75": 4.180195502686509,
+      "1.0": 4.050120190807812
+     },
+     "sessions": [
+      {
+       "pre": 7.144925202075382,
+       "post": 5.904182014151579,
+       "removed": 246.74478815351236
+      },
+      {
+       "pre": 5.201062551340913,
+       "post": 4.962262719375077,
+       "removed": 202.4823988708882
+      },
+      {
+       "pre": 4.656983886260978,
+       "post": 4.701982437759912,
+       "removed": 190.17513787518067
+      }
+     ]
+    }
+   },
+   {
+    "name": "saturable, IV bolus far above Km, sessions every 24 h",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "kin": "mm",
+     "route": "iv",
+     "dosing": "single",
+     "D": 1500,
+     "V": 40,
+     "vmax": 7,
+     "km": 4,
+     "hdcl": 10,
+     "hdstart": 2,
+     "hddur": 6,
+     "hdevery": 24
+    },
+    "reference": {
+     "at": {
+      "0.1": 17.28475123080681,
+      "0.25": 5.708356824903939,
+      "0.4": 3.732629687166426,
+      "0.55": 1.9805936184732356,
+      "0.75": 0.16641446063794976,
+      "1.0": 0.0371714937027912
+     },
+     "sessions": [
+      {
+       "pre": 36.57866933657654,
+       "post": 6.958114314304234,
+       "removed": 1087.851282505604
+      },
+      {
+       "pre": 2.263174478086248,
+       "post": 0.2701466721110455,
+       "removed": 57.310504534148095
+      }
+     ]
+    }
+   },
+   {
+    "name": "saturable, custom schedule (loading infusion, then oral), reduced kidney function",
+    "T": 120,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hd": 1,
+     "kin": "mm",
+     "route": "oral",
+     "dosing": "custom",
+     "pm": "clinical",
+     "age": 60,
+     "sex": "M",
+     "scr": 3,
+     "fe": 0.3,
+     "F": 0.9,
+     "ka": 0.6,
+     "V": 45,
+     "vmax": 8,
+     "km": 5,
+     "S": 0.92,
+     "hdcl": 6,
+     "hdstart": 30,
+     "hddur": 4,
+     "hdevery": 48,
+     "events": [
+      {
+       "t": 0,
+       "mg": 1000,
+       "route": "inf",
+       "dur": 1
+      },
+      {
+       "t": 24,
+       "mg": 300,
+       "route": "oral"
+      },
+      {
+       "t": 48,
+       "mg": 300,
+       "route": "oral"
+      },
+      {
+       "t": 72,
+       "mg": 300,
+       "route": "oral"
+      },
+      {
+       "t": 96,
+       "mg": 300,
+       "route": "oral"
+      }
+     ]
+    },
+    "reference": {
+     "at": {
+      "0.1": 16.77466958685935,
+      "0.25": 16.758832758736553,
+      "0.4": 5.778743185706988,
+      "0.55": 6.81597553228769,
+      "0.75": 3.465615822147046,
+      "1.0": 3.300147095922787
+     },
+     "sessions": [
+      {
+       "pre": 16.758832758521603,
+       "post": 9.060458214894563,
+       "removed": 301.84743219917647
+      },
+      {
+       "pre": 9.36261568350217,
+       "post": 4.889142890194772,
+       "removed": 166.35944745369034
       }
      ]
     }

@@ -7,6 +7,10 @@
    With two compartments (2.6) the dialyzer clears the central compartment, and the central and peripheral amounts
    follow a linear system with constant rates between events, solved exactly through its two eigenvalues. Drug then
    moves back from the tissues once a session ends, so the level rebounds: sessionTable gives how far and when.
+   With saturable elimination (2.19) there is no closed form: the engine's own Runge–Kutta integrator runs piecewise
+   between session edges with the dialyzer's loss CLd·C added during each session, dA/dt = input − Vmax·C/(Km + C)
+   − CLd·C. The step shortens where the rates are fast; the amount a session removes is CLd times the exact area under
+   each step's cubic. A session's fall then depends on the level it starts from, and every figure says which.
    The page loads this file when a scenario has dialysis on (it registers itself as PK.hdModule); in Node the engine
    requires it on first use of PK.hd. Educational model, not for clinical dosing. */
 (function(root, factory){
@@ -14,7 +18,7 @@
   else if(root && root.PK) root.PK.hdModule=factory(root.PK);
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
-  const {doseEvents, keOf, vOf, saltOf, fOf, encodeScenario, PK_KEYS, eventsKey}=PK;
+  const {doseEvents, keOf, vOf, saltOf, fOf, encodeScenario, PK_KEYS, eventsKey, vmaxOf, mmIntegrate, mmAmount, MM_STEP}=PK;
   const em1=x=> -Math.expm1(-x);   // 1 − e^(−x), accurate for small x
 
   // Session start and end times, from the first session's start, every hdevery hours, up to time H.
@@ -64,7 +68,8 @@
     if(s.g>0){ const h=fM(K,k12,k21,H,e1), ha=fM(K,k12,k21,AH,e1), u=ka*s.g; a+=u*h[0]; q+=u*h[1]; ar+=u*ha[0]; }
     return {g:s.g*Math.exp(-ka*tau), a, q, area:ar};
   }
-  const twoOf=p=> p.cmt===2;
+  const twoOf=p=> p.cmt===2 && p.kin!=="mm";   // a leftover cmt:2 on a saturable scenario means nothing
+  const mmOf=p=> p.kin==="mm";
 
   // The scenario's course: each event time with the state just after it and the rates that hold until the next. It
   // runs until 40 half-lives (between sessions) after the last input, so the area to infinity is complete.
@@ -76,7 +81,7 @@
   function course(p){
     const m=byObject.get(p);
     if(m && sameAs(p, m)) return m.cr;
-    const cr=courseByKey(p);
+    const cr=mmOf(p) ? mmCourse(p) : courseByKey(p);
     byObject.set(p, {vals:PK_KEYS.map(k=>p[k]), ev:p.dosing==="custom" ? eventsKey(p.events) : null, cr});
     return cr;
   }
@@ -111,6 +116,78 @@
     cache.set(key, out);
     return out;
   }
+  /* ---------- saturable elimination (2.19) ---------- */
+  // The engine's integrator (mmIntegrate) run from one session edge to the next, with the dialyzer's rate kd = CLd/V
+  // inside sessions. The step keeps λh ≤ 0.5 (Runge–Kutta stays stable), which at usual settings is the engine's
+  // 0.05 h. Each step is {t0, t1, g0, g1, a0, a1, f0, f1, kd}, read as the engine reads its own (cubic Hermite).
+  function mmSteps(p, T, st){
+    const V=vOf(p), kd=p.hdcl/V, k0=vmaxOf(p)/(p.km*V), ev=doseEvents(p), t0=st ? st.t : 0, ss=sessions(p, T);
+    const cuts=new Set([t0, T]);
+    ss.forEach(x=>{ [x.start, x.end].forEach(t=>{ if(t>t0 && t<T) cuts.add(t); }); });
+    const bs=[...cuts].sort((a,b)=>a-b), on=t=> ss.some(x=> t>=x.start && t<x.end), out=[];
+    let s=st || null;
+    for(let i=0;i<bs.length-1;i++){
+      const kx=on(bs[i]) ? kd : 0, h=Math.min(MM_STEP, 0.5/(k0+kx+(p.ka||0)));
+      const part=mmIntegrate(p, ev, bs[i+1], s, h, kx);
+      for(const x of part){ x.kd=kx; out.push(x); }
+      const last=part[part.length-1]; s={t:bs[i+1], ag:last.g1, a:last.a1};
+    }
+    return out;
+  }
+  // a step's area under the body amount from its start to the fraction x of it (exact for the cubic), and the amount
+  // the body eliminated over the same span (3-point Gauss–Legendre on Vmax·C/(Km + C))
+  const areaTo=(x0, x)=>{ const h=x0.t1-x0.t0, x2=x*x, x3=x2*x, x4=x3*x;
+    return h*((x4/2-x3+x)*x0.a0+(x4/4-2*x3/3+x2/2)*h*x0.f0+(x3-x4/2)*x0.a1+(x4/4-x3/3)*h*x0.f1); };
+  const aHermite=(x0, x)=>{ const h=x0.t1-x0.t0, x2=x*x, x3=x2*x; return (2*x3-3*x2+1)*x0.a0+(x3-2*x2+x)*h*x0.f0+(-2*x3+3*x2)*x0.a1+(x3-x2)*h*x0.f1; };
+  const GL=[[.5, 8/18], [.5-Math.sqrt(.6)/2, 5/18], [.5+Math.sqrt(.6)/2, 5/18]];
+  const bodyTo=(cr, x0, x)=>{ const h=x0.t1-x0.t0; let s=0; for(const [u,w] of GL){ const C=Math.max(0, aHermite(x0, u*x))/cr.V; s+=w*cr.Vm*C/(cr.Km+C); } return s*h*x; };
+  // The course: the steps, and before each the area under the amount, the amount removed and the amount the body
+  // eliminated since 0. It grows in place as later times are read, like the engine's own saturable solution.
+  const mmCache=new Map();
+  function mmCourse(p){
+    const key=encodeScenario(p);
+    if(mmCache.has(key)) return mmCache.get(key);
+    const V=vOf(p), cr={mm:true, two:false, V, kd:p.hdcl/V, Vm:vmaxOf(p), Km:p.km, k0:vmaxOf(p)/(p.km*V), ka:p.ka, T:0, steps:[], A:[], R:[], M:[], sums:{A:0, R:0, M:0}, inf:null};
+    if(mmCache.size>24) mmCache.delete(mmCache.keys().next().value);
+    mmCache.set(key, cr);
+    return reach(p, cr, 48);
+  }
+  function reach(p, cr, t){
+    if(cr.steps.length && t<=cr.T) return cr;
+    const end=Math.max(t, 2*cr.T, 48)+MM_STEP, last=cr.steps[cr.steps.length-1];
+    const add=mmSteps(p, end, last ? {t:last.t1, ag:last.g1, a:last.a1} : null), S=cr.sums;
+    for(const x of add){ cr.steps.push(x); cr.A.push(S.A); cr.R.push(S.R); cr.M.push(S.M); const ar=areaTo(x, 1); S.A+=ar; S.R+=x.kd*ar; S.M+=bodyTo(cr, x, 1); }
+    cr.T=end-MM_STEP;   // a dose exactly at the new end lands in the next extension
+    return cr;
+  }
+  function mmStateAt(p, t){
+    const cr=reach(p, course(p), Math.max(t, 0)), st=cr.steps;
+    if(t<=0) return {a:t<0 ? 0 : st[0].a0, g:t<0 ? 0 : st[0].g0, q:0, area:0, removed:0, body:0, cr};
+    let lo=0, hi=st.length-1;
+    while(lo<hi){ const m=(lo+hi+1)>>1; if(st[m].t0<=t) lo=m; else hi=m-1; }
+    const x0=st[lo], x=Math.min(1, (t-x0.t0)/(x0.t1-x0.t0)), ar=areaTo(x0, x);
+    return {a:aHermite(x0, x), g:x0.g0*Math.exp(-cr.ka*(t-x0.t0)), q:0, area:cr.A[lo]+ar, removed:cr.R[lo]+x0.kd*ar, body:cr.M[lo]+bodyTo(cr, x0, x), cr};
+  }
+  // the area under the concentration to infinity, with the amounts the dialyzer and the body take over it: the curve
+  // is followed until the amount is under 1e-3 of its highest, then the remaining low-level tail (C far below Km, so
+  // first order at Vmax/(Km·V), plus the dialyzer in each session) is summed exactly session by session
+  function mmInf(p){
+    const cr=course(p);
+    if(cr.inf) return cr.inf;
+    const ev=doseEvents(p), lastIn=ev.reduce((m,e)=> Math.max(m, e.t+(e.route==="inf" ? e.dur : 0)), 0);
+    let T=lastIn+24, top=0;
+    // (the gut counts: drug still to be absorbed would push the level back above Km, beyond the linear tail's reach)
+    for(let i=0;i<30;i++){ reach(p, cr, T); top=cr.steps.reduce((m,x)=> Math.max(m, x.a1), top); const s=mmStateAt(p, T); if(s.a+s.g<=1e-3*top) break; T*=2; }
+    const s0=mmStateAt(p, T);
+    let area=s0.area, removed=s0.removed, body=s0.body, s={g:s0.g, a:s0.a}, t=T;
+    const ss=sessions(p, T+20000), on=x=> ss.some(z=> x>=z.start && x<z.end);
+    for(let i=0;i<20000 && s.a+s.g>1e-12*top && t<T+20000;i++){
+      const next=Math.min(...ss.map(z=> z.start>t+1e-12 ? z.start : z.end>t+1e-12 ? z.end : Infinity), t+1000), kd=on(t) ? cr.kd : 0, r=step(s, cr.k0+kd, 0, cr.ka, next-t);
+      area+=r.area; removed+=kd*r.area; body+=cr.k0*r.area; s={g:r.g, a:r.a}; t=next;
+    }
+    return cr.inf={auc:area/cr.V, removed, body};
+  }
+
   // The node at or before t (the state just after any dose at t)
   function nodeAt(cr, t){
     const n=cr.nodes;
@@ -121,18 +198,31 @@
   }
   // body (central) amount, the peripheral and gut amounts, and the area under the body amount from 0 to t
   function stateAt(p, t){
+    if(mmOf(p)) return mmStateAt(p, t);
     const cr=course(p);
     if(t<=0) return {a:t<0 ? 0 : cr.nodes[0].a, q:0, g:t<0 ? 0 : cr.nodes[0].g, area:0, removed:0, cr};
     const nd=nodeAt(cr, t), r=cr.two ? step2(nd, nd.k, cr.k12, cr.k21, nd.R, cr.ka, t-nd.t) : step(nd, nd.k, nd.R, cr.ka, t-nd.t);
     return {a:r.a, q:cr.two ? r.q : 0, g:r.g, area:nd.area+r.area, removed:nd.removed+(nd.dial ? cr.kd*r.area : 0), cr};
   }
-  const conc=(p, t)=>{ if(t<0) return 0; const s=stateAt(p, t); return s.a/s.cr.V; };
+  const conc=(p, t)=>{ if(t<0) return 0; if(mmOf(p)){ const cr=reach(p, course(p), t); return mmAmount(cr.steps, t)/cr.V; } const s=stateAt(p, t); return s.a/s.cr.V; };
+  // the area under the concentration to infinity (AUC∞), with the sessions as they keep running
+  const aucInf=p=> mmOf(p) ? mmInf(p).auc : course(p).aucInf;
 
   // Each session that starts within [0, T]: the level as it starts and as it ends (before any dose at its end), the
   // fall, the amount removed (CLd × the area under the concentration during it), and the IV dose given right after
   // it that would bring the level back to where the session found it. With two compartments, the rebound: the highest
   // level before the next dose or session (or 12 h), when it comes, and how much of the fall it gives back.
   function sessionTable(p, T){
+    if(mmOf(p)){
+      // saturable (2.19): each session's own levels, what the dialyzer and the body each took, and the IV dose that
+      // restores the level the session found at the moment it ends (in one compartment a bolus adds S·dose at once,
+      // whatever the elimination does next)
+      const V=vOf(p), S=saltOf(p);
+      return sessions(p, T+p.hdevery).filter(s=> s.start<=T).map(s=>{
+        const a=stateAt(p, s.start), b=stateAt(p, s.end-1e-9), pre=conc(p, s.start), post=conc(p, s.end-1e-9);
+        return {n:s.n, start:s.start, end:s.end, pre, post, fall:pre>0 ? 1-post/pre : 0, removed:b.removed-a.removed, body:b.body-a.body, supplement:Math.max(0, (pre-post)*V/S), rebound:null};
+      });
+    }
     const cr=course(p), V=cr.V, S=saltOf(p), ev=doseEvents(p);
     return cr.sessions.filter(s=> s.start<=T).map(s=>{
       const pre=conc(p, s.start), post=conc(p, s.end-1e-9), r0=stateAt(p, s.start).removed, r1=stateAt(p, s.end-1e-9).removed;
@@ -159,7 +249,22 @@
   // With two compartments the fall depends on where the drug is as the session starts: it is taken from the terminal
   // phase (the two compartments in the proportion they keep once distribution is over), and the dialyzer's share is
   // of the drug eliminated during it, kd / (k10 + kd).
-  function sessionFraction(p, dur){
+  // Saturable (2.19): with no dose during it, dA/dt = −Vmax·A/(K + A) − kd·A (K = Km·V) integrates in closed form,
+  // D = (K/c)·ln(A0/A1) + (Vmax/(c·kd))·ln((c + kd·A0)/(c + kd·A1)), c = Vmax + kd·K, solved for A1 by bisection.
+  // The fall depends on the starting level c0: by default the level the readouts' half-life and clearance are read at.
+  // limits: the fall from a level far above Km (the body's clearance negligible) and from one far below (first order).
+  function mmFraction(p, D, c0){
+    const V=vOf(p), Vm=vmaxOf(p), K=p.km*V, k0=Vm/K, kd=p.hdcl/V, C0=c0===undefined ? PK.derived(p).cAt : c0, A0=C0*V;
+    const limits={high:-Math.expm1(-kd*D), low:-Math.expm1(-(kd+k0)*D)};
+    if(!(A0>0)) return {fall:limits.low, byDialysis:limits.low*kd/(kd+k0), byBody:limits.low*k0/(kd+k0), kd, k0, at:0, cl:Vm/p.km, limits};
+    const c=Vm+kd*K, time=kd>0 ? A1=> (K/c)*Math.log(A0/A1)+(Vm/(c*kd))*Math.log((c+kd*A0)/(c+kd*A1)) : A1=> (K/Vm)*Math.log(A0/A1)+(A0-A1)/Vm;
+    let lo=Math.log(A0)-(kd+k0)*D, hi=Math.log(A0)-kd*D;
+    for(let i=0;i<100;i++){ const m=(lo+hi)/2; if(time(Math.exp(m))>D) lo=m; else hi=m; }
+    const A1=Math.exp((lo+hi)/2), removed=kd>0 ? (A0-A1)-(Vm/kd)*Math.log((c+kd*A0)/(c+kd*A1)) : 0;
+    return {fall:1-A1/A0, byDialysis:removed/A0, byBody:(A0-A1-removed)/A0, kd, k0, at:C0, cl:Vm/(p.km+C0), limits};
+  }
+  function sessionFraction(p, dur, c0){
+    if(mmOf(p)) return mmFraction(p, dur===undefined ? p.hddur : dur, c0);
     const V=vOf(p), k0=keOf(p), kd=p.hdcl/V, k=k0+kd, D=dur===undefined ? p.hddur : dur;
     if(!twoOf(p)){ const f=em1(k*D); return {fall:f, byDialysis:f*kd/k, byBody:f*k0/k, kd, k0}; }
     const tr=k0+p.k12+p.k21, be=(tr-Math.sqrt(tr*tr-4*k0*p.k21))/2, x=step2({g:0, a:1, q:p.k12/(p.k21-be)}, k, p.k12, p.k21, 0, 1, D);
@@ -168,13 +273,14 @@
   }
   // the dialyzer clearance that makes a session of length dur lower the level by `fall` (as a label states it); with
   // two compartments, found by bisection (the fall rises with the clearance)
-  function clForFall(p, fall, dur){
-    if(!twoOf(p)) return Math.max(0, (-Math.log(1-fall)/dur-keOf(p))*vOf(p));
-    const at=cl=> sessionFraction(Object.assign({}, p, {hdcl:cl}), dur).fall;
+  function clForFall(p, fall, dur, c0){
+    if(!twoOf(p) && !mmOf(p)) return Math.max(0, (-Math.log(1-fall)/dur-keOf(p))*vOf(p));
+    // two compartments, or saturable from a fixed starting level (a regimen's own level would move with the clearance)
+    const C0=mmOf(p) ? (c0===undefined ? PK.derived(p).cAt : c0) : undefined, at=cl=> sessionFraction(Object.assign({}, p, {hdcl:cl}), dur, C0).fall;
     if(at(0)>=fall) return 0;
     let lo=0, hi=1; while(at(hi)<fall && hi<1e6) hi*=2;
     for(let i=0;i<100;i++){ const m=(lo+hi)/2; if(at(m)<fall) lo=m; else hi=m; }
     return (lo+hi)/2;
   }
-  return {sessions, course, conc, stateAt, sessionTable, sessionFraction, clForFall};
+  return {sessions, course, conc, stateAt, sessionTable, sessionFraction, clForFall, aucInf, mmSteps};
 });
