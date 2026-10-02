@@ -104,7 +104,7 @@
         decide:m=>{ const f=PK.hd.sessionFraction(m.cur.p).fall; return f>0.35 && f<0.65 ? 0 : f<=0.35 ? 1 : 2; },
         show:m=>`Fall over the session: ${r0(100*PK.hd.sessionFraction(m.cur.p).fall)}%`},
       challenge:{text:"Change only the dialysis clearance until one session lowers the level by at least 75%.",
-        goal:m=>{ const p=m.now.p; return PK.hdOn(p) && p.hddur===8 && p.D===120 && p.scr===7.5 && !!PK.hd && PK.hd.sessionFraction(p).fall>=0.75; }, solution:{hdcl:3.5}},
+        goal:m=>{ const p=m.now.p; return PK.hdOn(p) && p.kin==="linear" && p.hddur===8 && p.D===120 && p.scr===7.5 && !!PK.hd && PK.hd.sessionFraction(p).fall>=0.75; }, solution:{hdcl:3.5}},
       matters:"Dialysis can remove a large share of a drug the kidneys normally clear, within hours. How much depends on the dialyzer's clearance next to the body's own and on the session's length, which is why labels give a dose, or an extra dose, after each session."},
     hdreb:{objective:"Explain why the level rises after a dialysis session for a drug that distributes into the tissues, and why a level drawn as the session ends understates it.",
       predict:{q:"With two compartments, the session ends at 10 h with the level at 5.5 mg/L. With no dose, 1.6 hours later the level is…", choices:HLS, answer:0,
@@ -112,7 +112,7 @@
         decide:m=>{ const r=PK.hd.sessionTable(m.cur.p,24)[0]; return higherLowerSame(PK.conc(m.cur.p, r.end+1.6), r.post); },
         show:m=>{ const r=PK.hd.sessionTable(m.cur.p,24)[0]; return `End of session ${r2(r.post)} → ${r2(PK.conc(m.cur.p, r.end+1.6))} mg/L 1.6 h later`; }},
       challenge:{text:"Change only k21, how fast drug returns from the tissues, until the rebound gives back at least a quarter of the fall.",
-        goal:m=>{ const p=m.now.p; if(!PK.hdOn(p) || p.cmt!==2 || p.k12!==0.8 || p.hdcl!==8 || p.hddur!==4 || p.hdstart!==6 || p.D!==1000 || p.V!==20 || p.thalf!==6 || !PK.hd) return false;
+        goal:m=>{ const p=m.now.p; if(!PK.hdOn(p) || p.kin!=="linear" || p.cmt!==2 || p.k12!==0.8 || p.hdcl!==8 || p.hddur!==4 || p.hdstart!==6 || p.D!==1000 || p.V!==20 || p.thalf!==6 || !PK.hd) return false;
           const r=PK.hd.sessionTable(p,24)[0]; return !!(r && r.rebound && r.rebound.share>=0.25); }, solution:{k21:0.2}},
       matters:"The timing of a level after dialysis changes what it says: one drawn as a session ends understates the level the blood settles back to once the tissues have given drug back. A drug that distributes into the tissues also loses less to a session than a one-compartment model predicts, because the dialyzer only reaches what is in the blood."},
     route:{objective:"Explain why an oral dose peaks later and lower than the same IV bolus, and why its AUC is smaller.",
@@ -146,8 +146,8 @@
     mm:{objective:"Predict how a saturable drug's steady-state level and time to reach it respond to a dose change.",
       predict:{q:"The daily dose goes from 300 to 400 mg, a third more. The steady-state level becomes…", choices:["About a third higher","About twice as high","More than twice as high"], answer:2,
         why:"Each extra milligram meets less spare enzyme capacity. The input rises from 56% to 75% of Vmax, and Css = Km·R / (Vmax − R) grows much faster than R as R nears Vmax.",
-        decide:m=>{ const r=m.cur.css/m.base.css; return r<1.5 ? 0 : r<2.2 ? 1 : 2; },
-        show:m=>`Predicted Css ${r1(m.base.css)} → ${r1(m.cur.css)} mg/L (${r1(m.cur.css/m.base.css)}×)`},
+        decide:m=>{ if(m.cur.css==null || m.base.css==null) return null; const r=m.cur.css/m.base.css; return r<1.5 ? 0 : r<2.2 ? 1 : 2; },
+        show:m=> m.cur.css==null || m.base.css==null ? "No predicted steady state here (dialysis sessions, or an input past Vmax)" : `Predicted Css ${r1(m.base.css)} → ${r1(m.cur.css)} mg/L (${r1(m.cur.css/m.base.css)}×)`},
       challenge:{text:"Changing only the daily dose, in 25 mg steps, find the largest dose whose predicted steady-state level stays at or below 20 mg/L.",
         goal:m=>{ const p=m.now.p; if(!(p.kin==="mm" && p.vmax===7 && p.km===4 && p.tau===24 && p.S===0.92 && p.wt===70 && p.dosing==="repeated" && p.D%25===0)) return false;
           const next=mmCss(Object.assign({},p,{D:p.D+25})).css;

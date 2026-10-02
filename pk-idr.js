@@ -50,7 +50,7 @@
   // steps (population mode's bands use 2000; such courses aren't cached, as each patient's is read once).
   const cache=new Map(), MAX_STEPS=40000;
   function course(p, T, level, maxSteps){
-    const key=level || maxSteps ? null : encodeScenario(p)+"|"+T;
+    const key=level || maxSteps ? null : encodeScenario(p)+"|"+T+"|"+(PK.hdOn(p) && PK.hdModule ? 1 : 0);   // the curve changes once the dialysis model loads
     if(key && cache.has(key)) return cache.get(key);
     const ev=level ? [] : doseEvents(p), raw=level || (t=> ceConc(p, t, ev));   // plasma itself without a delay
     // the level at the last two times asked for: a step asks for t + h/2 twice and ends where the next begins

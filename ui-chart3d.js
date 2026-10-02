@@ -105,7 +105,7 @@
     const ev=PK.doseEvents(p), mm=p.kin==="mm";
     const list=Pop.patients(PK, p, o).map((q,i)=>{
       let c;
-      if(mm){ const st=PK.mmIntegrate(q, ev, ts[ts.length-1]+PK.MM_STEP), V=PK.vOf(q); c=ts.map(t=> PK.mmAmount(st, t)/V); }
+      if(mm){ const st=PK.hdOn(q) && PK.hd ? PK.hd.mmSteps(q, ts[ts.length-1]+PK.MM_STEP) : PK.mmIntegrate(q, ev, ts[ts.length-1]+PK.MM_STEP), V=PK.vOf(q); c=ts.map(t=> PK.mmAmount(st, t)/V); }
       else c=ts.map(t=> PK.conc(q, t, ev));
       return {n:i+1, CL:mm ? null : PK.derived(q).CL, V:PK.vOf(q), vmax:mm ? q.vmax : null, c};
     });
@@ -560,7 +560,11 @@ vec3 stateOf(float h){
     // 4. the population cloud
     let popGen=0;
     function buildPop(){
-      const A=ctx.axes, T0=A.T0, T1=A.T1, st=ctx.state, p=primary(), n=st.popn||200, o={n, cvCL:st.pcl, cvV:st.pv, seed:st.pseed};
+      const A=ctx.axes, T0=A.T0, T1=A.T1, st=ctx.state, p=primary(), N0=st.popn||200;
+      // a saturable drug on a fast dialyzer in a small body needs short steps for every patient: drawn on the page, the
+      // cloud then keeps to the first patients (the same ones, by the same seed) that fit about 1.5 million steps
+      const V0=PK.vOf(p), stepH=p.kin==="mm" && PK.hdOn(p) ? Math.min(PK.MM_STEP, 0.5/(PK.vmaxOf(p)/(p.km*V0)+p.hdcl/V0+(p.ka||0))) : PK.MM_STEP;
+      const n=p.kin==="mm" && PK.hdOn(p) ? Math.max(20, Math.min(N0, Math.floor(1.5e6*stepH/Math.max(T1, 1)))) : N0, o={n, cvCL:st.pcl, cvV:st.pv, seed:st.pseed};
       DZ=5; home={az:-.7, el:.24}; topH=H*1.1;
       const nt=phone() ? 70 : 120;
       if(!ctx.pop()){ const g=++popGen; ctx.loadPop().then(()=>{ if(g===popGen && view==="pop"){ lastKey=""; rebuild(); } }).catch(()=>{}); setLabels([]); legend([["note", null, "Loading the virtual patients…"]]); return "Loading the virtual patients."; }
@@ -592,9 +596,10 @@ vec3 stateOf(float h){
       L.push(lab("Time (h)", [0, 0, DZ/2+.6], "b", "ax"), lab(`Concentration (${unit().conc})`, [-W/2, H*1.1, DZ/2], "t", "ax"),
         lab(hep ? "Smaller volume" : `Lower ${by}`, [W/2+.2, 0, DZ/2], "r"), lab(hep ? "Larger volume" : `Higher ${by}`, [W/2+.2, 0, -DZ/2], "r"));
       setLabels(L);
-      legend([["line", K.text, `${N} virtual patients`], ["line", K.accent, "Median"], ["box", K.accent, "5th–95th percentile"]]);
+      legend([["line", K.text, N<N0 ? `${N} of ${N0} virtual patients` : `${N} virtual patients`], ["line", K.accent, "Median"], ["box", K.accent, "5th–95th percentile"]].concat(N<N0 ? [["note", null, `The first ${N} patients: with this dialysis setting each course takes long to work out`]] : []));
       return `${N} virtual patients (${mm ? "Vmax" : "clearance"} CV ${trim(st.pcl)}%, volume CV ${trim(st.pv)}%) as curves in depth, ordered by ${by}, the median lit and the 5th–95th percentile band as glass.`+
-        (hep ? " With the liver model every patient's clearance is the model's own, so only the volume varies here." : "");
+        (hep ? " With the liver model every patient's clearance is the model's own, so only the volume varies here." : "")+
+        (N<N0 ? ` Only the first ${N} of ${N0} patients are drawn: with this dialysis setting each course takes long to work out, and the band is theirs.` : "");
     }
 
     // 5. the two compartments

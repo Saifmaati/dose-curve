@@ -6,11 +6,11 @@
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="dosecurve-v47";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v48";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
   "./cases.js?v=124759dd74",
-  "./pk-sens.js?v=0e00719e81","./validation-worker.js?v=c52ca6c802","./ui-chart3d.js?v=d8b03c3468","./ui-panels.js?v=a25a5d647c","./ui-worksheet.js?v=8aafad02da","./ui-effect.js?v=d46dbe334e","./ui-chartfx.js?v=fbac72551a","./pk-explain.js?v=2838352cdf","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=adbb8a2d82","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=aa908966ba","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=a310a40fe4","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=9a7a3ea708","./pk-glossary.js?v=737ee5d15a","./pop-worker.js?v=6f14268429","./validation.html","./educators.html","./stage.js?v=0bdb4a7070","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=4a69dae91a"];
+  "./pk-sens.js?v=0e00719e81","./validation-worker.js?v=c52ca6c802","./ui-chart3d.js?v=0fded86bf0","./ui-panels.js?v=ed15fc8dd6","./ui-worksheet.js?v=8aafad02da","./ui-effect.js?v=d46dbe334e","./ui-chartfx.js?v=fbac72551a","./pk-explain.js?v=d9d33f02ef","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=d13fd8fd48","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=b281c5fd28","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=cdcc3bc053","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=610e1f3037","./pk-glossary.js?v=6842dd548f","./pop-worker.js?v=20f78a468b","./validation.html","./educators.html","./stage.js?v=3c76a180ff","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=47bb86493a"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const PAGES=["validation.html","methods.html"];   // other pages kept for offline use, each under its own address
 const FONT_HOSTS=["fonts.googleapis.com","fonts.gstatic.com"];

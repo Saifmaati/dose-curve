@@ -58,9 +58,10 @@ test("no sessions in reach, or none until after the drug is gone: the curve is t
   rel(PK.windowStats(late,48,2,12).auc, PK.windowStats(off,48,2,12).auc, 1e-10);
 });
 
-test("the independent solver agrees: 8 scenarios, the level at six times and each session's levels and removal", ()=>{
+test("the independent solver agrees: 15 scenarios (4 saturable), the level at six times and each session's levels and removal", ()=>{
   const R=REF.hd;
-  assert.ok(R && R.scenarios.length>=8);
+  assert.ok(R && R.scenarios.length>=15);
+  assert.ok(R.scenarios.filter(s=> s.scenario.kin==="mm").length>=4, "saturable rows (2.19)");
   R.scenarios.forEach(s=>{
     const p=S(s.scenario), tab=H.sessionTable(p, s.T).filter(r=>r.end<=s.T);
     Object.entries(s.reference.at).forEach(([f,v])=> rel(PK.conc(p, +f*s.T-1e-9), v, R.tolerance.rel, `${s.name} at ${+f*s.T} h`));
@@ -95,7 +96,7 @@ test("dialysis takes away the steady state: the dose table is read off the curve
   assert.equal(PK.keqOf(S(Object.assign({}, p, {teq:2}))), 0);
 });
 
-test("links: dialysis needs v11 (v12 with two compartments) and round-trips; it applies to first-order scenarios", ()=>{
+test("links: dialysis needs v11 (v12 with two compartments, v15 with saturable elimination) and round-trips", ()=>{
   const V=PK.VIEW_DEFAULTS, p=S({hd:1, hdcl:7.5, hdstart:30, hddur:5.5, hdevery:72}), link=PK.encodeLink({mode:"sim", s:p, view:V});
   assert.ok(link.startsWith("v=11&"), link);
   const back=PK.decodeLink(link).s;
@@ -103,7 +104,7 @@ test("links: dialysis needs v11 (v12 with two compartments) and round-trips; it 
   ["v=1&s=D:400", "v=10&s=idr:1"].forEach(h=> assert.equal(PK.decodeLink(h).s.hd, 0, h));
   const bad=PK.decodeLink("v=11&s=hd:2,hdcl:99,hddur:0,hdevery:1").s;
   assert.deepEqual([bad.hd, bad.hdcl, bad.hddur, bad.hdevery], [0, 20, 1, 12]);
-  assert.equal(PK.hdOn(S({hd:1, kin:"mm"})), false); assert.equal(PK.hdOn(S({hd:1, cmt:2})), true);
+  assert.equal(PK.hdOn(S({hd:1, kin:"mm"})), true, "since 2.19"); assert.equal(PK.hdOn(S({hd:1, cmt:2})), true);
   // two compartments: a v12 link; before v12 dialysis did nothing with two compartments, so an older link opens without it
   const two=S({hd:1, hdcl:6, cmt:2, k12:0.5, k21:0.3}), l2=PK.encodeLink({mode:"sim", s:two, view:V});
   assert.ok(l2.startsWith("v=12&"), l2); assert.equal(PK.decodeLink(l2).s.hd, 1);

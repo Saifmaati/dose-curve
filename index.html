@@ -15,8 +15,8 @@
   if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
   // (2.15) a link to a lesson, a case or practice asks for the files it needs now, so it opens without waiting for them
   var pre=function(h){ var l=document.createElement("link"); l.rel="preload"; l.as="script"; l.href=h; document.head.appendChild(l); };
-  if(/[#&]l=/.test(location.hash)) pre("pk-lessons.js?v=a310a40fe4");
-  if(/^#(case|bundle)=|^#cases$/.test(location.hash)){ pre("cases.js?v=124759dd74"); pre("pk-bayes.js?v=21a1045af5"); pre("pk-sources.js?v=6b5fbf7ff9"); pre("pk-hd.js?v=adbb8a2d82"); }
+  if(/[#&]l=/.test(location.hash)) pre("pk-lessons.js?v=cdcc3bc053");
+  if(/^#(case|bundle)=|^#cases$/.test(location.hash)){ pre("cases.js?v=124759dd74"); pre("pk-bayes.js?v=21a1045af5"); pre("pk-sources.js?v=6b5fbf7ff9"); pre("pk-hd.js?v=d13fd8fd48"); }
   if(/^#(practice$|p=|ws=)/.test(location.hash)) pre("pk-practice.js?v=71d1ec1677");
   // the root sequence: every visit to the root address with no # part, the first or the hundredth (a link with a # part,
   // #app included, opens the app directly); its readouts wait for their count unless motion is reduced
@@ -61,7 +61,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.18.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.19.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -1683,7 +1683,7 @@
             <div id="hdPanel" hidden>
               <div id="hdSliders"></div>
               <div class="clin-math" id="hdOut" aria-live="polite"></div>
-              <p class="clin-note">Sessions add the dialyzer's clearance while they run. With one compartment there is nowhere for drug to return from; with two (under Drug parameters), drug moves back from the tissues after each session and the level rebounds, which the session list below shows. The default dialysis clearance is a typical value, unverified; the gentamicin case sets it from its label. Educational model, not for clinical dosing.</p>
+              <p class="clin-note">Sessions add the dialyzer's clearance while they run. With one compartment there is nowhere for drug to return from; with two (under Drug parameters), drug moves back from the tissues after each session and the level rebounds, which the session list below shows. With saturable elimination the body's clearance falls as the level rises and the dialyzer's doesn't, so how far a session lowers the level depends on where it starts; the panel states the level each figure is read at. The default dialysis clearance is a typical value, unverified; the gentamicin case sets it from its label. Educational model, not for clinical dosing.</p>
             </div>
           </div>
 
@@ -2174,7 +2174,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.18.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.19.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2243,7 +2243,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=218c8fad68" defer></script>
+<script src="pk-engine.js?v=adf4ff9a45" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2513,7 +2513,7 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
-  const IDR_SRC="pk-idr.js?v=aa908966ba";
+  const IDR_SRC="pk-idr.js?v=b281c5fd28";
   let idrLoad=null;
   function loadIdr(){
     if(PK.idrModule) return Promise.resolve();
@@ -2526,7 +2526,7 @@
     });
     return idrLoad;
   }
-  const HD_SRC="pk-hd.js?v=adbb8a2d82";
+  const HD_SRC="pk-hd.js?v=d13fd8fd48";
   let hdLoad=null;
   function loadHd(){
     if(PK.hdModule) return Promise.resolve();
@@ -2660,7 +2660,7 @@
     if(!(state.mic>0)){ byId("micOut").textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
     if(panelsUI) panelsUI.mic(); else loadPanels().then(render).catch(()=>{});
   }
-  const PANELS_SRC="ui-panels.js?v=a25a5d647c";
+  const PANELS_SRC="ui-panels.js?v=ed15fc8dd6";
   let panelsUI=null, panelsLoad=null;
   function loadPanels(){
     if(!panelsLoad) panelsLoad=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=PANELS_SRC;
@@ -3181,7 +3181,7 @@
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
-    if(lin && p.dosing==="custom"){
+    if((lin || PK.hdOn(p)) && p.dosing==="custom"){   // (with dialysis, the saturable one too: its cards take two of these)
       cards=[
         {k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:U().conc},
         {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"},
@@ -3193,17 +3193,17 @@
         {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}
       ];
     }
-    if(p.kin==="mm") cards=mmCards(p, d, ws, ttr);
-    else if(PK.hdOn(p) && PK.hdModule){
-      // dialysis: peaks off the curve, the clearance off and on dialysis, and the fall one session causes
-      const off=[{k:"t½ off dialysis", v:fmt(d.thalfEff,1), u:"h"}, {k:"CL off dialysis", v:fmt(d.CL,2), u:"L/h"}],
-        on={k:"CL on dialysis", hot:1, v:fmt(d.CL+p.hdcl,2), u:"L/h"}, fall={k:"Fall per session", hot:1, v:fmt(100*PK.hd.sessionFraction(p).fall,0), u:"%"},
+    if(PK.hdOn(p) && PK.hdModule){
+      // dialysis: peaks off the curve, the clearance off and on dialysis, and the fall one session causes; with
+      // saturable elimination each is read at the level the readouts name, the trough or the peak (2.19)
+      const at=p.kin==="mm" ? (p.dosing==="repeated" ? " at trough" : " at peak") : "", off=[{k:"t½"+(at || " off dialysis"), v:fmt(d.thalfEff,1), u:"h"}, {k:"CL"+(at || " off dialysis"), v:fmt(d.CL,2), u:"L/h"}],
+        on={k:at ? "CL+CLd"+at : "CL on dialysis", hot:1, v:fmt(d.CL+p.hdcl,2), u:"L/h"}, fall={k:at ? "Fall from"+at.slice(3) : "Fall per session", hot:1, v:fmt(100*PK.hd.sessionFraction(p).fall,0), u:"%"},
         win=[{k:"Peak (window)", hot:1, v:fmt(ws.cmax,cdp(1)), u:U().conc}, {k:"Time of peak", v:fmt(ws.tmax,1), u:"h"}];
       cards=p.dosing==="single" ? [...win, ...off, on, fall, {k:"AUC∞", v:fmt(d.auc,cdp(1)), u:U().auc}, {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}]
         : p.dosing==="repeated" ? [{k:"Peak (last dose)", hot:1, v:fmt(d.cmaxSS,cdp(1)), u:U().conc}, {k:"Trough (last dose)", hot:1, v:fmt(d.cminSS,cdp(1)), u:U().conc},
             ...off, on, fall, {k:"Dose / wt", v:fmt(d.mgkg,1), u:U().perKg}, {k:"Time in window", hot:1, v:fmt(ttr,0), u:"%"}]
         : [...win, cards[2], cards[3], off[0], on, fall, {k:`AUC 0–${ws.T} h`, v:fmt(ws.auc,cdp(1)), u:U().auc}];
-    }
+    } else if(p.kin==="mm") cards=mmCards(p, d, ws, ttr);
     // each card opens its working (PK.metricMath); the keys follow the cards' order
     const keys=PK.readoutKeys(p);
     cards.forEach((c,i)=> c.key=keys[i]);
@@ -3231,7 +3231,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=9a7a3ea708";
+  const MATH_SRC="pk-math.js?v=610e1f3037";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -3289,7 +3289,11 @@
     const tox=100*ws.tAbove/ws.T;
     let msg=overlapNote(p);
     if(tox>0.5) msg+=`⚠ This scenario spends <b>${fmt(tox,0)}%</b> of the window above the toxic threshold. See how a smaller dose, slower input or longer interval changes that. `;
-    if(p.dosing==="repeated" && p.kin==="mm"){
+    if(p.dosing==="repeated" && PK.hdOn(p) && PK.hdModule){
+      // sessions don't repeat with the doses (2.19: either kinetics; it used to say "0% of steady state")
+      msg+=`Dialysis sessions don't repeat with the doses, so this regimen has no steady state. After dose ${p.nDoses} the peak is <b>${fmt(d.cmaxSS,cdp(1))}</b> and the trough <b>${fmt(d.cminSS,cdp(1))} ${U().conc}</b>.`;
+      if(missedOf(p)) msg+=` Dose ${missedOf(p)} is missed.`;
+    } else if(p.dosing==="repeated" && p.kin==="mm"){
       const u=U(), m=d.mm;
       msg+= m.none
         ? `<b>No steady state:</b> the input rate, ${fmt(24*m.R,0)} ${u.amount}/day, is ${fmt(100*m.ratio,0)}% of Vmax (${fmt(24*m.Vmax,0)} ${u.amount}/day), so the enzymes can't keep up and the level climbs for as long as dosing continues. After dose ${p.nDoses} the trough is <b>${fmt(d.cminSS,cdp(1))} ${u.conc}</b>.`
@@ -3405,7 +3409,7 @@
       ["Steady state", "none", "sessions don't repeat with the doses"],
       ["Final peak", `${fmt(last.peak,cdp(1))} ${u.conc}`, `dose ${last.n}`],
       ["Final trough", `${fmt(last.trough,cdp(1))} ${u.conc}`, "before the next dose"],
-      ["Fall per session", PK.hdModule ? `${fmt(100*PK.hd.sessionFraction(p).fall,0)}%` : "…", `over ${trim(p.hddur)} h, no dose during it`]] : S.mm ? (S.mm.none ? [
+      ["Fall per session", PK.hdModule ? `${fmt(100*PK.hd.sessionFraction(p).fall,0)}%` : "…", `over ${trim(p.hddur)} h${p.kin==="mm" && PK.hdModule ? ` from ${fmt(PK.derived(p).cAt,cdp(1))} ${u.conc}` : ""}, no dose during it`]] : S.mm ? (S.mm.none ? [
       ["Steady state", "none", "input exceeds Vmax"],
       ["Input ÷ Vmax", `${fmt(100*S.mm.ratio,0)}%`, `${fmt(24*S.mm.R,0)} of ${fmt(24*S.mm.Vmax,0)} ${u.amount}/day`],
       ["Final trough", `${fmt(last.trough,cdp(1))} ${u.conc}`, "still climbing"],
@@ -3512,7 +3516,7 @@
   // `ref` names the reference side in the text ("the baseline" or "A").
   // The sentences under "What changed" (pk-explain.js): loaded just after the first paint, and awaited by a link
   // that opens with a baseline, so the list is there when the app shows
-  const EXPLAIN_SRC="pk-explain.js?v=2838352cdf";
+  const EXPLAIN_SRC="pk-explain.js?v=d9d33f02ef";
   let explainLoad=null;
   function loadExplain(){
     if(PK.explainModule) return Promise.resolve();
@@ -4531,7 +4535,7 @@
   /* ================= POPULATION ================= */
   // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
   // is kept with the key of what it was computed for; the chart uses it only while that still matches.
-  const POP_SRC="pop-worker.js?v=6f14268429";
+  const POP_SRC="pop-worker.js?v=20f78a468b";
   let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
   const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
     auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null, pd:state.pd ? 1 : 0});
@@ -4590,7 +4594,7 @@
     const lines=shown.map((cv,i)=>{
       const r=popResult.list[i], tag=cv.tag ? `<b style="color:${cv.col.css}">${cv.tag}</b>: ` : "";
       const eff=r && r.eAt ? popEffectText(cv, r) : "";
-      if(!r || r.pta==null) return `${tag}The band shows how levels spread across ${r ? r.n : state.popn} patients. Probability of target attainment needs a regular regimen (repeated dosing), which has a steady state.`+eff;
+      if(!r || r.pta==null) return `${tag}The band shows how levels spread across ${r ? r.n : state.popn} patients. Probability of target attainment ${cv.p.dosing==="repeated" && PK.hdOn(cv.p) ? "is read at steady state, which dialysis sessions (not repeating with the doses) never reach" : "needs a regular regimen (repeated dosing), which has a steady state"}.`+eff;
       let s=`${tag}At steady state, <b>${fmt(100*r.pta,0)}%</b> of ${r.n} virtual patients keep the trough at or above MEC (${trim(state.mec)}) and the peak at or below MTC (${trim(state.mtc)} ${u.conc}). `+
         (r.trough ? `Troughs run ${fmt(r.trough[0],cdp(1))}–${fmt(r.trough[2],cdp(1))} and peaks ${fmt(r.peak[0],cdp(1))}–${fmt(r.peak[2],cdp(1))} ${u.conc} (5th–95th percentile${r.noSS>0 ? " of those who settle" : ""}).` : "");
       if(r.noSS>0) s+=` <b>${fmt(100*r.noSS,0)}%</b> have no steady state: the input exceeds their Vmax, so their level keeps rising, and they count as missing the target.`;
@@ -4789,7 +4793,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=737ee5d15a";
+  const GLOSS_SRC="pk-glossary.js?v=6842dd548f";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4862,7 +4866,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=a310a40fe4";
+  const LESSON_SRC="pk-lessons.js?v=cdcc3bc053";
   let lessonLoad=null, lessonPending=null;   // lessonPending: the texts a lesson just opened is waiting for
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -6011,7 +6015,7 @@
   /* ================= 3D (2.18) ================= */
   // The chart in 3D: ui-chart3d.js with Three.js through the stage, loaded on the first press; the 2D chart stays
   // the default. It reads the chart's own curves and axes, and a drag in it sets the same state the controls do.
-  const C3D_SRC="ui-chart3d.js?v=d8b03c3468";
+  const C3D_SRC="ui-chart3d.js?v=0fded86bf0";
   let c3dLoad=null;
   const loadScript=src=> new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   function load3d(){
@@ -6039,7 +6043,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=0bdb4a7070";
+  const STAGE_SRC="stage.js?v=3c76a180ff";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
