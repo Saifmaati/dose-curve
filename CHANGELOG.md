@@ -2,6 +2,36 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.18.0 (2026-10-01)
+
+Interactive 3D charts. A **3D** switch joins Linear and Log in the chart's head. The 2D chart stays the precise instrument and the default; 3D is for exploring and presenting. Nothing in 3D is part of the first load: its code and Three.js arrive on the first press.
+
+- **The morph.** The 2D chart lifts into space in 600 ms: the 3D copy first lies exactly where the 2D chart is (within a few pixels, checked frame by frame), then the plane tilts, depth arrives and the curve becomes a ribbon. Switching back lands it flat again. Reduced motion swaps them at once.
+- **Five views, each from the engine's own numbers:**
+  - **Curve in space:** the concentration–time ribbon, coloured by state as on the 2D chart. The window is a glass slab with its MEC and MTC edges, the doses are beads on the time axis, and the grid has labelled ticks. Hovering anywhere on the ribbon gives time and level, and dragging along it moves the page's time cursor. In a custom schedule, clicking a dose's bead selects it in the schedule; in a regular regimen it moves the cursor to that dose. In Compare, both sides can be read, each tagged.
+  - **Dose surface:** time × dose × level, the window slab cutting through it with a hairline where the surface crosses the MEC and the MTC. The current dose is a lit line on the surface. Dragging it along the dose axis changes the simulator's dose, snapping to the library drug's own strengths (any sum of up to three, or its rounding step for an injection) or else to steps that suit the dose. The 2D chart and readouts follow live.
+  - **Regimen map:** dose × interval × a steady-state target (AUC24, trough or peak; fT>MIC once a MIC is entered), the target range as a translucent band, and the surface coloured where each regimen falls against it. The AUC24 band is Population's AUC target when one is set, else the window held for 24 h, and says which. fT>MIC has no band, because no target was verified. Regimens that never reach a steady state (a saturable drug given faster than its Vmax) are a flat plate marked as such. A marker picks a regimen: dragging it drives the simulator, snapping to practical doses and to 4, 6, 8, 12 or 24 h. A single dose is shown as a regimen of its own interval and labelled as a stand-in.
+  - **Population:** population mode's own virtual patients (same seed, same patients as the 2D band) as curves in depth ordered by clearance, with the median lit and the 5th–95th percentile band as glass. Hovering a curve names that patient's clearance and volume.
+  - **Compartments** (two-compartment drugs only): the central level against the peripheral level against time. The trajectory's loop away from the plane of equal levels is the distribution phase, coloured by which way the drug is moving. The peripheral level comes from the engine's central level (a test holds it to the closed form after an IV bolus).
+- **Handling:**
+  - Orbit with inertia, wheel or pinch zoom with limits, pan, and double-click to re-centre.
+  - Front, Isometric and Top cameras with eased moves.
+  - A slow idle turn (2.5° a second) that stops at the first touch; none under reduced motion.
+  - Keys: arrows turn it, + and − zoom, Home re-centres, Escape returns to 2D.
+  - The wheel zooms once the chart has been clicked or focused, so the page still scrolls past it.
+  - Phones get a simpler view: tier-1 materials, short view names, a compact legend, and taps that read the point under the finger.
+- **Materials and labels:** the stage's recipes, tokens and light, with its transmission glass at tier 2. Labels and readout chips are HTML placed by projection, so text is sharp at any angle. The disclaimer stays visible in every view.
+- **The Bayesian panel's readings moved to `ui-panels.js`**, with the MIC and dialysis panels', keeping the first load within its budget. A link that opens with levels waits for them, so the page does not shift.
+- **Fixed before release** (a four-reviewer review of the 3D code, each finding checked by a second reviewer):
+  - Most serious: the landing's 3D stage had stopped starting. A new loader's name was hidden by a variable inside the stage. A test now guards it.
+  - Surface hover read nothing at first. It now gives the engine's values, not numbers read back off the clamped mesh.
+  - Quick presses or input during the morph could leave the panel half-way between 2D and 3D.
+  - Dose snapping could follow the strengths of a drug opened earlier.
+  - fT>MIC could show a first-day value as if it were at steady state.
+  - Heavy grids were recomputed on every frame of a slider drag; they are now cached until the drag pauses.
+  - Escape also left Present mode.
+  - Plus about twenty smaller accessibility and wording fixes.
+
 ## 2.17.0 (2026-10-01)
 
 An indirect response can sit behind an effect-site delay.

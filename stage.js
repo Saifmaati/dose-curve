@@ -29,6 +29,9 @@ const tokensOf=el=>{ const s=getComputedStyle(el), k={}; TOKENS.forEach(n=> k[n]
 // the cold open's clock: from the navigation, so it keeps time with the page's CSS (black, then light, then the wordmark)
 const COLD_MS=4200;
 
+// Three.js, for the stage and for the chart's own 3D mode (2.18): this file stays the only one that imports it
+export const loadThree=()=> import("three");
+
 export function start(PK){
   const fmt=(v,dp)=> v.toLocaleString(undefined,{minimumFractionDigits:dp, maximumFractionDigits:dp});
   const intro=$("intro"), scenes=[...document.querySelectorAll("#intro .scene")];
@@ -297,7 +300,7 @@ export function start(PK){
   }
   function load3d(){
     if(three || threeLoading || !can3d()) return threeLoading;
-    return threeLoading=import("three").then(async THREE=>{ if(!can3d()){ threeLoading=null; return; } const t=build(THREE, tierOf()); t.setLive(); await t.ready(); threeLoading=null;
+    return threeLoading=loadThree().then(async THREE=>{ if(!can3d()){ threeLoading=null; return; } const t=build(THREE, tierOf()); t.setLive(); await t.ready(); threeLoading=null;
         if(!can3d()){ t.dispose(); return; } three=t; readyAt=performance.now(); D.classList.add("stage3d"); onScroll(); three.frame(true); })
       .catch(()=>{ threeLoading=null; D.classList.remove("stage3d"); });
   }

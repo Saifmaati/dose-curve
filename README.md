@@ -49,6 +49,7 @@ Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn 
 **Explain**
 - Set a baseline, change anything, and **What changed** explains it with the model's numbers: "CrCl fell from 73 to 41 mL/min, so the clearance of a drug that is 90% renally excreted fell 38%; the half-life rose from 3.9 h to 6.2 h; the steady-state trough rose from 2.2 to 4.7 mg/L."
 - Compare scenarios A and B side by side, with "Vary only" to change one thing at a time, and 28 one-click comparisons.
+- **3D views** (the 3D switch beside Linear and Log): the curve as a ribbon with the window as a glass slab; a dose surface whose lit dose you drag; a regimen map of dose × interval × AUC24, trough, peak or fT>MIC with the target band, whose marker you drag; the population as curves in depth; and, for two compartments, the central against the peripheral level over time. The 2D chart stays the default.
 - Select any readout to see its formula worked through with the scenario's own numbers.
 - **Sensitivity:** move each input (clearance, volume, F, kₐ, dose, interval; k12 and k21 with two compartments) 20% down and up, one at a time, and see a tornado chart of the change in AUC24, the peak, the trough or the time in the window, with a sentence naming the input that matters most.
 - **When to sample:** for a repeated regimen, the dose from which its peak and trough are within 10% of steady state, and the model's peak and trough times in that interval (with two compartments, once distribution is 90% complete), each with a button that moves the time cursor there.
@@ -89,7 +90,7 @@ It also checks the Bayesian estimates: on 20 scenarios with one to three measure
 
 And the antimicrobial indices: 12 regimens (piperacillin by 30-minute, extended and continuous infusion, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; oral; IV bolus; two compartments) run to steady state in the ODE solver. fT>MIC agrees within 0.01 percentage points and Cmax/MIC and AUC24/MIC within 0.01% (in practice to about one part in a billion). The tests also hold fT>MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.
 
-And the indirect responses: 12 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient) integrate the response with the drug in one ODE system. The response agrees within 0.01% at five times and at its largest change (in practice to about one part in 10⁸), and the time of that change within 0.01 h. The tests also check that it stays at baseline without drug, and that at a constant level it approaches the analytic plateau with time constant 1/kout.
+And the indirect responses: 15 scenarios across the four types (every route, a custom schedule, two compartments, saturable elimination, a reduced-CrCl patient, and three behind an effect-site delay) integrate the response with the drug in one ODE system. The response agrees within 0.01% at five times and at its largest change (in practice to about one part in 10⁸), and the time of that change within 0.01 h. The tests also check that it stays at baseline without drug, and that at a constant level it approaches the analytic plateau with time constant 1/kout.
 
 And hemodialysis: 11 scenarios (3 with two compartments, where the level rebounds) with the dialysis clearance switched on during each session. The level, and each session's levels and the amount it removes, agree within 0.01% (in practice to about one part in 10¹²). The tests also hold the model to mass balance: what the body clears plus what the dialyzer removes is what was given.
 
@@ -144,6 +145,9 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `pk-hd.js` | Hemodialysis sessions (exact between each dose, infusion end and session edge, with one or two compartments), loaded when a scenario has dialysis on |
 | `pk-sources.js` | Where each library value comes from, loaded with the drug information, the antimicrobial panel and the cases |
 | `pop-worker.js` | Population mode, run as a Web Worker |
+| `ui-chartfx.js`, `ui-effect.js`, `ui-worksheet.js`, `ui-panels.js` | The chart's motion, the effect charts, the worksheet view, and the MIC, dialysis and Bayesian panels' readings, each loaded when first needed |
+| `ui-chart3d.js` | The chart in 3D, loaded on the first press of 3D |
+| `validation-worker.js` | The validation page's checks, run as a Web Worker |
 | `stage.js` | The 3D stage and the opening sequence (since 2.0; one world and one camera, with its own post-processing, since 2.10), loaded after the first paint; with Effects on it imports Three.js, pinned to one cdnjs release and checked by hash |
 | `methods.html` | Model and methods: every equation the simulator solves (MathML), how routes and schedules are modelled, what the tests cover, the disclaimer and the privacy statements; built by `tools/methods.py` |
 | `fonts/` | Inter and Newsreader, served from the site |
@@ -154,7 +158,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `tests/` | The engine, clinical, saturable, two-compartment, cases, population, validation, accessibility, release and service-worker tests |
 | `docs/` | The teaching guide, [ARCHITECTURE.md](docs/ARCHITECTURE.md) (how the pieces fit), [DESIGN.md](docs/DESIGN.md) (the design system and storyboards), audits, build logs, decisions and reports |
 
-Share links carry every setting in the URL itself and are written at the lowest format version that holds them (v1–v11). Older links open unchanged, and a scenario link without a version reads as v1. Nothing is sent to or stored on a server; saved scenarios and progress stay in your browser. Visit counting (GoatCounter, cookie-free) is off unless the site owner sets `ANALYTICS_SITE_ID`, and it never receives a link's settings. Don't enter patient-identifying information.
+Share links carry every setting in the URL itself and are written at the lowest format version that holds them (v1–v14). Older links open unchanged, and a scenario link without a version reads as v1. Nothing is sent to or stored on a server; saved scenarios and progress stay in your browser. Visit counting (GoatCounter, cookie-free) is off unless the site owner sets `ANALYTICS_SITE_ID`, and it never receives a link's settings. Don't enter patient-identifying information.
 
 ![Clinical mode: Cockcroft–Gault and a renally cleared drug](docs/img/clinical-crcl.png)
 
@@ -162,7 +166,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.17.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.18.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 

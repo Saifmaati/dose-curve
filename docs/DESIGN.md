@@ -515,3 +515,14 @@ cubic-bezier(0.22, 1, 0.36, 1); small print 0.12 s later; the readouts 0.12 s ap
 framing; the top nav's 1 px accent line slides under the open tab in 0.45 s. Back and forward walk the tabs' own
 addresses in the page. Dialogs open as glass sheets (20 px radius, 24 px blur, 0.45 s rise).
 
+## 22. 2.18: the chart in 3D
+
+**Hand-over.** The 3D copy's first frame lies on the 2D chart's plotting area (the camera is placed from the SVG's own
+box), then the plane tilts and depth arrives over 600 ms on the page's easing; the 2D chart crossfades out under it in
+160 ms. Landing reverses it. **Look.** The stage's materials: the ribbon's luminous core in the dark theme, graphite on
+paper; the window as frosted glass at tier 2, a quiet plate at tier 1. States are coloured by height, with MEC and MTC
+hairlines on the surfaces. **Chrome.** Hairline pills over glass for the views (top left), the target (regimen map) and
+the cameras (top right); legend chips and the disclaimer at the foot; labels and readout chips are HTML, 11–12 px Inter
+with tabular figures, a halo of the page colour behind the labels. **Phones.** Short view names on one scrolling row,
+no camera row, a three-chip legend, taps to read.
+
