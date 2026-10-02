@@ -6039,7 +6039,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=4aa02f41ed";
+  const STAGE_SRC="stage.js?v=0bdb4a7070";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
