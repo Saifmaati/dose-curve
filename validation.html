@@ -76,7 +76,7 @@
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients. The model itself, equation by equation, is in <a href="methods.html">Model and methods</a>.</p>
 
 <!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
-<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 12 indirect responses at five times and at their largest change, and the 11 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
+<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 15 indirect responses at five times and at their largest change, and the 11 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
@@ -113,7 +113,7 @@
     </ul></li>
   <li><b>Bayesian individualization (MAP).</b> 20 scenarios with one to three measured levels (every route, single, repeated, loading and missed-dose regimens, normal and reduced kidney function, different prior CVs). The reference minimises the same objective, the squared standardised residuals plus the log-normal prior terms, with SciPy's Nelder–Mead on the ODE solver's predictions. The estimated clearance and volume must agree within 0.5%.</li>
   <li><b>Antimicrobial PK/PD indices.</b> 12 regimens (piperacillin as 30-minute, 3-hour, 4-hour and continuous infusions, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; an oral and an IV-bolus regimen; two compartments). The reference runs each in the ODE solver until it repeats itself, then reads its last interval: the time the unbound level is above the MIC (crossings by bisection), the peak, and the area. fT&gt;MIC must agree within 0.01 percentage points, Cmax/MIC and AUC24/MIC within 0.01%. The test suite also holds fT&gt;MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.</li>
-  <li><b>Indirect responses.</b> 12 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination and a patient with reduced creatinine clearance. The reference integrates the response together with the drug in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
+  <li><b>Indirect responses.</b> 15 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination, a patient with reduced creatinine clearance, and three responses driven through an effect-site delay. The reference integrates the response together with the drug (and, with a delay, the effect-site level) in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
   <li><b>Hemodialysis.</b> 8 scenarios with the dialysis clearance switched on during each session: an IV bolus, end-stage kidney disease with 8-hour sessions, oral and infused regimens, a session overlapping an infusion, a mixed-route schedule, loading and missed doses, and a fast dialyzer. The reference integrates the drug and the amount the dialyzer removes in one ODE system. The level at six times, and each session's level as it starts and ends and the amount it removes, must agree within 0.01%. The test suite also holds the model to mass balance: what the body clears plus what the dialyzer removes equals what was given.</li>
   <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
@@ -135,7 +135,7 @@
 <tbody></tbody></table></div>
 
 <h2>Indirect responses</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:384px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:480px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Largest change (ref, %)</th><th scope="col">Δ</th><th scope="col">When (ref, h)</th><th scope="col">Δ h</th><th scope="col">Worst of 5 times</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
@@ -192,99 +192,52 @@ if(window.dcDone!==undefined) word.textContent=window.dcDone ? "Validated" : "Ch
 if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:true});
 })();
 </script>
-<script src="pk-engine.js?v=29d9af2bc9" defer></script>
-<script src="pk-hd.js?v=adbb8a2d82" defer></script>
-<script src="pk-idr.js?v=f6002874d2" defer></script>
-<script src="pk-bayes.js?v=21a1045af5" defer></script>
 <script>
-// the engine files are deferred: the checks start once they have run
-document.addEventListener("DOMContentLoaded", function(){
+// The checks run in a Web Worker (validation-worker.js), so the page and the sphere stay responsive; the worker loads
+// these engine files by their stamped addresses. Where a worker can't start, the page loads the same files and runs
+// the checks itself, handing the page back between them.
+(function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const pct=(a,b)=> b===0 ? (a===0 ? 0 : Infinity) : 100*(a/b-1);
-  // every comparison's result, in order, for the sphere at the top of the page
-  const mark=ok=>{ (window.dcChecks=window.dcChecks||[]).push(!!ok); return ok; };
-  fetch("validation/reference-results.json?v=3e5c9bbc7c").then(r=>r.json()).then(async REF=>{
+  const ENGINE=["pk-engine.js?v=218c8fad68","pk-hd.js?v=adbb8a2d82","pk-idr.js?v=aa908966ba","pk-bayes.js?v=21a1045af5"], WORKER="validation-worker.js?v=c52ca6c802";
+  const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
+  fetch("validation/reference-results.json?v=4a69dae91a").then(r=>r.json()).then(REF=>{
+    // every comparison's result, in order, for the sphere at the top of the page
     window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
-    const {T,mec,mtc}=REF.window, rows=[];
-    let pass=0, total=0, worst={rel:0, pp:0};
-    const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
+    window.dcChecks=[];
     document.getElementById("nScen").textContent=REF.scenarios.length;
-    // four scenarios at a time, handing the page back in between so it never stalls
     const first=document.querySelector("#summary .big");
-    for(let i=0;i<REF.scenarios.length;i++){
-      if(i && i%4===0){ first.textContent=`Running the checks… ${i} of ${REF.scenarios.length} done`; await new Promise(r=>setTimeout(r)); }
-      const s=REF.scenarios[i];
-      const p=PK.normalizeScenario(PK.scenario(s.scenario)), w=PK.windowStats(p,T,mec,mtc,s.site), level=s.site==="effect" ? PK.ceConc : PK.conc;
-      const m={peak:w.cmax, trough:level(p,(p.dosing==="repeated" ? p.nDoses*p.tau : T)-1e-9), auc:w.auc, tin:100*w.tIn/T}, r=s.reference;
-      const tol=s.nonlinear ? REF.tolerance.nonlinear : REF.tolerance.linear, tpp=s.nonlinear ? REF.tolerance.tin_pp_nonlinear : REF.tolerance.tin_pp_linear;
-      const d={peak:pct(m.peak,r.peak), trough:pct(m.trough,r.trough), auc:pct(m.auc,r.auc), tin:m.tin-r.tin_pct};
-      const ok=["peak","trough","auc"].every(k=>Math.abs(d[k])<=100*tol) && Math.abs(d.tin)<=tpp;
-      ["peak","trough","auc"].forEach(k=>{ total++; if(mark(Math.abs(d[k])<=100*tol)) pass++; worst.rel=Math.max(worst.rel,Math.abs(d[k])); });
-      total++; if(mark(Math.abs(d.tin)<=tpp)) pass++; worst.pp=Math.max(worst.pp,Math.abs(d.tin));
-      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
-      rows.push(`<tr><td>${esc(s.id)}</td><td>${f(r.peak,3)}</td><td>${fd(d.peak)}</td><td>${f(r.trough,3)}</td><td>${fd(d.trough)}</td><td>${f(r.auc,1)}</td><td>${fd(d.auc)}</td><td>${f(r.tin_pct,2)}%</td><td>${f(d.tin,3)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`);
-    }
-    document.querySelector("#tbl tbody").innerHTML=rows.join("");
-    // the Bayesian (MAP) estimates: clearance and volume against the reference
-    let mapPass=0, mapTotal=0, mapWorst=0;
-    const tick=()=> new Promise(r=>setTimeout(r));   // hand the page back between heavier checks
-    const mapRows=[];
-    for(const s of (REF.map ? REF.map.scenarios : [])){ await tick(); mapRows.push((()=>{
-      const p=PK.normalizeScenario(PK.scenario(s.scenario)), e=PK.bayes.estimate(p, p.lv, s.opts), r=s.reference;
-      const dCL=pct(e.CL,r.CL), dV=pct(e.V,r.V), ok=[dCL,dV].every(d=>Math.abs(d)<=100*REF.map.tolerance);
-      [dCL,dV].forEach(d=>{ mapTotal++; if(mark(Math.abs(d)<=100*REF.map.tolerance)) mapPass++; mapWorst=Math.max(mapWorst,Math.abs(d)); });
-      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
-      return `<tr><td>${esc(s.id)}</td><td>${p.lv.length}</td><td>${f(r.priorCL,3)}</td><td>${f(r.CL,3)}</td><td>${fd(dCL)}</td><td>${f(r.priorV,2)}</td><td>${f(r.V,2)}</td><td>${fd(dV)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    })()); }
-    document.querySelector("#mapTbl tbody").innerHTML=mapRows.join("");
-    pass+=mapPass; total+=mapTotal;
-    // the antimicrobial indices at steady state
-    let pkPass=0, pkTotal=0;
-    const P=REF.pkpd || {scenarios:[], tolerance:{}};
-    { const out=[]; for(const s of P.scenarios){ await tick(); out.push((()=>{
-      const m=PK.micStats(PK.normalizeScenario(PK.scenario(s.scenario)), s.mic, 24), r=s.reference;
-      const dft=m.ft-r.ft_pct, dc=pct(m.cmaxMic,r.cmax_mic), da=pct(m.aucMic,r.auc24_mic);
-      const oks=[Math.abs(dft)<=P.tolerance.ft_pp, Math.abs(dc)<=100*P.tolerance.ratio, Math.abs(da)<=100*P.tolerance.ratio], ok=oks.every(Boolean);
-      oks.forEach(o=>{ pkTotal++; if(mark(o)) pkPass++; });
-      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
-      return `<tr><td>${esc(s.name)}</td><td>${f(r.ft_pct,2)}%</td><td>${Math.abs(dft)<0.0005 ? "0.000" : f(dft,3)}</td><td>${f(r.cmax_mic,3)}</td><td>${fd(dc)}</td><td>${f(r.auc24_mic,2)}</td><td>${fd(da)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    })()); } document.querySelector("#pkpdTbl tbody").innerHTML=out.join(""); }
-    pass+=pkPass; total+=pkTotal;
-    // indirect responses: at five times and at the largest change
-    let idPass=0, idTotal=0;
-    const D=REF.idr || {scenarios:[], tolerance:{}};
-    { const out=[]; for(const s of D.scenarios){ await tick(); out.push((()=>{
-      const p=PK.normalizeScenario(PK.scenario(s.scenario)), st=PK.idr.stats(p, s.T), r=s.reference;
-      const worst=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.idr.at(p, s.T, +f*s.T), v))));
-      const de=pct(st.ext, r.ext), dt=st.tExt-r.t_ext;
-      const oks=[worst<=100*D.tolerance.rel, Math.abs(de)<=100*D.tolerance.rel, Math.abs(dt)<=D.tolerance.t_h], ok=oks.every(Boolean);
-      oks.forEach(o=>{ idTotal++; if(mark(o)) idPass++; });
-      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
-      return `<tr><td>${esc(s.name)}</td><td>${f(r.ext,3)}</td><td>${fd(de)}</td><td>${f(r.t_ext,2)}</td><td>${Math.abs(dt)<0.0005 ? "0.000" : f(dt,3)}</td><td>${fd(worst)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    })()); } document.querySelector("#idrTbl tbody").innerHTML=out.join(""); }
-    pass+=idPass; total+=idTotal;
-    // hemodialysis: the level at six times, and each session's levels and removal
-    let hdPass=0, hdTotal=0;
-    const HDR=REF.hd || {scenarios:[], tolerance:{}};
-    { const out=[]; for(const s of HDR.scenarios){ await tick(); out.push((()=>{
-      const p=PK.normalizeScenario(PK.scenario(s.scenario)), r=s.reference, tab=PK.hd.sessionTable(p, s.T).filter(x=>x.end<=s.T);
-      const wl=Math.max(...Object.entries(r.at).map(([f,v])=> Math.abs(pct(PK.conc(p, +f*s.T-1e-9), v))));
-      const wsn=Math.max(0, ...r.sessions.flatMap((x,i)=> [pct(tab[i].pre,x.pre), pct(tab[i].post,x.post), pct(tab[i].removed,x.removed)].map(Math.abs)));
-      const oks=[wl<=100*HDR.tolerance.rel, wsn<=100*HDR.tolerance.rel], ok=oks.every(Boolean);
-      oks.forEach(o=>{ hdTotal++; if(mark(o)) hdPass++; });
-      const f=(v,dp)=> Number(v).toFixed(dp), fd=v=> (Math.abs(v)<0.0005 ? "0.000" : f(v,3))+"%";
-      return `<tr><td>${esc(s.name)}</td><td>${r.sessions.length}</td><td>${f(r.sessions[0].removed,2)}</td><td>${fd(wl)}</td><td>${fd(wsn)}</td><td class="${ok?"ok":"no"}">${ok?"✓":"✗"}</td></tr>`;
-    })()); } document.querySelector("#hdTbl tbody").innerHTML=out.join(""); }
-    pass+=hdPass; total+=hdTotal;
-    window.dcDone=pass===total; window.dispatchEvent(new Event("dc-done"));
-    const all=pass===total, eng=[...document.scripts].map(x=>x.src).find(x=>/pk-engine/.test(x))||"";
-    document.getElementById("summary").innerHTML=
-      `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${pass} of ${total} comparisons within tolerance</div>`+
-      `<div>${REF.scenarios.length} scenarios × 4 numbers, ${mapTotal/2} Bayesian estimates × 2 (clearance and volume), ${pkTotal/3} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), ${idTotal/3} indirect responses × 3 (five times, the largest change and its time), and ${hdTotal/2} dialysis scenarios × 2 (the levels, and each session's levels and removal). Largest difference: ${small(worst.rel)}% (peak, trough or AUC), ${small(worst.pp)} percentage points (time in window) and ${small(mapWorst)}% (Bayesian estimates).</div>`+
-      `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(eng.split("/").pop())}, checked in your browser just now.</div>`;
+    let finished=false;
+    const show=m=>{
+      if(finished) return;
+      if(m.marks) window.dcChecks.push(...m.marks);
+      if(m.progress) first.textContent=`Running the checks… ${m.progress} of ${m.of} done`;
+      if(m.table) document.querySelector(m.table+" tbody").innerHTML=m.html;
+      if(m.error) throw new Error(m.error);
+      if(!m.done) return;
+      finished=true;
+      const all=m.pass===m.total;
+      window.dcDone=all; window.dispatchEvent(new Event("dc-done"));
+      document.getElementById("summary").innerHTML=
+        `<div class="big ${all?"ok":"no"}">${all?"✓":"✗"} ${m.pass} of ${m.total} comparisons within tolerance</div>`+
+        `<div>${m.scenarios} scenarios × 4 numbers, ${m.map} Bayesian estimates × 2 (clearance and volume), ${m.pkpd} antimicrobial regimens × 3 (fT>MIC, Cmax/MIC, AUC24/MIC), ${m.idr} indirect responses × 3 (five times, the largest change and its time), and ${m.hd} dialysis scenarios × 2 (the levels, and each session's levels and removal). Largest difference: ${small(m.worst)}% (peak, trough or AUC), ${small(m.worstPp)} percentage points (time in window) and ${small(m.mapWorst)}% (Bayesian estimates).</div>`+
+        `<div class="muted">Reference run on ${esc(REF.generated)} with Python ${esc(REF.python)}, NumPy ${esc(REF.numpy)} and SciPy ${esc(REF.scipy)}. Engine: ${esc(ENGINE[0])}, checked in your browser just now.</div>`;
+    };
+    const load=src=> new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+    // on the page: the engine files in order, then the same checks
+    const here=()=>{ window.dcChecks=[];
+      return ENGINE.concat(WORKER).reduce((q,src)=> q.then(()=> load(src)), Promise.resolve())
+        .then(()=> window.DCVal.run(window.PK, REF, show, ()=> new Promise(r=>setTimeout(r)))); };
+    let w=null;
+    try{ w=new Worker(WORKER); }catch(e){ w=null; }
+    if(!w) return here();
+    return new Promise((res,rej)=>{
+      w.onmessage=e=>{ try{ show(e.data||{}); if(finished){ w.terminate(); res(); } }catch(err){ w.terminate(); here().then(res,rej); } };
+      w.onerror=e=>{ e.preventDefault(); w.terminate(); if(!finished) here().then(res,rej); };
+      w.postMessage({files:ENGINE, ref:REF});
+    });
   }).catch(()=>{ document.getElementById("summary").textContent="The reference results couldn't load. Check the connection and reload."; });
-});
+})();
 </script>
 </body>
 </html>

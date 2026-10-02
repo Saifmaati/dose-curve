@@ -2,6 +2,30 @@
 
 What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
 
+## 2.17.0 (2026-10-01)
+
+An indirect response can sit behind an effect-site delay.
+
+- **Two delays at once.** With an indirect response, the effect-site delay (t½eq) now stays in the controls. The drug acts through the effect-site level Ce, dCe/dt = ke0·(C − Ce), so the response lags the plasma level twice over: first the drug reaching its site, then the response's own turnover.
+  - Example, a warfarin-like single oral dose (turnover 5 h): an effect-site t½ of 6 h moves the largest change from 24.1 h to 32.8 h after the dose, while its size barely moves (63 to 62 points below baseline).
+  - The response chart, its loop against the plasma level, the readouts, the cursor (which adds the effect-site level), the CSV, the population band and "What changed" all follow the effect-site level.
+- **Validation:** 3 indirect responses behind an effect-site delay are added to the SciPy reference: a single oral dose, infusions every 8 h, and two compartments with a Hill slope of 2. That makes 15 indirect responses and 727 comparisons on the validation page. Every existing reference value is bit-identical; the reference integrates Ce only where there is a delay.
+- **Links v14.** A scenario with both an indirect response and a delay makes a v14 link. An older link with both opens as it always did, driven by plasma, because before 2.17 the delay did nothing with a response.
+- Model and methods says how the delay enters f(C).
+- **The MIC and dialysis panels' readings moved to `ui-panels.js`**, loaded once a MIC is entered or dialysis is on (or with a link that opens with either, filled before it shows). The page's first script is 3 kB under its budget again; it had reached the limit with this release.
+
+## 2.16.0 (2026-10-01)
+
+The validation page checks the engine in a worker.
+
+- **The 718 checks run in a Web Worker** (`validation-worker.js`). The worker loads the engine files by their stamped addresses and sends back each check's result and each table as it finishes. The page itself no longer loads the engine, and it stays responsive while the sphere lights.
+  - In Lighthouse's simulated phone, script work on the page's main thread falls from 1,079 ms to 162 ms.
+  - Largest contentful paint goes from 1.5–1.7 s to 1.4 s, and the speed index from 0.8–0.9 s to 0.7 s.
+  - Performance scored 99–100 over three runs before and after (it varied 97–100 in earlier runs).
+- **Without a worker** (for example a page opened from the file system), the page loads the same files and runs the same checks itself, handing the page back between them, as before.
+- A test runs the worker's checks in Node: one result per point on the sphere, all 718 within tolerance, each table complete. It also checks that the worker accepts only this site's stamped engine files.
+- **NEEDS-SAIF** catches up: pull requests merged through #36, Releases through 2.15.0. The branch clean-up command no longer switches branches and leaves the checked-out one alone.
+
 ## 2.15.0 (2026-10-01)
 
 Motion and tabs (the final brief, part 3).

@@ -7554,7 +7554,7 @@
   ]
  },
  "idr": {
-  "about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
+  "about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 15 scenarios integrated with the drug (and, with an effect-site delay, the effect-site level) in one ODE system.",
   "tolerance": {
    "rel": 0.0001,
    "t_h": 0.01
@@ -7974,6 +7974,107 @@
      },
      "ext": 48.25690155618287,
      "t_ext": 19.961065889352554
+    }
+   },
+   {
+    "name": "type 1, turnover 5 h behind an effect-site delay of 6 h",
+    "T": 168,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 1,
+     "route": "oral",
+     "dosing": "single",
+     "D": 25,
+     "F": 1,
+     "ka": 1.2,
+     "thalf": 40,
+     "V": 9.8,
+     "idr": 1,
+     "imax": 1,
+     "tout": 5,
+     "teq": 6
+    },
+    "reference": {
+     "at": {
+      "0.125": 42.240616342758244,
+      "0.25": 39.07613206715316,
+      "0.5": 55.416478466973345,
+      "0.75": 71.94286056898989,
+      "1.0": 84.12079771290246
+     },
+     "ext": 37.73792081417787,
+     "t_ext": 32.79823147127961
+    }
+   },
+   {
+    "name": "type 3, infusions q8h, effect-site delay 2 h",
+    "T": 72,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 1,
+     "ec50": 4,
+     "route": "inf",
+     "dosing": "repeated",
+     "D": 400,
+     "tinf": 1,
+     "tau": 8,
+     "nDoses": 6,
+     "V": 35,
+     "thalf": 4,
+     "idr": 3,
+     "smax": 4,
+     "tout": 3,
+     "teq": 2
+    },
+    "reference": {
+     "at": {
+      "0.125": 288.1459213942756,
+      "0.25": 348.34293868961504,
+      "0.5": 369.78490252506225,
+      "0.75": 314.0831767219722,
+      "1.0": 132.03365206632625
+     },
+     "ext": 372.0761487081484,
+     "t_ext": 45.482698732044526
+    }
+   },
+   {
+    "name": "type 2, two compartments, IV bolus, effect-site delay 1 h, Hill 2",
+    "T": 48,
+    "scenario": {
+     "wt": 70,
+     "loadMult": 1,
+     "missed": 1,
+     "hill": 2,
+     "ec50": 4,
+     "route": "iv",
+     "dosing": "single",
+     "D": 800,
+     "V": 20,
+     "thalf": 3,
+     "cmt": 2,
+     "k12": 0.8,
+     "k21": 0.4,
+     "idr": 2,
+     "imax": 0.9,
+     "tout": 2,
+     "teq": 1
+    },
+    "reference": {
+     "at": {
+      "0.125": 224.8432739351263,
+      "0.25": 247.14247955270181,
+      "0.5": 151.89069626779101,
+      "0.75": 109.66696914781436,
+      "1.0": 101.80884897967832
+     },
+     "ext": 250.3397875347382,
+     "t_ext": 10.316605049142353
     }
    }
   ]

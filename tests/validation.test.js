@@ -78,6 +78,27 @@ test("the validation page runs the engine it ships with and says what it checks"
   assert.ok(sw.includes('"./validation.html"') && sw.includes(`"./validation/reference-results.json?v=${rh}"`), "precached for offline use, under the same hash");
 });
 
+test("the page's checks (validation-worker.js) give one result per comparison, every one within tolerance", async ()=>{
+  const V=require("../validation-worker.js"), marks=[], tables={}, root=path.join(__dirname,"..");
+  let progress=0;
+  const out=await V.run(PK, REF, m=>{ if(m.marks) marks.push(...m.marks); if(m.table) tables[m.table]=m.html; if(m.progress) progress=m.progress; });
+  assert.equal(marks.length, V.count(REF), "as many results as the sphere has points");
+  assert.equal(out.total, marks.length); assert.equal(out.pass, out.total, "every comparison passes");
+  assert.ok(marks.every(Boolean)); assert.ok(progress>0, "progress reported on the way");
+  assert.deepEqual(Object.keys(tables).sort(), ["#hdTbl","#idrTbl","#mapTbl","#pkpdTbl","#tbl"]);
+  assert.equal((tables["#tbl"].match(/<tr>/g)||[]).length, REF.scenarios.length);
+  assert.ok(!/class="no"/.test(Object.values(tables).join("")), "no row marked as failing");
+  assert.ok(out.worst<0.01, `largest difference ${out.worst}%`);
+  // the page hands the worker only this site's stamped engine files, and the worker accepts nothing else
+  const html=fs.readFileSync(path.join(root,"validation.html"),"utf8"), wk=fs.readFileSync(path.join(root,"validation-worker.js"),"utf8");
+  const files=JSON.parse(html.match(/const ENGINE=(\[[^\]]*\])/)[1]);
+  assert.deepEqual(files.map(f=>f.split("?")[0]), ["pk-engine.js","pk-hd.js","pk-idr.js","pk-bayes.js"]);
+  files.forEach(f=> assert.match(f, /^pk-(engine|hd|idr|bayes)\.js\?v=[0-9a-f]{10}$/));
+  assert.ok(wk.includes("/^pk-(engine|hd|idr|bayes)\\.js\\?v=[0-9a-f]{10}$/.test(f)"), "the worker checks each address");
+  const sw=fs.readFileSync(path.join(root,"sw.js"),"utf8"), wh=html.match(/validation-worker\.js\?v=([0-9a-f]{10})/)[1];
+  assert.ok(sw.includes(`"./validation-worker.js?v=${wh}"`), "the worker is precached under the page's stamp");
+});
+
 /* ---------- analytic identities (tolerances stated in each assertion) ---------- */
 
 test("accumulation ratio 1 / (1 − e^(−kₑτ)): peaks and troughs at steady state over the first dose (IV bolus, exact to 1e-9)", ()=>{

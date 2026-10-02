@@ -5,7 +5,7 @@
   "creators": [{"name": "Maati, Saif"}],
   "license": "MIT",
   "access_right": "open",
-  "version": "2.15.0",
+  "version": "2.17.0",
   "keywords": ["pharmacokinetics", "pharmacodynamics", "pharmacy education", "simulation", "Cockcroft-Gault", "Michaelis-Menten", "two-compartment", "hemodialysis", "population pharmacokinetics"],
   "related_identifiers": [
     {"identifier": "https://saifmaati.github.io/dose-curve/", "relation": "isDocumentedBy", "scheme": "url"},

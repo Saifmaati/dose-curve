@@ -110,7 +110,7 @@ B_(eqn('<math display="block" aria-label="The four indirect response types"><mta
     [txt("Type 3:"), sp(), dR, eq, kin, paren(mn("1"), plus, Smax, fC), minus, kout, R],
     [txt("Type 4:"), sp(), dR, eq, kin, minus, kout, paren(mn("1"), plus, Smax, fC), R],
     [fC, eq, frac(sup(C, n), row(EC50n, plus, sup(C, n))), mo(","), sp(), kout, eq, frac(ln2, sub(mi("t"), txt("½,out")))]])+'</mtable></math>',
-  "<i>R</i> is shown as a percentage of its baseline <i>k</i><sub>in</sub>/<i>k</i><sub>out</sub> and integrated by the Runge–Kutta method on steps that meet every dose."))
+  "<i>R</i> is shown as a percentage of its baseline <i>k</i><sub>in</sub>/<i>k</i><sub>out</sub> and integrated by the Runge–Kutta method on steps that meet every dose. With an effect-site delay, <i>C</i> in <i>f</i>(<i>C</i>) is the effect-site level <i>C</i><sub>e</sub>, so the response lags the level twice over: the drug reaching its site, then the response's own turnover."))
 
 B_('<h2 id="patient">Patients</h2>')
 B_('<p><b>Simple:</b> an organ-function setting scales clearance. <b>Clinical:</b> creatinine clearance by Cockcroft and Gault (1976), with actual, ideal (Devine) or adjusted body weight, and the drug\'s renal fraction <i>f</i><sub>e</sub> scaled by it against a reference of 120 mL/min:</p>')

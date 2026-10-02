@@ -578,3 +578,34 @@ reached with the tier-2 stage here; see DECISIONS 198 and 199.
 Lighthouse: the root mobile 94, `#app` mobile 95 and desktop 100; accessibility 100 and CLS 0. Layout shift 0 on
 twelve entry points at 390 and 1440 (0.0003 on the root). axe: no violations in either theme at 1280 or 390. 396
 tests.
+
+## 44. 2.16.0 (the validation checks in a worker)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| 718 checks in a Web Worker; the engine not loaded on the page | validation.html | `validation.test.js` (the worker's checks in Node, the addresses it accepts, precached); a browser run (718 of 718, done 0.35 s after load) |
+| The same checks on the page without a worker | validation.html with workers unavailable | a browser run with `Worker` disabled (718 of 718, no errors) |
+
+Lighthouse on the validation page (mobile, three runs each):
+
+| | Before | After |
+| --- | --- | --- |
+| Performance | 99, 100, 100 | 100, 99, 100 |
+| Main-thread script work | 1,079 ms | 162 ms |
+| Largest contentful paint | 1.5–1.7 s | 1.4 s |
+
+Blocking time is 80–90 ms both before and after: the one long task left is the sphere loading Three.js. Accessibility is 100 and CLS 0. 397 tests.
+
+## 45. 2.17.0 (an indirect response behind an effect-site delay)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The response driven by Ce with a delay | Effect, an indirect response with t½eq above 0 | `idr.test.js` (2.17: the largest change later and smaller, the plasma peak unmoved, the band's median the response); the SciPy reference (3 new scenarios within 0.01% and 0.01 h) |
+| Links v14; older links unchanged | a link with both | `idr.test.js` (v14 round-trip; a v13 link with both opens with no delay; a direct effect keeps its delay) |
+| Text: sub-heading, cursor, summary, "What changed", Model and methods | Effect | a browser run (largest change −62 points at 32.8 h, as the reference) |
+| The MIC and dialysis panels as a lazy file | a MIC link, a dialysis link, a MIC typed in | a browser run (each filled, layout shift 0, no errors) |
+
+The reference's existing values are bit-identical. 727 comparisons on the validation page. The first load is 3,051 bytes under its budget.
+
+Lighthouse on mobile: the root 96, `#app` 96, the link with both 97; accessibility 100 and CLS 0. axe: no violations on that link, a dialysis link and a MIC link in both themes at 1280 and 390. 398 tests.
+
