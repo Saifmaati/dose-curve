@@ -609,3 +609,26 @@ The reference's existing values are bit-identical. 727 comparisons on the valida
 
 Lighthouse on mobile: the root 96, `#app` 96, the link with both 97; accessibility 100 and CLS 0. axe: no violations on that link, a dialysis link and a MIC link in both themes at 1280 and 390. 398 tests.
 
+## 46. 2.18.0 (interactive 3D charts)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The morph: the first 3D frame on the 2D chart | 3D on and off | a frame captured at 1/400 speed: ticks, thresholds and the curve within 1–4 px of the 2D chart's |
+| Five views from the engine | the views | `chart3d.test.js` (the dose surface against PK.conc; AUC24 = F·S·D/CL·24/τ and against the steady-state curve; trough and peak; no value without a steady state; the peripheral level against the closed form and its approach on an infusion; the population against population mode's own band) |
+| Drags drive the simulator; snapping | the dose surface, the regimen map | a browser run (a dose dragged 1000 → 1900 mg in practical steps; the marker to 500 mg every 24 h); `chart3d.test.js` (strengths, steps, the drug only while the scenario is it) |
+| Hover, scrub and dose selection | every view | a browser run (curve 61.1 h, 62.37 mg/L; surface and map values from the engine; the cursor moves; a dose selected) |
+| Rapid presses and input during the morph | the switch | a browser run (a double press, a wheel during the landing, off then on just after it: each ends in a consistent state) |
+| The landing's stage still starts | the root page | a browser run (html.stage3d set); `chart3d.test.js` (the loader's name is not shadowed) |
+| Every view accessible | 3D on | axe: no violations in all five views, both themes, at 1280 and 390 px |
+
+Screenshots of every view at 1440 in both themes and at 390 were reviewed and the views reworked twice:
+- **Fit:** the camera now fits by projecting the box's corners.
+- **Colour:** state by height, not per vertex.
+- **Selection:** the selected dose and the median are lit.
+- **Population:** its lines are dimmed.
+- **Labels:** tidied on the regimen map and on phones.
+
+Then a four-dimension review (model, integration, accessibility, rendering) with a second reviewer checking each finding confirmed 48 findings, most of them duplicates. All were fixed except the liver-model population variability, which is left to its own change (DECISIONS 221).
+
+Lighthouse on mobile: the root 95, `#app` 97 and 97, desktop 99; accessibility 100 and CLS 0. Runs taken while a video call loaded the machine gave 83–89 on `#app` mobile. 3D adds nothing to the first load: neither its file nor Three.js is requested until the press. Layout shift 0 on the root (0.0003 at 1440), `#app`, `#lessons` and a link with levels, at 390 and 1440. 406 tests.
+

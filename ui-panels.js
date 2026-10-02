@@ -1,4 +1,4 @@
-/* DoseCurve: the MIC and dialysis panels (2.17)
+/* DoseCurve: the MIC, dialysis and Bayesian panels (2.17, the Bayesian panel's readings 2.18)
    The antimicrobial panel's readings (fT>MIC, Cmax/MIC, AUC24/MIC, where the unbound level crosses the MIC, and the
    index and target a library drug's sources give) and the dialysis panel's sessions (levels before and after, the
    fall, the amount removed, the rebound and the IV dose that would restore the level). Loaded once a MIC is entered
@@ -7,7 +7,7 @@
 (function(root){
   "use strict";
   root.DCPanels=function(ctx){
-    const {byId, PK, U, fmt, trim, esc, cdp, DRUGS, state, snapshot, chartCurves, loadSources, render}=ctx;
+    const {byId, PK, U, fmt, trim, esc, cdp, DRUGS, state, snapshot, chartCurves, loadSources, render, bayesEstimate, bzOpts, targetNow, roundDose}=ctx;
 
     // The live scenario's sessions in the window: levels before and after, the fall, the amount removed, and the IV
     // dose right after each that would bring the level back to where the session found it (rounded).
@@ -58,6 +58,32 @@
         return t; }).join("<br>");
       out.innerHTML=h;
     }
-    return {mic, hd};
+    // The Bayesian estimate from measured levels (2.18: moved from the page): the prior, the estimate with its intervals
+    // and how much of the prior's uncertainty is left, each level against its prediction, the two-level estimate, the
+    // steady state in this estimate and the dose for a target
+    function bayes(p){
+      const out=byId("bzOut");
+      const est=bayesEstimate(), pr=PK.bayes.priorOf(PK.normalizeScenario(p), bzOpts()), n=v=>fmt(v,2), iv=(ci,dp)=>`95% ${fmt(ci[0],dp)}–${fmt(ci[1],dp)}`;
+      let h=`<div class="cm-h">Prior (the patient model)</div>CL ${n(pr.CL)} L/h · V ${fmt(pr.V,1)} L · t½ ${fmt(Math.LN2*pr.V/pr.CL,1)} h`;
+      if(!est || !est.obs.length){ out.innerHTML=h+`<div class="cm-h">No levels yet</div>Add a measured level to estimate this patient's own clearance and volume.`; return; }
+      h+=`<div class="cm-h">Bayesian estimate from ${est.obs.length} level${est.obs.length>1?"s":""}</div>`+
+        `CL <b>${n(est.CL)} L/h</b> (${iv(est.ci.CL,2)}) · V <b>${fmt(est.V,1)} L</b> (${iv(est.ci.V,1)}) · t½ <b>${fmt(est.thalf,1)} h</b> (${iv(est.ci.thalf,1)})<br>`+
+        `Uncertainty left: clearance ${fmt(100*est.shrink.CL,0)}%, volume ${fmt(100*est.shrink.V,0)}% of the prior's (100% = the levels added nothing)`;
+      h+=`<div class="cm-h">Measured vs estimate</div>`+est.obs.map(o=>`dose ${o.n} + ${trim(o.dt)} h: ${fmt(o.y,cdp(1))} vs <b>${fmt(o.pred,cdp(1))}</b> ${U().conc}`).join("<br>");
+      if(est.skipped.length) h+=`<br>Left out: ${est.skipped.length} level${est.skipped.length>1?"s":""} after a dose that isn't given.`;
+      const tl=PK.bayes.twoLevel(PK.normalizeScenario(p), p.lv, bzOpts());
+      h+=`<div class="cm-h">Two-level estimate (no prior)</div>`+(tl ? `CL ${n(tl.CL)} L/h · V ${fmt(tl.V,1)} L · t½ ${fmt(tl.thalf,1)} h, from the two levels after dose ${tl.n}` : `Needs two levels after the same IV dose (after an infusion has stopped).`);
+      const T=targetNow(p), q=est.scenario, ss=PK.bayes.steadyState(q), D=PK.bayes.doseFor(q, T), Dr=D ? roundDose(D) : null;
+      const ssR=Dr ? PK.bayes.steadyState(Object.assign(PK.cloneScenario(q), {D:Dr, dosing:"repeated"})) : null;
+      h+=`<div class="cm-h">At steady state in this estimate, every ${trim(ss.tau)} h</div>${trim(ss.D)} ${U().dose}: AUC24 ${fmt(ss.auc24,0)} ${U().auc}, peak ${fmt(ss.peak,cdp(1))}, trough ${fmt(ss.trough,cdp(1))} ${U().conc}`;
+      h+=`<div class="bz-target"><label for="bzKind">Target</label><select id="bzKind"><option value="auc"${T.kind==="auc"?" selected":""}>AUC24</option><option value="trough"${T.kind==="trough"?" selected":""}>Trough</option></select>`+
+        `<input id="bzVal" type="number" min="0" step="any" value="${T.value}" aria-label="Target value"><span>${T.kind==="auc" ? U().auc : U().conc}</span></div>`+
+        (T.auto ? `<span>(${T.auto})</span><br>` : "")+
+        (Dr ? `${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h gives AUC24 ${fmt(ssR.auc24,0)} ${U().auc} and a trough of ${fmt(ssR.trough,cdp(1))} ${U().conc} in this estimate (exact dose ${fmt(D,0)}).` : "")+
+        `<div class="bz-actions"><button class="abtn" type="button" id="bzUse">Show the estimate</button>${Dr ? `<button class="abtn" type="button" id="bzDose">Show the estimate on ${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h</button>` : ""}</div>`+
+        `<span>Either keeps this setup, with its levels, as the baseline: the levels belong to the regimen they were measured on.</span>`;
+      out.innerHTML=h;
+    }
+    return {mic, hd, bayes};
   };
 })(typeof self!=="undefined" ? self : this);

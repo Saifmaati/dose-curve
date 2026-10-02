@@ -29,6 +29,7 @@
   // the 3D stage's effects: the reader's choice, else off on a weak device (reduced motion, little memory, few cores, Save-Data)
   try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){ s=null; }
   if(s==="off" || (!s && (still || n.deviceMemory<4 || n.hardwareConcurrency<4 || (n.connection && n.connection.saveData)))) d.classList.add("fx-off");
+  if(!window.WebGL2RenderingContext) d.classList.add("no-gl");   // no 3D chart without WebGL 2 (2.18)
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
   // no choice made yet: follow the system's light or dark setting
   if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
@@ -60,7 +61,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.17.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.18.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -386,6 +387,11 @@
   .seg.thumb button.on,.mini-seg.thumb button.on{background:transparent;box-shadow:none}
   .seg button:focus-visible,.mini-seg button:focus-visible{z-index:2;outline-offset:0}
   .mini-seg button{flex:0 0 auto;font-size:12.5px;padding:4px 10px;min-height:28px}
+  .scale-3d{display:flex;align-items:center;gap:2px}
+  #tb3d{flex:0 0 auto;font-size:12.5px;font-weight:500;padding:4px 10px;min-height:30px;border-radius:999px;color:var(--c-muted);background:transparent;border:0}
+  #tb3d:hover{color:var(--c-text)}
+  #tb3d[aria-pressed="true"]{color:var(--c-text);background:var(--hair-2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-text) 22%,transparent)}
+  .no-gl #tb3d{display:none}
   .abtn[hidden],.seg[hidden]{display:none}
   @media (pointer:coarse){ .seg button{min-height:40px} .mini-seg button{min-height:36px} }
 
@@ -1378,7 +1384,7 @@
     @page{margin:12mm}
     body{background:#fff !important;font-size:10.5pt}
     .stage,.stage-3d,.pill,.masthead,.intro,.top,.hero,.embed-bar,aside.controls,.tabbar,#sharedPill,.cmpbar,#lessonBar,#fitBar,#winBar,#quickStart,#evStripWrap,#insp,#cmpEmpty,.learn,#roHint,.rm-x,
-    .foot-links,.foot-mark,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
+    .foot-links,.foot-mark,.toast,#lsView,#prView,#viewSeg,#scaleSeg,#tb3d,#pdBtn,#popBtn,.present-exit,.sens summary,#sensSeg{display:none !important}
     .wrap{max-width:none;padding:0}
     .grid{display:block}
     .panel{background:#fff !important;box-shadow:none !important;border:0 !important}
@@ -1917,9 +1923,12 @@
               <button data-view="full" class="on">Full</button>
               <button data-view="last">Final τ</button>
             </div>
-            <div class="mini-seg" id="scaleSeg" role="group" aria-label="Y-axis scale">
-              <button data-scale="lin" class="on">Linear</button>
-              <button data-scale="log">Log</button>
+            <div class="scale-3d">
+              <div class="mini-seg" id="scaleSeg" role="group" aria-label="Y-axis scale">
+                <button data-scale="lin" class="on">Linear</button>
+                <button data-scale="log">Log</button>
+              </div>
+              <button type="button" id="tb3d" aria-pressed="false" title="Lift the chart into 3D, to explore and present (the 2D chart stays the precise one)">3D</button>
             </div>
             <button class="pd-btn" id="pdBtn" aria-pressed="false">Effect</button>
             <button class="pd-btn" id="popBtn" aria-pressed="false" aria-controls="popPanel">Population</button>
@@ -2165,7 +2174,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.17.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.18.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2410,7 +2419,7 @@
   // stylesheet reserves the same shapes before this runs.
   const M={l:56,r:20,t:22,b:46}, narrowQ=matchMedia("(max-width:560px)");
   const plotEl=byId("plot");
-  let plotCurves=[], sx, sy, PW, PH;
+  let plotCurves=[], sx, sy, PW, PH, c3d=null, axes3d=null;   // (c3d: the chart in 3D, 2.18)
   // In the desktop workspace (2.14) the chart is drawn one unit to a pixel at whatever size the screen gives it, so it
   // fills the space and its type stays its true size; elsewhere it keeps the fixed 760 (or 440) wide drawing.
   const wsQ=matchMedia("(min-width:1100px)");
@@ -2645,18 +2654,18 @@
     const v=parseFloat(fuEl.value);
     if(isFinite(v) && v>=0.01 && v<=1){ state.fu=v; state.drug=null; markDrug(); changed(["fu"]); }
   });
-  // the panel's readings are ui-panels.js, loaded once a MIC is entered or a link opens with one (2.17)
+  // the panel's readings are ui-panels.js, loaded once a MIC is entered or a link opens with one (2.17; the levels' 2.18)
   function renderMic(){
     byId("micLabel").textContent=`MIC (${U().conc})`;
     if(!(state.mic>0)){ byId("micOut").textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
     if(panelsUI) panelsUI.mic(); else loadPanels().then(render).catch(()=>{});
   }
-  const PANELS_SRC="ui-panels.js?v=89c2449098";
+  const PANELS_SRC="ui-panels.js?v=a25a5d647c";
   let panelsUI=null, panelsLoad=null;
   function loadPanels(){
     if(!panelsLoad) panelsLoad=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=PANELS_SRC;
       sc.onload=()=>{ if(!window.DCPanels) return rej(new Error("no panels"));
-        panelsUI=window.DCPanels({byId, PK, U, fmt, trim, esc, cdp, DRUGS, state, snapshot, chartCurves, loadSources, render, get mode(){ return mode; }, get lastDrug(){ return lastDrug; }}); res(); };
+        panelsUI=window.DCPanels({byId, PK, U, fmt, trim, esc, cdp, DRUGS, state, snapshot, chartCurves, loadSources, render, bayesEstimate, bzOpts, targetNow, roundDose, get mode(){ return mode; }, get lastDrug(){ return lastDrug; }}); res(); };
       sc.onerror=()=>{ panelsLoad=null; rej(new Error("load")); };
       document.head.appendChild(sc); });
     return panelsLoad;
@@ -2672,26 +2681,8 @@
     if(!PK.bayesModule){ out.textContent=state.lv.length ? "Loading the estimator…" : "No levels yet: the estimate is the patient model itself."; if(state.lv.length) loadBayes().then(render).catch(()=>{}); return; }
     const app=PK.bayes.applicable(PK.normalizeScenario(p));
     if(!app.ok){ out.textContent=app.why; return; }
-    const est=bayesEstimate(), pr=PK.bayes.priorOf(PK.normalizeScenario(p), bzOpts()), n=v=>fmt(v,2), iv=(ci,dp)=>`95% ${fmt(ci[0],dp)}–${fmt(ci[1],dp)}`;
-    let h=`<div class="cm-h">Prior (the patient model)</div>CL ${n(pr.CL)} L/h · V ${fmt(pr.V,1)} L · t½ ${fmt(Math.LN2*pr.V/pr.CL,1)} h`;
-    if(!est || !est.obs.length){ out.innerHTML=h+`<div class="cm-h">No levels yet</div>Add a measured level to estimate this patient's own clearance and volume.`; return; }
-    h+=`<div class="cm-h">Bayesian estimate from ${est.obs.length} level${est.obs.length>1?"s":""}</div>`+
-      `CL <b>${n(est.CL)} L/h</b> (${iv(est.ci.CL,2)}) · V <b>${fmt(est.V,1)} L</b> (${iv(est.ci.V,1)}) · t½ <b>${fmt(est.thalf,1)} h</b> (${iv(est.ci.thalf,1)})<br>`+
-      `Uncertainty left: clearance ${fmt(100*est.shrink.CL,0)}%, volume ${fmt(100*est.shrink.V,0)}% of the prior's (100% = the levels added nothing)`;
-    h+=`<div class="cm-h">Measured vs estimate</div>`+est.obs.map(o=>`dose ${o.n} + ${trim(o.dt)} h: ${fmt(o.y,cdp(1))} vs <b>${fmt(o.pred,cdp(1))}</b> ${U().conc}`).join("<br>");
-    if(est.skipped.length) h+=`<br>Left out: ${est.skipped.length} level${est.skipped.length>1?"s":""} after a dose that isn't given.`;
-    const tl=PK.bayes.twoLevel(PK.normalizeScenario(p), p.lv, bzOpts());
-    h+=`<div class="cm-h">Two-level estimate (no prior)</div>`+(tl ? `CL ${n(tl.CL)} L/h · V ${fmt(tl.V,1)} L · t½ ${fmt(tl.thalf,1)} h, from the two levels after dose ${tl.n}` : `Needs two levels after the same IV dose (after an infusion has stopped).`);
-    const T=targetNow(p), q=est.scenario, ss=PK.bayes.steadyState(q), D=PK.bayes.doseFor(q, T), Dr=D ? roundDose(D) : null;
-    const ssR=Dr ? PK.bayes.steadyState(Object.assign(PK.cloneScenario(q), {D:Dr, dosing:"repeated"})) : null;
-    h+=`<div class="cm-h">At steady state in this estimate, every ${trim(ss.tau)} h</div>${trim(ss.D)} ${U().dose}: AUC24 ${fmt(ss.auc24,0)} ${U().auc}, peak ${fmt(ss.peak,cdp(1))}, trough ${fmt(ss.trough,cdp(1))} ${U().conc}`;
-    h+=`<div class="bz-target"><label for="bzKind">Target</label><select id="bzKind"><option value="auc"${T.kind==="auc"?" selected":""}>AUC24</option><option value="trough"${T.kind==="trough"?" selected":""}>Trough</option></select>`+
-      `<input id="bzVal" type="number" min="0" step="any" value="${T.value}" aria-label="Target value"><span>${T.kind==="auc" ? U().auc : U().conc}</span></div>`+
-      (T.auto ? `<span>(${T.auto})</span><br>` : "")+
-      (Dr ? `${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h gives AUC24 ${fmt(ssR.auc24,0)} ${U().auc} and a trough of ${fmt(ssR.trough,cdp(1))} ${U().conc} in this estimate (exact dose ${fmt(D,0)}).` : "")+
-      `<div class="bz-actions"><button class="abtn" type="button" id="bzUse">Show the estimate</button>${Dr ? `<button class="abtn" type="button" id="bzDose">Show the estimate on ${trim(Dr)} ${U().dose} every ${trim(ss.tau)} h</button>` : ""}</div>`+
-      `<span>Either keeps this setup, with its levels, as the baseline: the levels belong to the regimen they were measured on.</span>`;
-    out.innerHTML=h;
+    // the readings are ui-panels.js (2.18), with the estimator itself in pk-bayes.js
+    if(panelsUI) panelsUI.bayes(p); else { out.textContent="Loading the estimator…"; loadPanels().then(render).catch(()=>{}); }
   }
   byId("bzOut").addEventListener("change",e=>{
     if(e.target.id==="bzKind"){
@@ -2768,7 +2759,7 @@
     viewT=[T0,T1];
     if(cursorT!==null && state.view==="full" && cursorT>T1) cursorT=T1;   // a shorter window pulls the cursor in
     curves.forEach(cv=> cv.pts=cv.raw.map(q=>({t:q.t,c:q.c,x:sx(q.t),y:sy(q.c)})));
-    plotCurves=curves;
+    plotCurves=curves; axes3d={T0, T1, yTop, yFloor, isLog};
 
     // ===== the chart (2.13): an object, not a plot =====
     // Layers, back to front: the grid (in parallax), the window as glass, shading, the doses' own contributions, the
@@ -3004,6 +2995,7 @@
     queuePlace();   // once per frame, however many renders a change makes
     toStage();
     mast();
+    if(c3d) c3d.update();
   }
 
   // A discrete change (a choice, a typed value, a drug, a template, the scale) eases each curve from its old shape to
@@ -3718,6 +3710,7 @@
 
   function updateCursor(){
     if(stage) stage.cursor(cursorT);   // the marker on the stage's ribbon
+    if(c3d) c3d.cursor();
     const g=plotEl.querySelector("#cursorG");
     if(!g) return;
     const [T0,T1]=viewT, show=cursorT!==null && cursorT>=T0-1e-9 && cursorT<=T1+1e-9;
@@ -6006,7 +5999,7 @@
   if((baseline || mode==="cmp") && !PK.explainModule) waits.push(loadExplain());
   if(lesson && lessonPending) waits.push(lessonPending);   // a lesson link shows with its texts in place
   if(state.pd && !effectUI) waits.push(loadEffect());   // a link that opens with the effect charts, with them drawn
-  if(state.mic>0 || PK.hdOn(snapshot())) waits.push(loadPanels());   // and one with a MIC or dialysis, with its panel filled
+  if(state.mic>0 || PK.hdOn(snapshot()) || state.lv.length) waits.push(loadPanels());   // and one with a MIC, dialysis or levels, its panel filled
   if(waits.length) Promise.all(waits.map(w=> w.catch(()=>{}))).then(unwait); else unwait();
   // the sliding parts follow any change of the chosen segment or tab, a resize, and the fonts arriving
   new MutationObserver(ms=>{ if(ms.some(m=> m.target.parentElement && m.target.parentElement.matches(".seg,.mini-seg,.tabbar"))) queuePlace(); })
@@ -6015,10 +6008,38 @@
   if(document.fonts) document.fonts.ready.then(queuePlace);
 
   /* ================= STAGE ================= */
+  /* ================= 3D (2.18) ================= */
+  // The chart in 3D: ui-chart3d.js with Three.js through the stage, loaded on the first press; the 2D chart stays
+  // the default. It reads the chart's own curves and axes, and a drag in it sets the same state the controls do.
+  const C3D_SRC="ui-chart3d.js?v=d8b03c3468";
+  let c3dLoad=null;
+  const loadScript=src=> new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+  function load3d(){
+    return c3dLoad || (c3dLoad=Promise.all([import("./"+STAGE_SRC).then(m=> m.loadThree()), loadScript(C3D_SRC)]).then(([THREE])=>{ c3d=window.DCChart3D.mount(THREE, {PK, fmt, trim, cdp, U, esc, fmtAxis, ticksRange, chartStates, paperK,
+      box:plotEl.parentElement, svg:plotEl, geom:{get PW(){ return PW; }, get PH(){ return PH; }, M}, get axes(){ return axes3d; }, get plotCurves(){ return plotCurves; }, get state(){ return state; },
+      get mode(){ return mode; }, get cmpEdit(){ return cmp.edit; }, get cursorT(){ return cursorT; }, get drug(){ return DRUGS.find(x=>x.id===lastDrug)||null; },
+      pop:()=> window.DCPop, loadPop:()=> window.DCPop ? Promise.resolve() : loadScript(POP_SRC),
+      setCursor:t=>{ cursorT=t; updateCursor(); },
+      setKeys:o=>{ const ks=Object.keys(o), rep=o.dosing && state.dosing!=="repeated"; Object.assign(state, o); state.drug=null; markDrug();
+        if(rep) state.duration=Math.max(state.duration, Math.min(168, state.tau*state.nDoses));   // as the Dosing control does
+        if(rep || ks.some(k=> sliderRefs[k] && (o[k]>+sliderRefs[k].sl.max || o[k]<+sliderRefs[k].sl.min))) syncControls();
+        else ks.forEach(k=>{ const r=sliderRefs[k]; if(r){ r.sl.step="any"; r.sl.value=String(o[k]); r.show(); } }); changed(ks); },
+      selectDose:i=>{ const p=snapshot(), e=doseEvents(p)[i]; if(!e) return; cursorT=e.t; updateCursor(); lightDose(i);
+        if(p.dosing==="custom"){ evSel=(state.events.find(x=>String(x.id)===String(e.id))||{}).id||null; renderEvents(); render(); const r=byId("evList").querySelector(".ev-row.open,.ev-row[data-id='"+evSel+"']"); if(r) r.scrollIntoView({block:"nearest", behavior:noMotion() ? "auto" : "smooth"}); } },
+      leave3d:()=> set3d(false)}); })).catch(e=>{ c3dLoad=null; throw e; });
+  }
+  // a press while it loads is the last word; focus returns to the chart only if it was in the 3D view
+  function set3d(on){
+    const b=byId("tb3d"), back=c3d && c3d.has(document.activeElement); b.setAttribute("aria-pressed", on);
+    if(on) load3d().then(()=>{ if(b.getAttribute("aria-pressed")==="true") c3d.show(); }).catch(()=>{ b.setAttribute("aria-pressed", false); D.classList.add("no-gl"); toast("The 3D view couldn't start here"); });
+    else if(c3d) c3d.hide(()=>{ if(back) plotEl.focus({preventScroll:true}); });
+  }
+  byId("tb3d").addEventListener("click",()=> set3d(byId("tb3d").getAttribute("aria-pressed")!=="true"));
+
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=b24da26983";
+  const STAGE_SRC="stage.js?v=4aa02f41ed";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));
