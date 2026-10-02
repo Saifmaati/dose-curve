@@ -64,7 +64,7 @@
       effEl.innerHTML=g;
       const primary=curves.find(cv=>ctx.mode==="cmp" ? cv.id===ctx.cmp.edit : cv.primary);
       const pp=primary.p;
-      byId("pdSub").textContent=pp.idr>0 ? `Indirect, ${IDR_NAME[pp.idr].toLowerCase()}, EC50 ${trim(pp.ec50)} ${U().conc}, ${pp.idr<3 ? `Imax ${fmt(100*pp.imax,0)}%` : `Smax ${trim(pp.smax)}`}, n ${trim(pp.hill)}, response turnover t½ ${trim(pp.tout)} h`
+      byId("pdSub").textContent=pp.idr>0 ? `Indirect, ${IDR_NAME[pp.idr].toLowerCase()}, EC50 ${trim(pp.ec50)} ${U().conc}, ${pp.idr<3 ? `Imax ${fmt(100*pp.imax,0)}%` : `Smax ${trim(pp.smax)}`}, n ${trim(pp.hill)}, response turnover t½ ${trim(pp.tout)} h${PK.keqOf(pp)>0?`, effect-site t½ ${trim(pp.teq)} h`:""}`
         : `EC50 ${trim(pp.ec50)} ${U().conc}, Emax ${trim(pp.emax)}%, n ${trim(pp.hill)}${pp.e0?`, E₀ ${trim(pp.e0)}%`:""}${PK.keqOf(pp)>0?`, effect-site t½ ${trim(pp.teq)} h`:""}`;
       effEl.setAttribute("aria-label", resp ? "Response over time, as a percentage of its baseline. Click or drag to move the time cursor." : "Effect over time, as a percentage of the largest possible response. Click or drag to move the time cursor.");
       renderSigmoid(curves, primary);

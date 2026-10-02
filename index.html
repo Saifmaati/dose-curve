@@ -60,7 +60,7 @@
 <meta name="twitter:image" content="https://saifmaati.github.io/dose-curve/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"DoseCurve","url":"https://saifmaati.github.io/dose-curve/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.16.0",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.17.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
 </script>
@@ -2165,7 +2165,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.16.0, updated 1 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.17.0, updated 1 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2234,7 +2234,7 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=29d9af2bc9" defer></script>
+<script src="pk-engine.js?v=218c8fad68" defer></script>
 <script type="module">
 "use strict";
 (function(){
@@ -2504,7 +2504,7 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
-  const IDR_SRC="pk-idr.js?v=f6002874d2";
+  const IDR_SRC="pk-idr.js?v=aa908966ba";
   let idrLoad=null;
   function loadIdr(){
     if(PK.idrModule) return Promise.resolve();
@@ -2530,20 +2530,11 @@
     });
     return hdLoad;
   }
-  // The live scenario's sessions in the window: levels before and after, the fall, the amount removed, and the IV dose
-  // right after each that would bring the level back to where the session found it (rounded).
+  // The live scenario's sessions (ui-panels.js, with pk-hd.js): levels, the fall, the amount removed, the dose after
   function renderHd(){
-    const p=snapshot(), out=byId("hdOut");
-    if(!PK.hdOn(p)) return;
-    if(!PK.hdModule){ out.textContent="Loading the dialysis model…"; return; }
-    const u=PK.unitsOf(p), T=state.duration, rows=PK.hd.sessionTable(p, T), f=PK.hd.sessionFraction(p), d=DRUGS.find(x=>x.id===lastDrug);
-    const step=d && d.units===p.unit && d.strengths.round || null, rnd=x=> step ? Math.round(x/step)*step : +x.toPrecision(2);
-    let h=`<div class="cm-h">Each session, with no dose during it</div>CL ${fmt(PK.derived(p).CL,2)} → <b>${fmt(PK.derived(p).CL+p.hdcl,2)} L/h</b> while it runs; the level falls <b>${fmt(100*f.fall,0)}%</b> over ${trim(p.hddur)} h, ${fmt(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`;
-    h+=`<div class="cm-h">Sessions in the ${trim(T)} h window</div>`+(rows.length ? rows.slice(0,8).map(r=>
-      `${r.n}. ${trim(r.start)}–${trim(r.end)} h: ${fmt(r.pre,cdp(1))} → <b>${fmt(r.post,cdp(1))}</b> ${u.conc} (−${fmt(100*r.fall,0)}%), ${fmt(r.removed,0)} ${u.amount} removed; `+
-      (r.rebound ? `with no dose it then rebounds to <b>${fmt(r.rebound.level,cdp(1))} ${u.conc}</b> ${fmt(r.rebound.after,1)} h later (${fmt(100*r.rebound.share,0)}% of the fall back) as drug returns from the tissues; ` : "")+
-      `to restore the level${r.rebound ? " straight after the session" : ""}, about <b>${fmt(rnd(r.supplement),step || rnd(r.supplement)>=10 ? 0 : 1)} ${u.dose}</b> IV after it`).join("<br>") : "none starts in the window");
-    out.innerHTML=h;
+    if(!PK.hdOn(snapshot())) return;
+    if(!PK.hdModule || !panelsUI){ byId("hdOut").textContent="Loading the dialysis model…"; if(PK.hdModule) loadPanels().then(render).catch(()=>{}); return; }
+    panelsUI.hd();
   }
   // Sensitivity (pk-sens.js): computed and drawn only while its panel is open
   const SENS_SRC="pk-sens.js?v=0e00719e81";
@@ -2654,38 +2645,21 @@
     const v=parseFloat(fuEl.value);
     if(isFinite(v) && v>=0.01 && v<=1){ state.fu=v; state.drug=null; markDrug(); changed(["fu"]); }
   });
-  // The library drug a scenario still is (its half-life, volume and units unchanged), for the index its sources name.
-  const pkpdDrug=p=> DRUGS.find(d=> d.pkpd && p.kin==="linear" && !PK.hepOn(p) && d.s.thalf===p.thalf && d.s.V===p.V && d.units===p.unit);
-  const INDEX_NAME={ft:"fT>MIC", cmax:"Cmax/MIC", auc:"AUC24/MIC"};
+  // the panel's readings are ui-panels.js, loaded once a MIC is entered or a link opens with one (2.17)
   function renderMic(){
     byId("micLabel").textContent=`MIC (${U().conc})`;
-    const out=byId("micOut");
-    if(!(state.mic>0)){ out.textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
-    const curves=chartCurves(), u=U(), mic=state.mic;
-    const rows=curves.map(cv=>({cv, m:PK.micStats(cv.p, mic, state.duration)}));
-    const name=r=> mode==="cmp" ? `<span style="color:${r.cv.col.css}">${r.cv.tag}</span> ` : r.cv.ghost ? "Baseline: " : rows.length>1 ? "Now: " : "";
-    const when=m=> m.ss ? `at steady state, over one ${trim(m.span)} h interval` : `over the ${trim(m.span)} h window (not a repeated regimen)`;
-    let h=rows.map(r=>{ const m=r.m;
-      return `<div class="cm-h">${name(r)}${when(m)}</div>`+
-        `fT&gt;MIC <b>${fmt(m.ft, m.ft>=99.5 && m.ft<100 || m.ft>0 && m.ft<0.5 ? 1 : 0)}%</b> · Cmax/MIC <b>${fmt(m.cmaxMic,1)}</b> · ${m.ss ? "AUC24" : "AUC0–24"}/MIC <b>${fmt(m.aucMic,0)}</b><br>`+
-        `<span>Cmax ${fmt(m.cmax,cdp(1))} ${u.conc}, ${m.ss ? "AUC24" : "AUC0–24"} ${fmt(m.auc24,0)} ${u.auc}; unbound: fCmax/MIC ${fmt(m.fcmaxMic,1)}, fAUC/MIC ${fmt(m.faucMic,0)}</span>`; }).join("");
-    const fus=[...new Set(rows.map(r=>r.m.fu))];
-    h+=`<div class="cm-h">Where the unbound level crosses the MIC</div>`+fus.map(fu=>
-      `fu ${trim(fu)}: a total level of ${trim(mic)} / ${trim(fu)} = ${fmt(mic/fu,cdp(1))} ${u.conc}`).join("<br>");
-    // the index and any target come from the drug's sources, never from a general rule
-    const drugs=[...new Set(curves.filter(cv=>!cv.ghost).map(cv=>pkpdDrug(cv.p)))];
-    h+=`<div class="cm-h">Index and target</div>`+drugs.map(d=>{
-      if(!d) return "No library drug matches this scenario, so no index or target is named: published targets differ by drug class, organism and infection model, and DoseCurve shows one only where a cited source gives it.";
-      const P=d.pkpd, src=PK.SOURCES[P.src];
-      if(!src) loadSources().then(render).catch(()=>{});
-      const cite=src ? `<a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite.split(".")[0])}</a>` : "loading the source";
-      let t=`${esc(d.name)}: ${INDEX_NAME[P.index]}. Its source: ${esc(P.note)} (${cite}).`;
-      if(P.lo!=null){
-        const m=rows.find(r=>!r.cv.ghost && pkpdDrug(r.cv.p)===d).m, v=m.aucMic;
-        t+=` This scenario's ${INDEX_NAME[P.index]} is ${fmt(v,0)}: ${v<P.lo ? "below" : v>P.hi ? "above" : "within"} ${P.lo}–${P.hi}.`;
-      } else t+=" No number is given for it, so none is shown.";
-      return t; }).join("<br>");
-    out.innerHTML=h;
+    if(!(state.mic>0)){ byId("micOut").textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
+    if(panelsUI) panelsUI.mic(); else loadPanels().then(render).catch(()=>{});
+  }
+  const PANELS_SRC="ui-panels.js?v=89c2449098";
+  let panelsUI=null, panelsLoad=null;
+  function loadPanels(){
+    if(!panelsLoad) panelsLoad=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=PANELS_SRC;
+      sc.onload=()=>{ if(!window.DCPanels) return rej(new Error("no panels"));
+        panelsUI=window.DCPanels({byId, PK, U, fmt, trim, esc, cdp, DRUGS, state, snapshot, chartCurves, loadSources, render, get mode(){ return mode; }, get lastDrug(){ return lastDrug; }}); res(); };
+      sc.onerror=()=>{ panelsLoad=null; rej(new Error("load")); };
+      document.head.appendChild(sc); });
+    return panelsLoad;
   }
 
   function renderBayes(){
@@ -3546,7 +3520,7 @@
   // `ref` names the reference side in the text ("the baseline" or "A").
   // The sentences under "What changed" (pk-explain.js): loaded just after the first paint, and awaited by a link
   // that opens with a baseline, so the list is there when the app shows
-  const EXPLAIN_SRC="pk-explain.js?v=2b162bb1fe";
+  const EXPLAIN_SRC="pk-explain.js?v=2838352cdf";
   let explainLoad=null;
   function loadExplain(){
     if(PK.explainModule) return Promise.resolve();
@@ -3653,7 +3627,7 @@
     if(p.pm==="child") s+=`, a child of ${trim(p.wt)} kg, ${trim(p.pnaw)} weeks old (born at ${trim(p.ga)} weeks), GFR ${fmt(PK.childOf(p).gfr,1)} mL/min (fe ${trim(p.fe)})`;
     if(PK.hdOn(p)) s+=`, hemodialysis ${trim(p.hddur)} h every ${trim(p.hdevery)} h from ${trim(p.hdstart)} h, CLd ${trim(p.hdcl)} L/h`;
     else if(p.clFn!==100) s+=`, organ fn ${p.clFn}%`;
-    if(state.pd && p.idr>0) s+=`, ${IDR_NAME[p.idr].toLowerCase()}, EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}, response turnover t½ ${trim(p.tout)} h`;
+    if(state.pd && p.idr>0) s+=`, ${IDR_NAME[p.idr].toLowerCase()}, EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}, response turnover t½ ${trim(p.tout)} h${PK.keqOf(p)>0?`, effect-site t½ ${trim(p.teq)} h`:""}`;
     else if(state.pd) s+=`, EC50 ${trim(p.ec50)} ${PK.unitsOf(p).conc}${p.emax!==100?`, Emax ${trim(p.emax)}%`:""}${p.hill!==1?`, n ${trim(p.hill)}`:""}${p.e0?`, E₀ ${trim(p.e0)}%`:""}${PK.keqOf(p)>0?`, effect-site t½ ${trim(p.teq)} h`:""}`;
     return s;
   }
@@ -3792,7 +3766,7 @@
   // With a delay the effect follows the effect-site level, which is given alongside.
   function effectTxt(p, c){
     if(!state.pd) return "";
-    if(p.idr>0) return PK.idrModule ? `, response <b>${fmt(PK.idr.at(p,state.duration,cursorT),0)}%</b> of baseline (held at this level it would settle at ${fmt(PK.idr.plateau(p,c),0)}%)` : "";
+    if(p.idr>0) return PK.idrModule ? `, response <b>${fmt(PK.idr.at(p,state.duration,cursorT),0)}%</b> of baseline (held at this level it would settle at ${fmt(PK.idr.plateau(p,c),0)}%${PK.keqOf(p)>0 ? `; effect site ${fmt(PK.ceConc(p,cursorT),cdp(2))} ${U().conc}` : ""})` : "";
     const delay=PK.keqOf(p)>0, ce=delay ? PK.ceConc(p,cursorT) : c, e=PK.effectOf(p,ce);
     return `, effect <b>${fmt(e,0)}%</b> (${e>=state.etgt?"at or above":"below"} the ${state.etgt}% target${delay ? `; effect site ${fmt(ce,cdp(2))} ${U().conc}` : ""}${ce>0?`, ${delay?"Ce":"C"} = ${fmt(ce/p.ec50,2)}× EC50`:""})`;
   }
@@ -4640,7 +4614,7 @@
       `<b>${fmt(a.e[0],0)}–${fmt(a.e[2],0)}%</b>${idr ? " of baseline" : ""} while their ${keqOfShown(cv) ? "plasma " : ""}levels run ${fmt(a.c[0],cdp(1))}–${fmt(a.c[2],cdp(1))} ${u.conc}`+
       (fold ? `: a ${fmt(fold,1)}-fold spread in level, ${fmt(a.e[2]-a.e[0],0)} points of ${idr ? "response" : "effect"}.` : ".");
   }
-  const keqOfShown=cv=> !(cv.p.idr>0) && cv.p.kin!=="mm" && cv.p.teq>0;
+  const keqOfShown=cv=> PK.keqOf(cv.p)>0;
   function setPop(k, v){ state[k]=v; render(); }
   byId("popBtn").addEventListener("click",()=>{ state.pop=!state.pop; syncPopInputs(); render(); });
   function syncPopInputs(){
@@ -4675,7 +4649,7 @@
   byId("pdBtn").addEventListener("click",()=>{ state.pd=!state.pd; syncPd(); render(); });
 
   // The two charts themselves are ui-effect.js, loaded when the switch is first on or a link opens with it
-  const EFFECT_SRC="ui-effect.js?v=be4a964029";
+  const EFFECT_SRC="ui-effect.js?v=d46dbe334e";
   let effectUI=null, effectLoad=null;
   function loadEffect(){
     if(effectUI) return Promise.resolve();
@@ -6032,6 +6006,7 @@
   if((baseline || mode==="cmp") && !PK.explainModule) waits.push(loadExplain());
   if(lesson && lessonPending) waits.push(lessonPending);   // a lesson link shows with its texts in place
   if(state.pd && !effectUI) waits.push(loadEffect());   // a link that opens with the effect charts, with them drawn
+  if(state.mic>0 || PK.hdOn(snapshot())) waits.push(loadPanels());   // and one with a MIC or dialysis, with its panel filled
   if(waits.length) Promise.all(waits.map(w=> w.catch(()=>{}))).then(unwait); else unwait();
   // the sliding parts follow any change of the chosen segment or tab, a resize, and the fonts arriving
   new MutationObserver(ms=>{ if(ms.some(m=> m.target.parentElement && m.target.parentElement.matches(".seg,.mini-seg,.tabbar"))) queuePlace(); })
@@ -6043,7 +6018,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=007633aeb7";
+  const STAGE_SRC="stage.js?v=b24da26983";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));

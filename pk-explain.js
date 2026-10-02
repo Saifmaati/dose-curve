@@ -224,7 +224,10 @@
       }
       if(a.fabs!==b.fabs && PK.isRelevant("fabs",b)) out.push(`Fraction absorbed ${trim(a.fabs)} → ${trim(b.fabs)}: every oral level scales by ${fmt(b.fabs/a.fabs,2)}×.`);
     } else if(PK.hepOn(a)!==PK.hepOn(b)) out.push(`Clearance now comes from ${PK.hepOn(b) ? "the liver model (blood flow, unbound fraction and intrinsic clearance)" : "the half-life, not the liver model"}.`);
-    if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
+    if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b) && a.idr>0 && b.idr>0) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the drug reaches the site that drives the response ${b.teq>a.teq
+      ? "later. The response starts to change later and more gradually, and its largest change comes later, on top of the delay from its own turnover."
+      : "sooner. The response starts to change sooner and its largest change comes earlier; what delay remains comes from its own turnover."}`);
+    else if(a.teq!==b.teq && PK.isRelevant("teq",a) && PK.isRelevant("teq",b)) out.push(`Effect-site equilibration half-life ${a.teq>0?trim(a.teq)+" h":"none"} → ${b.teq>0?trim(b.teq)+" h":"none"}: the effect ${b.teq>a.teq
       ? "lags the plasma level more. It builds later, a plasma peak reaches it later and blunted, and as the level falls the effect stays above what that level alone would give."
       : "follows the plasma level more closely: it builds sooner, a plasma peak reaches it sooner and less blunted, and it falls with the level."}`);
     if(PK.hdOn(a)!==PK.hdOn(b)) out.push(PK.hdOn(b) ? `Hemodialysis: a ${trim(b.hddur)}-hour session every ${trim(b.hdevery)} h from ${trim(b.hdstart)} h adds a dialysis clearance of ${trim(b.hdcl)} L/h while it runs, so the level drops faster during each session.` : "Hemodialysis is off: the clearance no longer rises during sessions.");

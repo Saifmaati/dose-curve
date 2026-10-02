@@ -16,7 +16,7 @@
   // wider ranges for volume, half-life, weight and the time window. Each link is written at the lowest version
   // that can hold it, so links that older pages understand stay exactly as they were. 9 adds the unbound fraction
   // fu, the MIC and doses above 2,000 mg; 10 the indirect response models; 11 hemodialysis sessions.
-  const VERSION=13;
+  const VERSION=14;
 
   /* ================= SCENARIO MODEL ================= */
   // A scenario is a flat object of these keys. The time window, thresholds and chart settings are
@@ -222,7 +222,7 @@
     if(k==="vmax"||k==="km") return s.kin==="mm";
     if(k==="cmt") return s.kin!=="mm";
     if(k==="k12"||k==="k21") return s.kin!=="mm" && s.cmt===2;
-    if(k==="teq") return s.kin!=="mm" && !(s.idr>0) && !hdOn(s);
+    if(k==="teq") return s.kin!=="mm" && !hdOn(s);
     if(k==="hd") return s.kin!=="mm";
     if(k==="hdcl"||k==="hdstart"||k==="hddur"||k==="hdevery") return hdOn(s);
     if(k==="e0"||k==="emax") return !(s.idr>0);
@@ -1491,6 +1491,8 @@
     if(version!==undefined && version<12 && p.cmt===2 && p.hd===1) p.hd=0;
     // before v13, weight couldn't go under 40 kg
     if(version!==undefined && version<13 && p.wt<40) p.wt=40;
+    // before v14, an indirect response was driven by the plasma level whatever the effect-site delay said
+    if(version!==undefined && version<14 && p.idr>0) p.teq=0;
     return normalizeScenario(p);
   }
   function encodeView(v){
@@ -1524,6 +1526,7 @@
   function encodeLink(st){
     const scen=st.mode==="cmp" ? [st.a,st.b] : [st.s,st.base].filter(Boolean);
     const view=st.view||VIEW_DEFAULTS;
+    const usesV14=scen.some(p=>p.idr>0 && p.teq>0);
     const usesV13=scen.some(p=>p.pm==="child" || p.wt<40 || V13_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV12=scen.some(p=>p.cmt===2 && p.hd===1);
     const usesV11=scen.some(p=>V11_KEYS.some(k=>p[k]!==DEFAULTS[k]));
@@ -1534,7 +1537,7 @@
     const usesV6=scen.some(p=>V6_KEYS.some(k=>p[k]!==DEFAULTS[k]));
     const usesV5=view.duration>168 || view.pop || POP_KEYS.some(k=>view[k]!==undefined && view[k]!==VIEW_DEFAULTS[k]) || scen.some(p=>V5_KEYS.some(k=>p[k]!==DEFAULTS[k]) || Object.keys(V4_MAX).some(k=>p[k]>V4_MAX[k]));
     const usesV4=view.pd || view.etgt!==VIEW_DEFAULTS.etgt || scen.some(p=>PD_KEYS.some(k=>p[k]!==DEFAULTS[k]));
-    const parts=["v="+(usesV13 ? 13 : usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
+    const parts=["v="+(usesV14 ? 14 : usesV13 ? 13 : usesV12 ? 12 : usesV11 ? 11 : usesV10 ? 10 : usesV9 ? 9 : usesV8 ? 8 : usesV7 ? 7 : usesV6 ? 6 : usesV5 ? 5 : usesV4 ? 4 : scen.some(usesV3) ? 3 : scen.some(p=>p.dosing==="custom") ? 2 : 1)];
     if(st.mode==="cmp"){
       parts.push("m=cmp", "a="+encodeScenario(st.a), "b="+encodeScenario(st.b));
       if(st.nameA) parts.push("na="+encodeURIComponent(st.nameA));

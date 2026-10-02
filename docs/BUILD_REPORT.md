@@ -596,3 +596,16 @@ Lighthouse on the validation page (mobile, three runs each):
 
 Blocking time is 80–90 ms both before and after: the one long task left is the sphere loading Three.js. Accessibility is 100 and CLS 0. 397 tests.
 
+## 45. 2.17.0 (an indirect response behind an effect-site delay)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The response driven by Ce with a delay | Effect, an indirect response with t½eq above 0 | `idr.test.js` (2.17: the largest change later and smaller, the plasma peak unmoved, the band's median the response); the SciPy reference (3 new scenarios within 0.01% and 0.01 h) |
+| Links v14; older links unchanged | a link with both | `idr.test.js` (v14 round-trip; a v13 link with both opens with no delay; a direct effect keeps its delay) |
+| Text: sub-heading, cursor, summary, "What changed", Model and methods | Effect | a browser run (largest change −62 points at 32.8 h, as the reference) |
+| The MIC and dialysis panels as a lazy file | a MIC link, a dialysis link, a MIC typed in | a browser run (each filled, layout shift 0, no errors) |
+
+The reference's existing values are bit-identical. 727 comparisons on the validation page. The first load is 3,051 bytes under its budget.
+
+Lighthouse on mobile: the root 96, `#app` 96, the link with both 97; accessibility 100 and CLS 0. axe: no violations on that link, a dialysis link and a MIC link in both themes at 1280 and 390. 398 tests.
+

@@ -162,7 +162,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.16.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.17.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 

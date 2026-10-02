@@ -84,9 +84,10 @@ test("links: an indirect response needs v10 and round-trips; older links have no
   ["v=1&s=D:400", "v=6&s=teq:2", "v=9&s=fu:0.5"].forEach(h=> assert.equal(PK.decodeLink(h).s.idr, 0, h));
   const bad=PK.decodeLink("v=10&s=idr:7,tout:0,imax:3,smax:-1").s;
   assert.deepEqual([bad.idr, bad.tout, bad.imax, bad.smax], [0, 0.25, 1, 0.1], "unknown type ignored, numbers clamped");
-  // relevance: the direct model's E₀ and Emax, and the effect-site delay, give way to the response's settings
+  // relevance: the direct model's E₀ and Emax give way to the response's settings; since v14 the effect-site delay
+  // stays, and drives the response through the effect site
   const r=S({idr:2});
-  assert.deepEqual(["e0","emax","teq","tout","imax","smax"].map(k=>PK.isRelevant(k,r)), [false,false,false,true,true,false]);
+  assert.deepEqual(["e0","emax","teq","tout","imax","smax"].map(k=>PK.isRelevant(k,r)), [false,false,true,true,true,false]);
   assert.deepEqual(["e0","emax","teq","tout","imax","smax"].map(k=>PK.isRelevant(k,S({}))), [true,true,true,false,false,false]);
   assert.ok(PK.LOCKS.some(l=>l[0]==="tout"), "Vary only can hold the turnover apart");
 });
@@ -132,4 +133,29 @@ test("glossary: the indirect-response terms, and the effect compartment's origin
   // the baseline relation the glossary states: R₀·(1 − Imax·f) for inhibited production
   const p=S({idr:1, imax:0.5, ec50:2}); rel(I.plateau(p, 2), 100*(1-0.5*0.5), 1e-12);
   ["dayneka1993","sheinerStanski1979","warfarin"].forEach(k=> assert.ok(PK.SOURCES[k] && PK.SOURCES[k].url, k));
+});
+
+test("an effect-site delay drives the response through the effect site (2.17), and older links open as they did", ()=>{
+  const V=PK.VIEW_DEFAULTS, base={route:"oral", dosing:"single", D:25, F:1, ka:1.2, thalf:40, V:9.8, ec50:1, idr:1, imax:1, tout:5};
+  const plain=S(base), slow=S({...base, teq:6});
+  // no delay: the response follows the plasma level exactly as before; a delay of 0 is the same scenario
+  assert.equal(PK.keqOf(plain), 0); assert.ok(PK.keqOf(slow)>0);
+  const a=I.stats(plain, 168), b=I.stats(slow, 168);
+  assert.ok(b.tExt>a.tExt+2, `the largest change comes later with the delay (${a.tExt.toFixed(2)} → ${b.tExt.toFixed(2)} h)`);
+  assert.ok(Math.abs(b.change)<Math.abs(a.change), "and is smaller, as the effect site never reaches the plasma peak");
+  assert.equal(b.tCmax, a.tCmax, "the plasma peak itself doesn't move");
+  // at a constant plasma level the delay changes nothing once the effect site has caught up
+  const flat=t=> 2, cf=I.course(slow, 400, flat), cp=I.course(plain, 400, flat);
+  near(I.interp(cf, 400), I.interp(cp, 400), 1e-9, "a level passed in directly is used as given");
+  // links: the pair needs v14 and round-trips; a v13 link with both opens as it always did, driven by plasma
+  const link=PK.encodeLink({mode:"sim", s:slow, view:V});
+  assert.ok(link.startsWith("v=14&"), link);
+  assert.equal(PK.decodeLink(link).s.teq, 6);
+  assert.equal(PK.decodeLink(link.replace("v=14&","v=13&")).s.teq, 0, "before v14 the delay did nothing with a response");
+  assert.equal(PK.decodeLink("v=13&s=teq:2").s.teq, 2, "a direct effect keeps its delay");
+  assert.ok(PK.encodeLink({mode:"sim", s:plain, view:V}).startsWith("v=10&"), "a response without a delay is still v10");
+  // the population band follows the same course
+  const Pop=require("../pop-worker.js"), r=Pop.population(PK, slow, {T:168, n:50, cvCL:0, cvV:0, seed:1, pd:1});
+  const worst=Math.max(...r.t.map((t,i)=> Math.abs(r.e50[i]-I.at(slow, 168, t))));
+  assert.ok(worst<0.05, `with no variability the band's median is the response itself (worst ${worst.toFixed(4)} points)`);
 });

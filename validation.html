@@ -76,7 +76,7 @@
 <p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients. The model itself, equation by equation, is in <a href="methods.html">Model and methods</a>.</p>
 
 <!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
-<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 12 indirect responses at five times and at their largest change, and the 11 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
+<div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 15 indirect responses at five times and at their largest change, and the 11 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
@@ -113,7 +113,7 @@
     </ul></li>
   <li><b>Bayesian individualization (MAP).</b> 20 scenarios with one to three measured levels (every route, single, repeated, loading and missed-dose regimens, normal and reduced kidney function, different prior CVs). The reference minimises the same objective, the squared standardised residuals plus the log-normal prior terms, with SciPy's Nelder–Mead on the ODE solver's predictions. The estimated clearance and volume must agree within 0.5%.</li>
   <li><b>Antimicrobial PK/PD indices.</b> 12 regimens (piperacillin as 30-minute, 3-hour, 4-hour and continuous infusions, and with reduced kidney function; meropenem; gentamicin divided and once daily; vancomycin; an oral and an IV-bolus regimen; two compartments). The reference runs each in the ODE solver until it repeats itself, then reads its last interval: the time the unbound level is above the MIC (crossings by bisection), the peak, and the area. fT&gt;MIC must agree within 0.01 percentage points, Cmax/MIC and AUC24/MIC within 0.01%. The test suite also holds fT&gt;MIC to its closed forms: ln(C₀,ss / (MIC/fu)) / kₑ for an IV bolus, both crossings of an infusion, and exactly 100% for a continuous infusion above the MIC.</li>
-  <li><b>Indirect responses.</b> 12 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination and a patient with reduced creatinine clearance. The reference integrates the response together with the drug in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
+  <li><b>Indirect responses.</b> 15 scenarios across the four types of Dayneka, Garg and Jusko (1993): every route, a custom schedule, two compartments, saturable elimination, a patient with reduced creatinine clearance, and three responses driven through an effect-site delay. The reference integrates the response together with the drug (and, with a delay, the effect-site level) in one ODE system. The response must agree within 0.01% at five times and at its largest change, and the time of that change within 0.01 h. The test suite also holds it to its analytic behaviour: no change without drug, and at a constant level an exponential approach to the plateau with time constant 1/kout (types 1 and 3) or 1/(kout·(1 ∓ D)) (types 2 and 4).</li>
   <li><b>Hemodialysis.</b> 8 scenarios with the dialysis clearance switched on during each session: an IV bolus, end-stage kidney disease with 8-hour sessions, oral and infused regimens, a session overlapping an infusion, a mixed-route schedule, loading and missed doses, and a fast dialyzer. The reference integrates the drug and the amount the dialyzer removes in one ODE system. The level at six times, and each session's level as it starts and ends and the amount it removes, must agree within 0.01%. The test suite also holds the model to mass balance: what the body clears plus what the dialyzer removes equals what was given.</li>
   <li><b>A standing cross-check</b>, also in the test suite. Seeded random scenarios (routes, loading and missed doses, one and two compartments, custom schedules, saturable elimination) compare every dose-table peak, the last-dose and steady-state peaks, the window's area and times, and the time above a target effect with dense scans of the engine's own curve.</li>
 </ul>
@@ -135,7 +135,7 @@
 <tbody></tbody></table></div>
 
 <h2>Indirect responses</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:384px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Indirect responses table" style="min-height:480px"><table id="idrTbl"><caption>Each scenario: the response (% of baseline) at its largest change, when that comes, and the largest difference at five times.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Largest change (ref, %)</th><th scope="col">Δ</th><th scope="col">When (ref, h)</th><th scope="col">Δ h</th><th scope="col">Worst of 5 times</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
@@ -199,9 +199,9 @@ if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:
 (function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ENGINE=["pk-engine.js?v=29d9af2bc9","pk-hd.js?v=adbb8a2d82","pk-idr.js?v=f6002874d2","pk-bayes.js?v=21a1045af5"], WORKER="validation-worker.js?v=c52ca6c802";
+  const ENGINE=["pk-engine.js?v=218c8fad68","pk-hd.js?v=adbb8a2d82","pk-idr.js?v=aa908966ba","pk-bayes.js?v=21a1045af5"], WORKER="validation-worker.js?v=c52ca6c802";
   const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
-  fetch("validation/reference-results.json?v=3e5c9bbc7c").then(r=>r.json()).then(REF=>{
+  fetch("validation/reference-results.json?v=4a69dae91a").then(r=>r.json()).then(REF=>{
     // every comparison's result, in order, for the sphere at the top of the page
     window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
     window.dcChecks=[];

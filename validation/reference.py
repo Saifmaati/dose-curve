@@ -267,6 +267,8 @@ def pkpd_matrix():
 # ---------------- indirect response models ----------------
 # The response integrated together with the drug (one ODE system, piecewise between doses), then read at five times
 # and at its largest change from baseline (a 0.002 h grid refined by golden-section search on the dense solution).
+# With an effect-site delay (teq) the system carries the effect-site level too, dCe/dt = ke0*(C - Ce), and the drug
+# acts through Ce instead of C.
 def idr_course(p, t_end):
     V = p["V"] * p["wt"] / 70.0
     fac, S, F, ka = factor(p), p.get("S", 1.0), p.get("F", 1.0), p.get("ka", 1.0)
@@ -278,6 +280,7 @@ def idr_course(p, t_end):
     kout = math.log(2) / p["tout"]; kin = 100.0 * kout
     ec50, n, typ = p.get("ec50", 4.0), p.get("hill", 1.0), p["idr"]
     mx = p.get("imax", 1.0) if typ in (1, 2) else p.get("smax", 4.0)
+    ke0 = math.log(2) / p["teq"] if p.get("teq", 0) > 0 and not mm else None
     ds = doses(p)
     cuts = sorted({0.0, t_end} | {t for t, *_ in ds if t < t_end} | {t + d for t, _, r, d in ds if r == "inf" and t + d < t_end})
 
@@ -285,15 +288,17 @@ def idr_course(p, t_end):
         return sum(S * mg / d for t0, mg, r, d in ds if r == "inf" and t0 <= t < t0 + d)
 
     def rhs(t, y, R):
-        ag, a, ap, r = y
+        ag, a, ap, r = y[:4]
         c = max(a, 0.0) / V
         el = vmax_h * c / (km + c) if mm else ke * a
-        dr = mx * (c ** n / (ec50 ** n + c ** n) if c > 0 else 0.0)
+        cd = max(y[4], 0.0) if ke0 is not None else c   # the level the drug acts through
+        dr = mx * (cd ** n / (ec50 ** n + cd ** n) if cd > 0 else 0.0)
         dR = (kin * (1 - dr) - kout * r if typ == 1 else kin - kout * (1 - dr) * r if typ == 2
               else kin * (1 + dr) - kout * r if typ == 3 else kin - kout * (1 + dr) * r)
-        return [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, k12 * a - k21 * ap, dR]
+        out = [-ka * ag, ka * ag + R - el - k12 * a + k21 * ap, k12 * a - k21 * ap, dR]
+        return out + [ke0 * (c - y[4])] if ke0 is not None else out
 
-    y = np.array([0.0, 0.0, 0.0, 100.0])
+    y = np.array([0.0, 0.0, 0.0, 100.0] + ([0.0] if ke0 is not None else []))
     pieces = []
     for s0, s1 in zip(cuts[:-1], cuts[1:]):
         for t0, mg, r, d in ds:
@@ -340,6 +345,9 @@ def idr_matrix():
         ("type 1, saturable elimination, daily", 168, dict(route="oral", dosing="repeated", D=300, F=1, ka=0.4, tau=24, nDoses=7, V=49, kin="mm", vmax=7, km=4, ec50=10, idr=1, imax=1, tout=24)),
         ("type 2, clinical patient (CrCl), infusions q12h", 96, dict(route="inf", dosing="repeated", D=1000, tinf=1, tau=12, nDoses=8, V=28, thalf=4.8, pm="clinical", age=70, sex="F", scr=1.4, fe=0.83, wt=60, ec50=15, idr=2, imax=0.7, tout=12)),
         ("type 4, loading dose and a missed dose", 96, dict(route="oral", dosing="repeated", D=250, F=1, ka=1.0, tau=8, nDoses=10, loadMult=2, missed=4, V=30, thalf=6, idr=4, smax=1.5, tout=4)),
+        ("type 1, turnover 5 h behind an effect-site delay of 6 h", 168, dict(route="oral", dosing="single", D=25, F=1, ka=1.2, thalf=40, V=9.8, ec50=1, idr=1, imax=1, tout=5, teq=6)),
+        ("type 3, infusions q8h, effect-site delay 2 h", 72, dict(route="inf", dosing="repeated", D=400, tinf=1, tau=8, nDoses=6, V=35, thalf=4, idr=3, smax=4, tout=3, teq=2)),
+        ("type 2, two compartments, IV bolus, effect-site delay 1 h, Hill 2", 48, dict(route="iv", dosing="single", D=800, V=20, thalf=3, cmt=2, k12=0.8, k21=0.4, hill=2, idr=2, imax=0.9, tout=2, teq=1)),
     ]
     return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
 
@@ -519,7 +527,7 @@ def main():
                 "tolerance": 0.005, "scenarios": maps},
         "pkpd": {"about": "fT>MIC (% of a steady-state interval with the unbound level above the MIC), Cmax/MIC and AUC24/MIC for 12 regimens, each run to steady state in the ODE solver.",
                  "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
-        "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 12 scenarios integrated with the drug in one ODE system.",
+        "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 15 scenarios integrated with the drug (and, with an effect-site delay, the effect-site level) in one ODE system.",
                 "tolerance": {"rel": 0.0001, "t_h": 0.01}, "scenarios": idr},
         "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 11 scenarios (3 of them two-compartment) with a dialysis clearance switched on during sessions.",
                "tolerance": {"rel": 0.0001}, "scenarios": hd},

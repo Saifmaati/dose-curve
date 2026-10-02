@@ -3,8 +3,10 @@
    or stimulates the production (kin) or the loss (kout) of a response R, which before the drug is at its baseline
    R0 = kin / kout. DoseCurve shows R as a percentage of R0 (so R0 = 100), and adds a maximum (Imax ≤ 1 for
    inhibition, Smax for stimulation) and a Hill slope n to the paper's drug function; with Imax = 1 and n = 1 it is
-   the paper's form. The drug acts on plasma concentration directly:
-     f(C) = Cⁿ / (EC50ⁿ + Cⁿ)
+   the paper's form. The drug acts on plasma concentration, or with an effect-site delay (teq) on the effect-site
+   concentration Ce, dCe/dt = ke0·(C − Ce) (PK.ceConc), so the response can lag the level twice over: the drug
+   reaching its site, then the response's own turnover:
+     f(C) = Cⁿ / (EC50ⁿ + Cⁿ)        (C replaced by Ce with a delay)
      type 1  dR/dt = kin·(1 − Imax·f) − kout·R        inhibits production
      type 2  dR/dt = kin − kout·(1 − Imax·f)·R        inhibits loss
      type 3  dR/dt = kin·(1 + Smax·f) − kout·R        stimulates production
@@ -18,7 +20,7 @@
   else if(root && root.PK) root.PK.idrModule=factory(root.PK);
 })(typeof self!=="undefined" ? self : this, function(PK){
   "use strict";
-  const {conc, doseEvents, windowStats, encodeScenario}=PK;
+  const {ceConc, doseEvents, windowStats, encodeScenario}=PK;
   const R0=100;
   const TYPES=[null,
     {id:1, name:"Inhibits production", what:"production (kin)", sign:-1, inhib:true},
@@ -50,7 +52,7 @@
   function course(p, T, level, maxSteps){
     const key=level || maxSteps ? null : encodeScenario(p)+"|"+T;
     if(key && cache.has(key)) return cache.get(key);
-    const ev=level ? [] : doseEvents(p), raw=level || (t=> conc(p, t, ev));
+    const ev=level ? [] : doseEvents(p), raw=level || (t=> ceConc(p, t, ev));   // plasma itself without a delay
     // the level at the last two times asked for: a step asks for t + h/2 twice and ends where the next begins
     let t1=NaN, c1=0, t2=NaN, c2=0;
     const cOf=t=>{ if(t===t1) return c1; if(t===t2) return c2; const c=raw(t); t2=t1; c2=c1; t1=t; c1=c; return c; };
