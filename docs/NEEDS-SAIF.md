@@ -24,7 +24,7 @@ What a student sees after the switch, on a browser that opened 2.20 before it: u
 
 ## 1. Merge the release pull requests
 
-**Done to 2.18.0.** The release pull requests #12–#39 (1.10.0 to 2.18.0) were merged by 2026-10-02, and the live site serves 2.18.0. Open: #40 (2.19.0), then 2.20.0, which is stacked on it. Each later release is its own pull request with green CI; merge them in version order. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+**Done to 2.19.0.** The release pull requests #12–#40 (1.10.0 to 2.19.0) were merged by 2026-10-04, and each has its GitHub Release. Open: #41 (2.20.0, MaatiRx): merge it before switching the domain (see "First" above). Each later release is its own pull request with green CI; merge them in version order. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
 
 ## 2. GitHub Releases
 
