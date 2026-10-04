@@ -73,7 +73,7 @@
     // a saturable patient is integrated once over the window and read from that solution, which is then let
     // go (the engine's own cache would keep every patient's solution alive until the population is done)
     list.forEach((q,j)=>{
-      if(p.kin==="mm"){ const st=PK.mmIntegrate(q, ev, T+PK.MM_STEP), V=PK.vOf(q); for(let i=0;i<G;i++) cols[i][j]=PK.mmAmount(st, t[i])/V; }
+      if(p.kin==="mm"){ const st=PK.hdOn(q) && PK.hd ? PK.hd.mmSteps(q, T+PK.MM_STEP) : PK.mmIntegrate(q, ev, T+PK.MM_STEP), V=PK.vOf(q); for(let i=0;i<G;i++) cols[i][j]=PK.mmAmount(st, t[i])/V; }
       else for(let i=0;i<G;i++) cols[i][j]=PK.conc(q, t[i], ev);
     });
     // the 5th, 25th, 50th, 75th and 95th percentiles (the chart layers the middle 90% and the middle 50%, 2.13)
@@ -81,7 +81,8 @@
     cols.forEach(c=>{ const s=Array.from(c).sort((a,b)=>a-b); q05.push(quantile(s,0.05)); q25.push(quantile(s,0.25)); q50.push(quantile(s,0.5)); q75.push(quantile(s,0.75)); q95.push(quantile(s,0.95)); });
     const out={n, t, q05, q25, q50, q75, q95, cvCL:o.cvCL, cvV:o.cvV, seed:o.seed};
     if(o.pd) Object.assign(out, effectBand(PK, p, list, ev, t, cols));
-    if(p.dosing==="repeated"){
+    // attainment is read at steady state: with dialysis (sessions that don't repeat with the doses) there is none
+    if(p.dosing==="repeated" && !PK.hdOn(p)){
       let hit=0, hitAuc=0, noSS=0, troughs=[], peaks=[];
       const F=p.route==="oral" ? p.F : 1, S=PK.saltOf(p), mm=p.kin==="mm";
       list.forEach(q=>{

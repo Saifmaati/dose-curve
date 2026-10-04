@@ -632,3 +632,15 @@ Then a four-dimension review (model, integration, accessibility, rendering) with
 
 Lighthouse on mobile: the root 95, `#app` 97 and 97, desktop 99; accessibility 100 and CLS 0. Runs taken while a video call loaded the machine gave 83–89 on `#app` mobile. 3D adds nothing to the first load: neither its file nor Three.js is requested until the press. Layout shift 0 on the root (0.0003 at 1440), `#app`, `#lessons` and a link with levels, at 390 and 1440. 406 tests.
 
+## 47. 2.19.0 (dialysis with saturable elimination)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The saturable course with sessions | a saturable drug with Hemodialysis on | `hd-mm.test.js` (before the first session the engine's own curve; continuity at session edges, with the slope jumping by CLd·C; mass balance to 1e-6 for IV, oral, infusion and mixed schedules; the body's elimination against an independent integral; stability at extremes); the SciPy reference (4 scenarios within 0.01%) |
+| A session's fall from a stated level, with its limits; the supplement | the readouts, the panel | `hd-mm.test.js` (the closed form against the integrator; the fall between its limits and smaller from higher levels; clForFall; the supplement restores the level) |
+| AUC∞ through the sessions | AUC∞ | `hd-mm.test.js` (against piecewise Simpson's rule, and against the course followed to 6,000 h with drug left in the gut) |
+| No steady state; readouts; links v15 | the note, population mode, links | `hd-mm.test.js` (null steady-state fields, every readout with a value, v15 round trip, older links' curves unchanged); a browser run (eight cards matching their keys for all three dosings, no errors) |
+| The landing's depth-sort | the landing | a performance trace (the 87 ms frame gone); full scrolls: 1–3 single 33 ms frames |
+
+The design was mapped first by three code readers and a designer. The finished change was reviewed by four reviewers, each finding checked by a second reviewer: 11 findings were confirmed and fixed (6 rejected). axe: no violations on a saturable dialysis link in both themes at 1280 and 390 px. 418 tests.
+

@@ -126,7 +126,7 @@
     {term:"Sensitivity analysis", sym:"±20%", unit:"%", lesson:"cl",
      def:"Moving one input at a time, here by 20% down and up with everything else held, to see which one an output depends on most. Clearance ±20% moves AUC24 by +25% and −16.7% (AUC = F·dose / CL), while volume leaves it unchanged but moves the peak and the trough. The simulator shows it as a tornado chart."},
     {term:"Dialysis clearance", sym:"CLd", unit:"L/h", lesson:"hd",
-     def:"The clearance a dialysis session adds while it runs. It adds to the body's own: the rate constant during a session is kₑ + CLd / V, so a session of T hours lowers the level (with no dose during it) by 1 − e^(−(kₑ + CLd/V)·T), and the dialyzer's share of the loss is CLd / (CL + CLd)."},
+     def:"The clearance a dialysis session adds while it runs. It adds to the body's own: the rate constant during a session is kₑ + CLd / V, so a session of T hours lowers the level (with no dose during it) by 1 − e^(−(kₑ + CLd/V)·T), and the dialyzer's share of the loss is CLd / (CL + CLd). With saturable elimination the body's clearance falls as the level rises while the dialyzer's does not, so how far a session lowers the level depends on where it starts."},
     {term:"Post-dialysis rebound", sym:"", unit:"", lesson:"hdreb",
      def:"The rise in level after a session as drug moves back from the tissues into the blood. A one-compartment model can't show it, so the level it gives just after a session tends to be lower than one measured some time later; with two compartments DoseCurve shows the rebound and gives its size and timing for each session."},
     {term:"Indirect response", sym:"kin, kout", unit:"", lesson:"idr",

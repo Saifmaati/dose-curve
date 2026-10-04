@@ -19,8 +19,8 @@ The model:
     indirect responses (Dayneka, Garg and Jusko 1993): a response R (100 = baseline) integrated with the drug,
                  dR/dt = kin*(1 -/+ D(C)) - kout*R (types 1, 3) or kin - kout*(1 -/+ D(C))*R (types 2, 4),
                  D(C) = max * C^n / (EC50^n + C^n), kin = 100*kout, kout = ln 2 / turnover half-life
-    hemodialysis: during each session the elimination rate is ke + CLd/V; a fourth state accumulates CLd*C, the
-                 amount the dialyzer removes
+    hemodialysis: during each session the elimination rate is ke + CLd/V (with saturable elimination, dA/dt loses
+                 Vmax*C/(Km + C) + CLd*C); a fourth state accumulates CLd*C, the amount the dialyzer removes
     antimicrobial indices: a regimen run until it repeats itself (30 terminal half-lives), then its last interval
                  read for the time the unbound level fu*C is above the MIC, the peak over the MIC, and the area over
                  the interval scaled to 24 h over the MIC
@@ -358,7 +358,11 @@ def idr_matrix():
 def hd_course(p, t_end):
     V = p["V"] * p["wt"] / 70.0
     fac, S, F, ka = factor(p), p.get("S", 1.0), p.get("F", 1.0), p.get("ka", 1.0)
-    ke = math.log(2) / p["thalf"] * fac
+    # saturable elimination (2.19): Vmax*C/(Km + C) in place of ke*A, the dialyzer's kd*A added during sessions
+    mm = p.get("kin") == "mm"
+    ke = math.log(2) / p["thalf"] * fac if not mm else None
+    vmax_h = p.get("vmax", 7) * p["wt"] / 24.0 * fac if mm else None
+    km = p.get("km", 4.0)
     kd = p["hdcl"] / V
     ses = []
     t = p["hdstart"]
@@ -382,6 +386,11 @@ def hd_course(p, t_end):
         ag, a, rem, a2 = y
         return [-ka * ag, ka * ag + R - ke * a - k_d * a - k12 * a + k21 * a2, k_d * a, k12 * a - k21 * a2]
 
+    def rhs_mm(t, y, R, k_d):
+        ag, a, rem, a2 = y
+        c = max(a, 0.0) / V
+        return [-ka * ag, ka * ag + R - vmax_h * c / (km + c) - k_d * a, k_d * a, 0.0]
+
     y = np.array([0.0, 0.0, 0.0, 0.0])
     pieces = []
     for s0, s1 in zip(cuts[:-1], cuts[1:]):
@@ -389,7 +398,7 @@ def hd_course(p, t_end):
             if abs(t0 - s0) < 1e-12:
                 if r == "iv": y[1] += S * mg
                 elif r == "oral": y[0] += F * S * mg
-        sol = solve_ivp(rhs, (s0, s1), y, args=(rate(s0), kd if on(s0) else 0.0), method="DOP853", rtol=1e-12, atol=1e-13, dense_output=True)
+        sol = solve_ivp(rhs_mm if mm else rhs, (s0, s1), y, args=(rate(s0), kd if on(s0) else 0.0), method="DOP853", rtol=1e-12, atol=1e-13, dense_output=True)
         pieces.append((s0, s1, sol.sol))
         y = sol.y[:, -1].copy()
 
@@ -421,6 +430,12 @@ def hd_matrix():
         ("two compartments, IV bolus, rebound after a session", 48, dict(route="iv", dosing="single", D=1000, V=20, thalf=6, cmt=2, k12=0.8, k21=0.4, hdcl=8, hdstart=6, hddur=4, hdevery=48)),
         ("two compartments, daily infusions, sessions every 48 h", 120, dict(route="inf", dosing="repeated", D=1000, tinf=1, tau=24, nDoses=5, V=28, thalf=30, cmt=2, k12=0.5, k21=0.25, hdcl=6, hdstart=20, hddur=4, hdevery=48)),
         ("two compartments, oral, slow return from the tissues", 96, dict(route="oral", dosing="repeated", D=400, F=0.8, ka=1.2, tau=12, nDoses=8, V=30, thalf=12, cmt=2, k12=1.5, k21=0.2, hdcl=10, hdstart=10, hddur=5, hdevery=48)),
+        # saturable elimination (2.19): no drug names, since no dialysis clearance is sourced for a saturable library drug
+        ("saturable, oral daily, sessions every 48 h", 168, dict(kin="mm", route="oral", dosing="repeated", D=300, S=0.92, F=1, ka=0.4, tau=24, nDoses=7, V=49, vmax=7, km=4, hdcl=5, hdstart=20, hddur=4, hdevery=48)),
+        ("saturable, infusions q12h after a double loading dose, sessions overlapping infusions", 96, dict(kin="mm", route="inf", dosing="repeated", D=250, tinf=1, tau=12, nDoses=8, loadMult=2, V=50, vmax=10, km=6, hdcl=8, hdstart=23.5, hddur=4, hdevery=24)),
+        ("saturable, IV bolus far above Km, sessions every 24 h", 48, dict(kin="mm", route="iv", dosing="single", D=1500, V=40, vmax=7, km=4, hdcl=10, hdstart=2, hddur=6, hdevery=24)),
+        ("saturable, custom schedule (loading infusion, then oral), reduced kidney function", 120, dict(kin="mm", route="oral", dosing="custom", pm="clinical", age=60, sex="M", scr=3, fe=0.3, F=0.9, ka=0.6, V=45, vmax=8, km=5, S=0.92, hdcl=6, hdstart=30, hddur=4, hdevery=48,
+            events=[{"t": 0, "mg": 1000, "route": "inf", "dur": 1}, {"t": 24, "mg": 300, "route": "oral"}, {"t": 48, "mg": 300, "route": "oral"}, {"t": 72, "mg": 300, "route": "oral"}, {"t": 96, "mg": 300, "route": "oral"}])),
     ]
     return [{"name": nm, "T": T, "scenario": dict(base, **sc)} for nm, T, sc in rows]
 
@@ -529,7 +544,7 @@ def main():
                  "tolerance": {"ft_pp": 0.01, "ratio": 0.0001}, "scenarios": pkpd},
         "idr": {"about": "Indirect responses (types 1-4, % of baseline) at five times and at their largest change, for 15 scenarios integrated with the drug (and, with an effect-site delay, the effect-site level) in one ODE system.",
                 "tolerance": {"rel": 0.0001, "t_h": 0.01}, "scenarios": idr},
-        "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 11 scenarios (3 of them two-compartment) with a dialysis clearance switched on during sessions.",
+        "hd": {"about": "Hemodialysis: the level at six times and, for up to three sessions, the level as each starts and ends and the amount it removes, for 15 scenarios (3 of them two-compartment, 4 with saturable elimination) with a dialysis clearance switched on during sessions.",
                "tolerance": {"rel": 0.0001}, "scenarios": hd},
     }
     with open(__file__.replace("reference.py", "reference-results.json"), "w") as f:
