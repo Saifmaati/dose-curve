@@ -48,7 +48,7 @@ test("the old name appears only where it has to (the brief's search, with its re
   }
   assert.deepEqual(stray, []);
   // nor split in two, as the old opening screen and storyboards wrote it
-  assert.deepEqual(files.filter(f=> /Dose\s*(·+|\||<\/span>\s*<span>)\s*Curve|"Dose" and "Curve"/.test(read(f))), []);
+  assert.deepEqual(files.filter(f=> f!=="tests/rename.test.js" && /Dose\s*(·+|\||<\/span>\s*<span>)\s*Curve|"Dose" and "Curve"/.test(read(f))), []);
   const formerly=f=> read(f).split("\n").filter(l=> /formerly DoseCurve/.test(l)).length;
   assert.equal(formerly("README.md"), 1);
   assert.equal(formerly("methods.html"), 1);
