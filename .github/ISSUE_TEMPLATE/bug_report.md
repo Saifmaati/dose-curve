@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in DoseCurve looks wrong or doesn't work
+about: Something in MaatiRx looks wrong or doesn't work
 title: "Bug: "
 labels: bug
 ---

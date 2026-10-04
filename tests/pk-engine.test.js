@@ -662,10 +662,10 @@ test("saved names are plain text: control and direction characters removed, trim
   assert.equal(it.name.length, 60);
 });
 
-test("parseLibrary rejects files that aren't DoseCurve libraries", ()=>{
+test("parseLibrary rejects files that aren't MaatiRx (or DoseCurve) libraries", ()=>{
   assert.equal(PK.parseLibrary("{not json").error, "not valid JSON");
-  assert.equal(PK.parseLibrary({format:"something-else", items:[]}).error, "not a DoseCurve scenario file");
-  assert.equal(PK.parseLibrary(null).error, "not a DoseCurve scenario file");
+  assert.equal(PK.parseLibrary({format:"something-else", items:[]}).error, "not a MaatiRx (or DoseCurve) scenario file");
+  assert.equal(PK.parseLibrary(null).error, "not a MaatiRx (or DoseCurve) scenario file");
   assert.deepEqual(PK.parseLibrary(PK.exportLibrary([])).library.items, []);
 });
 

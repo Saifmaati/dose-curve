@@ -1,4 +1,4 @@
-/* DoseCurve Bayesian individualization (maximum a posteriori, MAP)
+/* MaatiRx Bayesian individualization (maximum a posteriori, MAP)
    Measured levels are weighed against what the patient model predicts before any level is known (the prior), each
    by its own uncertainty: the approach of Sheiner, Beal, Rosenberg and Marathe, "Forecasting individual
    pharmacokinetics", Clin Pharmacol Ther 1979;26(3):294-305 (doi:10.1002/cpt1979263294). One compartment and

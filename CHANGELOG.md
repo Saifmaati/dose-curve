@@ -1,6 +1,27 @@
 # Changelog
 
-What changed in DoseCurve, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+What changed in MaatiRx (called DoseCurve until 2.19), newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+
+## 2.20.0 (2026-10-04)
+
+DoseCurve is now **MaatiRx**, at **https://maatirx.com/**.
+
+- **The name.** The top bar, the opening screen ("Maati | Rx", split by the curve), every page's title, the footer, the citation files and the docs say MaatiRx. The wordmark keeps its weights: "Maati" in the strong weight, "Rx" in the light one.
+- **The address.** The canonical address, the link previews, the sitemap, robots.txt, the JSON-LD and the citation files point at https://maatirx.com/. The repository keeps its name, so once the custom domain is set GitHub redirects every saifmaati.github.io/dose-curve/ address to the same path on maatirx.com, and links already shared keep working.
+- **A new preview image** for shared links: the opening screen with the new name. The README's screenshots are retaken.
+- **Downloads** are named maatirx_compare.csv, maatirx_data.csv, maatirx_plot.png, maatirx-(name).json and maatirx-scenarios-(date).json.
+- **What carries over by itself.** Scenario files saved by DoseCurve still import. Completion codes made by DoseCurve still verify. Share links open as before. The names the app saves under in each browser stay the same.
+- **Saved work moves with the app.** A browser keeps saved work per address: the scenario library, lesson, practice and assignment progress, a case being written, the theme and effects. Without help, a returning student would find none of it at maatirx.com.
+  - Once the old address redirects, a browser that opened 2.20 there still opens the app there from its offline copy (the service worker keeps it). As soon as maatirx.com answers (its certificate can take a day after the switch; until then the old copy keeps working), the app says it has moved, lists what is saved, and offers **Bring it to maatirx.com** or **Not now**. From any old page the work goes to the app page, which takes it in.
+  - The work travels in the new link's # part, inside the browser; nothing is sent to a server. At maatirx.com it is added to what is saved there and replaces nothing: scenarios not already in the library are added, a lesson marked at either address is marked, and practice counts take the larger. The page reloads and says what came across, with **Undo**.
+  - The old address keeps its copy: the next old link says when the work was brought and offers **Go to maatirx.com** or **Bring it again** (nothing is added twice). Going removes the old offline copy, so old links then go straight to maatirx.com. **Not now** asks again at the next old link.
+  - The note says what was actually added: scenarios that didn't fit a full library (200) stay at the old address, and a case being written at both addresses keeps the one here.
+  - A link that carries something other than the app's own saved work is ignored, and so is work that isn't the app's own shape. The case form and a worksheet's saved answers are now escaped as they are shown.
+  - An open tab reads the library and progress again when another tab changes them, so it can't write back an older copy.
+  - This needs 2.20 to run at the old address before the domain is switched; docs/NEEDS-SAIF.md gives the order.
+- **Offline.** The service worker's cache is renamed; activating it clears the cache saved under the old name.
+- **The 404 page** loads its fonts from the root on a custom domain (it already rewrote its links).
+- The fit and window tasks' worked methods ("How?") moved to `pk-explain.js`, loaded with the first press, so the page's first script stays within its budget.
 
 ## 2.19.0 (2026-10-01)
 

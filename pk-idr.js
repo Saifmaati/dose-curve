@@ -1,7 +1,7 @@
-/* DoseCurve indirect response models
+/* MaatiRx indirect response models
    The four basic models of Dayneka, Garg and Jusko (J Pharmacokinet Biopharm 1993;21(4):457–478): the drug inhibits
    or stimulates the production (kin) or the loss (kout) of a response R, which before the drug is at its baseline
-   R0 = kin / kout. DoseCurve shows R as a percentage of R0 (so R0 = 100), and adds a maximum (Imax ≤ 1 for
+   R0 = kin / kout. MaatiRx shows R as a percentage of R0 (so R0 = 100), and adds a maximum (Imax ≤ 1 for
    inhibition, Smax for stimulation) and a Hill slope n to the paper's drug function; with Imax = 1 and n = 1 it is
    the paper's form. The drug acts on plasma concentration, or with an effect-site delay (teq) on the effect-site
    concentration Ce, dCe/dt = ke0·(C − Ce) (PK.ceConc), so the response can lag the level twice over: the drug

@@ -1,5 +1,5 @@
 // Run with: node --test
-// Validation: DoseCurve's engine against an independent solver (validation/reference.py, scipy solve_ivp) on a
+// Validation: MaatiRx's engine against an independent solver (validation/reference.py, scipy solve_ivp) on a
 // matrix of routes × regimens × drugs × patients, and against analytic identities of the model.
 const test=require("node:test");
 const assert=require("node:assert/strict");

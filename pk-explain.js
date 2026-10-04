@@ -1,4 +1,4 @@
-/* DoseCurve: what changed, explained (2.5)
+/* MaatiRx: what changed, explained (2.5)
    The sentences under "What changed" (and A vs B in Compare): for two scenarios, what moved and why, with the model's
    numbers. Moved out of the page's script unchanged, so the first view loads less; the page loads this file just
    after its first paint (it registers itself as PK.explainModule), and a link that opens with a baseline waits for
@@ -257,5 +257,34 @@
     out.push(net);
     return out;
   }
-  return {explain};
+
+  // the fit task's worked method (2.20: moved here from the page): fit is the task, h {fmt, trim}
+  function fitHow(fit, h){
+    const {fmt, trim}=h, e=PK.fitEstimate(fit), T=fit.truth;
+    if(fit.kind==="iv2"){
+      const n=fit.obs.length, late=fit.obs.slice(-4);
+      return `The method of residuals. The last ${late.length} points (${late.map(o=>trim(o.t)).join(", ")} h) lie on a straight line on the log scale: the terminal phase. Its slope is −β = −${fmt(e.beta,4)} h⁻¹ `+
+        `(terminal half-life ${fmt(Math.LN2/e.beta,1)} h), and it meets t = 0 at B = ${fmt(e.B,2)} mg/L. `+
+        `Take that line away from the early points: the residuals (${e.residuals.map(o=>`${fmt(o.r,2)} at ${trim(o.t)} h`).join(", ")}) fall on a steeper line, slope −α = −${fmt(e.alpha,3)} h⁻¹ (distribution half-life ${fmt(Math.LN2/e.alpha,2)} h), meeting t = 0 at A = ${fmt(e.A,2)} mg/L. `+
+        `Then k21 = (A·β + B·α) / (A + B) = ${fmt(e.k21,3)} h⁻¹, k10 = α·β / k21 = ${fmt(e.k10,3)} h⁻¹ (a half-life of ${fmt(e.thalf,1)} h), k12 = α + β − k21 − k10 = ${fmt(e.k12,3)} h⁻¹, and V1 = D / (A + B) = ${T.D} / ${fmt(e.A+e.B,2)} = ${fmt(e.V,1)} L. `+
+        `Set these, then fine-tune on the sliders: stripping two phases compounds the scatter in the measurements.`;
+    }
+    if(fit.kind==="iv")
+      return `On the log scale the points lie close to a straight line. The best line through them has slope −kₑ = −${fmt(e.k,3)} h⁻¹, so t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h. `+
+        `The line meets t = 0 at C₀ = ${fmt(e.C0,2)} mg/L, so V = D / C₀ = ${T.D} / ${fmt(e.C0,2)} = ${fmt(e.V,1)} L. `+
+        `The scatter in the measurements is why these differ a little from the settings that made the data.`;
+    return `The last three points lie on a straight line on the log scale, with slope −kₑ = −${fmt(e.k,3)} h⁻¹, so t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h. `+
+      `The area under the points (trapezoids) plus the tail, C_last / kₑ, gives AUC ≈ ${fmt(e.auc,1)} mg·h/L. Then CL = F·D / AUC = ${T.F} × ${T.D} / ${fmt(e.auc,1)} = ${fmt(e.CL,2)} L/h, `+
+      `and V = CL / kₑ = ${fmt(e.V,1)} L. Absorption shapes the rise and the peak but not the tail, which is why the tail gives the half-life.`;
+  }
+  // one regimen that meets the window task, and a textbook route to it (2.20: moved here from the page)
+  function windowHow(win, h){
+    const {fmt}=h, D=win.drug, S=win.solution, W=win.window, k=Math.LN2/D.thalf, CL=k*D.V;
+    const s=PK.windowStatus(win, PK.windowScenario(win)), tauMax=Math.log(W.hi/W.lo)/k;
+    return `One regimen that works: ${S.D} mg every ${S.tau} h (steady-state trough ${fmt(s.trough,2)} mg/L, peak ${fmt(s.peak,2)} mg/L). `+
+      `A textbook route: the swing e^(kₑτ) has to fit the band, so τ ≤ ln(${W.hi} / ${W.lo}) / kₑ = ln(${fmt(W.hi/W.lo,2)}) / ${fmt(k,4)} = ${fmt(tauMax,1)} h`+
+      (win.kind==="oral" ? " (a little longer works orally, since absorption smooths the swing)" : "")+`. `+
+      `Then the average level is F·D / (CL·τ), with CL = kₑ·V = ${fmt(CL,2)} L/h: aim it near the middle of the band. Other doses and intervals work too.`;
+  }
+  return {explain, fitHow, windowHow};
 });

@@ -7,16 +7,16 @@ const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
 
-const SCOPE="https://example.github.io/dose-curve/";
+const SCOPE="https://example.github.io/dose-curve/", DEFAULT_SCOPE=SCOPE;
 const SRC=fs.readFileSync(path.join(__dirname,"..","sw.js"),"utf8");
 // The cache name carries a version that each release phase bumps; the tests follow whatever sw.js says.
-const CACHE=SRC.match(/const CACHE="(dosecurve-v\d+)"/)[1];
+const CACHE=SRC.match(/const CACHE="(maatirx-v\d+)"/)[1];
 // the validation results, named by their content hash as sw.js lists them
 const RESULTS=SRC.match(/"\.\/(validation\/reference-results\.json\?v=[0-9a-f]{10})"/)[1];
 
-function makeWorker(){
+function makeWorker(SCOPE=DEFAULT_SCOPE){
   const handlers={}, store=new Map(), log=[], modes=[];
-  let online=true, version=1;
+  let online=true, version=1, moved=false;
   const keyOf=r=> typeof r==="string" ? new URL(r, SCOPE).href : r.url;
   const response=(url, mode)=>{
     const u=new URL(url), opaque=mode==="no-cors" && u.origin!==new URL(SCOPE).origin;
@@ -27,6 +27,8 @@ function makeWorker(){
   const network=async(req)=>{
     const url=keyOf(req); log.push(url); modes.push(typeof req==="string" ? "default" : req.cache || "default");
     if(!online) throw new TypeError("Failed to fetch");
+    // once the address redirects (a custom domain set), every answer from it is a redirect the worker can't read
+    if(moved && new URL(url).origin===new URL(SCOPE).origin) return {url, status:0, ok:false, type:"opaqueredirect", body:"", clone(){ return this; }};
     return response(url, typeof req==="string" ? "cors" : req.mode);
   };
   const cacheOf=name=>{
@@ -48,24 +50,24 @@ function makeWorker(){
   vm.runInNewContext(SRC, {self, caches, fetch:network, URL, Request, Promise, console});
   const lifecycle=async type=>{ let p; handlers[type]({waitUntil:x=>{ p=x; }}); await p; };
   // a fetch event: {handled:false} when the worker lets the browser deal with it
-  const request=async(url, {mode="no-cors", method="GET"}={})=>{
+  const request=async(url, {mode="no-cors", method="GET", cache="default"}={})=>{
     let responded=null, later=null;
-    handlers.fetch({request:{url:new URL(url,SCOPE).href, method, mode}, respondWith:p=>{ responded=p; }, waitUntil:p=>{ later=p; }});
+    handlers.fetch({request:{url:new URL(url,SCOPE).href, method, mode, cache}, respondWith:p=>{ responded=p; }, waitUntil:p=>{ later=p; }});
     if(!responded) return {handled:false};
     const res=await responded;
     if(later) await later;
     return {handled:true, res};
   };
   return {lifecycle, request, store, log, modes, cache:()=>store.get(CACHE),
-    goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }};
+    goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }, moveAway(){ moved=true; }};
 }
 
-test("installing saves the app's icons and manifest; activating clears only older DoseCurve caches", async()=>{
+test("installing saves the app's icons and manifest; activating clears only older caches of the app (MaatiRx's, and DoseCurve's from before 2.20)", async()=>{
   const w=makeWorker();
-  w.store.set("dosecurve-v0", new Map()); w.store.set("dosecurve-v1", new Map()); w.store.set("someone-else", new Map());
+  w.store.set("dosecurve-v0", new Map()); w.store.set("dosecurve-v1", new Map()); w.store.set("maatirx-v1", new Map()); w.store.set("someone-else", new Map());
   await w.lifecycle("install"); await w.lifecycle("activate");
   assert.deepEqual([...w.store.keys()].sort(), [CACHE,"someone-else"]);
-  assert.notEqual(CACHE, "dosecurve-v1", "bumped since the first release");
+  assert.notEqual(CACHE, "maatirx-v1", "bumped since the first release");
   ["", "site.webmanifest", "favicon.svg", "icon-192.png"].forEach(f=> assert.ok(w.cache().has(SCOPE+f), f));
 });
 
@@ -157,3 +159,25 @@ test("installing fetches every file from the network, past the browser's HTTP ca
   assert.ok(w.cache().has(SCOPE) && w.cache().has(SCOPE+"validation.html"), "saved under their plain addresses");
 });
 
+
+test("at the old address, once it redirects to maatirx.com, the saved app page still opens there, to offer the move (2.20)", async()=>{
+  const OLD="https://saifmaati.github.io/dose-curve/", w=makeWorker(OLD);
+  await w.lifecycle("install");
+  await w.request(OLD, {mode:"navigate"});
+  w.moveAway();
+  for(const u of [OLD, OLD+"#v=4&s=D:500", OLD+"index.html", OLD+"validation.html", OLD+"educators.html"])
+    assert.equal((await w.request(u, {mode:"navigate"})).res.body, "/dose-curve/ v1", u);
+  assert.equal((await w.request(OLD+"site.webmanifest?moved=1", {mode:"cors"})).res.type, "opaqueredirect", "the page's own check sees the redirect");
+  assert.ok(!w.cache().has(OLD+"site.webmanifest?moved=1"), "and it isn't kept");
+  // before the switch the same check answers, and isn't kept either (it asks for no-store)
+  const pre=makeWorker(OLD);
+  await pre.lifecycle("install");
+  assert.equal((await pre.request(OLD+"site.webmanifest?moved=2", {mode:"cors", cache:"no-store"})).res.ok, true);
+  assert.ok(!pre.cache().has(OLD+"site.webmanifest?moved=2"));
+  // any other address: the redirect is the browser's to follow
+  const o=makeWorker();
+  await o.lifecycle("install");
+  await o.request(SCOPE, {mode:"navigate"});
+  o.moveAway();
+  assert.equal((await o.request(SCOPE, {mode:"navigate"})).res.type, "opaqueredirect");
+});

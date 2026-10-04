@@ -1,18 +1,18 @@
-# Teaching with DoseCurve
+# Teaching with MaatiRx
 
-DoseCurve is a free pharmacokinetics lab that runs in the browser: <https://saifmaati.github.io/dose-curve/>.
+MaatiRx is a free pharmacokinetics lab that runs in the browser: <https://maatirx.com/>.
 
 There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized linear pharmacokinetics in one or two compartments, saturable elimination, and a concentration–effect (Emax) relationship, direct or through an effect-site delay, for learning and demonstration only. It is not for dosing real patients.
 
 This guide collects ways to use it in a course.
 
-The [educator page](https://saifmaati.github.io/dose-curve/educators.html) has a link to every lesson and case on one page, ready to paste into a syllabus or a course site.
+The [educator page](https://maatirx.com/educators.html) has a link to every lesson and case on one page, ready to paste into a syllabus or a course site.
 
 ## In a lecture
 
 For a projector, press **Present** (top right): the chart takes the whole width, the controls fold away, the 3D stage and the pinned action button go, and the type grows. **Esc**, or the button in the corner, leaves it. For a bright room, the **Light theme** switch gives the paper version (graphite curves on white); it follows the computer's own light or dark setting until you pick one, the choice is remembered in that browser, and adding `?theme=light` to a link opens it in light.
 
-Since 2.0 the curve also appears as a 3D ribbon behind the page, and every visit to the site's address opens on a short scrolling introduction. Links you share with a `#` part (a lesson, a case, a scenario, `#practice`) skip the introduction and open straight in the app, so use those for a class; `…/dose-curve/#app` opens the simulator itself. On an older classroom computer, or if the motion distracts, switch **Effects** off in the top bar: the page stays the same, without the 3D stage. It starts off by itself on low-memory devices and when the computer asks for reduced motion.
+Since 2.0 the curve also appears as a 3D ribbon behind the page, and every visit to the site's address opens on a short scrolling introduction. Links you share with a `#` part (a lesson, a case, a scenario, `#practice`) skip the introduction and open straight in the app, so use those for a class; the address with `#app` added (https://maatirx.com/#app) opens the simulator itself. On an older classroom computer, or if the motion distracts, switch **Effects** off in the top bar: the page stays the same, without the 3D stage. It starts off by itself on low-memory devices and when the computer asks for reduced motion.
 
 With the keyboard, **Space** plays or pauses, **←/→** move the time cursor, **L** switches to a log scale and **B** sets a baseline, as long as you're not typing in a field; **?** lists every key. These single-key shortcuts can be switched off in that list.
 
@@ -182,7 +182,7 @@ A repeated regimen is read at steady state over one interval; a single dose or a
 
 ## On a course page
 
-**Embed code** (in *Analyze & Export*) copies an iframe snippet for the current scenario. It opens a compact view without the landing section, and it keeps the educational-use note and an **Open in DoseCurve** link. In a narrow column the chart comes first, with the controls under it. It works in any page that accepts an iframe, including most learning platforms.
+**Embed code** (in *Analyze & Export*) copies an iframe snippet for the current scenario. It opens a compact view without the landing section, and it keeps the educational-use note and an **Open in MaatiRx** link. In a narrow column the chart comes first, with the controls under it. It works in any page that accepts an iframe, including most learning platforms.
 
 ## Students' progress
 
@@ -199,7 +199,7 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 
 A mapping onto a typical ten-week pharmacokinetics course. Each week lists the lessons, the cases and the practice that fit it; adjust to your syllabus.
 
-| Week | Topic | In DoseCurve |
+| Week | Topic | In MaatiRx |
 | --- | --- | --- |
 | 1 | Concentration–time basics, routes, volume | Lessons: Oral vs IV bolus, Volume of distribution, Double the dose. Practice: *Single dose*. Glossary |
 | 2 | Clearance, half-life, dosing by weight | Lessons: Reduced clearance, Dosing by weight. Show the math on each readout. Fit the data (IV bolus) |
@@ -258,11 +258,11 @@ A mapping onto a typical ten-week pharmacokinetics course. Each week lists the l
 
 - The maturation of non-renal clearance in children: it depends on the enzymes that clear each drug.
 
-The drug presets use typical textbook values and are not prescribing information. Every equation is on the [Model and methods](https://saifmaati.github.io/dose-curve/methods.html) page.
+The drug presets use typical textbook values and are not prescribing information. Every equation is on the [Model and methods](https://maatirx.com/methods.html) page.
 
 ## Run a class in ten minutes
 
-1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, an AUC24 range, or a time above the MIC (your MIC and the least share of each interval the unbound level must stay above it). You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, DoseCurve checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
+1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, an AUC24 range, or a time above the MIC (your MIC and the least share of each interval the unbound level must stay above it). You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, MaatiRx checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
 2. **Make an assignment.** In **Make an assignment**, add up to 12 items in order: built-in cases, the case you just wrote, and worksheets (a topic and 5, 10 or 15 problems). Copy the one link and post it.
 3. **Choose a class key** and tell your class separately; it isn't in the link. Give each student an identifier that isn't their name (a seat or roster number).
 4. **Students work through the assignment** in the browser: each case is graded as they check a regimen, and worksheet answers are checked as they go. Their progress stays in their own browser.

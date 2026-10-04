@@ -33,7 +33,7 @@ test("issue templates exist, and the app links to the feedback template", ()=>{
   assert.match(read("index.html"), /issues\/new\?template=feedback\.md/);
 });
 
-test("the README's first line positions DoseCurve, and its numbers are the app's", ()=>{
+test("the README's first line positions MaatiRx, and its numbers are the app's", ()=>{
   const md=read("README.md"), first=md.split("\n").find(l=>l.startsWith("**"));
   assert.match(first, /pharmacokinetics and PK\/PD simulator for pharmacy education/);
   assert.match(md, /IC50/);
