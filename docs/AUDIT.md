@@ -1,4 +1,4 @@
-# DoseCurve audit before v1.0
+# MaatiRX audit before v1.0
 
 Written 2026-09-29 at the start of the v1.0 build (branch `v1.0`). It records where everything lives, how it is tested and deployed, the baseline numbers the build is measured against, and the bugs found and fixed before any new feature. The earlier audit is `docs/audit-2026-09-27.md`.
 

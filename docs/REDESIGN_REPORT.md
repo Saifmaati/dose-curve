@@ -1,6 +1,6 @@
-# DoseCurve 2.x redesign report
+# MaatiRX 2.x redesign report
 
-The redesign ran on 2026-09-30 and 2026-10-01 as four releases, each its own pull request, with the site working at every step. The brief changed twice during the first release (a quiet "precision instrument"; then a persistent cinematic 3D stage; then a reference-led brief with alternating dark and paper sections and one travelling object). The last brief is the one built; its reference image (`~/Downloads/dosecurve-reference.png`) was not on the machine, so its written description was followed (DECISIONS 116–117). The design system, the critique and every storyboard are in [DESIGN.md](DESIGN.md).
+The redesign ran on 2026-09-30 and 2026-10-01 as four releases, each its own pull request, with the site working at every step. The brief changed twice during the first release (a quiet "precision instrument"; then a persistent cinematic 3D stage; then a reference-led brief with alternating dark and paper sections and one travelling object). The last brief is the one built; its reference image (a file in Downloads) was not on the machine, so its written description was followed (DECISIONS 116–117). The design system, the critique and every storyboard are in [DESIGN.md](DESIGN.md).
 
 | Release | Pull request | What it adds |
 | --- | --- | --- |

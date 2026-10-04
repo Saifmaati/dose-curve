@@ -1,4 +1,4 @@
-# DoseCurve build report, Plan V2
+# MaatiRX build report, Plan V2
 
 Build Plan V2 ran on 2026-09-30, from 1.9.0 (live) to 1.17.1. Each phase is one release, built on its own branch with its own pull request, tests, validation, accessibility and Lighthouse checks; the detail for each is in [BUILD_REPORT.md](BUILD_REPORT.md) (sections 19 to 27), the reasoning in [DECISIONS.md](DECISIONS.md) (79 to 115), and the times and commits in [BUILD_LOG.md](BUILD_LOG.md).
 

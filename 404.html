@@ -3,23 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MaatiRx: page not found</title>
+<title>MaatiRX: page not found</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#07090D">
 <meta name="color-scheme" content="dark">
-<!-- GitHub Pages serves this page for any missing path, so links are absolute. They point at /dose-curve/ (the
-     github.io project site); the script below switches them to / when the site is served from its own domain. -->
-<link rel="icon" href="/dose-curve/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/dose-curve/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/dose-curve/apple-touch-icon.png">
+<!-- GitHub Pages serves this page for any missing path, so links are absolute, from the site's root (maatirx.com).
+     On the github.io project site, before the custom domain, the script at the end puts the project's folder in front. -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script>(function(){ var d=document.documentElement, t=null;
-  try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
+  // (3.0) the settings and work saved under the old name's keys move to MaatiRX's, once, on whichever page loads first.
+  // A key saved under both (an older tab kept writing) is set aside for ui-move.js to merge; an old key goes only once
+  // its value is kept.
+  try{ var ls=localStorage, old=[]; for(var x=0;x<ls.length;x++) if(/^dosecurve[.-]/.test(ls.key(x))) old.push(ls.key(x));
+    old.forEach(function(k){ try{ var m="maatirx"+k.slice(9), v=ls.getItem(k), h=ls.getItem(m);
+      if(h==null) ls.setItem(m, v); else if(h!==v) ls.setItem("maatirx-premove:"+m, v); ls.removeItem(k); }catch(e){} }); }catch(e){}
+  try{ t=localStorage.getItem("maatirx.theme"); }catch(e){}
   if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
   if(t==="light") d.classList.add("light"); })();</script>
 <style>
   /* the app's tokens and type (docs/DESIGN.md), for its secondary pages */
-  @font-face{font-family:"Inter";src:url(/dose-curve/fonts/inter-latin.woff2) format("woff2");font-weight:300 600;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+2248,U+2260,U+2264,U+2265,U+FEFF,U+FFFD}
-  @font-face{font-family:"Newsreader";src:url(/dose-curve/fonts/newsreader-latin.woff2) format("woff2");font-weight:300 500;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+2248,U+2260,U+2264,U+2265,U+FEFF,U+FFFD}
+  @font-face{font-family:"Inter";src:url(/fonts/inter-latin.woff2) format("woff2");font-weight:300 600;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+2248,U+2260,U+2264,U+2265,U+FEFF,U+FFFD}
+  @font-face{font-family:"Newsreader";src:url(/fonts/newsreader-latin.woff2) format("woff2");font-weight:300 500;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+2248,U+2260,U+2264,U+2265,U+FEFF,U+FFFD}
   @font-face{font-family:"Inter Fallback";src:local("Arial"),local("ArialMT");font-weight:100 450;size-adjust:107%;ascent-override:90.5%;descent-override:22.5%;line-gap-override:0%}
   @font-face{font-family:"Inter Fallback";src:local("Arial"),local("ArialMT");font-weight:451 550;size-adjust:108%;ascent-override:89.7%;descent-override:22.3%;line-gap-override:0%}
   @font-face{font-family:"Inter Fallback";src:local("Arial Bold"),local("Arial-BoldMT");font-weight:551 900;size-adjust:101.1%;ascent-override:95.8%;descent-override:23.8%;line-gap-override:0%}
@@ -66,19 +72,20 @@
     <line x1="0" y1="84" x2="520" y2="84" stroke="currentColor" stroke-opacity="0.3"/>
     <path d="M4 84 C18 84 22 8 44 8 C90 8 120 60 200 74 C280 84 380 84 516 84" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
   </svg>
-  <a class="btn" href="/dose-curve/">Open the simulator</a>
-  <p class="note">MaatiRx is an educational model, not for clinical dosing.</p>
+  <a class="btn" href="/">Open the simulator</a>
+  <p class="note">MaatiRX is an educational model, not for clinical dosing.</p>
 </main>
 <script>
-  // On a custom domain the site lives at the root rather than under /dose-curve/.
-  if(!/^\/dose-curve(\/|$)/.test(location.pathname)){
-    document.querySelectorAll('[href^="/dose-curve/"],[src^="/dose-curve/"]').forEach(el=>{
+  // On the github.io project site the pages live in the project's folder, the path's first segment.
+  if(/\.github\.io$/.test(location.hostname)){
+    const base="/"+location.pathname.split("/")[1];
+    document.querySelectorAll('[href^="/"],[src^="/"]').forEach(el=>{
       const a=el.hasAttribute("href") ? "href" : "src";
-      el.setAttribute(a, el.getAttribute(a).replace(/^\/dose-curve\//,"/"));
+      el.setAttribute(a, base+el.getAttribute(a));
     });
     // and the fonts, which the stylesheet names
     const st=document.querySelector("style");
-    if(st) st.textContent=st.textContent.replace(/url\(\/dose-curve\//g,"url(/");
+    if(st) st.textContent=st.textContent.replace(/url\(\//g,"url("+base+"/");
   }
 </script>
 </body>

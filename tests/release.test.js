@@ -33,10 +33,10 @@ test("issue templates exist, and the app links to the feedback template", ()=>{
   assert.match(read("index.html"), /issues\/new\?template=feedback\.md/);
 });
 
-test("the README's first line positions MaatiRx, and its numbers are the app's", ()=>{
+test("the README's first line positions MaatiRX, and its numbers are the app's", ()=>{
   const md=read("README.md"), first=md.split("\n").find(l=>l.startsWith("**"));
   assert.match(first, /pharmacokinetics and PK\/PD simulator for pharmacy education/);
-  assert.match(md, /IC50/);
+  // (the note that set the old name apart from an IC50-fitting package went with the old name, 3.0)
   assert.ok(md.includes(`${PK.LESSONS.length} guided lessons`), "lessons");
   assert.ok(md.includes(`${PK.TEMPLATES.length} one-click comparisons`), "comparisons");
   assert.ok(md.includes(`${PK.PRACTICE.length} kinds of generated practice problems`), "practice kinds");

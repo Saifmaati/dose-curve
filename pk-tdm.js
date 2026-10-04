@@ -1,4 +1,4 @@
-/* MaatiRx: when to sample (2.4)
+/* MaatiRX: when to sample (2.4)
    The model's sampling times for a regular regimen: the dose from which its interval's peak and trough are within
    10% (and 3%) of their steady-state values, the trough at the end of that interval, and the peak (the end of an
    infusion, the oral Tmax, straight after a bolus, or with two compartments, once distribution is 90% complete). The

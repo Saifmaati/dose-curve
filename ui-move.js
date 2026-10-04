@@ -1,6 +1,6 @@
-/* MaatiRx: bringing the work saved at the old address to https://maatirx.com/ (2.20)
+/* MaatiRX: bringing the work saved at the old address to https://maatirx.com/ (2.20)
    A browser keeps a site's saved data per address, so the scenario library, lesson, practice and assignment progress,
-   a case being written and the settings saved at saifmaati.github.io/dose-curve/ don't follow the app to its new
+   a case being written and the settings saved at the old address (saifmaati.github.io) don't follow the app to its new
    address by themselves. Once the old address redirects, its service worker still opens the saved app page there
    (sw.js); this file then says the app has moved and, once the new address answers, offers to bring that work along
    in the app page's # part there, which never leaves the browser. The old address keeps its copy and its offline
@@ -15,9 +15,12 @@
 })(typeof self!=="undefined" ? self : this, function(){
   "use strict";
   const OLD="saifmaati.github.io", NEW="maatirx.com", KEY="maatirx.move", DONE="maatirx.moved", SENT="maatirx.sent", MAX=1e6;
-  // every key the app saves (the names are DoseCurve's, kept so nothing saved is lost; decision 234)
-  const carried=k=> /^dosecurve[.-]/.test(k) && k!=="dosecurve.debug";
-  const LIB="dosecurve.library", PROG="dosecurve.progress", ASSIGN="dosecurve-assignment-", DRAFT="dosecurve-author-draft";
+  // every key the app saves, under MaatiRX's names (3.0) or, from a page that hasn't moved them yet, the old name's;
+  // each comes across under MaatiRX's (as the pages' head scripts move them)
+  const OLD_PREFIX=/^dosecurve(?=[.-])/, name=k=> k.replace(OLD_PREFIX,"maatirx");
+  const PRE="maatirx-premove:";   // a key a page set aside when it was saved under both names (the head scripts, 3.0)
+  const carried=k=> /^maatirx[.-]/.test(name(k)) && !["maatirx.debug", SENT].includes(name(k)) && !name(k).startsWith(PRE);
+  const LIB="maatirx.library", PROG="maatirx.progress", ASSIGN="maatirx-assignment-", DRAFT="maatirx-author-draft";
   const json=s=>{ try{ return JSON.parse(s); }catch(e){ return null; } };
   const isObj=o=> !!o && typeof o==="object" && !Array.isArray(o);
   const num=x=> typeof x==="number" && isFinite(x);
@@ -27,7 +30,7 @@
   // What this browser has saved for the app: {key: text}.
   function collect(store){
     const out={};
-    for(let i=0;i<store.length;i++){ const k=store.key(i); if(k && carried(k)){ const v=store.getItem(k); if(typeof v==="string") out[k]=v; } }
+    for(let i=0;i<store.length;i++){ const k=store.key(i); if(k && carried(k)){ const v=store.getItem(k); if(typeof v==="string" && !(name(k) in out && k!==name(k))) out[name(k)]=v; } }
     return out;
   }
 
@@ -38,7 +41,7 @@
     let o=null; try{ o=typeof raw==="string" ? JSON.parse(decodeURIComponent(raw)) : null; }catch(e){}
     if(!isObj(o)) return null;
     const out={};
-    Object.keys(o).forEach(k=>{ if(carried(k) && typeof o[k]==="string") out[k]=o[k]; });
+    Object.keys(o).forEach(k=>{ if(carried(k) && typeof o[k]==="string" && !(name(k) in out && k!==name(k))) out[name(k)]=o[k]; });
     return Object.keys(out).length ? out : null;
   }
 
@@ -109,7 +112,7 @@
         if(m.added) out[k]=JSON.stringify(m.library);
       } else if(k===PROG){
         const o=json(v);
-        if(!isObj(o) || o.format!==PK.PROGRESS_FORMAT) return;
+        if(!isObj(o) || !PK.PROGRESS_FORMATS.includes(o.format)) return;
         const a=PK.parseProgress(h || ""), b=PK.parseProgress(o), m=PK.parseProgress(h || "");
         Object.keys(b.lessons).forEach(id=>{ m.lessons[id]=Object.assign({}, a.lessons[id], b.lessons[id]); });
         Object.keys(b.practice).forEach(t=>{ const x=a.practice[t] || {tried:0, right:0}, y=b.practice[t];
@@ -130,6 +133,15 @@
       } else if(h==null){ out[k]=v; r.settings=true; }
     });
     return out;
+  }
+
+  // Keys set aside by a page's head script because they were saved under both names (an older tab kept writing under
+  // the old one after another tab moved them): merged into MaatiRX's by the same rules as work brought from the old
+  // address. Returns {writes, remove}: what to write, and the set-aside keys to remove.
+  function settle(store, PK){
+    const aside={}, remove=[];
+    for(let i=0;i<store.length;i++){ const k=store.key(i); if(k && k.startsWith(PRE)){ remove.push(k); aside[k.slice(PRE.length)]=store.getItem(k); } }
+    return {writes:remove.length ? merge(collect(store), aside, PK) : {}, remove};
   }
 
   // "12 saved scenarios, your lesson and practice progress and progress on 1 assignment", or "" with no work.
@@ -157,10 +169,12 @@
     return s;
   }
 
-  // The same page at the new address: /dose-curve/x → /x.
-  const target=loc=> loc.protocol+"//"+NEW+loc.pathname.replace(/^\/dose-curve(\/|$)/,"/")+loc.search;
+  // The same page at the new address. The old address is a project site, so its pages are under one first segment:
+  // /<project>/x → /x.
+  const within=p=> p.replace(/^\/[^/]+/,"") || "/";
+  const target=loc=> loc.protocol+"//"+NEW+within(loc.pathname)+loc.search;
   // Where the work goes: the app page, which takes it in, with this page's own query and # part only if this is it.
-  const home=loc=>{ const app=/^\/dose-curve(\/(index\.html)?)?$/.test(loc.pathname);
+  const home=loc=>{ const app=/^\/(index\.html)?$/.test(within(loc.pathname));
     return {url:loc.protocol+"//"+NEW+"/"+(app ? loc.search : ""), hash:app ? loc.hash : ""}; };
 
   /* ---------- in the page ---------- */
@@ -190,7 +204,7 @@
   // Leaving the old address for good: its service worker and the app's saved files go, so its links go straight on.
   async function letGo(){
     try{ const r=await navigator.serviceWorker.getRegistration(); if(r) await r.unregister(); }catch(e){}
-    try{ await Promise.all((await caches.keys()).filter(k=> /^(maatirx|dosecurve)-/.test(k)).map(k=> caches.delete(k))); }catch(e){}
+    try{ await Promise.all((await caches.keys()).filter(k=> /^maatirx-/.test(k) || OLD_PREFIX.test(k)).map(k=> caches.delete(k))); }catch(e){}
   }
   async function send(){
     if(!(await moved()) || !(await answers())) return;
@@ -199,18 +213,18 @@
     const to=home(location), link=to.url+encode(data, to.hash), sent=store(localStorage, SENT);
     const go={label:`Go to ${NEW}`, run:async()=>{ await letGo(); location.replace(same); }};
     if(link.length>MAX){
-      dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) is too much to carry in a link: close this, use Library → Export all here, then Import file at ${NEW}.</p>`,
+      dialog("MaatiRX has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) is too much to carry in a link: close this, use Library → Export all here, then Import file at ${NEW}.</p>`,
         [{label:"Close", run:d=> d.close()}, go]);
       return;
     }
     const bring=label=>({label, run:()=>{ store(localStorage, SENT, new Date().toISOString()); location.replace(link); }});
     if(sent){
       const day=new Date(sent).toLocaleDateString(undefined, {day:"numeric", month:"long", year:"numeric"});
-      dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) was brought there on ${esc(day)}. If it didn't arrive, bring it again: nothing is added twice.</p>`,
+      dialog("MaatiRX has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) was brought there on ${esc(day)}. If it didn't arrive, bring it again: nothing is added twice.</p>`,
         [go, bring("Bring it again")]);
       return;
     }
-    dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. A browser keeps saved work per address, so what you saved here (${esc(what)}) stays here unless you bring it.</p>
+    dialog("MaatiRX has moved", `<p>Its address is now <b>${NEW}</b>. A browser keeps saved work per address, so what you saved here (${esc(what)}) stays here unless you bring it.</p>
       <p class="lib-privacy">It travels in the link itself, inside this browser; nothing is sent to a server.</p>`,
       [bring(`Bring it to ${NEW}`), {label:"Not now", run:()=> location.replace(same)}]);
   }
@@ -246,11 +260,17 @@
   }
 
   function run(){
+    // set-aside keys first; the page reloads to read what they added
+    try{
+      const st=settle(localStorage, window.PK), w=Object.keys(st.writes);
+      w.forEach(k=> localStorage.setItem(k, st.writes[k])); st.remove.forEach(k=> localStorage.removeItem(k));
+      if(w.length){ location.reload(); return; }
+    }catch(e){}
     const raw=store(sessionStorage, KEY);
     store(sessionStorage, KEY, null);
     if(raw==="done") done();
     else if(raw) receive(raw);
     else if(location.hostname===OLD) send();
   }
-  return {run, collect, encode, decode, merge, summary, report, target, home, carried, cleanAssignment, cleanDraft, OLD, NEW};
+  return {run, collect, encode, decode, merge, settle, summary, report, target, home, carried, cleanAssignment, cleanDraft, OLD, NEW};
 });

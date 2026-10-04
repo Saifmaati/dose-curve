@@ -1,4 +1,4 @@
-/* MaatiRx: the chart in 3D (2.18)
+/* MaatiRX: the chart in 3D (2.18)
    A 3D mode for the chart panel, for exploring and presenting; the 2D chart stays the precise instrument and the
    default. Five views, each drawn from the engine's own numbers:
    - Curve in space: the concentration–time ribbon, the window as a glass slab, the doses as beads on the time axis.
@@ -119,7 +119,7 @@
   function mount(THREE, ctx){
     const {PK, fmt, trim}=ctx, DOC=document.documentElement, box=ctx.box;
     const still=()=> matchMedia("(prefers-reduced-motion: reduce)").matches, phone=()=> matchMedia("(max-width:760px)").matches;
-    const tierOf=()=>{ let f=null; try{ f=localStorage.getItem("dosecurve.fxtier"); }catch(e){} if(f==="1" || f==="2") return +f;
+    const tierOf=()=>{ let f=null; try{ f=localStorage.getItem("maatirx.fxtier"); }catch(e){} if(f==="1" || f==="2") return +f;
       const n=navigator; return !DOC.classList.contains("fx-off") && !phone() && !!window.WebGL2RenderingContext && (n.hardwareConcurrency||4)>=6 && !(n.deviceMemory<8) ? 2 : 1; };
     const tier=tierOf();
     const VIEWS=[["curve","Curve"],["dose","Dose surface"],["regimen","Regimen map"],["pop","Population"],["cmt","Compartments"]];

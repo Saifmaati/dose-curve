@@ -662,17 +662,24 @@ test("saved names are plain text: control and direction characters removed, trim
   assert.equal(it.name.length, 60);
 });
 
-test("parseLibrary rejects files that aren't MaatiRx (or DoseCurve) libraries", ()=>{
+test("parseLibrary rejects files that aren't MaatiRX libraries, and reads those saved before 3.0", ()=>{
   assert.equal(PK.parseLibrary("{not json").error, "not valid JSON");
-  assert.equal(PK.parseLibrary({format:"something-else", items:[]}).error, "not a MaatiRx (or DoseCurve) scenario file");
-  assert.equal(PK.parseLibrary(null).error, "not a MaatiRx (or DoseCurve) scenario file");
+  assert.equal(PK.parseLibrary({format:"something-else", items:[]}).error, "not a MaatiRX scenario file");
+  assert.equal(PK.parseLibrary(null).error, "not a MaatiRX scenario file");
+  // files and saved libraries from before 3.0 carry the old name's format, the second of LIBRARY_FORMATS
+  const before={format:PK.LIBRARY_FORMATS[1], version:1, items:[PK.libraryItem("Old file", {mode:"sim", s:scenario({}), base:null, baseLabel:"", lesson:"", view:Object.assign({}, PK.VIEW_DEFAULTS)})]};
+  const r=PK.parseLibrary(JSON.stringify(before));
+  assert.equal(r.error, undefined);
+  assert.deepEqual(r.library.items.map(i=>i.name), ["Old file"]);
+  assert.equal(r.library.format, "maatirx-library", "and it is saved again under MaatiRX's format");
+  assert.equal(PK.parseProgress({format:PK.PROGRESS_FORMATS[1], version:1, lessons:{route:{predicted:true}}}).lessons.route.predicted, true, "progress too");
   assert.deepEqual(PK.parseLibrary(PK.exportLibrary([])).library.items, []);
 });
 
 test("parseLibrary keeps valid items, skips broken ones, and re-encodes links canonically", ()=>{
   const good=PK.libraryItem("Good", simState(), "2026-09-27T12:00:00.000Z", "good1");
   const sloppy={id:"sl0ppy", name:"Sloppy", link:"v=1&s=D%3A99999%2CclFn%3A50", savedAt:"2026-09-01T00:00:00Z"};
-  const doc={format:"dosecurve-library", version:1, items:[good, sloppy, {name:"no link"}, {link:"not a link"}, 42, null,
+  const doc={format:PK.LIBRARY_FORMAT, version:1, items:[good, sloppy, {name:"no link"}, {link:"not a link"}, 42, null,
     {id:"good1", name:"Same id", link:good.link}, {name:"Huge", link:"v=1&s="+"D:1,".repeat(6000)}]};
   const r=PK.parseLibrary(JSON.stringify(doc));
   assert.equal(r.skipped, 5);
@@ -687,13 +694,13 @@ test("older and newer library versions: a bare array migrates, a newer file is r
   const it=PK.libraryItem("Old", simState());
   const v0=PK.parseLibrary(JSON.stringify([it]));
   assert.equal(v0.library.version, PK.LIBRARY_VERSION); assert.equal(v0.library.items.length, 1);
-  const future=PK.parseLibrary({format:"dosecurve-library", version:99, items:[it]});
+  const future=PK.parseLibrary({format:PK.LIBRARY_FORMAT, version:99, items:[it]});
   assert.equal(future.newer, true); assert.equal(future.library.items.length, 1);
 });
 
 test("the library is capped at 200 items, on read and on import", ()=>{
   const it=PK.libraryItem("x", simState());
-  const many=PK.parseLibrary({format:"dosecurve-library", version:1, items:Array.from({length:230},()=>it)});
+  const many=PK.parseLibrary({format:PK.LIBRARY_FORMAT, version:1, items:Array.from({length:230},()=>it)});
   assert.equal(many.library.items.length, 200); assert.equal(many.skipped, 30);
   const merged=PK.mergeLibrary(many.library, [it, it]);
   assert.equal(merged.added, 0); assert.equal(merged.dropped, 2);
@@ -703,7 +710,7 @@ test("export then import gives back the same setups, and merging never collides 
   const items=[PK.libraryItem("A", simState()), PK.libraryItem("B", cmpState())];
   const back=PK.parseLibrary(PK.exportLibrary(items)).library.items;
   assert.deepEqual(back.map(i=>[i.name,i.kind,i.link]), items.map(i=>[i.name,i.kind,i.link]));
-  const m=PK.mergeLibrary({format:"dosecurve-library", version:1, items}, back);
+  const m=PK.mergeLibrary({format:PK.LIBRARY_FORMAT, version:1, items}, back);
   assert.equal(m.added, 2);
   assert.equal(new Set(m.library.items.map(i=>i.id)).size, 4);
 });

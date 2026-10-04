@@ -1,4 +1,4 @@
-/* MaatiRx worked readouts ("show the math")
+/* MaatiRX worked readouts ("show the math")
    Each readout worked out with the scenario's own numbers: `steps` are formulas ({m}) and plain notes ({t}), and
    `value` is computed from the formula shown, independently of the simulation (the tests hold it to what the
    simulation gives). Loaded the first time a readout is opened (it sets PK.metricMath); in Node, pk-engine.js reads
@@ -19,8 +19,8 @@
     const ws=view.ws || windowStats(p, view.duration, view.mec, view.mtc);
     const vmTxt=`Vmax = ${nf(p.vmax,2)} ${U.amount}/kg/day × ${p.wt} kg${clFactor(p)!==1 ? ` × ${nf(clFactor(p),3)}` : ""} = ${perDay(Vm)}`;
     const atTxt=p.dosing==="repeated" ? (!d.mm || d.mm.none ? "the final trough" : "the average steady-state level") : p.dosing==="single" ? "the peak" : "the highest level";
-    const sampled=hdOn(p) && PK.hdModule ? `Saturable elimination has no closed-form curve here: MaatiRx integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C while a session runs, in RK4 steps of at most ${MM_STEP} h that meet every session edge, and reads the result.`
-      : `Saturable elimination has no closed-form curve here: MaatiRx integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
+    const sampled=hdOn(p) && PK.hdModule ? `Saturable elimination has no closed-form curve here: MaatiRX integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C while a session runs, in RK4 steps of at most ${MM_STEP} h that meet every session edge, and reads the result.`
+      : `Saturable elimination has no closed-form curve here: MaatiRX integrates dA/dt = input − Vmax·C / (Km + C) in ${MM_STEP} h steps (RK4) and reads the result.`;
     switch(key){
       case "thalf": return {title:"Half-life at this level", value:d.thalfEff, steps:[
         t(`With saturable elimination the half-life depends on the concentration. At ${atTxt}, C = ${n2(d.cAt)} ${cu}:`), m(vmTxt),
@@ -60,7 +60,7 @@
           m(`From C₀ = ${n2(f.at)} ${cu} (${atTxt}) over ${nf(p.hddur,2)} h: C₁ = ${n2(f.at*(1-f.fall))} ${cu}, a fall of ${nf(100*f.fall,1)}%, ${nf(100*f.byDialysis/f.fall,0)}% of it by the dialyzer`),
           t(`From far above Km it would fall ${nf(100*f.limits.high,1)}% (the dialyzer's clearance alone counts), from far below ${nf(100*f.limits.low,1)}% (first order). Each session's actual fall is in the session list.`)]}; }
       case "aucHd": { const v0=derived(Object.assign({}, p, {hd:0})).auc;
-        return {title:"Total exposure (AUC∞) with dialysis", value:d.auc, steps:[t(`MaatiRx integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C during each session, in steps that meet every session edge, and follows the curve until it has nearly gone.`),
+        return {title:"Total exposure (AUC∞) with dialysis", value:d.auc, steps:[t(`MaatiRX integrates dA/dt = input − Vmax·C / (Km + C), minus CLd·C during each session, in steps that meet every session edge, and follows the curve until it has nearly gone.`),
           m(`AUC∞ = ${n1(d.auc)} ${U.auc}, against ${n1(v0)} ${U.auc} with no dialysis`)]}; }
       case "peak": case "trough": return {title:key==="peak" ? "Peak after the last dose" : "Trough after the last dose", value:key==="peak" ? d.cmaxSS : d.cminSS,
         steps:[m(`${key==="peak" ? "Peak" : "Trough"} = ${n2(key==="peak" ? d.cmaxSS : d.cminSS)} ${cu}`), t(sampled)].concat(key==="trough" && d.mm && !d.mm.none ? [t(`Given forever, the trough would settle at ${n2(d.mm.trough)} ${cu}.`)] : [])};
@@ -96,7 +96,7 @@
       if(["cmax","tmax","peak","trough"].includes(key)){
         const d=derived(p), v=key==="cmax" ? d.cmax : key==="tmax" ? d.tmax : key==="peak" ? d.cmaxSS : d.cminSS;
         return {title:{cmax:"Peak concentration (Cmax)", tmax:"Time of the peak (tmax)", peak:"Peak after the last dose", trough:"Trough after the last dose"}[key], value:v,
-          steps:[{m:`${key==="tmax" ? `tmax = ${nf(v,2)} h` : `${nf(v,2)} ${unitsOf(p).conc}`}`}, {t:`With two compartments the curve is the sum of each dose's two exponentials; MaatiRx adds them up and reads this value off it.`}]};
+          steps:[{m:`${key==="tmax" ? `tmax = ${nf(v,2)} h` : `${nf(v,2)} ${unitsOf(p).conc}`}`}, {t:`With two compartments the curve is the sum of each dose's two exponentials; MaatiRX adds them up and reads this value off it.`}]};
       }
     }
     const k=keOf(p), V=vOf(p), CL=k*V, th=Math.LN2/k, oral=p.route==="oral", F=oral ? fOf(p) : 1, hep=hepOn(p);

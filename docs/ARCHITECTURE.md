@@ -1,6 +1,6 @@
-# How MaatiRx is built
+# How MaatiRX is built
 
-MaatiRx is a static site: plain HTML, CSS and JavaScript with no build step, no framework and no server. Everything
+MaatiRX is a static site: plain HTML, CSS and JavaScript with no build step, no framework and no server. Everything
 runs in the reader's browser. This page explains how the pieces fit, so a change can be made in the right place.
 
 ## The files
@@ -22,7 +22,7 @@ runs in the reader's browser. This page explains how the pieces fit, so a change
 | `ui-chartfx.js` | The concentration chart's motion: particles along the curve, the curve drawing itself, the doses' pulses, lit doses and intervals, the plane's tilt (2.13) | just after the first paint |
 | `ui-effect.js` | The effect charts: effect over time and the concentration–effect curve (2.13) | when the Effect switch is first on, or a link opens with it |
 | `ui-panels.js` | The MIC, dialysis and Bayesian panels' readings (2.17; the Bayesian 2.18) | once a MIC, dialysis or levels are entered |
-| `ui-move.js` | Bringing the work saved at the old address (saifmaati.github.io/dose-curve/) to maatirx.com (2.20): the offer there once the new address answers, and taking it in here without replacing anything or anything that isn't the app's own shape; its pure functions are tested in Node | at the old address, or with work set aside by a `#move=` link |
+| `ui-move.js` | Bringing the work saved at the old address (saifmaati.github.io) to maatirx.com (2.20): the offer there once the new address answers, and taking it in here without replacing anything or anything that isn't the app's own shape; its pure functions are tested in Node | at the old address, or with work set aside by a `#move=` link |
 | `ui-chart3d.js` | The chart in 3D (2.18): five views drawn from the engine, the morph, orbit and drags; its pure functions are tested in Node. Three.js comes through stage.js | on the first press of 3D |
 | `ui-worksheet.js` | A practice worksheet's view and print (2.15) | with the first worksheet |
 | `pk-explain.js` | The sentences under "What changed" and in Compare: what moved between two scenarios and why, with the model's numbers; and the fit and window tasks' worked methods (2.20) | just after the first paint; a link that opens with a baseline waits for it |

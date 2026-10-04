@@ -7,7 +7,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
 
-const SCOPE="https://example.github.io/dose-curve/", DEFAULT_SCOPE=SCOPE;
+const SCOPE="https://example.github.io/project/", DEFAULT_SCOPE=SCOPE;   // a project site: its pages in one folder
 const SRC=fs.readFileSync(path.join(__dirname,"..","sw.js"),"utf8");
 // The cache name carries a version that each release phase bumps; the tests follow whatever sw.js says.
 const CACHE=SRC.match(/const CACHE="(maatirx-v\d+)"/)[1];
@@ -62,7 +62,7 @@ function makeWorker(SCOPE=DEFAULT_SCOPE){
     goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }, moveAway(){ moved=true; }};
 }
 
-test("installing saves the app's icons and manifest; activating clears only older caches of the app (MaatiRx's, and DoseCurve's from before 2.20)", async()=>{
+test("installing saves the app's icons and manifest; activating clears only older caches of the app (MaatiRX's, and those named for the old name)", async()=>{
   const w=makeWorker();
   w.store.set("dosecurve-v0", new Map()); w.store.set("dosecurve-v1", new Map()); w.store.set("maatirx-v1", new Map()); w.store.set("someone-else", new Map());
   await w.lifecycle("install"); await w.lifecycle("activate");
@@ -75,15 +75,15 @@ test("the page comes from the network when online, and from the last saved copy 
   const w=makeWorker();
   await w.lifecycle("install");
   let r=await w.request(SCOPE+"?cb=1#v=4&s=D:500", {mode:"navigate"});
-  assert.equal(r.res.body, "/dose-curve/?cb=1 v1");
+  assert.equal(r.res.body, "/project/?cb=1 v1");
   w.release();
   r=await w.request(SCOPE, {mode:"navigate"});
-  assert.equal(r.res.body, "/dose-curve/ v2", "a new release shows up at once online");
+  assert.equal(r.res.body, "/project/ v2", "a new release shows up at once online");
   w.goOffline();
   r=await w.request(SCOPE+"#p=rac.12", {mode:"navigate"});
-  assert.equal(r.res.body, "/dose-curve/ v2", "offline: the copy saved on the last visit");
+  assert.equal(r.res.body, "/project/ v2", "offline: the copy saved on the last visit");
   r=await w.request(SCOPE+"index.html", {mode:"navigate"});
-  assert.equal(r.res.body, "/dose-curve/ v2");
+  assert.equal(r.res.body, "/project/ v2");
 });
 
 test("only the app page is saved as the page: a 404 page or another address never replaces it", async()=>{
@@ -93,23 +93,23 @@ test("only the app page is saved as the page: a 404 page or another address neve
   await w.request(SCOPE+"404.html", {mode:"navigate"});
   await w.request(SCOPE+"missing", {mode:"navigate"});
   w.goOffline();
-  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/dose-curve/ v1");
+  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/project/ v1");
 });
 
 test("the engine is served from the cache and refreshed; a new engine version replaces the old one", async()=>{
   const w=makeWorker();
   await w.lifecycle("install");
   let r=await w.request(SCOPE+"pk-engine.js?v=aaaa");
-  assert.equal(r.res.body, "/dose-curve/pk-engine.js?v=aaaa v1");
+  assert.equal(r.res.body, "/project/pk-engine.js?v=aaaa v1");
   w.release();
   r=await w.request(SCOPE+"pk-engine.js?v=aaaa");
-  assert.equal(r.res.body, "/dose-curve/pk-engine.js?v=aaaa v1", "served from the cache at once");
-  assert.equal(w.cache().get(SCOPE+"pk-engine.js?v=aaaa").body, "/dose-curve/pk-engine.js?v=aaaa v2", "and refreshed behind it");
+  assert.equal(r.res.body, "/project/pk-engine.js?v=aaaa v1", "served from the cache at once");
+  assert.equal(w.cache().get(SCOPE+"pk-engine.js?v=aaaa").body, "/project/pk-engine.js?v=aaaa v2", "and refreshed behind it");
   await w.request(SCOPE+"pk-engine.js?v=bbbb");
   assert.ok(w.cache().has(SCOPE+"pk-engine.js?v=bbbb"));
   assert.ok(!w.cache().has(SCOPE+"pk-engine.js?v=aaaa"), "the older engine is dropped");
   w.goOffline();
-  assert.equal((await w.request(SCOPE+"pk-engine.js?v=bbbb")).res.body, "/dose-curve/pk-engine.js?v=bbbb v2", "offline from the cache");
+  assert.equal((await w.request(SCOPE+"pk-engine.js?v=bbbb")).res.body, "/project/pk-engine.js?v=bbbb v2", "offline from the cache");
   await assert.rejects(w.request(SCOPE+"pk-engine.js?v=cccc"), "an engine never saved can't be made up offline");
 });
 
@@ -146,9 +146,9 @@ test("the validation page and its results are kept for offline use, and never st
   w.release();
   await w.request(SCOPE+"validation.html", {mode:"navigate"});
   w.goOffline();
-  assert.equal((await w.request(SCOPE+"validation.html", {mode:"navigate"})).res.body, "/dose-curve/validation.html v2", "its own saved copy");
-  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/dose-curve/ v1", "the app page is still the app page");
-  assert.equal((await w.request(SCOPE+RESULTS, {mode:"cors"})).res.body, "/dose-curve/"+RESULTS+" v1");
+  assert.equal((await w.request(SCOPE+"validation.html", {mode:"navigate"})).res.body, "/project/validation.html v2", "its own saved copy");
+  assert.equal((await w.request(SCOPE, {mode:"navigate"})).res.body, "/project/ v1", "the app page is still the app page");
+  assert.equal((await w.request(SCOPE+RESULTS, {mode:"cors"})).res.body, "/project/"+RESULTS+" v1");
 });
 
 test("installing fetches every file from the network, past the browser's HTTP cache (a new release never saves the last one's copy)", async()=>{
@@ -161,12 +161,12 @@ test("installing fetches every file from the network, past the browser's HTTP ca
 
 
 test("at the old address, once it redirects to maatirx.com, the saved app page still opens there, to offer the move (2.20)", async()=>{
-  const OLD="https://saifmaati.github.io/dose-curve/", w=makeWorker(OLD);
+  const OLD="https://saifmaati.github.io/project/", w=makeWorker(OLD);   // the old host; the folder's name doesn't matter
   await w.lifecycle("install");
   await w.request(OLD, {mode:"navigate"});
   w.moveAway();
   for(const u of [OLD, OLD+"#v=4&s=D:500", OLD+"index.html", OLD+"validation.html", OLD+"educators.html"])
-    assert.equal((await w.request(u, {mode:"navigate"})).res.body, "/dose-curve/ v1", u);
+    assert.equal((await w.request(u, {mode:"navigate"})).res.body, "/project/ v1", u);
   assert.equal((await w.request(OLD+"site.webmanifest?moved=1", {mode:"cors"})).res.type, "opaqueredirect", "the page's own check sees the redirect");
   assert.ok(!w.cache().has(OLD+"site.webmanifest?moved=1"), "and it isn't kept");
   // before the switch the same check answers, and isn't kept either (it asks for no-store)

@@ -1,4 +1,4 @@
-/* MaatiRx sources
+/* MaatiRX sources
    Where the drug library's values come from: the citations (SOURCES) and each drug's notes (REFS), a value and what
    its source states, or a typical textbook value marked unverified. Loaded with the drug information, the
    antimicrobial panel and the cases (it registers itself as PK.sourcesModule); in Node the engine requires it on first

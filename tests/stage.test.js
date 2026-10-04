@@ -37,7 +37,7 @@ test("the stage is loaded after the first paint by its content hash, precached b
 test("the root sequence plays on every visit to the root address; #app and content links open the app; Effects start off on weak devices", ()=>{
   const head=page.slice(0, page.indexOf("</head>"));
   assert.match(head, /!location\.hash && \/\\\/\(index\\\.html\)\?\$\/\.test\(location\.pathname\)\)\{\n\s+d\.classList\.add\("intro-on"\)/);
-  assert.ok(!/dosecurve\.intro/.test(page), "no remembered 'seen' skip (2.10)");
+  assert.ok(!/maatirx\.intro/.test(page), "no remembered 'seen' skip (2.10)");
   // back from the app returns to the sequence: one #app entry, pushed once and replaced after; back and forward between
   // the two never reload; Home adds an entry for the root address and replays the sequence
   assert.match(page, /history\.pushState\(\{dc:1\}, "", url\); else history\.replaceState\(\{dc:1\}, "", url\)/);
@@ -45,7 +45,7 @@ test("the root sequence plays on every visit to the root address; #app and conte
   assert.match(page, /if\(inPage\(was\) && h in TAB_OF\)\{[^\n]*\}\n\s+location\.reload\(\);/);   // (2.15: the tabs' own addresses too; anything else reloads)
   assert.match(page, /byId\("homeLink"\)\.addEventListener\("click",e=>\{ e\.preventDefault\(\); if\(location\.hash\) history\.pushState/);
   assert.match(head, /n\.deviceMemory<4 \|\| n\.hardwareConcurrency<4/);
-  assert.match(head, /localStorage\.getItem\("dosecurve\.effects"\)/);
+  assert.match(head, /localStorage\.getItem\("maatirx\.effects"\)/);
   assert.match(page, /id="fxBtn" aria-pressed/);
   assert.match(page, /html\.present \.stage-3d/);
 });

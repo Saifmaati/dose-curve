@@ -1,4 +1,4 @@
-/* MaatiRx: the effect charts (2.13)
+/* MaatiRX: the effect charts (2.13)
    Effect over time, on the concentration chart's time axis, and the concentration–effect curve with a dot at the time
    cursor, for the Effect switch. Loaded when the switch is first on (or a link opens with it); the page passes its
    chart's live state through ctx. Effect is read off the concentration samples the main chart already computed,

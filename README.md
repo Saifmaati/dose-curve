@@ -1,16 +1,16 @@
-# MaatiRx
+# MaatiRX
 
-**An interactive pharmacokinetics and PK/PD simulator for pharmacy education.** Change a drug, a patient or a regimen and watch concentration and effect respond; estimate creatinine clearance, see saturable kinetics, and work graded clinical cases. (Not related to the open-source "dosecurve" package for fitting IC50 dose–response curves.)
+**An interactive pharmacokinetics and PK/PD simulator for pharmacy education.** Change a drug, a patient or a regimen and watch concentration and effect respond; estimate creatinine clearance, see saturable kinetics, and work graded clinical cases.
 
 [![Tests](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml/badge.svg)](https://github.com/Saifmaati/dose-curve/actions/workflows/test.yml) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23082408.svg)](https://doi.org/10.5281/zenodo.23082408)
 
-MaatiRx was called DoseCurve until version 2.19; the DOI, the releases and every shared link carry over.
+MaatiRX, formerly DoseCurve: the DOI, the releases and every link already shared carry over.
 
 **Live:** https://maatirx.com/ · **Validation:** https://maatirx.com/validation.html · **Teaching guide:** [docs/teaching-guide.md](docs/teaching-guide.md) · **For educators:** https://maatirx.com/educators.html
 
-> Educational model, not for clinical dosing. MaatiRx models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a direct Emax effect for learning and demonstration. Its validation checks that it solves its own model correctly, not that the model predicts real patients.
+> Educational model, not for clinical dosing. MaatiRX models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a direct Emax effect for learning and demonstration. Its validation checks that it solves its own model correctly, not that the model predicts real patients.
 
-![The opening screen: the word MaatiRx split across the screen, with the default curve as a 3D ribbon drawn from the model passing between the halves, and its Cmax, AUC and time in the window](docs/img/opening.png)
+![The opening screen: the word MaatiRX split across the screen, with the default curve as a 3D ribbon drawn from the model passing between the halves, and its Cmax, AUC and time in the window](docs/img/opening.png)
 
 Since 2.0 the curve also lives as a 3D ribbon on a stage behind the page, drawn live from the same numbers as the chart: glowing in the dark simulator, graphite on the paper pages for lessons, cases and practice. The site's address opens on a short scrolling introduction on every visit (back from the app returns to it): nine scenes, each with an object moved only by the engine's numbers (a capsule dissolving at its absorption rate, a glass figure filled to the concentration, 200 vials, two compartments as chambers, culture dishes against an MIC, a dialyzer and its rebound, the validation checks in a glass globe). `#app` and any shared link go straight to what they name. **Effects** in the top bar turns the 3D stage off, and it starts off on low-memory devices and with reduced motion.
 
@@ -79,7 +79,7 @@ An independent solver, [`validation/reference.py`](validation/reference.py), int
 - **Patients:** normal, and reduced creatinine clearance.
 - **Effect site:** 20 first-order scenarios with an effect-site delay, read at the effect site.
 
-The test suite and the [validation page](https://maatirx.com/validation.html) compare MaatiRx's peak, trough, AUC and time in window with it. All 584 comparisons agree within 0.5% for first-order scenarios and 1% for saturable ones. The largest difference is 0.00002% (two parts in ten million), and 0.000001 percentage points in time in window. Analytic identities are tested too:
+The test suite and the [validation page](https://maatirx.com/validation.html) compare MaatiRX's peak, trough, AUC and time in window with it. All 584 comparisons agree within 0.5% for first-order scenarios and 1% for saturable ones. The largest difference is 0.00002% (two parts in ten million), and 0.000001 percentage points in time in window. Analytic identities are tested too:
 
 - the accumulation ratio
 - 3.32 half-lives to 90% of steady state
@@ -156,7 +156,7 @@ When `pk-engine.js` or one of the files loaded on demand (`cases.js`, `pk-math.j
 | `fonts/` | Inter and Newsreader, served from the site |
 | `tools/stamp.js` | Restamps the content hashes of the files loaded on demand (`node tools/stamp.js`) |
 | `validation.html`, `validation/` | The public validation page, the independent reference solver and its results |
-| `educators.html` | The page for instructors: what MaatiRx covers, how to run a class, and a link to every lesson and case |
+| `educators.html` | The page for instructors: what MaatiRX covers, how to run a class, and a link to every lesson and case |
 | `sw.js` | The service worker for offline use |
 | `tests/` | The engine, clinical, saturable, two-compartment, cases, population, validation, accessibility, release and service-worker tests |
 | `docs/` | The teaching guide, [ARCHITECTURE.md](docs/ARCHITECTURE.md) (how the pieces fit), [DESIGN.md](docs/DESIGN.md) (the design system and storyboards), audits, build logs, decisions and reports |
@@ -169,7 +169,7 @@ Share links carry every setting in the URL itself and are written at the lowest 
 
 See [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button uses it):
 
-> Maati S. MaatiRx: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 2.20.0. 2026. doi:10.5281/zenodo.23082408
+> Maati S. MaatiRX: an interactive pharmacokinetics and PK/PD simulator for pharmacy education. Version 3.0.0. 2026. doi:10.5281/zenodo.23082408
 
 Zenodo archives every release. The DOI above, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), always resolves to the newest version; each release also has its own DOI, listed on that page, for citing the exact version used.
 

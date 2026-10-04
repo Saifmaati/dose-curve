@@ -1,6 +1,6 @@
-# Contributing to MaatiRx
+# Contributing to MaatiRX
 
-Thank you for helping. MaatiRx is a teaching tool, so two things matter more than anything else: every number it
+Thank you for helping. MaatiRX is a teaching tool, so two things matter more than anything else: every number it
 shows must come from its model and be checked by a test, and nothing it says may read as clinical advice.
 
 ## Run it

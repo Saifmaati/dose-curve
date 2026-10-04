@@ -11,7 +11,7 @@ const page=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
 test("the theme follows the system until the reader picks one (before the first paint)", ()=>{
   const head=page.slice(0, page.indexOf("</head>"));
   assert.match(head, /matchMedia\("\(prefers-color-scheme: light\)"\)/);
-  assert.ok(head.indexOf('localStorage.getItem("dosecurve.theme")') < head.indexOf("prefers-color-scheme"), "a stored choice wins");
+  assert.ok(head.indexOf('localStorage.getItem("maatirx.theme")') < head.indexOf("prefers-color-scheme"), "a stored choice wins");
 });
 
 test("present mode: a button, a way out (a button and Esc), and the chart given the width", ()=>{
@@ -24,7 +24,7 @@ test("present mode: a button, a way out (a button and Esc), and the chart given 
 
 test("single-key shortcuts (Space, L, B, ?) can be switched off, and never fire while typing or in a dialog", ()=>{
   assert.match(page, /id="keysOn" checked/);
-  assert.match(page, /dosecurve\.keys/);
+  assert.match(page, /maatirx\.keys/);
   assert.match(page, /closest\("input,select,textarea,\[contenteditable\]"\)/);
   assert.match(page, /document\.querySelector\("dialog\[open\]"\)\) return;/);
   ["<kbd>L</kbd>","<kbd>B</kbd>","<kbd>?</kbd>"].forEach(k=> assert.ok(page.includes(k), k));

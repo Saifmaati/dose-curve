@@ -1,6 +1,6 @@
-# Teaching with MaatiRx
+# Teaching with MaatiRX
 
-MaatiRx is a free pharmacokinetics lab that runs in the browser: <https://maatirx.com/>.
+MaatiRX is a free pharmacokinetics lab that runs in the browser: <https://maatirx.com/>.
 
 There is nothing to install and no sign-in. It works on laptops and phones, and after one visit it also opens offline. It models idealized linear pharmacokinetics in one or two compartments, saturable elimination, and a concentration–effect (Emax) relationship, direct or through an effect-site delay, for learning and demonstration only. It is not for dosing real patients.
 
@@ -182,7 +182,7 @@ A repeated regimen is read at steady state over one interval; a single dose or a
 
 ## On a course page
 
-**Embed code** (in *Analyze & Export*) copies an iframe snippet for the current scenario. It opens a compact view without the landing section, and it keeps the educational-use note and an **Open in MaatiRx** link. In a narrow column the chart comes first, with the controls under it. It works in any page that accepts an iframe, including most learning platforms.
+**Embed code** (in *Analyze & Export*) copies an iframe snippet for the current scenario. It opens a compact view without the landing section, and it keeps the educational-use note and an **Open in MaatiRX** link. In a narrow column the chart comes first, with the controls under it. It works in any page that accepts an iframe, including most learning platforms.
 
 ## Students' progress
 
@@ -199,7 +199,7 @@ It is not sent anywhere, so a teacher can't see it; ask students to report their
 
 A mapping onto a typical ten-week pharmacokinetics course. Each week lists the lessons, the cases and the practice that fit it; adjust to your syllabus.
 
-| Week | Topic | In MaatiRx |
+| Week | Topic | In MaatiRX |
 | --- | --- | --- |
 | 1 | Concentration–time basics, routes, volume | Lessons: Oral vs IV bolus, Volume of distribution, Double the dose. Practice: *Single dose*. Glossary |
 | 2 | Clearance, half-life, dosing by weight | Lessons: Reduced clearance, Dosing by weight. Show the math on each readout. Fit the data (IV bolus) |
@@ -262,7 +262,7 @@ The drug presets use typical textbook values and are not prescribing information
 
 ## Run a class in ten minutes
 
-1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, an AUC24 range, or a time above the MIC (your MIC and the least share of each interval the unbound level must stay above it). You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, MaatiRx checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
+1. **Write a case (optional).** In **Cases → For instructors → Write a case**, choose a first-order drug from the library, describe the patient (age, sex, height, weight, serum creatinine), set the regimens students may pick (intervals, dose range and step, and the infusion time for an IV drug), and the target at steady state: a peak range with a trough limit, an AUC24 range, or a time above the MIC (your MIC and the least share of each interval the unbound level must stay above it). You can change the drug's half-life, volume or bioavailability; the case then shows them as your values beside the library's. Before the link is made, MaatiRX checks every regimen your choices allow and offers the link only when at least one meets the target, and it tells you how many do. The case opens for everyone as a community case, marked unreviewed. Don't include a name or any other identifier.
 2. **Make an assignment.** In **Make an assignment**, add up to 12 items in order: built-in cases, the case you just wrote, and worksheets (a topic and 5, 10 or 15 problems). Copy the one link and post it.
 3. **Choose a class key** and tell your class separately; it isn't in the link. Give each student an identifier that isn't their name (a seat or roster number).
 4. **Students work through the assignment** in the browser: each case is graded as they check a regimen, and worksheet answers are checked as they go. Their progress stays in their own browser.

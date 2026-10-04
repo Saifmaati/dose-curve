@@ -1,10 +1,10 @@
-# DoseCurve v1.0 build report
+# MaatiRX v1.0 build report
 
 Built unattended on 29–30 September 2026 on the `v1.0` branch, then merged into `main`. The build log (`docs/BUILD_LOG.md`) lists every task, and `docs/DECISIONS.md` every judgment call.
 
 ## 1. Summary
 
-DoseCurve 1.0 is a free, static, browser-based pharmacokinetics and PK/PD simulator for pharmacy education. It now covers:
+MaatiRX 1.0 is a free, static, browser-based pharmacokinetics and PK/PD simulator for pharmacy education. It now covers:
 
 - the calculations pharmacists do: Cockcroft–Gault renal adjustment, saturable (Michaelis–Menten) kinetics, and population variability with probability of target attainment;
 - eight clinical cases that the model grades;
@@ -29,7 +29,7 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
 | 2 | Sheiner–Tozer albumin tool | Load phenytoin | `nonlinear.test.js` |
 | 2 | Lesson, comparison, practice topic (4 kinds) | Lessons → Saturable elimination; Practice → Saturable | `nonlinear.test.js`, `pk-engine.test.js` |
 | 3 | Cases tab, 8 cases: model grading, rule-based hints, practical-strength rounding, walkthroughs, links, print | Cases tab; `#case=gent&d=100&t=8` | `cases.test.js` |
-| 4 | Independent reference (SciPy) and live validation page; `windowStats` made exact at jumps (found by the validation) | https://saifmaati.github.io/dose-curve/validation.html | `validation.test.js` |
+| 4 | Independent reference (SciPy) and live validation page; `windowStats` made exact at jumps (found by the validation) | the live validation page (validation.html) | `validation.test.js` |
 | 5 | CI, README, LICENSE, CITATION.cff, .zenodo.json, issue templates, opt-in analytics, NEEDS-SAIF | GitHub repository | `release.test.js` |
 | 6 | Population mode: virtual patients, 5–95% band, PTA (window and AUC24), in a Web Worker | ◍ POPULATION above the chart | `population.test.js` |
 | 7 | Present mode, system theme, switchable shortcuts, keyboard dose timeline, chart text alternative, reduced motion, week-by-week guide | ▣ Present; ⌨ Keys; `docs/teaching-guide.md` | `a11y.test.js` |
@@ -76,13 +76,13 @@ Its numbers agree with an independent SciPy solver within 0.025% on 94 scenarios
   - The Cases tab (8 cases).
   - Population mode with a band.
   - The validation page: 376 of 376 comparisons within tolerance, run in the browser.
-  - The offline cache (dosecurve-v9) holds the page, cases, worker, glossary and validation files, with the service worker in control.
+  - The offline cache (v9) holds the page, cases, worker, glossary and validation files, with the service worker in control.
 
 ## 5. How to verify each headline claim
 
 | Claim | URL or command |
 | --- | --- |
-| The engine agrees with an independent solver within 0.5% (0.025% worst) | https://saifmaati.github.io/dose-curve/validation.html, or `node --test tests/validation.test.js` |
+| The engine agrees with an independent solver within 0.5% (0.025% worst) | the live validation page (validation.html), or `node --test tests/validation.test.js` |
 | The reference is independent and rerunnable | `python3 -m pip install numpy scipy && python3 validation/reference.py` |
 | Every test passes on every push | The Tests badge in the README; https://github.com/Saifmaati/dose-curve/actions |
 | Cockcroft–Gault: 72.9 and 62.0 mL/min; Devine IBW: 73.0 and 57.0 kg | `node --test tests/clinical.test.js`; Simulator → Patient → Clinical |
@@ -152,7 +152,7 @@ There are now 263 tests in 10 files.
 Live check after merging (pull request #3, merge 2d50c74):
 - CI was green on the branch head and the pull request, and a fresh clone of the branch passed 263/263.
 - The deployed files are byte-identical to the repository's.
-- In the browser: defaults unchanged, Version 1.2.0, offline cache dosecurve-v11, and phenytoin's population (200 virtual patients) in about 1.4 s.
+- In the browser: defaults unchanged, Version 1.2.0, offline cache v11, and phenytoin's population (200 virtual patients) in about 1.4 s.
 - Live Lighthouse: mobile 97–100 in performance (85 before), desktop 100, and 100 for accessibility, best practices and SEO on both.
 
 ## 11. 1.3.0
@@ -167,7 +167,7 @@ Live check after merging (pull request #3, merge 2d50c74):
 
 There are now 265 tests in 10 files.
 
-Live check after merging (pull request #4, merge e178f31): the deployed files are byte-identical. In the browser: defaults unchanged, Version 1.3.0, the Practice tab loads its module only when opened, `pk-practice.js` is in the offline cache (dosecurve-v12), and the two-compartment fit link opens. Live Lighthouse: app mobile 97, validation page 96.
+Live check after merging (pull request #4, merge e178f31): the deployed files are byte-identical. In the browser: defaults unchanged, Version 1.3.0, the Practice tab loads its module only when opened, `pk-practice.js` is in the offline cache (v12), and the two-compartment fit link opens. Live Lighthouse: app mobile 97, validation page 96.
 
 ## 12. 1.4.0
 
@@ -180,13 +180,13 @@ Live check after merging (pull request #4, merge e178f31): the deployed files ar
 
 There are now 269 tests in 10 files.
 
-Live check after merging (pull request #5, merge 36e3abf): the deployed files are byte-identical. In the browser: Version 1.4.0, offline cache dosecurve-v13, the tenth case grades 220 mg every 6 h on target, and the validation page shows 504 of 504.
+Live check after merging (pull request #5, merge 36e3abf): the deployed files are byte-identical. In the browser: Version 1.4.0, offline cache v13, the tenth case grades 220 mg every 6 h on target, and the validation page shows 504 of 504.
 
 ## 13. 1.4.1
 
 A patch. The IV-bolus dose table was off by one dose (since 1.0): each row's peak included the bolus that starts the next interval. The fix reads each interval as [start, end). A standing cross-check now runs in the test suite (40 seeded random scenarios against dense scans of the engine's own curve) and passed 800 more before release. There are 270 tests in 10 files.
 
-Live check after merging (pull request #6, merge fadf6bd): the deployed files are byte-identical, and the live engine gives the corrected dose table (12.50, 15.63, 16.41, 16.60 mg/L for 500 mg every 12 h), Version 1.4.1 and cache dosecurve-v14.
+Live check after merging (pull request #6, merge fadf6bd): the deployed files are byte-identical, and the live engine gives the corrected dose table (12.50, 15.63, 16.41, 16.60 mg/L for 500 mg every 12 h), Version 1.4.1 and cache v14.
 
 ## 14. 1.5.0
 
@@ -196,7 +196,7 @@ Live check after merging (pull request #6, merge fadf6bd): the deployed files ar
 
 There are 271 tests in 10 files.
 
-Live check after merging (pull request #7, merge d4d0290): the deployed files are byte-identical, and the live site shows Version 1.5.0, cache dosecurve-v15, and "t½ terminal" with two compartments.
+Live check after merging (pull request #7, merge d4d0290): the deployed files are byte-identical, and the live site shows Version 1.5.0, cache v15, and "t½ terminal" with two compartments.
 
 ## 15. 1.6.0
 
@@ -645,13 +645,25 @@ Lighthouse on mobile: the root 95, `#app` 97 and 97, desktop 99; accessibility 1
 The design was mapped first by three code readers and a designer. The finished change was reviewed by four reviewers, each finding checked by a second reviewer: 11 findings were confirmed and fixed (6 rejected). axe: no violations on a saturable dialysis link in both themes at 1280 and 390 px. 418 tests.
 
 
-## 48. 2.20.0 (MaatiRx, at maatirx.com)
+## 48. 2.20.0 (MaatiRX, at maatirx.com)
 
 | Feature | Where to see it | Checked by |
 | --- | --- | --- |
 | The name on every page, the opening screen, the downloads, the citation files | every page; Download | `release.test.js`, `educators.test.js` (the version line); a sweep for the old name outside the historical records |
 | The address: canonical, link previews, sitemap, robots.txt, JSON-LD, citation files | the page source | the tree served at the root, as a custom domain serves it: the app, the service worker (scope /, cache `maatirx-v49`) and the 404 page with no failed request |
 | Old scenario files and completion codes | Library → Import; the instructor's check | `pk-engine.test.js` (the refusal names both), `instructor.test.js` (the new header) |
-| The cache rename | offline | `sw.test.js` (activation clears `dosecurve-` and `maatirx-` caches other than the current one) |
+| The cache rename | offline | `sw.test.js` (activation clears the app's older caches, under either name) |
 | The new preview image and README screenshots | link previews; the README | viewed at full size |
 | Bringing saved work from the old address | the first old link after the switch | `move.test.js` (what is carried; where it goes from every old page; the link and the page's own # part; made-up work, the wrong shapes and markup left behind; merging replaces nothing, adds scenarios and progress, writes nothing twice; the note's counts, the library's limit, a draft at both addresses); `sw.test.js` (at the old address a redirected page request gets the saved page, elsewhere the redirect; the check isn't kept); `explain.test.js` (the moved worked methods); a rehearsal in Chrome through a proxy playing both addresses, in both themes: before the switch nothing shows; switched with the new address not answering, the old copy works and nothing is offered; then the offer, the work at maatirx.com with the link's own # part, the theme and the library, from the app page and from validation.html; the next old link's Go and Bring it again; Undo; Not now; old links straight through after Go; axe on every dialog |
+
+## 49. 3.0.0 (MaatiRX)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The name, written MaatiRX everywhere; the old name only where it has to be | every page, the docs | `rename.test.js` (no other spelling in any file; every remaining mention of the old name matches a listed place and reason; one "formerly" line each in the README and Model and methods; titles, manifest, citation files) |
+| Saved keys moved to MaatiRX's names on the first load of any page | any page after the update | `rename.test.js` (the same head script on all five pages, before anything is read; run against a browser's storage: moved once, a key under both names set aside and merged (`move.test.js`), a second load changes nothing, full storage keeps the old copy, blocked storage doesn't throw; every key the pages use is MaatiRX's) |
+| Old files and progress still read; new ones in MaatiRX's format | Library → Import | `pk-engine.test.js` |
+| The cache cut-over | offline | `sw.test.js` |
+| Bringing work from the old address under either name | the first old link after the switch | `move.test.js` (old names and formats in, MaatiRX's out; the old-name mapping checked by mutation); the two-address rehearsal in Chrome |
+| The 404 page from the root | a missing address | served at the root and under a project folder |
+| The new link-preview image and README screenshots | link previews; the README | viewed at full size |

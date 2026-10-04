@@ -3,15 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MaatiRx model and methods</title>
-<meta name="description" content="MaatiRx's model and methods: every equation the simulator solves, how routes and schedules are modelled, what the tests cover, the disclaimer, and the privacy, effects and visit-counting statements.">
+<title>MaatiRX model and methods</title>
+<meta name="description" content="MaatiRX's model and methods: every equation the simulator solves, how routes and schedules are modelled, what the tests cover, the disclaimer, and the privacy, effects and visit-counting statements.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script>(function(){ var d=document.documentElement, t=(location.search.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
-  if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
+  // (3.0) the settings and work saved under the old name's keys move to MaatiRX's, once, on whichever page loads first.
+  // A key saved under both (an older tab kept writing) is set aside for ui-move.js to merge; an old key goes only once
+  // its value is kept.
+  try{ var ls=localStorage, old=[]; for(var x=0;x<ls.length;x++) if(/^dosecurve[.-]/.test(ls.key(x))) old.push(ls.key(x));
+    old.forEach(function(k){ try{ var m="maatirx"+k.slice(9), v=ls.getItem(k), h=ls.getItem(m);
+      if(h==null) ls.setItem(m, v); else if(h!==v) ls.setItem("maatirx-premove:"+m, v); ls.removeItem(k); }catch(e){} }); }catch(e){}
+  if(!t) try{ t=localStorage.getItem("maatirx.theme"); }catch(e){}
   if(!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t="light";
   if(t==="light") d.classList.add("light");
   // the 3D sphere: the reader's Effects choice, else off on a weak device (as in the app)
-  var s=null, n=navigator; try{ s=localStorage.getItem("dosecurve.effects"); }catch(e){}
+  var s=null, n=navigator; try{ s=localStorage.getItem("maatirx.effects"); }catch(e){}
   if(s==="off" || (!s && ((window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || n.deviceMemory<4 || n.hardwareConcurrency<4 || (n.connection && n.connection.saveData)))) d.classList.add("fx-off"); })();</script>
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -62,10 +68,10 @@
 </style>
 </head>
 <body>
-<header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Maati<em>Rx</em></span></a><nav aria-label="Pages"><a href="validation.html">Validation</a><a href="./">Open the simulator</a></nav></header>
+<header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Maati<em>RX</em></span></a><nav aria-label="Pages"><a href="validation.html">Validation</a><a href="./">Open the simulator</a></nav></header>
 <main>
 <h1>Model and methods</h1>
-<p class="note">Educational model, not for clinical dosing. This page states the model MaatiRx solves. Its <a href="validation.html">validation</a> checks that the model is solved correctly; it does not show that the model predicts real patients.</p>
+<p class="note">Educational model, not for clinical dosing. This page states the model MaatiRX solves. Its <a href="validation.html">validation</a> checks that the model is solved correctly; it does not show that the model predicts real patients.</p>
 <nav class="toc" aria-label="On this page"><a href="#one">One compartment</a><a href="#routes">Routes and schedules</a><a href="#two">Two compartments</a><a href="#mm">Saturable elimination</a><a href="#effect">Effect</a><a href="#patient">Patients</a><a href="#organs">Liver and dialysis</a><a href="#variability">Variability and levels</a><a href="#abx">Antimicrobial indices</a><a href="#tests">Tests</a><a href="#disclaimer">Disclaimer</a><a href="#privacy">Privacy</a><a href="#cite">Citing</a></nav>
 <h2 id="one">One compartment, first-order</h2>
 <p>The drug spreads through one volume <i>V</i> and is eliminated in proportion to its concentration, with rate constant <i>k</i><sub>e</sub>. For a single dose <i>D</i> (times the salt factor <i>S</i>, the fraction of the dose that is active drug):</p>
@@ -107,13 +113,13 @@
 <h2 id="tests">What the tests cover</h2>
 <p>An automated suite (<code>node --test tests/</code>) runs on every push. It covers closed-form results (the equations above and their limits), the clinical, child and saturable models, two compartments, the effect site and indirect responses, the liver model, dialysis (with exact mass balance), population mode, the Bayesian estimate, regimen edge cases (loading and missed doses, custom schedules), the share-link format across every version, every quantitative claim each lesson makes, every practice answer against a simulation of its own scenario, every case and its grading, the page's accessibility commitments, its script budget and the offline cache. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see <a href="validation.html">Validation</a>, which reruns that comparison in your browser.</p>
 <h2 id="disclaimer">Disclaimer</h2>
-<p class="disc"><b>Educational simulation.</b> MaatiRx models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</p>
+<p class="disc"><b>Educational simulation.</b> MaatiRX models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</p>
 <h2 id="privacy">Privacy, effects and visit counting</h2>
-<p><b>Privacy.</b> MaatiRx runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student's name as an identifier.</p>
+<p><b>Privacy.</b> MaatiRX runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student's name as an identifier.</p>
 <p><b>Effects.</b> The fonts come from this site. With Effects on, the 3D stage loads Three.js, a pinned and hash-checked copy, from cdnjs.cloudflare.com; that request is the only one to another site, and it carries nothing you enter. Turn Effects off in the top bar and it is never made.</p>
-<p><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, MaatiRx counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
-<h2 id="cite">Citing MaatiRx</h2>
-<p>Zenodo archives every release. <a href="https://doi.org/10.5281/zenodo.23082408">doi:10.5281/zenodo.23082408</a> always resolves to the newest version; each release also has its own DOI, listed there. Releases up to 2.19 are archived under the earlier name, DoseCurve. The source, MIT-licensed, is <a href="https://github.com/Saifmaati/dose-curve">on GitHub</a>.</p>
+<p><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, MaatiRX counts page visits with GoatCounter, which works without cookies and doesn't store IP addresses. It sends only the page's path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario's settings live, or anything you enter.</p>
+<h2 id="cite">Citing MaatiRX</h2>
+<p>Zenodo archives every release. <a href="https://doi.org/10.5281/zenodo.23082408">doi:10.5281/zenodo.23082408</a> always resolves to the newest version; each release also has its own DOI, listed there. MaatiRX was formerly DoseCurve, and releases up to 2.19 are archived under that name. The source, MIT-licensed, is <a href="https://github.com/Saifmaati/dose-curve">on GitHub</a>.</p>
 </main>
 <script>
   // visit counting: the same switch as the app's (docs/NEEDS-SAIF.md, step 4); off unless the site owner sets an id

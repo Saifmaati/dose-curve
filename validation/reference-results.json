@@ -1,5 +1,5 @@
 {
- "about": "Independent reference results for MaatiRx's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
+ "about": "Independent reference results for MaatiRX's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
  "generated": "2026-10-01",
  "python": "3.9.6",
  "numpy": "2.0.2",

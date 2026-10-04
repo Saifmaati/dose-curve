@@ -1,4 +1,4 @@
-/* MaatiRx population mode
+/* MaatiRX population mode
    n virtual patients around the scenario's typical patient, with log-normal between-patient variability on
    clearance and volume: CLᵢ = CL·e^ηCL and Vᵢ = V·e^ηV, η ~ N(0, ω²), ω² = ln(1 + CV²), so the scenario's values
    are the medians. With saturable (Michaelis–Menten) elimination the first variability is on Vmax instead:

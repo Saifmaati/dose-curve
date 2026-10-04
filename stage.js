@@ -1,4 +1,4 @@
-/* MaatiRx stage
+/* MaatiRX stage
    The hero object that travels through the site, and the root sequence above the app. The page imports this file
    after its first paint, calls start(PK) and then hands it, after every change, the curves its chart has just drawn:
    the stage draws them as a 3D ribbon, so the two can never disagree. The sequence's own scenes come from the same
@@ -20,7 +20,7 @@
 
 const D=document.documentElement, $=id=>document.getElementById(id), NS="http://www.w3.org/2000/svg";
 const phoneQ=matchMedia("(max-width:760px)"), stillQ=matchMedia("(prefers-reduced-motion: reduce)");
-const REF_SRC="validation/reference-results.json?v=34248d58e5";   // stamped by content hash, like the page's files
+const REF_SRC="validation/reference-results.json?v=8217f1c2e3";   // stamped by content hash, like the page's files
 const clamp=(v,a,b)=> Math.min(b, Math.max(a, v)), lerp=(a,b,u)=> a+(b-a)*u, ease=u=> u<.5 ? 4*u*u*u : 1-Math.pow(-2*u+2,3)/2;
 const smooth=u=>{ u=clamp(u,0,1); return u*u*(3-2*u); };
 const band=(u,a,b)=> smooth((u-a)/(b-a));
@@ -82,7 +82,7 @@ export function start(PK){
         const k2=sc.ms6[k].ft/100*sc.T6/out[out.length-1]; return out.map(v=> v*k2); }); }
   }
   // A two-compartment drug through a hemodialysis session (the rebound lesson's patient): pk-hd.js, loaded for it
-  const HD_SRC="pk-hd.js?v=1c3ea1a9b2";   // stamped by content hash, like the page's files
+  const HD_SRC="pk-hd.js?v=1b74053411";   // stamped by content hash, like the page's files
   const HD_T0=4;   // the scene shows the course from 4 hours, after the bolus's first fall
   let hdPrep=null;
   function prepHd(){
@@ -292,7 +292,7 @@ export function start(PK){
   const can3d=()=> !D.classList.contains("fx-off") && !D.classList.contains("embed") && !!window.WebGLRenderingContext;
   // tier 2: a capable desktop with WebGL2 (the full passes); tier 1: everything else that has WebGL
   function tierOf(){
-    let forced=null; try{ forced=localStorage.getItem("dosecurve.fxtier"); }catch(e){}
+    let forced=null; try{ forced=localStorage.getItem("maatirx.fxtier"); }catch(e){}
     if(forced==="1" || forced==="2") return +forced;
     const n=navigator, gl2=!!window.WebGL2RenderingContext;
     // (a software renderer is ruled out once the renderer exists, from its own context: see build)
@@ -1227,7 +1227,7 @@ export function start(PK){
         blurMat.uniforms.t.value=rt.reflB.texture; blurMat.uniforms.dir.value.set(0,r/rt.hh); pass(blurMat, rt.refl); }
       floorMat.uniforms.uHas.value=1;
     }
-    const OFF={};   // debugging only (dosecurve.debug): parts switched off to find a fault
+    const OFF={};   // debugging only (maatirx.debug): parts switched off to find a fault
     let reflN=0, moving=false;
     function renderFull(){
       if(!rt || rt.w!==renderer.domElement.width || rt.h!==renderer.domElement.height) makeTargets(renderer.domElement.width, renderer.domElement.height);
@@ -1331,7 +1331,7 @@ export function start(PK){
     }
     addEventListener("resize", ()=>{ offset=null; resize(); }); resize();
     document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) frame(); });   // paused while hidden
-    try{ if(localStorage.getItem("dosecurve.debug")) window.__dc3={THREE, scene, camera, renderer, floor, shafts, dust, groups, compMat, floorMat, OFF, frame:()=>frame()}; }catch(e){}
+    try{ if(localStorage.getItem("maatirx.debug")) window.__dc3={THREE, scene, camera, renderer, floor, shafts, dust, groups, compMat, floorMat, OFF, frame:()=>frame()}; }catch(e){}
     scene.environment=envOf("dark");
     // distance fades into the page's own colour (exponential), as the floor's grid does
     scene.fog=new THREE.FogExp2(col(K.page), .016);

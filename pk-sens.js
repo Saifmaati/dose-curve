@@ -1,4 +1,4 @@
-/* MaatiRx sensitivity analysis
+/* MaatiRX sensitivity analysis
    One input at a time moved 20% down and 20% up, everything else held, and the change in four outputs: AUC24, the
    peak, the trough and the time in the window. Clearance moves with the volume held (the half-life follows), volume
    with clearance held, and F is capped at 1. A regular regimen is read at steady state (AUC24 = AUCτ × 24 / τ, and

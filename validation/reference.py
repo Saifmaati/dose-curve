@@ -1,8 +1,8 @@
-"""MaatiRx validation: an independent reference implementation.
+"""MaatiRX validation: an independent reference implementation.
 
 Written from the model's equations, not translated from pk-engine.js. It integrates the one- and two-compartment
 models with scipy's solve_ivp (DOP853, rtol 1e-11) piecewise between doses, with an extra state that accumulates the
-area under the curve, and writes validation/reference-results.json. tests/validation.test.js runs MaatiRx's
+area under the curve, and writes validation/reference-results.json. tests/validation.test.js runs MaatiRX's
 engine on the same scenarios and compares.
 
     python3 -m pip install numpy scipy
@@ -529,7 +529,7 @@ def main():
         m = metrics(s["scenario"])
         rows.append(dict(s, reference=m, nonlinear=s["scenario"].get("kin") == "mm"))
     doc = {
-        "about": "Independent reference results for MaatiRx's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
+        "about": "Independent reference results for MaatiRX's engine, from validation/reference.py (scipy solve_ivp, DOP853).",
         "generated": datetime.date.today().isoformat(),
         "python": sys.version.split()[0], "numpy": np.__version__, "scipy": __import__("scipy").__version__,
         "window": {"T": T_END, "mec": MEC, "mtc": MTC},

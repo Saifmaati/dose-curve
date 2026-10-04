@@ -1,4 +1,4 @@
-/* MaatiRx clinical cases
+/* MaatiRX clinical cases
    Worked cases that bring the clinical patient model, the drug library and the grader together. Nothing here
    stores an answer the model could compute: every target check, hint, walkthrough number and reference regimen
    is worked out from the patient and the drug when the case is opened. Educational model, not for clinical dosing.
@@ -792,7 +792,7 @@
   function base32(bytes, n){ let bits=0, val=0, out=""; for(const b of bytes){ val=(val<<8)|b; bits+=8; while(bits>=5 && out.length<n){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } } return out; }
   // The readable payload: what the code vouches for.
   function completionPayload(o){
-    return ["MaatiRx completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
+    return ["MaatiRX completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
   }
   async function completionCode(key, payload){
     const k=await crypto.subtle.importKey("raw", utf8.encode(String(key)), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
@@ -866,7 +866,7 @@
   const TEMPLATE={title:"", drug:"gent", patient:{age:70, sex:"F", ht:160, wt:60, scr:1.5}, setting:"", task:"Choose a dose and interval that meet the target at steady state.",
     also:"", refs:[], target:{kind:"pt", peak:[5,10], troughMax:1}, choices:{taus:[8,12,24,36], step:10, min:40, max:400, tinf:0.5}, start:{D:80, tau:8}};
   function renderAuthor(){
-    const h=host, sp=Object.assign({}, TEMPLATE, store.get("dosecurve-author-draft")||{}), t=sp.target||{}, ch=sp.choices||{}, pt=sp.patient||{}, ov=sp.over||{};
+    const h=host, sp=Object.assign({}, TEMPLATE, store.get("maatirx-author-draft")||{}), t=sp.target||{}, ch=sp.choices||{}, pt=sp.patient||{}, ov=sp.over||{};
     const v=x=> x==null ? "" : h.esc(String(x)), sel=(a,b)=> a===b ? " selected" : "";
     const el=panel(`<h2 class="cs-h">Write a case</h2>
       <p class="cs-intro-p">A case is a patient, a drug from the library and a target. Students propose a regimen and the model grades it. Before the link is made, every regimen your choices allow is checked, and the link is offered only if at least one meets the target. It opens as a community case, marked unreviewed. Don't include a patient's name or other identifiers.</p>
@@ -928,7 +928,7 @@
     };
     f.addEventListener("submit",e=>{
       e.preventDefault();
-      const raw=read(); store.set("dosecurve-author-draft", raw);
+      const raw=read(); store.set("maatirx-author-draft", raw);
       const got=checkSpec(raw), out=$("auOut");
       if(!got.spec){ out.innerHTML=`<p class="cs-no">The case needs ${h.esc(got.errors.join("; "))}.</p>`; return; }
       const c=communityCase(got.spec), sol=solveCase(c), u=PK.unitsOf({unit:drugOf(c.drug).units});
@@ -979,7 +979,7 @@
   }
 
   /* ---------- work through an assignment ---------- */
-  function progressKey(token){ return "dosecurve-assignment-"+token.slice(-24); }
+  function progressKey(token){ return "maatirx-assignment-"+token.slice(-24); }
   function markDone(from, i, val){ const k=progressKey(from.token), pr=store.get(k)||{}; pr[i]=Object.assign(pr[i]||{}, val); store.set(k, pr); }
   function openBundle(b, token){
     if(!b){ panel(`<p class="cs-no">This assignment link couldn't be read. Ask for the link again.</p>`); return; }
@@ -1124,7 +1124,7 @@
     const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
     box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "Back to the assignment" : "All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
-      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. MaatiRx checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
+      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. MaatiRX checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
       <details class="cs-more cs-dossier" open><summary>Case facts</summary><dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}

@@ -1,4 +1,4 @@
-/* MaatiRx PK engine
+/* MaatiRX PK engine
    One-compartment linear pharmacokinetics (first-order oral absorption, IV bolus, IV infusion),
    regular regimens with loading and missed doses, custom dose schedules, exposure metrics, the
    teaching presets, and the share-link codec. Pure functions with no DOM access: the page loads this file as window.PK and
@@ -1603,7 +1603,8 @@
   // stores its setup in the share-link format, so saving, loading and importing reuse the link validation,
   // schema versions (v1–v3) and clamping, and anything a link can carry (custom schedules, A/B names, the
   // lock, the baseline, the lesson, the view) is saved too.
-  const LIBRARY_FORMAT="dosecurve-library", LIBRARY_VERSION=1;
+  // the format names: MaatiRX's since 3.0, and the old name's, which files and saved libraries from before 3.0 carry
+  const LIBRARY_FORMAT="maatirx-library", LIBRARY_VERSION=1, LIBRARY_FORMATS=[LIBRARY_FORMAT, "dosecurve-library"];
   const LIBRARY_LIMITS={items:200, name:60, link:20000, importItems:1000};
   const emptyLibrary=()=>({format:LIBRARY_FORMAT, version:LIBRARY_VERSION, items:[]});
   const newItemId=()=> "s"+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
@@ -1637,7 +1638,7 @@
       try{ data=JSON.parse(input); }catch(e){ return {library:emptyLibrary(), skipped:0, error:"not valid JSON"}; }
     }
     if(Array.isArray(data)) data={format:LIBRARY_FORMAT, version:0, items:data};
-    if(!data || typeof data!=="object" || data.format!==LIBRARY_FORMAT) return {library:emptyLibrary(), skipped:0, error:"not a MaatiRx (or DoseCurve) scenario file"};
+    if(!data || typeof data!=="object" || !LIBRARY_FORMATS.includes(data.format)) return {library:emptyLibrary(), skipped:0, error:"not a MaatiRX scenario file"};
     const raw=Array.isArray(data.items) ? data.items : [];
     const items=[], ids=new Set();
     let skipped=Math.max(0, raw.length-LIBRARY_LIMITS.importItems);
@@ -1716,7 +1717,7 @@
   // and whether the challenge was met; per practice topic, answers checked and answers right; and how many
   // fit-the-data and hit-the-window tasks were completed. parseProgress keeps only that shape (known lessons and
   // topics, true flags, whole counts), so a damaged or edited copy can't put anything else into the page.
-  const PROGRESS_FORMAT="dosecurve-progress", PROGRESS_VERSION=1, PROGRESS_TASKS=["fit","window"];
+  const PROGRESS_FORMAT="maatirx-progress", PROGRESS_VERSION=1, PROGRESS_FORMATS=[PROGRESS_FORMAT, "dosecurve-progress"], PROGRESS_TASKS=["fit","window"];
   const emptyProgress=()=>({format:PROGRESS_FORMAT, version:PROGRESS_VERSION, lessons:{}, practice:{}, tasks:{fit:0, window:0}});
   const tally=v=> Number.isInteger(v) && v>=0 ? Math.min(v, 1e6) : 0;
   const isObj=v=> !!v && typeof v==="object" && !Array.isArray(v);
@@ -1724,7 +1725,7 @@
     let o=x;
     if(typeof x==="string"){ try{ o=JSON.parse(x); }catch(e){ return emptyProgress(); } }
     const p=emptyProgress();
-    if(!isObj(o) || o.format!==PROGRESS_FORMAT) return p;
+    if(!isObj(o) || !PROGRESS_FORMATS.includes(o.format)) return p;
     const lessons=isObj(o.lessons) ? o.lessons : {}, practice=isObj(o.practice) ? o.practice : {}, tasks=isObj(o.tasks) ? o.tasks : {};
     LESSONS.forEach(L=>{
       const r=lessons[L.id];
@@ -1969,7 +1970,7 @@
     lessonHelpers:{higherLowerSame, everyDay, every6h},
     DEFAULT_NAMES, newComparison, cmpApply, cmpCopy, cmpSwap, cmpSetLock, cmpReset, lockHolds, normalizeScenario,
     encodeScenario, decodeScenario, encodeView, decodeView, encodeLink, decodeLink, cleanName,
-    LIBRARY_FORMAT, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
+    LIBRARY_FORMAT, LIBRARY_FORMATS, LIBRARY_VERSION, LIBRARY_LIMITS, emptyLibrary, libraryItem, validItem, parseLibrary, mergeLibrary, exportLibrary,
     PRACTICE_TOPICS, PRACTICE_IDS, seededRandom, WORKSHEET_SIZES, WS_VERSION, twoLevelAUC, practiceHelpers,
     get PRACTICE(){ const m=practiceApi(); return m ? m.PRACTICE : null; },
     makeProblem:o=> practiceApi().makeProblem(o), practiceScenario:pr=> practiceApi().practiceScenario(pr),
@@ -1981,7 +1982,7 @@
     set GLOSSARY(v){ glossary=v; },
     get metricMath(){ if(!mathFn && typeof require==='function') mathFn=require('./pk-math.js'); return mathFn; },
     set metricMath(v){ mathFn=v; },
-    PROGRESS_FORMAT, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
+    PROGRESS_FORMAT, PROGRESS_FORMATS, emptyProgress, parseProgress, recordLesson, recordPractice, recordTask, progressSummary,
     crclCG, cmToIn, ibwDevine, adjBW, CRCL_REF, renalFactor, patientOf, childOf, GFR_STD, clFactor, UNITS, unitsOf, convertUnits, saltOf,
     get SOURCES(){ const m=sourcesApi(); return m ? m.SOURCES : {}; }, get sourcesModule(){ return srcMod; }, set sourcesModule(m){ attachSources(m); },
     UNVERIFIED, drugScenario, MM_STEP, vmaxOf, mmIntegrate, mmAmount, mmCss, mmT90, mmHalfAt, mmSteady, readoutKeys, READOUT_KEYS_MM, READOUT_KEYS_HD, sheinerTozer};

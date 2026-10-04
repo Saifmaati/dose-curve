@@ -1,16 +1,29 @@
 # Changelog
 
-What changed in MaatiRx (called DoseCurve until 2.19), newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+What changed in MaatiRX, newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+
+## 3.0.0 (2026-10-04)
+
+The brand is **MaatiRX**, written exactly so everywhere, at **maatirx.com**. The palette, type, layout, motion and the curve mark are unchanged; only the name changes.
+
+- **The name** in the wordmark ("Maati" strong, "RX" light), the opening screen ("Maati | RX"), every page's title, the meta and link-preview tags, the app's install name, the citation files, the downloads, the README, the teaching guide, Model and methods, the educator and validation pages, the footer, the tests and every doc, the history included. A new link-preview image and new README screenshots. The old name stays in one "formerly" line in the README and one in Model and methods, and where removing it would break something (links to the repository, which keeps its name, and the code that reads what was saved under it).
+- **Saved settings and work move to MaatiRX's names.** On the first load of any page after the update, every key saved under the old name's prefix moves to MaatiRX's: the scenario library, lesson, practice and assignment progress, a case being written, the theme, effects and keyboard settings. Each key moves on its own, and an old one is removed only once its value is safe. A key saved under both names (an older tab kept writing) is merged by the move's rules, not dropped. Scenario files and progress are written in MaatiRX's format; files saved before still import.
+- **Offline:** a clean cut-over to cache `maatirx-v50`; every earlier cache of the app, under either name, is cleared.
+- **Unchanged:** share links, worksheet links, case and assignment links, and completion codes, old and new.
+- **Bringing work from the old address** (2.20) carries keys under either name and writes MaatiRX's.
+- **The 404 page** names its files from the site's root (maatirx.com) and adds the project's folder only on the github.io address.
+- The linearity lesson no longer says the app models linear kinetics only. The 2.0.0 entry's before-and-after screenshots, which showed the old name, are gone.
+- **The address is live:** since 4 October (right after 2.20), maatirx.com serves the site over HTTPS, with `www` and plain HTTP redirecting to it, and every address on the old github.io project site redirects to the same path there. The `CNAME` file is in the repository.
 
 ## 2.20.0 (2026-10-04)
 
-DoseCurve is now **MaatiRx**, at **https://maatirx.com/**.
+The app takes the name **MaatiRX**, at **https://maatirx.com/**.
 
-- **The name.** The top bar, the opening screen ("Maati | Rx", split by the curve), every page's title, the footer, the citation files and the docs say MaatiRx. The wordmark keeps its weights: "Maati" in the strong weight, "Rx" in the light one.
-- **The address.** The canonical address, the link previews, the sitemap, robots.txt, the JSON-LD and the citation files point at https://maatirx.com/. The repository keeps its name, so once the custom domain is set GitHub redirects every saifmaati.github.io/dose-curve/ address to the same path on maatirx.com, and links already shared keep working.
+- **The name.** The top bar, the opening screen ("Maati | RX", split by the curve), every page's title, the footer, the citation files and the docs say MaatiRX. The wordmark keeps its weights: "Maati" in the strong weight, "RX" in the light one.
+- **The address.** The canonical address, the link previews, the sitemap, robots.txt, the JSON-LD and the citation files point at https://maatirx.com/. The repository keeps its name, so once the custom domain is set GitHub redirects every address on the old github.io project site to the same path on maatirx.com, and links already shared keep working.
 - **A new preview image** for shared links: the opening screen with the new name. The README's screenshots are retaken.
 - **Downloads** are named maatirx_compare.csv, maatirx_data.csv, maatirx_plot.png, maatirx-(name).json and maatirx-scenarios-(date).json.
-- **What carries over by itself.** Scenario files saved by DoseCurve still import. Completion codes made by DoseCurve still verify. Share links open as before. The names the app saves under in each browser stay the same.
+- **What carries over by itself.** Scenario files saved under the old name still import. Completion codes made under it still verify. Share links open as before. The names the app saves under in each browser stay the same.
 - **Saved work moves with the app.** A browser keeps saved work per address: the scenario library, lesson, practice and assignment progress, a case being written, the theme and effects. Without help, a returning student would find none of it at maatirx.com.
   - Once the old address redirects, a browser that opened 2.20 there still opens the app there from its offline copy (the service worker keeps it). As soon as maatirx.com answers (its certificate can take a day after the switch; until then the old copy keeps working), the app says it has moved, lists what is saved, and offers **Bring it to maatirx.com** or **Not now**. From any old page the work goes to the app page, which takes it in.
   - The work travels in the new link's # part, inside the browser; nothing is sent to a server. At maatirx.com it is added to what is saved there and replaces nothing: scenarios not already in the library are added, a lesson marked at either address is marked, and practice counts take the larger. The page reloads and says what came across, with **Undo**.
@@ -368,16 +381,12 @@ Lighthouse on mobile: the root address 97, `#compare` 97; accessibility 100 and 
 
 ## 2.0.0 (2026-10-01)
 
-DoseCurve's first visual redesign, the first of four 2.x releases (the plan and its storyboards are in [docs/DESIGN.md](docs/DESIGN.md)). The engine, the share links and the default scenario's numbers are unchanged.
-
-| Before (1.17.1) | After (2.0.0) |
-| --- | --- |
-| ![DoseCurve 1.17.1: gradient headline, glassy panels, cyan and violet glow](docs/img/v2-before.png) | ![DoseCurve 2.0.0: the split headline "Dose Curve" with the default curve as a 3D ribbon passing over it](docs/img/v2-after.png) |
+MaatiRX's first visual redesign, the first of four 2.x releases (the plan and its storyboards are in [docs/DESIGN.md](docs/DESIGN.md)). The engine, the share links and the default scenario's numbers are unchanged.
 
 - **A 3D stage.** The current scenario's concentration–time curve is a ribbon in space, drawn live from the curve the chart has just computed, with the therapeutic window as a translucent plane and doses as rings that pulse. It glows on dark sections and turns to solid graphite on light ones. The camera moves to a framing for each tab and drifts with the scroll. It renders only when something changes.
-- **An opening sequence** on a first visit to the address itself (no `#` part): seven screens, each with one giant headline and a short caption, built from the engine. The default curve draws itself as its Cmax, AUC and time in the window count up; a regimen's doses pulse as the curve reaches them; 200 virtual patients draw in to their median; a two-compartment drug splits into its two phases; and a sphere of 584 points lights up as the engine is checked against the independent solver in your browser. ![The "Learn" screen: 200 graphite curves around their median on paper](docs/img/v2-after-learn.png) Any link with a `#` part, and any later visit, goes straight into the app; the DoseCurve wordmark brings the sequence back.
+- **An opening sequence** on a first visit to the address itself (no `#` part): seven screens, each with one giant headline and a short caption, built from the engine. The default curve draws itself as its Cmax, AUC and time in the window count up; a regimen's doses pulse as the curve reaches them; 200 virtual patients draw in to their median; a two-compartment drug splits into its two phases; and a sphere of 584 points lights up as the engine is checked against the independent solver in your browser. Any link with a `#` part, and any later visit, goes straight into the app; the wordmark brings the sequence back.
 - **Effects** in the top bar switches the 3D stage on or off (remembered in this browser). It starts off with reduced motion, under 4 GB of memory, under 4 processor cores or Save-Data. Without it, or without WebGL, a CSS version stands in: soft light and the same curve as a path in perspective. Phones get the single ribbon. Present mode and print stay plain.
-- **A new shell:** a top bar with the main links on the left, DoseCurve in the middle and the switches on the right, and one pill-shaped main action pinned at the bottom of every screen ("Open the simulator" in the sequence; in the app, the open tab's main action: set the baseline, swap A and B, start a lesson, open a case, check an answer).
+- **A new shell:** a top bar with the main links on the left, the name in the middle and the switches on the right, and one pill-shaped main action pinned at the bottom of every screen ("Open the simulator" in the sequence; in the app, the open tab's main action: set the baseline, swap A and B, start a lesson, open a case, check an answer).
 - **Type and colour:** IBM Plex Sans and IBM Plex Mono, served from this site (no request to Google), with fallbacks matched to their metrics so nothing moves when they arrive; tabular figures for every number. New colour tokens for a dark instrument theme and a light paper theme, each designed for its room. Panels are frosted glass over the stage, at an opacity that keeps every text colour at WCAG AA contrast whatever the stage shows.
 - **Charts drawn for the theme:** every chart now takes its colours from the theme, instead of the light theme inverting the dark charts; the PNG export matches the theme on screen, and printing always uses the paper colours. On phones the charts are drawn narrower so their labels stay readable.
 - **Controls:** segmented controls with a sliding thumb, a tab indicator that slides, sliders with a filled track and a value bubble while they move, switches for Effects, Population and the theme, readouts whose numbers run to their new value in 200 ms, a crosshair (both lines) on the chart.
@@ -400,7 +409,7 @@ Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan
 
 ## 1.17.0 (2026-09-30)
 
-- **A page for educators** (`educators.html`, linked from the footer and the README): what DoseCurve covers, how to run a class in ten minutes (pick material, write a case, make an assignment, collect completion codes), a link to every lesson (the same share link the app makes, which opens the lesson with its scenario and challenge) and every case, the practice topics, and privacy. Its numbers come from the app itself, and a test checks every link still opens what it says.
+- **A page for educators** (`educators.html`, linked from the footer and the README): what MaatiRX covers, how to run a class in ten minutes (pick material, write a case, make an assignment, collect completion codes), a link to every lesson (the same share link the app makes, which opens the lesson with its scenario and challenge) and every case, the practice topics, and privacy. Its numbers come from the app itself, and a test checks every link still opens what it says.
 - Links like `#practice`, `#lessons`, `#cases` and `#compare` open that tab.
 - **README screenshots** for the antimicrobial comparison, an indirect response, hemodialysis and the sensitivity chart, and a fresh one of the validation page (712 comparisons).
 - **The validation page** loads its scripts without blocking the first paint and hands the page back between each check, so it stays responsive while it runs; its summary keeps its size as the results arrive. Lighthouse on mobile: app 97–100, validation 97, educators 100 (desktop 100).
@@ -610,7 +619,7 @@ Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan
   - Every comparison now agrees within 0.00002%, and within 0.000001 points in time in window. A test holds that closeness.
 - **Fix: the last dose's peak.** It was read off a grid that could step over the end of an infusion, so "Peak (last dose)" ran low: up to 1.2% for a short infusion with a long interval, and 0.6% with two compartments. It now includes every dose and infusion end and refines the peak. The worked formula uses the same value.
 - The worked formulas moved to `pk-math.js`, loaded the first time a readout is opened. This keeps the initial script within its budget (+22.2% over the Phase 0 baseline, limit +25%).
-- The share card says 24 lessons. Offline cache `dosecurve-v10`.
+- The share card says 24 lessons. Offline cache v10.
 
 ## 1.0.0 (2026-09-30)
 
@@ -637,7 +646,7 @@ Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan
   - `docs/NEEDS-SAIF.md` lists what needs the owner's accounts.
 - **Validation** (`validation.html`, linked in the footer). An independent solver (`validation/reference.py`, SciPy's `solve_ivp`) runs a matrix of 94 scenarios:
   - routes × regimens × drugs (first-order, salt, saturable) × patients
-  - the peak, trough, AUC and time in window of each, compared with DoseCurve's engine live in the browser, and in the test suite
+  - the peak, trough, AUC and time in window of each, compared with MaatiRX's engine live in the browser, and in the test suite
 
   All 376 comparisons agree within 0.5% (first-order) or 1% (saturable); the largest difference is 0.025%.
 
@@ -691,7 +700,7 @@ Fixes from the review passes and a 1,000-seed cross-check that closed Build Plan
 - **Teaching guide** (`docs/teaching-guide.md`), linked from the footer and the README.
 - **Progress:** lesson cards show "✓ Predicted" and "✓ Challenge met"; Practice keeps all-time first-answer results by topic and counts fitted data sets and met window tasks. Kept in the browser only, with a two-step reset.
 - **Two new lessons** (20 in all): *Double the dose* (linearity: twice the dose doubles every concentration and the AUC, while the half-life and the timing stay put) and *Flip-flop kinetics* (when absorption is slower than elimination, the tail of an oral curve falls at absorption's pace). Lessons now also reset the chart's scale, since the flip-flop lesson opens on the log scale.
-- **Glossary:** 30 terms under the lessons, each with its symbol, unit, the relation DoseCurve uses and a link to its lesson, with a search box.
+- **Glossary:** 30 terms under the lessons, each with its symbol, unit, the relation MaatiRX uses and a link to its lesson, with a search box.
 - **Hit the window:** regimen design. Choose a dose and an interval that keep a made-up drug's steady-state peak and trough inside a window, with a live verdict, a textbook route to an answer, and a link to share the task.
 
 ## 2026-09-29

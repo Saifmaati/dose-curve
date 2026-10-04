@@ -1,4 +1,4 @@
-/* MaatiRx: what changed, explained (2.5)
+/* MaatiRX: what changed, explained (2.5)
    The sentences under "What changed" (and A vs B in Compare): for two scenarios, what moved and why, with the model's
    numbers. Moved out of the page's script unchanged, so the first view loads less; the page loads this file just
    after its first paint (it registers itself as PK.explainModule), and a link that opens with a baseline waits for
