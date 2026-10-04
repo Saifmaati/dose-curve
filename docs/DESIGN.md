@@ -1,6 +1,6 @@
-# DoseCurve design system (2.0)
+# MaatiRx design system (2.0)
 
-DoseCurve is read by pharmacy students in a lecture hall and pharmacists at a desk, often on a projector, often on a
+MaatiRx is read by pharmacy students in a lecture hall and pharmacists at a desk, often on a projector, often on a
 phone, nearly always to read a number. Version 2 rebuilds it to the standard of the best full-screen cinematic product
 sites, translated to pharmacokinetics:
 
@@ -11,10 +11,10 @@ sites, translated to pharmacokinetics:
 - **One hero object travels through the whole site as the visitor scrolls:** the current scenario's
   concentration–time curve as a 3D ribbon, drawn live from the engine. It glows in dark sections and turns to a
   solid graphite material in light ones, and it passes over the headlines. Doses arrive as pulses along it; the
-  therapeutic window is a translucent plane. Where a product site would use a photograph, DoseCurve uses a scene the
+  therapeutic window is a translucent plane. Where a product site would use a photograph, MaatiRx uses a scene the
   engine renders, with fog for depth. No photography, no generated media.
 - **One pill-shaped primary action pinned bottom-centre** on every screen ("Open the simulator" on the landing, the
-  screen's main action inside the app), and a **minimal top bar**: links left, DoseCurve centred, utilities right.
+  screen's main action inside the app), and a **minimal top bar**: links left, MaatiRx centred, utilities right.
 
 The 2D chart stays in the simulator as the precision instrument, over the stage, because students read numbers from
 it. The first two plans for 2.0 supplied the tokens, type, components and checks below (sections 1–8); sections 9 to
@@ -153,7 +153,7 @@ sideways: the tab bar and the comparison table scroll inside themselves.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ ⌒ DoseCurve                                       [Light theme ○] [Present] Source code │ 56
+│ ⌒ MaatiRx                                       [Light theme ○] [Present] Source code │ 56
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                                    │ ┌ Default scenario ─────────── 500 mg oral, t½ 4 h ┐│
 │ Watch a dose move through          │ │ 12 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ MTC ││
@@ -192,7 +192,7 @@ sideways: the tab bar and the comparison table scroll inside themselves.
 
 ```
 ┌──────────────────────────────┐
-│ ⌒ DoseCurve      [○] [▣] [⌥] │ 52, icon buttons keep their text for readers
+│ ⌒ MaatiRx      [○] [▣] [⌥] │ 52, icon buttons keep their text for readers
 ├──────────────────────────────┤
 │ Watch a dose move through    │
 │ the body, in real time.      │
@@ -304,12 +304,12 @@ something changes.
 Every visit to the root address with no `#` part opens on the sequence, the first or the hundredth (2.10; before,
 only a first visit did). Any lesson, case, practice, worksheet or share link, `#app`, the embed view and present mode
 go straight into the app. Reaching the app from the sequence adds one history entry (`#app`), so the browser's back
-returns to the sequence and forward to the app, without a reload; the top bar's DoseCurve wordmark (Home) brings the
+returns to the sequence and forward to the app, without a reload; the top bar's MaatiRx wordmark (Home) brings the
 sequence back from anywhere. The pill reads "Open the simulator" throughout and lands in the simulator.
 
 | # | Section | Headline (split) | Caption | Small print (columns) | Object and camera |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Dark | Dose ··· Curve | Watch a dose move. | Cmax, AUC, time in window of the default scenario, counting as the ribbon draws; the disclaimer | The default curve draws itself once (1.2 s) between the two words; the window settles in. Camera low, rising |
+| 1 | Dark | Maati ··· Rx (Dose ··· Curve until 2.19) | Watch a dose move. | Cmax, AUC, time in window of the default scenario, counting as the ribbon draws; the disclaimer | The default curve draws itself once (1.2 s) between the two words; the window settles in. Camera low, rising |
 | 2 | Light | Every ··· dose | drawn from the model | Four columns: simulate, compare, learn, check, one sentence each | A glass figure, the model's one compartment, its level the default scenario's concentration (2.11) |
 | 3 | Dark | Simulate (bleeds off the right edge) | Doses arrive as pulses. | The regimen, in one line | Every 8 h, six doses: the curve draws to a cursor the scroll moves, each dose pulses as it is reached. Camera tracks the cursor |
 | 4 | Light | Learn | 200 patients, one median. | Population settings, in one line | 200 virtual patients from the app's population mode, in graphite, drawing in to their median. Camera pulls back, then closes |
@@ -317,7 +317,7 @@ sequence back from anywhere. The pill reads "Open the simulator" throughout and 
 | 6 | Dark | Exposure | Time above the MIC, counted. | Two counters (fT>MIC for each infusion); piperacillin against an MIC, one paragraph (2.11) | One steady-state interval as a 30-minute and a 3-hour infusion against the MIC; a culture dish under each, dimming by its share of time above the MIC |
 | 7 | Light | Rebound (right) | The level returns after dialysis. | The amount removed, counting; the session in one paragraph (2.11) | A two-compartment course through a session: a dialyzer that runs while it lasts, then the rebound, ringed |
 | 8 | Dark | Validated (behind the object) | Every check, within tolerance. | The count, the solver, the tolerance | A sphere of points, one per check against the independent solver, lighting to 100% as the engine's values are compared, inside a glass globe on a brass stand (2.11). Camera faces it, turning with the scroll |
-| 9 | Dark | Open ··· DoseCurve | Free, in your browser. | The disclaimer | The camera flies into the globe and out to the simulator's curve |
+| 9 | Dark | Open ··· MaatiRx | Free, in your browser. | The disclaimer | The camera flies into the globe and out to the simulator's curve |
 
 Captions are three to five words; small print is 13 px in columns. Every number in a scene is in its text too.
 
@@ -374,7 +374,7 @@ Compare stay dark; leaving a lesson or task returns them.
 | Validation | Dark (paper in the light theme) | A sphere of points, one per comparison the page runs (712 at 2.3, 718 from 2.6, 727 from 2.17, 735 from 2.19) against the independent solver, on a faint wireframe; each lights as its check passes (a failed check would turn red) | "Validating" behind the sphere while the checks run, then "Validated" when all pass ("Checked" if any fails); the page's own heading, summary and tables follow | The sphere turns a little as the visitor scrolls; nothing moves on its own except points lighting as checks finish. Without WebGL or with Effects off, the front half of the sphere as SVG dots, lighting the same way |
 | Educators | Paper, always | The default curve as a graphite line drawn from the engine, crossing the headline | "For ··· educators", caption "Teach pharmacokinetics with it." | Still |
 | README | — | New screenshots: the opening sequence, the simulator, a lesson, a case dossier, the validation sphere | — | — |
-| Link previews (OG) | Dark | The first screen of the sequence: "Dose ··· Curve" with the ribbon passing between, rendered from the engine | the caption | — |
+| Link previews (OG) | Dark | The first screen of the sequence: "Maati ··· Rx" ("Dose ··· Curve" until 2.19) with the ribbon passing between, rendered from the engine | the caption | — |
 
 ## 15. 2.4: When to sample, and the case of the day
 
@@ -390,7 +390,7 @@ Compare stay dark; leaving a lesson or task returns them.
 
 | Scene | Tone | Beats (by scroll) | Headline |
 | --- | --- | --- | --- |
-| Cold open | black (paper in the light theme) | first light from 0.6 s (or when the stage arrives), the ribbon draws over about 1.9 s with a point of light at its head, the camera pulls back from the peak, the wordmark is unmasked from 1.15 s; the scroll cue at 4.2 s | "Dose ··· Curve" |
+| Cold open | black (paper in the light theme) | first light from 0.6 s (or when the stage arrives), the ribbon draws over about 1.9 s with a point of light at its head, the camera pulls back from the peak, the wordmark is unmasked from 1.15 s; the scroll cue at 4.2 s | "Maati ··· Rx" ("Dose ··· Curve" until 2.19) |
 | Hero | dark | the window rises (28–56%), the readouts land one by one (60–94%) | in at once |
 | Every dose | paper | a low glide along the graphite ribbon | in as it arrives |
 | Simulate | dark | one dose (to 8 h), a second stacking on the ghost of the first (to 16 h), the climb to steady state (to 48 h) with the camera following | right, bleeding |
@@ -526,3 +526,14 @@ the cameras (top right); legend chips and the disclaimer at the foot; labels and
 with tabular figures, a halo of the page colour behind the labels. **Phones.** Short view names on one scrolling row,
 no camera row, a three-chip legend, taps to read.
 
+
+## 23. 2.20: the name
+
+**Wordmark.** "MaatiRx", set as the old one was: "Maati" in Inter's strong weight, "Rx" in the light one, beside the
+same curve mark. Nothing else in the type, palette or layout changes. **Opening screen.** The first scene splits the
+name, "Maati" left and "Rx" right, and the curve passes through the gap, as it did through "Dose" and "Curve". **Preview image.** The link
+preview (1200 × 630) is that scene, with the top bar, the pill, the scroll cue and the counter hidden, so the image is
+the name, the curve and the caption. **The move.** Two dialogs, the library's own (glass sheet, hairline foot, quiet
+buttons): "MaatiRx has moved" at the old address, with what is saved there in a sentence and the privacy line in small
+print (after a move: when it was brought, with Go and Bring it again); "Your saved work is here" at the new one, with
+Done and Undo.

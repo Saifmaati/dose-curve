@@ -1,14 +1,14 @@
 {
-  "title": "DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education",
+  "title": "MaatiRx: an interactive pharmacokinetics and PK/PD simulator for pharmacy education",
   "upload_type": "software",
-  "description": "<p>DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD. It models one- and two-compartment kinetics (first-order or saturable Michaelis–Menten) for oral, IV bolus and infusion dosing; a clinical patient with Cockcroft–Gault creatinine clearance; hemodialysis, a liver model, antimicrobial PK/PD indices, effect-site delays and indirect responses; population variability; and Bayesian individualization from measured levels. It has a cited drug library, guided lessons, generated practice problems, clinical cases graded by the model, and a public validation against an independent solver.</p><p>Educational model, not for clinical dosing.</p>",
+  "description": "<p>MaatiRx (called DoseCurve until version 2.19) is a free, browser-based simulator for teaching pharmacokinetics and PK/PD. It models one- and two-compartment kinetics (first-order or saturable Michaelis–Menten) for oral, IV bolus and infusion dosing; a clinical patient with Cockcroft–Gault creatinine clearance; hemodialysis, a liver model, antimicrobial PK/PD indices, effect-site delays and indirect responses; population variability; and Bayesian individualization from measured levels. It has a cited drug library, guided lessons, generated practice problems, clinical cases graded by the model, and a public validation against an independent solver.</p><p>Educational model, not for clinical dosing.</p>",
   "creators": [{"name": "Maati, Saif"}],
   "license": "MIT",
   "access_right": "open",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "keywords": ["pharmacokinetics", "pharmacodynamics", "pharmacy education", "simulation", "Cockcroft-Gault", "Michaelis-Menten", "two-compartment", "hemodialysis", "population pharmacokinetics"],
   "related_identifiers": [
-    {"identifier": "https://saifmaati.github.io/dose-curve/", "relation": "isDocumentedBy", "scheme": "url"},
-    {"identifier": "https://saifmaati.github.io/dose-curve/validation.html", "relation": "isDocumentedBy", "scheme": "url"}
+    {"identifier": "https://maatirx.com/", "relation": "isDocumentedBy", "scheme": "url"},
+    {"identifier": "https://maatirx.com/validation.html", "relation": "isDocumentedBy", "scheme": "url"}
   ]
 }

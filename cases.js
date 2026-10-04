@@ -1,4 +1,4 @@
-/* DoseCurve clinical cases
+/* MaatiRx clinical cases
    Worked cases that bring the clinical patient model, the drug library and the grader together. Nothing here
    stores an answer the model could compute: every target check, hint, walkthrough number and reference regimen
    is worked out from the patient and the drug when the case is opened. Educational model, not for clinical dosing.
@@ -792,7 +792,7 @@
   function base32(bytes, n){ let bits=0, val=0, out=""; for(const b of bytes){ val=(val<<8)|b; bits+=8; while(bits>=5 && out.length<n){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } } return out; }
   // The readable payload: what the code vouches for.
   function completionPayload(o){
-    return ["DoseCurve completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
+    return ["MaatiRx completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
   }
   async function completionCode(key, payload){
     const k=await crypto.subtle.importKey("raw", utf8.encode(String(key)), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
@@ -867,12 +867,12 @@
     also:"", refs:[], target:{kind:"pt", peak:[5,10], troughMax:1}, choices:{taus:[8,12,24,36], step:10, min:40, max:400, tinf:0.5}, start:{D:80, tau:8}};
   function renderAuthor(){
     const h=host, sp=Object.assign({}, TEMPLATE, store.get("dosecurve-author-draft")||{}), t=sp.target||{}, ch=sp.choices||{}, pt=sp.patient||{}, ov=sp.over||{};
-    const v=x=> x==null ? "" : String(x), sel=(a,b)=> a===b ? " selected" : "";
+    const v=x=> x==null ? "" : h.esc(String(x)), sel=(a,b)=> a===b ? " selected" : "";
     const el=panel(`<h2 class="cs-h">Write a case</h2>
       <p class="cs-intro-p">A case is a patient, a drug from the library and a target. Students propose a regimen and the model grades it. Before the link is made, every regimen your choices allow is checked, and the link is offered only if at least one meets the target. It opens as a community case, marked unreviewed. Don't include a patient's name or other identifiers.</p>
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
       <form id="auForm" class="cs-author" novalidate>
-        <label class="wide">Title<input id="auTitle" maxlength="${TEXT_LIMITS.title}" value="${h.esc(v(sp.title))}"></label>
+        <label class="wide">Title<input id="auTitle" maxlength="${TEXT_LIMITS.title}" value="${v(sp.title)}"></label>
         <label>Drug<select id="auDrug">${AUTHOR_DRUG_IDS().map(id=>`<option value="${id}"${sel(id, sp.drug)}>${h.esc(drugOf(id).name)}</option>`).join("")}</select></label>
         <fieldset><legend>Patient</legend>
           <label>Age (years)<input id="auAge" type="number" min="18" max="100" step="1" value="${v(pt.age)}"></label>
@@ -884,8 +884,8 @@
           <label>Half-life (h)<input id="auThalf" type="number" min="0.5" max="72" step="0.1" value="${v(ov.thalf)}"></label>
           <label>Volume per 70 kg (L)<input id="auV" type="number" min="5" max="600" step="0.5" value="${v(ov.V)}"></label>
           <label>Bioavailability (oral)<input id="auF" type="number" min="0.1" max="1" step="0.01" value="${v(ov.F)}"></label></fieldset>
-        <label class="wide">Setting<textarea id="auSetting" rows="2" maxlength="${TEXT_LIMITS.setting}">${h.esc(v(sp.setting))}</textarea></label>
-        <label class="wide">Task<textarea id="auTask" rows="2" maxlength="${TEXT_LIMITS.task}">${h.esc(v(sp.task))}</textarea></label>
+        <label class="wide">Setting<textarea id="auSetting" rows="2" maxlength="${TEXT_LIMITS.setting}">${v(sp.setting)}</textarea></label>
+        <label class="wide">Task<textarea id="auTask" rows="2" maxlength="${TEXT_LIMITS.task}">${v(sp.task)}</textarea></label>
         <fieldset><legend>Regimens students can choose</legend>
           <div class="au-taus">${AUTHOR_TAUS.map(x=>`<label class="au-chk"><input type="checkbox" value="${x}"${(ch.taus||[]).includes(x) ? " checked" : ""}> every ${x} h</label>`).join("")}</div>
           <label>Lowest dose<input id="auMin" type="number" min="0.01" step="any" value="${v(ch.min)}"></label>
@@ -904,7 +904,7 @@
           <label class="au-auc">AUC24 to<input id="auAucHi" type="number" min="0" step="any" value="${v((t.auc||[])[1])}"></label>
           <label class="au-ft">MIC<input id="auMic" type="number" min="0" step="any" value="${v(t.mic)}"></label>
           <label class="au-ft">Above it for at least (% of each interval)<input id="auFt" type="number" min="1" max="100" step="any" value="${v(t.ft)}"></label></fieldset>
-        <label class="wide">What a pharmacist also weighs (optional)<textarea id="auAlso" rows="2" maxlength="${TEXT_LIMITS.also}">${h.esc(v(sp.also))}</textarea></label>
+        <label class="wide">What a pharmacist also weighs (optional)<textarea id="auAlso" rows="2" maxlength="${TEXT_LIMITS.also}">${v(sp.also)}</textarea></label>
         <label class="wide">References, one per line (optional, up to ${TEXT_LIMITS.refs}; shown as author-provided)<textarea id="auRefs" rows="2">${h.esc((sp.refs||[]).join("\n"))}</textarea></label>
         <div class="cs-actions"><button class="abtn" type="submit">Check and make the link</button></div>
       </form>
@@ -1024,7 +1024,7 @@
     h.loadPractice().then(()=>{
       const w=PK.makeWorksheet({topic:it.topic||undefined, count:it.count, seed:it.seed, v:it.v}), pr=(store.get(progressKey(token))||{})[i]||{}, ans=pr.answers||{};
       box.innerHTML=`<h3 class="cs-h3">Worksheet: ${it.count} problems</h3><ol class="cs-ws">${w.problems.map((p,j)=>`<li><div>${p.q}</div>
-        <div class="cs-form"><label>Answer (${h.esc(p.unit)})<input data-j="${j}" type="number" step="any" value="${ans[j] ? ans[j].v : ""}"></label><button class="abtn" type="button" data-chk="${j}">Check</button></div>
+        <div class="cs-form"><label>Answer (${h.esc(p.unit)})<input data-j="${j}" type="number" step="any" value="${ans[j] ? h.esc(ans[j].v) : ""}"></label><button class="abtn" type="button" data-chk="${j}">Check</button></div>
         <p class="cs-wsr" id="wsr${i}_${j}">${ans[j] ? (ans[j].ok ? "✓ Right" : "✗ Not quite") : ""}</p></li>`).join("")}</ol>`;
       box.onclick=e=>{
         const btn=e.target.closest("[data-chk]"); if(!btn) return;
@@ -1124,7 +1124,7 @@
     const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
     box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "Back to the assignment" : "All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
-      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
+      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. MaatiRx checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
       <details class="cs-more cs-dossier" open><summary>Case facts</summary><dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}

@@ -1,6 +1,6 @@
 {
-  "name": "DoseCurve — Interactive PK/PD Lab",
-  "short_name": "DoseCurve",
+  "name": "MaatiRx — Interactive PK/PD Lab",
+  "short_name": "MaatiRx",
   "description": "Interactive pharmacokinetics and pharmacodynamics simulator for learning. Educational model, not for clinical dosing.",
   "start_url": "./",
   "scope": "./",

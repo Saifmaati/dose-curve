@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DoseCurve: page not found</title>
+<title>MaatiRx: page not found</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#07090D">
 <meta name="color-scheme" content="dark">
@@ -67,7 +67,7 @@
     <path d="M4 84 C18 84 22 8 44 8 C90 8 120 60 200 74 C280 84 380 84 516 84" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
   </svg>
   <a class="btn" href="/dose-curve/">Open the simulator</a>
-  <p class="note">DoseCurve is an educational model, not for clinical dosing.</p>
+  <p class="note">MaatiRx is an educational model, not for clinical dosing.</p>
 </main>
 <script>
   // On a custom domain the site lives at the root rather than under /dose-curve/.
@@ -76,6 +76,9 @@
       const a=el.hasAttribute("href") ? "href" : "src";
       el.setAttribute(a, el.getAttribute(a).replace(/^\/dose-curve\//,"/"));
     });
+    // and the fonts, which the stylesheet names
+    const st=document.querySelector("style");
+    if(st) st.textContent=st.textContent.replace(/url\(\/dose-curve\//g,"url(/");
   }
 </script>
 </body>

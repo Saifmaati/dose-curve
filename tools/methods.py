@@ -45,8 +45,8 @@ style="\n".join(keep)+'''
   @media (max-width:600px){ .bar nav a:first-child{display:none} .eqn math{font-size:15px} }
 '''
 head=V[:V.index("<style>")]
-head=head.replace("<title>DoseCurve validation</title>","<title>DoseCurve model and methods</title>")
-head=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="DoseCurve\'s model and methods: every equation the simulator solves, how routes and schedules are modelled, what the tests cover, the disclaimer, and the privacy, effects and visit-counting statements.">',head)
+head=head.replace("<title>MaatiRx validation</title>","<title>MaatiRx model and methods</title>")
+head=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="MaatiRx\'s model and methods: every equation the simulator solves, how routes and schedules are modelled, what the tests cover, the disclaimer, and the privacy, effects and visit-counting statements.">',head)
 head=re.sub(r'\s*<script type="importmap">.*?</script>','',head, flags=re.S)
 # the 3D-related comment and fx-off test are harmless; keep the theme script as is
 brand=V[V.index('<header class="bar">'):V.index('</header>')+9]
@@ -63,7 +63,7 @@ body=[]
 B_=body.append
 B_('<main>')
 B_('<h1>Model and methods</h1>')
-B_('<p class="note">Educational model, not for clinical dosing. This page states the model DoseCurve solves. Its <a href="validation.html">validation</a> checks that the model is solved correctly; it does not show that the model predicts real patients.</p>')
+B_('<p class="note">Educational model, not for clinical dosing. This page states the model MaatiRx solves. Its <a href="validation.html">validation</a> checks that the model is solved correctly; it does not show that the model predicts real patients.</p>')
 B_('<nav class="toc" aria-label="On this page"><a href="#one">One compartment</a><a href="#routes">Routes and schedules</a><a href="#two">Two compartments</a><a href="#mm">Saturable elimination</a><a href="#effect">Effect</a><a href="#patient">Patients</a><a href="#organs">Liver and dialysis</a><a href="#variability">Variability and levels</a><a href="#abx">Antimicrobial indices</a><a href="#tests">Tests</a><a href="#disclaimer">Disclaimer</a><a href="#privacy">Privacy</a><a href="#cite">Citing</a></nav>')
 
 B_('<h2 id="one">One compartment, first-order</h2>')
@@ -147,15 +147,15 @@ B_('<h2 id="tests">What the tests cover</h2>')
 B_('<p>An automated suite (<code>node --test tests/</code>) runs on every push. It covers closed-form results (the equations above and their limits), the clinical, child and saturable models, two compartments, the effect site and indirect responses, the liver model, dialysis (with exact mass balance), population mode, the Bayesian estimate, regimen edge cases (loading and missed doses, custom schedules), the share-link format across every version, every quantitative claim each lesson makes, every practice answer against a simulation of its own scenario, every case and its grading, the page\'s accessibility commitments, its script budget and the offline cache. It is also compared with an independent solver on 146 scenarios, and on its Bayesian estimates, antimicrobial indices, indirect responses and dialysis sessions: see <a href="validation.html">Validation</a>, which reruns that comparison in your browser.</p>')
 
 B_('<h2 id="disclaimer">Disclaimer</h2>')
-B_('<p class="disc"><b>Educational simulation.</b> DoseCurve models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</p>')
+B_('<p class="disc"><b>Educational simulation.</b> MaatiRx models idealized one- or two-compartment pharmacokinetics (first-order, or saturable in one compartment) and a sigmoid Emax concentration–effect relationship for learning and demonstration. Drug library values name their source (an FDA label or a paper) or are marked unverified; they are not prescribing information. Its validation checks that it solves its own model correctly, not that the model predicts real patients: it is not clinical software and must not be used to make dosing decisions for real patients.</p>')
 
 B_('<h2 id="privacy">Privacy, effects and visit counting</h2>')
-B_('<p><b>Privacy.</b> DoseCurve runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student\'s name as an identifier.</p>')
+B_('<p><b>Privacy.</b> MaatiRx runs in your browser, and after one visit it also opens offline. Your progress and saved scenarios stay in this browser. Shared links encode scenario settings in the URL; a case or assignment an instructor writes travels in its link the same way. Assignment progress and completion codes are made in this browser with the class key, which never leaves it. Do not enter patient-identifying information, or a student\'s name as an identifier.</p>')
 B_('<p><b>Effects.</b> The fonts come from this site. With Effects on, the 3D stage loads Three.js, a pinned and hash-checked copy, from cdnjs.cloudflare.com; that request is the only one to another site, and it carries nothing you enter. Turn Effects off in the top bar and it is never made.</p>')
-B_('<p><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, DoseCurve counts page visits with GoatCounter, which works without cookies and doesn\'t store IP addresses. It sends only the page\'s path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario\'s settings live, or anything you enter.</p>')
+B_('<p><b>Visit counting: <span id="anaState">off</span>.</b> When the site owner turns it on, MaatiRx counts page visits with GoatCounter, which works without cookies and doesn\'t store IP addresses. It sends only the page\'s path; GoatCounter keeps aggregate numbers of visits, referring sites, browsers, screen sizes and countries. It never receives the part of a link after #, where a scenario\'s settings live, or anything you enter.</p>')
 
-B_('<h2 id="cite">Citing DoseCurve</h2>')
-B_('<p>Zenodo archives every release. <a href="https://doi.org/10.5281/zenodo.23082408">doi:10.5281/zenodo.23082408</a> always resolves to the newest version; each release also has its own DOI, listed there. The source, MIT-licensed, is <a href="https://github.com/Saifmaati/dose-curve">on GitHub</a>.</p>')
+B_('<h2 id="cite">Citing MaatiRx</h2>')
+B_('<p>Zenodo archives every release. <a href="https://doi.org/10.5281/zenodo.23082408">doi:10.5281/zenodo.23082408</a> always resolves to the newest version; each release also has its own DOI, listed there. Releases up to 2.19 are archived under the earlier name, DoseCurve. The source, MIT-licensed, is <a href="https://github.com/Saifmaati/dose-curve">on GitHub</a>.</p>')
 B_('</main>')
 # visit counting: the same switch as the app's (docs/NEEDS-SAIF.md, step 4)
 B_('<script>\n  // visit counting: the same switch as the app\'s (docs/NEEDS-SAIF.md, step 4); off unless the site owner sets an id\n  const ANALYTICS_SITE_ID="";\n  if(ANALYTICS_SITE_ID) document.getElementById("anaState").textContent="on";\n</script>')

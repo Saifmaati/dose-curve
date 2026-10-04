@@ -1,4 +1,4 @@
-/* DoseCurve lesson texts
+/* MaatiRx lesson texts
    Each lesson's explanation and tip (TEXTS), and its guide (GUIDE): an objective, a question to answer before
    reading the explanation, a challenge the page checks live, and why the idea matters. Predictions and challenges
    are judged by the model, never by hand: `decide` returns the right choice from the lesson's computed numbers,
@@ -202,7 +202,7 @@
         show:m=>`t½ ${r1(derived(m.base.p).thalfEff)} → ${r1(derived(m.cur.p).thalfEff)} h · Cmax ${r1(m.base.cmax)} → ${r1(m.cur.cmax)} mg/L`},
       challenge:{text:"Change only the dose so the peak is 1.5× the 250 mg dose's peak (within 2%).",
         goal:m=> onlyChanged(m.now.p,["D"]) && Math.abs(m.now.cmax/m.base.cmax-1.5)<=0.03, solution:{D:375}},
-      matters:"Linearity is what lets a dose be scaled: in this model twice the dose means twice the exposure. Some drugs, phenytoin being the classic example, saturate their elimination and break the rule; DoseCurve models linear kinetics only."},
+      matters:"Linearity is what lets a dose be scaled: in this model twice the dose means twice the exposure. Some drugs, phenytoin being the classic example, saturate their elimination and break the rule; MaatiRx models linear kinetics only."},
     flipflop:{objective:"Recognize flip-flop kinetics: when absorption is slower than elimination, the tail of an oral curve reflects absorption.",
       predict:{q:"With the slow absorption, the half-life you'd read off the curve's tail (12–24 h) is…", choices:["Longer than 2 h","Shorter than 2 h","About 2 h"], answer:0,
         why:"Once kₐ is smaller than kₑ, the drug is eliminated about as fast as it's absorbed, so the fall is paced by the slower process: absorption.",

@@ -1,18 +1,18 @@
 cff-version: 1.2.0
-message: "If you use DoseCurve in teaching or research, please cite it as below."
-title: "DoseCurve: an interactive pharmacokinetics and PK/PD simulator for pharmacy education"
+message: "If you use MaatiRx (called DoseCurve until version 2.19) in teaching or research, please cite it as below."
+title: "MaatiRx: an interactive pharmacokinetics and PK/PD simulator for pharmacy education"
 type: software
 authors:
   - family-names: Maati
     given-names: Saif
-version: 2.19.0
-date-released: 2026-10-01
+version: 2.20.0
+date-released: 2026-10-04
 doi: 10.5281/zenodo.23082408
 identifiers:
   - type: doi
     value: 10.5281/zenodo.23082408
     description: "All versions (resolves to the newest)"
-url: "https://saifmaati.github.io/dose-curve/"
+url: "https://maatirx.com/"
 repository-code: "https://github.com/Saifmaati/dose-curve"
 license: MIT
 keywords:
@@ -23,7 +23,7 @@ keywords:
   - Cockcroft-Gault
   - Michaelis-Menten
 abstract: >-
-  DoseCurve is a free, browser-based simulator for teaching pharmacokinetics and PK/PD.
+  MaatiRx is a free, browser-based simulator for teaching pharmacokinetics and PK/PD.
   It models one- and two-compartment kinetics (first-order or saturable Michaelis-Menten) for
   oral, IV bolus and infusion dosing with regular, loading, missed and custom schedules; a clinical
   patient with Cockcroft-Gault creatinine clearance; hemodialysis, a liver model, antimicrobial

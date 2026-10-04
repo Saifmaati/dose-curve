@@ -5,7 +5,7 @@ title: "Feedback: "
 labels: feedback
 ---
 
-**What were you using DoseCurve for?**
+**What were you using MaatiRx for?**
 <!-- Studying, teaching a class, checking a concept… -->
 
 **What worked well?**

@@ -88,7 +88,7 @@ test("assignments: checked, round-trip, and rebuild the same worksheets", async(
 
 test("completion codes: the same inputs give the same code, and a changed payload, code or key fails", async()=>{
   const payload=C.completionPayload({bundle:"58eb2e7a5e9a", identifier:"S-17", items:["gent","ws:single.5.42.5(3/5)"], score:4, total:7, date:"2026-09-30"});
-  assert.equal(payload.split("\n")[0], "DoseCurve completion v1");
+  assert.equal(payload.split("\n")[0], "MaatiRx completion v1");
   const code=await C.completionCode("pk-class-2026", payload);
   assert.match(code, /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
   assert.equal(await C.completionCode("pk-class-2026", payload), code, "deterministic");

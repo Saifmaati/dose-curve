@@ -61,3 +61,20 @@ test("no change, no explanation of one", ()=>{
   const out=explain(a, N({}));
   assert.ok(out.length>=1 && /change any setting|nothing|same/i.test(out.join(" ")), out.join(" | "));
 });
+
+test("the fit and window tasks' worked methods (moved here from the page in 2.20) give the task's own numbers", ()=>{
+  const fmt=(v,d)=> Number(v).toFixed(d), trim=v=> String(+(+v).toFixed(3)), E=PK.explain;
+  for(const k of PK.FIT_KINDS) for(const seed of [1,7,42]){
+    const f=PK.makeFit({kind:k.id, seed}), e=PK.fitEstimate(f), s=E.fitHow(f, {fmt, trim});
+    if(k.id==="iv2") assert.ok(s.startsWith("The method of residuals.") && s.includes(`k10 = α·β / k21 = ${fmt(e.k10,3)} h⁻¹`), k.id);
+    else assert.ok(s.includes(`t½ = 0.693 / ${fmt(e.k,3)} = ${fmt(e.thalf,1)} h`), `${k.id} ${seed}`);
+    if(k.id==="oral") assert.ok(s.includes(`AUC ≈ ${fmt(e.auc,1)} mg·h/L`));
+  }
+  for(const k of PK.WINDOW_KINDS) for(const seed of [1,7,42]){
+    const w=PK.makeWindowTask({kind:k.id, seed}), s=E.windowHow(w, {fmt}), st=PK.windowStatus(w, PK.windowScenario(w));
+    assert.ok(s.startsWith(`One regimen that works: ${w.solution.D} mg every ${w.solution.tau} h (steady-state trough ${fmt(st.trough,2)} mg/L`), `${k.id} ${seed}`);
+    const kel=Math.LN2/w.drug.thalf;
+    assert.ok(s.includes(`= ${fmt(Math.log(w.window.hi/w.window.lo)/kel,1)} h`), "τ from the band and kₑ");
+    assert.equal(s.includes("absorption smooths the swing"), k.id==="oral");
+  }
+});

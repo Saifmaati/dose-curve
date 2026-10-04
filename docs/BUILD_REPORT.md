@@ -644,3 +644,14 @@ Lighthouse on mobile: the root 95, `#app` 97 and 97, desktop 99; accessibility 1
 
 The design was mapped first by three code readers and a designer. The finished change was reviewed by four reviewers, each finding checked by a second reviewer: 11 findings were confirmed and fixed (6 rejected). axe: no violations on a saturable dialysis link in both themes at 1280 and 390 px. 418 tests.
 
+
+## 48. 2.20.0 (MaatiRx, at maatirx.com)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The name on every page, the opening screen, the downloads, the citation files | every page; Download | `release.test.js`, `educators.test.js` (the version line); a sweep for the old name outside the historical records |
+| The address: canonical, link previews, sitemap, robots.txt, JSON-LD, citation files | the page source | the tree served at the root, as a custom domain serves it: the app, the service worker (scope /, cache `maatirx-v49`) and the 404 page with no failed request |
+| Old scenario files and completion codes | Library → Import; the instructor's check | `pk-engine.test.js` (the refusal names both), `instructor.test.js` (the new header) |
+| The cache rename | offline | `sw.test.js` (activation clears `dosecurve-` and `maatirx-` caches other than the current one) |
+| The new preview image and README screenshots | link previews; the README | viewed at full size |
+| Bringing saved work from the old address | the first old link after the switch | `move.test.js` (what is carried; where it goes from every old page; the link and the page's own # part; made-up work, the wrong shapes and markup left behind; merging replaces nothing, adds scenarios and progress, writes nothing twice; the note's counts, the library's limit, a draft at both addresses); `sw.test.js` (at the old address a redirected page request gets the saved page, elsewhere the redirect; the check isn't kept); `explain.test.js` (the moved worked methods); a rehearsal in Chrome through a proxy playing both addresses, in both themes: before the switch nothing shows; switched with the new address not answering, the old copy works and nothing is offered; then the offer, the work at maatirx.com with the link's own # part, the theme and the library, from the app page and from validation.html; the next old link's Go and Bring it again; Undo; Not now; old links straight through after Go; axe on every dialog |
