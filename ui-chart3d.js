@@ -1,4 +1,4 @@
-/* MaatiRx: the chart in 3D (2.18)
+/* DoseCurve: the chart in 3D (2.18)
    A 3D mode for the chart panel, for exploring and presenting; the 2D chart stays the precise instrument and the
    default. Five views, each drawn from the engine's own numbers:
    - Curve in space: the concentration–time ribbon, the window as a glass slab, the doses as beads on the time axis.

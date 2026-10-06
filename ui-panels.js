@@ -1,4 +1,4 @@
-/* MaatiRx: the MIC, dialysis and Bayesian panels (2.17, the Bayesian panel's readings 2.18)
+/* DoseCurve: the MIC, dialysis and Bayesian panels (2.17, the Bayesian panel's readings 2.18)
    The antimicrobial panel's readings (fT>MIC, Cmax/MIC, AUC24/MIC, where the unbound level crosses the MIC, and the
    index and target a library drug's sources give) and the dialysis panel's sessions (levels before and after, the
    fall, the amount removed, the rebound and the IV dose that would restore the level). Loaded once a MIC is entered
@@ -50,7 +50,7 @@
       // the index and any target come from the drug's sources, never from a general rule
       const drugs=[...new Set(curves.filter(cv=>!cv.ghost).map(cv=>pkpdDrug(cv.p)))];
       h+=`<div class="cm-h">Index and target</div>`+drugs.map(d=>{
-        if(!d) return "No library drug matches this scenario, so no index or target is named: published targets differ by drug class, organism and infection model, and MaatiRx shows one only where a cited source gives it.";
+        if(!d) return "No library drug matches this scenario, so no index or target is named: published targets differ by drug class, organism and infection model, and DoseCurve shows one only where a cited source gives it.";
         const P=d.pkpd, src=PK.SOURCES[P.src];
         if(!src) loadSources().then(render).catch(()=>{});
         const cite=src ? `<a href="${src.url}" target="_blank" rel="noopener">${esc(src.cite.split(".")[0])}</a>` : "loading the source";

@@ -655,3 +655,13 @@ The design was mapped first by three code readers and a designer. The finished c
 | The cache rename | offline | `sw.test.js` (activation clears `dosecurve-` and `maatirx-` caches other than the current one) |
 | The new preview image and README screenshots | link previews; the README | viewed at full size |
 | Bringing saved work from the old address | the first old link after the switch | `move.test.js` (what is carried; where it goes from every old page; the link and the page's own # part; made-up work, the wrong shapes and markup left behind; merging replaces nothing, adds scenarios and progress, writes nothing twice; the note's counts, the library's limit, a draft at both addresses); `sw.test.js` (at the old address a redirected page request gets the saved page, elsewhere the redirect; the check isn't kept); `explain.test.js` (the moved worked methods); a rehearsal in Chrome through a proxy playing both addresses, in both themes: before the switch nothing shows; switched with the new address not answering, the old copy works and nothing is offered; then the offer, the work at maatirx.com with the link's own # part, the theme and the library, from the app page and from validation.html; the next old link's Go and Bring it again; Undo; Not now; old links straight through after Go; axe on every dialog |
+
+## 49. 2.21.0 (DoseCurve again, at maatirx.com)
+
+| Feature | Where to see it | Checked by |
+| --- | --- | --- |
+| The name DoseCurve on every page, the opening screen, the downloads, the citation files | every page; Download | `name.test.js` (the README's title, every page's title, the install name, both wordmarks, the opening headline, og:title, the citation files; the 2.20 name in no served file and in one README line), `educators.test.js` (the version line), `instructor.test.js` (the completion header) |
+| The address unchanged | maatirx.com; the old github.io address | the live redirect and a share link checked after the 2.20 switch (NEEDS-SAIF) |
+| The cache back to `dosecurve-v50`, the 2.20 cache cleared | offline | `sw.test.js` |
+| The new link-preview image and README screenshots | link previews; the README | viewed at full size |
+| Founded by Saif Maati: footer, educator page, Model and methods, README, description, author tag, JSON-LD | the footer; the page source | `name.test.js` (each place, the name taken from CITATION.cff; the JSON-LD's Person, Organization and WebApplication linked by @id; the sitemap's four pages); the footer in both themes and at 390 px, axe on it with no violations; `release.test.js` (still four footer lines) |

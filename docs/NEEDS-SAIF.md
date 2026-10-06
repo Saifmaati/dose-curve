@@ -2,29 +2,52 @@
 
 Only these steps need your accounts or your judgment; everything else in Build Plan V2 is done (see [BUILD_REPORT_V2.md](BUILD_REPORT_V2.md)). The license is MIT, as you confirmed; nothing to do there.
 
-## First: the domain maatirx.com (for 2.20)
+## First: the domain maatirx.com (done 2026-10-04)
 
-2.20.0 renames the app MaatiRx and points its canonical address, link previews, sitemap and citation files at https://maatirx.com/. On 2026-10-04 the domain was not registered: the .com registry had no record of it. Claude Code doesn't buy domains or change DNS or Pages settings, so these steps are yours.
+**Switched.** On 2026-10-04, right after Pages published 2.20, the custom domain was set with `gh api -X PUT repos/Saifmaati/dose-curve/pages -f cname=maatirx.com`, and GitHub committed the `CNAME` file to main. Once the certificate was approved (maatirx.com and www.maatirx.com, until 2027-01-02) HTTPS was enforced with `gh api -X PUT repos/Saifmaati/dose-curve/pages -F https_enforced=true`. The domain is registered at Spaceship; its four A records point at GitHub Pages, and `www` is a CNAME for `saifmaati.github.io`.
 
-**The order matters: merge 2.20 first, give it time at the old address, then switch the domain.** A browser keeps saved work (scenarios, lesson, practice and assignment progress, a case being written, the theme) per address. 2.20 brings that work across, but only for browsers that have opened 2.20 at the old address before the switch: there its offline worker stays behind, and when the old address starts redirecting it still opens the app there, which says the app has moved and offers to bring the work along (in the new link itself, inside the browser). A browser that never opened 2.20 before the switch is sent straight to maatirx.com, and its saved work stays out of reach at the old address.
+Checked then:
+- https://maatirx.com/ serves the site with a valid certificate. `www` and plain HTTP redirect to it.
+- Every address under https://saifmaati.github.io/dose-curve/ redirects to the same path at maatirx.com.
+- A share link sent with the old address opens its scenario at the new one.
 
-1. Merge the release pull requests up to 2.20 (section 1 below) and wait for Pages to publish.
-2. Leave it at the old address long enough for your students to open the app once: a week or two of classes. Meanwhile link previews of newly shared links show no image (they point at maatirx.com, which doesn't answer yet); everything else works as before.
-3. Register **maatirx.com** at a registrar. (You can do this any time; it's the next two steps that switch the address.)
-4. Verify it for your GitHub account: GitHub Settings → Pages → Verified domains → Add a domain. It asks for one TXT record, and stops any other repository from claiming the domain.
-5. At the registrar's DNS, add:
-   - four **A** records for `maatirx.com`: 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153;
-   - optionally four **AAAA** records: 2606:50c0:8000::153, 2606:50c0:8001::153, 2606:50c0:8002::153, 2606:50c0:8003::153;
-   - a **CNAME** record for `www` pointing to `saifmaati.github.io`.
-6. In this repository, **keeping its name**: Settings → Pages → Custom domain: `maatirx.com` → Save. GitHub commits a `CNAME` file and checks the DNS (it can take up to a day). When the check passes, tick **Enforce HTTPS**.
+To check again:
 
-From then on GitHub redirects every `saifmaati.github.io/dose-curve/…` address to `maatirx.com/…`, so links already shared keep working. Don't rename the repository: a renamed repository's old Pages address stops resolving instead of redirecting.
+```
+curl -sI https://saifmaati.github.io/dose-curve/ | grep -i '^location'
+```
 
-What a student sees after the switch, on a browser that opened 2.20 before it: until maatirx.com answers over HTTPS, the old link keeps opening the app as before. Then the first old link shows "MaatiRx has moved", with what is saved there, **Bring it to maatirx.com** and **Not now**. Bringing it opens the app at maatirx.com with the work added (nothing saved there is replaced) and a note of what came across, with Undo. The next old link says when it was brought and offers **Go to maatirx.com** (from then on old links go straight there) or **Bring it again**, in case it didn't arrive. **Not now** goes to maatirx.com without it and asks again at the next old link. If a library is too large to carry in a link (over about a megabyte), the note says to use Library → Export all at the old address, which still opens, and Import file at maatirx.com.
+That should print `location: https://maatirx.com/`.
+
+**The name is DoseCurve again (2.21).** 2.20.0 called the app MaatiRx. On 2026-10-06 you chose to go back to DoseCurve and keep the address. Should you later want an address that matches the name (dosecurve.com, say), the steps are the same. The saved-work move (ui-move.js) would need its new address changed first, and a week or two at the current address before the switch.
+
+Don't rename the repository: a renamed repository's old Pages address stops resolving instead of redirecting. Optionally, verify the domain under GitHub Settings → Pages → Verified domains (one TXT record), so no other repository can claim it.
+
+**Saved work at the old address.** A browser keeps saved work per address. The domain was switched within an hour of 2.20 going live, so only browsers that opened 2.20 at the old address in that hour are offered the move: on the first old link, "MaatiRx has moved" (their offline copy is 2.20's), with **Bring it to maatirx.com**. Everyone else lands on maatirx.com without their saved scenarios and progress, which stay in their browser's storage for saifmaati.github.io.
+
+That storage belongs to the whole of saifmaati.github.io, not only the project's folder. So a one-page user site in a new repository named `Saifmaati/saifmaati.github.io` could still read it and hand it to maatirx.com, which already takes it in (ui-move.js). maatirx.com could then link to it ("Used DoseCurve before 4 October? Bring your saved work"). Creating that repository is your call; ask Claude Code to build the page.
+
+## Google: "founded by Saif Maati" (2.21)
+
+Once 2.21 is merged, the site states it in three places Google reads:
+- the footer's first line ("DoseCurve — Founded by Saif Maati", with a hairline where the dash is);
+- the page description, which Google often shows under the title;
+- the page's structured data (JSON-LD): Saif Maati as a Person, DoseCurve's founder, and the app's author and creator.
+
+It is also on the educator page, in Model and methods and in the README. An `author` meta tag carries it for other tools; Google itself ignores that tag.
+
+Google decides what it shows and when. These steps make it look again sooner:
+
+1. Open https://search.google.com/search-console and add a **Domain** property for `maatirx.com`. Google gives you one TXT record; add it at Spaceship (the domain's DNS) and press Verify.
+2. Sitemaps → submit `https://maatirx.com/sitemap.xml`.
+3. URL inspection → `https://maatirx.com/` → **Request indexing**.
+4. Optionally, check the founder data at https://validator.schema.org/ with `https://maatirx.com/`. Google's own Rich Results Test (and Search Console's enhancements report) will say the software-app item lacks `aggregateRating` or `review`. That is expected: those rich results need real ratings, and none should be invented.
+
+Results usually update within days to a few weeks. A knowledge panel (the box beside results) isn't something a site can set; Google builds it from what it finds about a person, and a profile that names DoseCurve (for example your GitHub profile's bio) helps.
 
 ## 1. Merge the release pull requests
 
-**Done to 2.19.0.** The release pull requests #12–#40 (1.10.0 to 2.19.0) were merged by 2026-10-04, and each has its GitHub Release. Open: #41 (2.20.0, MaatiRx): merge it before switching the domain (see "First" above). Each later release is its own pull request with green CI; merge them in version order. Merging stays blocked for Claude Code ("Merge Without Review"); to let it merge after green CI, allow `Bash(/Users/saifmaati/.local/bin/gh pr merge:*)` in `~/.claude/settings.json`.
+**Done to 2.20.0.** The release pull requests #12–#41 (1.10.0 to 2.20.0) were merged by 2026-10-04, and each has its GitHub Release. #42 (3.0.0, the name MaatiRX) was closed unmerged when the name went back to DoseCurve. Open: 2.21.0.
 
 ## 2. GitHub Releases
 
@@ -36,7 +59,7 @@ for v in 1.0.0 1.1.0 1.2.0 1.3.0 1.4.0 1.4.1 1.5.0 1.6.0 1.7.0 1.8.0 1.9.0; do a
 
 ## 3. Zenodo DOI
 
-**Minted.** The Releases gave the app (then DoseCurve, now MaatiRx) its concept DOI, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), which covers all versions and resolves to the newest; each release also has its own version DOI on that page. 2.10.0 adds it to the README (a badge and How to cite), `CITATION.cff` and the app's footer. Nothing to do.
+**Minted.** The Releases gave the app its concept DOI, [10.5281/zenodo.23082408](https://doi.org/10.5281/zenodo.23082408), which covers all versions and resolves to the newest; each release also has its own version DOI on that page. 2.10.0 adds it to the README (a badge and How to cite), `CITATION.cff` and the app's footer. Nothing to do.
 
 ## 4. Turn on visit counting (optional)
 
@@ -66,7 +89,7 @@ To let Claude Code delete a release branch after its merge in future runs, allow
 cp ~/Downloads/DOSECURVE-BUILD-PLAN-V2.md docs/BUILD_PLAN_V2.md && cp ~/Downloads/DOSECURVE-OUTREACH-EMAILS.md docs/OUTREACH.md && git add docs/BUILD_PLAN_V2.md docs/OUTREACH.md && git commit -m "docs: build plan v2 and outreach drafts" && git push origin main
 ```
 
-The outreach drafts in Downloads describe the app as of 1.9, under its earlier name DoseCurve, ("10 clinical cases", "29 guided lessons"). The educator page, https://maatirx.com/educators.html (live once the releases are merged), is a good link to send instead of the app itself. Before sending, update the numbers: as of 1.17.1 there are 16 clinical cases, 34 guided lessons, 42 kinds of practice problems and 12 library drugs, plus antimicrobial PK/PD (fT>MIC, Cmax/MIC, AUC24/MIC), indirect response models, hemodialysis, sensitivity analysis, Bayesian individualization from levels, and instructor tools (write a case, assignments, completion codes).
+The outreach drafts in Downloads describe the app as of 1.9, with counts that are now out of date ("10 clinical cases", "29 guided lessons"). The educator page, https://maatirx.com/educators.html, is a good link to send instead of the app itself. Before sending, update the numbers: as of 2.21 there are 16 clinical cases, 36 guided lessons, 43 kinds of practice problems and 12 library drugs, plus antimicrobial PK/PD (fT>MIC, Cmax/MIC, AUC24/MIC), indirect response models, hemodialysis, sensitivity analysis, Bayesian individualization from levels, and instructor tools (write a case, assignments, completion codes).
 
 ## 7. Optional: values a pharmacist or a textbook could confirm
 

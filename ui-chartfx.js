@@ -1,4 +1,4 @@
-/* MaatiRx: the chart's motion (2.13)
+/* DoseCurve: the chart's motion (2.13)
    The concentration chart's living parts, loaded just after the first paint (the chart itself draws without them):
    the drug's particles flowing along the curve, the curve drawing itself the first time it comes into view and while
    Play runs, the doses' ticks pulsing as the play head crosses them, a dose's own curve or an interval lit from its

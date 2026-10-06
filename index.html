@@ -11,7 +11,7 @@
   var h=location.hash, i=h.indexOf("#",1), mv=null;
   try{ if(!h.indexOf("#move=")){ sessionStorage.setItem("maatirx.move", h.slice(6, i<0 ? h.length : i)); history.replaceState(null,"",location.pathname+q+(i<0 ? "" : h.slice(i))); }
     mv=sessionStorage.getItem("maatirx.move"); }catch(e){}
-  if(mv || location.hostname=="saifmaati.github.io") addEventListener("load",function(){ var e=document.createElement("script"); e.src="ui-move.js?v=a2336f9d82"; document.head.appendChild(e); });
+  if(mv || location.hostname=="saifmaati.github.io") addEventListener("load",function(){ var e=document.createElement("script"); e.src="ui-move.js?v=3510093108"; document.head.appendChild(e); });
   if(/[?&]embed(?:[=&]|$)/.test(q)) d.classList.add("embed");
   // a link with a # part (a tab by name, a lesson, a case, a shared scenario): the app shows once the link is applied,
   // so no control moves under the reader
@@ -20,9 +20,9 @@
   if(/^#(lessons|cases|practice)$|^#(case|ws|p|fit|win)=|[#&]l=/.test(location.hash)) d.classList.add("ed-app");
   // (2.15) a link to a lesson, a case or practice asks for the files it needs now, so it opens without waiting for them
   var pre=function(h){ var l=document.createElement("link"); l.rel="preload"; l.as="script"; l.href=h; document.head.appendChild(l); };
-  if(/[#&]l=/.test(location.hash)) pre("pk-lessons.js?v=9d72583926");
-  if(/^#(case|bundle)=|^#cases$/.test(location.hash)){ pre("cases.js?v=b0907ff523"); pre("pk-bayes.js?v=d7a51f2606"); pre("pk-sources.js?v=19a2732856"); pre("pk-hd.js?v=1c3ea1a9b2"); }
-  if(/^#(practice$|p=|ws=)/.test(location.hash)) pre("pk-practice.js?v=ae88bde6e5");
+  if(/[#&]l=/.test(location.hash)) pre("pk-lessons.js?v=039863e0a1");
+  if(/^#(case|bundle)=|^#cases$/.test(location.hash)){ pre("cases.js?v=9e724cac1f"); pre("pk-bayes.js?v=21a1045af5"); pre("pk-sources.js?v=6b5fbf7ff9"); pre("pk-hd.js?v=d13fd8fd48"); }
+  if(/^#(practice$|p=|ws=)/.test(location.hash)) pre("pk-practice.js?v=71d1ec1677");
   // the root sequence: every visit to the root address with no # part, the first or the hundredth (a link with a # part,
   // #app included, opens the app directly); its readouts wait for their count unless motion is reduced
   else if(!location.hash && /\/(index\.html)?$/.test(location.pathname)){
@@ -41,8 +41,9 @@
   if(t==="light") d.classList.add("light");
   // decided before the first paint, so the quick-start strip never pops in and pushes the chart down
   try{ if(localStorage.getItem("dosecurve.quickstart.dismissed")==="1") d.classList.add("qs-off"); }catch(e){} })();</script>
-<title>MaatiRx — Interactive PK/PD Lab</title>
-<meta name="description" content="Interactive pharmacokinetics and PK/PD simulator for pharmacy education: compare regimens, model loading, missed and custom doses, estimate creatinine clearance (Cockcroft–Gault), explore saturable (Michaelis–Menten) kinetics and population variability, and work graded clinical cases. Validated against an independent solver. Free, educational, not for clinical dosing.">
+<title>DoseCurve — Interactive PK/PD Lab</title>
+<meta name="description" content="DoseCurve, founded by Saif Maati, is an interactive pharmacokinetics and PK/PD simulator for pharmacy education: compare regimens, model loading, missed and custom doses, estimate creatinine clearance (Cockcroft–Gault), explore saturable (Michaelis–Menten) kinetics and population variability, and work graded clinical cases. Validated against an independent solver. Free, educational, not for clinical dosing.">
+<meta name="author" content="Saif Maati">
 <link rel="canonical" href="https://maatirx.com/">
 <meta name="theme-color" content="#07090D">
 <meta name="color-scheme" content="dark">
@@ -52,23 +53,28 @@
 <link rel="manifest" href="site.webmanifest">
 <!-- link previews (Open Graph and X/Twitter need absolute URLs) -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="MaatiRx">
-<meta property="og:title" content="MaatiRx — Interactive PK/PD Lab">
+<meta property="og:site_name" content="DoseCurve">
+<meta property="og:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta property="og:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond, in 2D and as a 3D curve drawn live from the model. Compare regimens, build dose schedules, and learn with 36 guided lessons and 16 graded clinical cases. Free, educational, not for clinical dosing.">
 <meta property="og:url" content="https://maatirx.com/">
 <meta property="og:image" content="https://maatirx.com/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The word MaatiRx split in two across a dark screen, with the default concentration–time curve drawn as a 3D ribbon passing between the halves.">
+<meta property="og:image:alt" content="The word DoseCurve split in two across a dark screen, with the default concentration–time curve drawn as a 3D ribbon passing between the halves.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MaatiRx — Interactive PK/PD Lab">
+<meta name="twitter:title" content="DoseCurve — Interactive PK/PD Lab">
 <meta name="twitter:description" content="Change a drug, a patient or a regimen and watch concentration and effect respond. Free and educational.">
 <meta name="twitter:image" content="https://maatirx.com/og-image.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"MaatiRx","url":"https://maatirx.com/",
- "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.20.0",
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Person","@id":"https://maatirx.com/#founder","name":"Saif Maati","jobTitle":"Founder of DoseCurve","sameAs":["https://github.com/Saifmaati"]},
+ {"@type":"Organization","@id":"https://maatirx.com/#dosecurve","name":"DoseCurve","url":"https://maatirx.com/","logo":"https://maatirx.com/icon-512.png","founder":{"@id":"https://maatirx.com/#founder"}},
+ {"@type":"WebApplication","name":"DoseCurve","url":"https://maatirx.com/",
+ "description":"Interactive pharmacokinetics and PK/PD simulator for pharmacy education: regimens and custom schedules, a clinical patient with Cockcroft–Gault creatinine clearance, saturable kinetics, population variability, lessons, practice problems and graded clinical cases, validated against an independent solver.","softwareVersion":"2.21.0",
  "applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","isAccessibleForFree":true,
- "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"}}
+ "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"educationalUse":"learning pharmacokinetics","audience":{"@type":"EducationalAudience","educationalRole":"student"},
+ "author":{"@id":"https://maatirx.com/#founder"},"creator":{"@id":"https://maatirx.com/#founder"},"publisher":{"@id":"https://maatirx.com/#dosecurve"}}
+]}
 </script>
 <!-- two families, served from this site (Inter and Newsreader, SIL Open Font License: fonts/OFL.txt) and fetched
      before they're needed; metric-matched fallbacks in the stylesheet keep the layout still when they swap in -->
@@ -78,7 +84,7 @@
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  /* MaatiRx: a precision instrument. Tokens and decisions are in docs/DESIGN.md. Two families, served from this
+  /* DoseCurve: a precision instrument. Tokens and decisions are in docs/DESIGN.md. Two families, served from this
      site (2.12): Inter for words and numbers (tabular lining figures), Newsreader for display (headings and the
      large readouts, light). No monospace. Until they arrive, metric-matched stand-ins (Arial and Georgia, resized to
      the same widths and line metrics) hold the layout still. */
@@ -136,7 +142,7 @@
   .mono{font-family:var(--f-mono)}
 
   /* header */
-  /* the top bar: links left, MaatiRx centred, utilities right; fixed, glass over whatever passes beneath */
+  /* the top bar: links left, DoseCurve centred, utilities right; fixed, glass over whatever passes beneath */
   body{padding-top:60px;padding-bottom:96px}
   .top{position:fixed;z-index:40;top:0;left:0;right:0;height:60px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:0 24px;
     background:color-mix(in srgb,var(--c-page) 72%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
@@ -1048,6 +1054,7 @@
   .foot p{margin:0}
   .foot-mark{display:flex;align-items:center;gap:8px;color:var(--c-text);font-weight:600;font-size:16px;letter-spacing:-.01em}
   .foot-mark svg{color:var(--c-accent)} .foot-mark em{font-style:normal;font-weight:400;color:var(--c-text-2)}
+  .foot-by{font-size:13px;font-weight:400;letter-spacing:0;color:var(--c-text-2);padding-left:10px;margin-left:2px;border-left:1px solid var(--c-line)}
   .foot-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;font-size:14px}
   .foot-links a{color:var(--c-text-2);text-decoration:none;border-bottom:1px solid var(--c-line-strong);padding-bottom:1px}
   .foot-links a:hover{color:var(--c-text);border-bottom-color:currentColor}
@@ -1434,7 +1441,7 @@
     <a href="#cases" data-tab="cs">Cases</a>
     <a href="validation.html">Validation</a>
   </nav>
-  <a class="brand" id="homeLink" href="./"><span class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="brand-name">Maati<em>Rx</em></span></a>
+  <a class="brand" id="homeLink" href="./"><span class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="brand-name">Dose<em>Curve</em></span></a>
   <div class="top-right">
     <button class="theme-btn" id="fxBtn" aria-pressed="true" title="The 3D stage behind the page">Effects</button>
     <button class="theme-btn" id="themeBtn" aria-pressed="false">Light<span class="wide"> theme</span></button>
@@ -1447,7 +1454,7 @@
   <section class="scene" data-scene="1" data-tone="dark" aria-labelledby="scene1">
     <div class="scene-pin">
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-      <h1 class="split" id="scene1"><span>Maati</span><span>Rx</span></h1>
+      <h1 class="split" id="scene1"><span>Dose</span><span>Curve</span></h1>
       <p class="cap">Watch a dose move.</p>
       <div class="small"><dl class="hero-ro" aria-label="The default scenario: 500 mg by mouth, half-life 4 h, window 2 to 12 mg/L">
           <div><dt>Cmax</dt><dd><span id="heroCmax">9.3</span><small>mg/L</small></dd></div>
@@ -1535,7 +1542,7 @@
   <section class="scene" data-scene="9" data-tone="dark" aria-labelledby="scene9">
     <div class="scene-pin">
       <div class="scene-vis" aria-hidden="true"><svg viewBox="0 0 600 340"></svg></div>
-      <h2 class="split" id="scene9"><span>Open</span> <span>MaatiRx</span></h2>
+      <h2 class="split" id="scene9"><span>Open</span> <span>DoseCurve</span></h2>
       <p class="cap">Free, in your browser.</p>
       <div class="small"><p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>No account, nothing to install. Educational model, not for clinical dosing.</span></p><span class="scene-n" aria-hidden="true">09 / 09</span></div>
     </div>
@@ -1546,7 +1553,7 @@
 <div class="wrap">
 
   <main id="main">
-  <div class="embed-bar"><span><h1 class="embed-title">MaatiRx</h1><span>Educational model, not for clinical dosing.</span></span><span class="top-right"><button class="theme-btn" id="themeBtnEmbed" aria-pressed="false">Light theme</button><a id="embedOpen" href="./" target="_blank" rel="noopener">Open in MaatiRx (new tab)</a></span></div>
+  <div class="embed-bar"><span><h1 class="embed-title">DoseCurve</h1><span>Educational model, not for clinical dosing.</span></span><span class="top-right"><button class="theme-btn" id="themeBtnEmbed" aria-pressed="false">Light theme</button><a id="embedOpen" href="./" target="_blank" rel="noopener">Open in DoseCurve (new tab)</a></span></div>
   <section class="hero">
     <div class="hero-text">
     <h1>Watch a dose move through the body, in real time.</h1>
@@ -1557,7 +1564,7 @@
       <button class="cta" data-go="cmp">Compare regimens</button>
     </div>
     <p class="hero-chip"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 4.9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Educational model, not for clinical dosing.</span></p>
-    <noscript><p class="noscript">MaatiRx is an interactive simulator and needs JavaScript. Turn it on in your browser to use it.</p></noscript>
+    <noscript><p class="noscript">DoseCurve is an interactive simulator and needs JavaScript. Turn it on in your browser to use it.</p></noscript>
     </div>
   </section>
 
@@ -1989,7 +1996,7 @@
               <button class="ib nav-prev" id="navTroughPrev" aria-label="Previous trough">trough</button>
               <button class="ib nav-next" id="navTroughNext" aria-label="Next trough">trough</button>
             </div>
-            <button class="ib" id="navFinal" aria-label="Final dosing interval">Final τ</button>
+            <button class="ib" id="navFinal" aria-label="Final τ: the last dosing interval">Final τ</button>
             <span class="ib-gap"></span>
             <button class="ib play" id="playBtn">Play</button>
             <div class="mini-seg" id="speedSeg" role="group" aria-label="Playback speed">
@@ -2044,7 +2051,7 @@
         </div>
 
         <div class="cmp-empty sim-only" id="cmpEmpty">
-          <span><b>Compare against a baseline.</b> Freeze this curve, change anything, and MaatiRx explains what moved and why.</span>
+          <span><b>Compare against a baseline.</b> Freeze this curve, change anything, and DoseCurve explains what moved and why.</span>
           <button class="abtn" id="cmpSet">Set baseline</button>
         </div>
 
@@ -2169,7 +2176,7 @@
     </div>
 
     <footer class="foot">
-      <p class="foot-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Maati<em>Rx</em></span></p>
+      <p class="foot-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Dose<em>Curve</em></span><span class="sr-only"> — </span><span class="foot-by">Founded by Saif Maati</span></p>
       <nav class="foot-links" aria-label="Project links">
         <a href="methods.html">Model and methods</a>
         <a href="validation.html">Validation</a>
@@ -2179,7 +2186,7 @@
         <a href="https://github.com/Saifmaati/dose-curve/issues/new?template=feedback.md" target="_blank" rel="noopener">Feedback</a>
       </nav>
       <p class="foot-disc">Educational model, not for clinical dosing.</p>
-      <p class="foot-ver"><span>Version 2.20.0, updated 4 October 2026</span></p>
+      <p class="foot-ver"><span>Version 2.21.0, updated 6 October 2026</span></p>
     </footer>
   </div>
   </main>
@@ -2248,13 +2255,13 @@
 
 <!-- the ?v= stamp is the engine's content hash (tests check it), so a new page never runs with a cached older engine -->
 <!-- both run after the page is parsed, in this order (a module script is deferred), so the page paints first -->
-<script src="pk-engine.js?v=20a14eddb2" defer></script>
+<script src="pk-engine.js?v=adf4ff9a45" defer></script>
 <script type="module">
 "use strict";
 (function(){
   /* ================= ENGINE ================= */
   if(!window.PK){
-    document.querySelector(".app").innerHTML='<p style="padding:40px 0;color:var(--c-mtc)">MaatiRx couldn’t load its simulation engine. Make sure pk-engine.js is uploaded next to index.html.</p>';
+    document.querySelector(".app").innerHTML='<p style="padding:40px 0;color:var(--c-mtc)">DoseCurve couldn’t load its simulation engine. Make sure pk-engine.js is uploaded next to index.html.</p>';
     return;
   }
   const {PK_KEYS, DEFAULTS, keOf, missedOf, singleConc, doseEvents, conc, derived, ssProfile, DRUGS, LESSONS, TEMPLATES} = PK;
@@ -2518,7 +2525,7 @@
   /* ---------- Individualize from levels (Bayesian) ---------- */
   // The estimator is pk-bayes.js, loaded when the panel opens or a link brings levels. Levels are tied to a dose:
   // n (the nth dose given) and dt (hours after it starts).
-  const IDR_SRC="pk-idr.js?v=cb6f86c822";
+  const IDR_SRC="pk-idr.js?v=b281c5fd28";
   let idrLoad=null;
   function loadIdr(){
     if(PK.idrModule) return Promise.resolve();
@@ -2531,7 +2538,7 @@
     });
     return idrLoad;
   }
-  const HD_SRC="pk-hd.js?v=1c3ea1a9b2";
+  const HD_SRC="pk-hd.js?v=d13fd8fd48";
   let hdLoad=null;
   function loadHd(){
     if(PK.hdModule) return Promise.resolve();
@@ -2551,7 +2558,7 @@
     panelsUI.hd();
   }
   // Sensitivity (pk-sens.js): computed and drawn only while its panel is open
-  const SENS_SRC="pk-sens.js?v=c3308f9aa7";
+  const SENS_SRC="pk-sens.js?v=0e00719e81";
   let sensLoad=null, sensMetric="auc";
   function loadSens(){
     if(PK.sensModule) return Promise.resolve();
@@ -2573,7 +2580,7 @@
   }
   byId("sensBox").addEventListener("toggle", renderSens);
   seg("sensSeg","m",v=>{ sensMetric=v; renderSens(); });
-  const SOURCES_SRC="pk-sources.js?v=19a2732856";
+  const SOURCES_SRC="pk-sources.js?v=6b5fbf7ff9";
   let srcLoad=null;
   function loadSources(){
     if(PK.sourcesModule) return Promise.resolve();
@@ -2587,7 +2594,7 @@
     return srcLoad;
   }
   const IDR_NAME=["Direct (Emax model)","Inhibits production","Inhibits loss","Stimulates production","Stimulates loss"];
-  const BAYES_SRC="pk-bayes.js?v=d7a51f2606";
+  const BAYES_SRC="pk-bayes.js?v=21a1045af5";
   let bayesLoad=null, bzCache={key:"", est:null};
   function loadBayes(){
     if(PK.bayesModule) return Promise.resolve();
@@ -2665,7 +2672,7 @@
     if(!(state.mic>0)){ byId("micOut").textContent="Enter the organism's MIC to read fT>MIC, Cmax/MIC and AUC24/MIC."; return; }
     if(panelsUI) panelsUI.mic(); else loadPanels().then(render).catch(()=>{});
   }
-  const PANELS_SRC="ui-panels.js?v=35020f4867";
+  const PANELS_SRC="ui-panels.js?v=ed15fc8dd6";
   let panelsUI=null, panelsLoad=null;
   function loadPanels(){
     if(!panelsLoad) panelsLoad=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=PANELS_SRC;
@@ -3063,7 +3070,7 @@
 
   // The chart's motion (the drug's particles, the curve drawing itself, the doses' pulses, lit doses and intervals, the
   // plane's tilt) is ui-chartfx.js, loaded just after the first paint; until it arrives the chart is simply still
-  const CHARTFX_SRC="ui-chartfx.js?v=f8021bc0ec";
+  const CHARTFX_SRC="ui-chartfx.js?v=fbac72551a";
   let chartFx=null, fxLast=null;
   const fxSet=(...a)=>{ fxLast=a; if(chartFx) chartFx.set(...a); };
   const drawTo=(x,h)=>{ if(chartFx) chartFx.drawTo(x,h); };
@@ -3236,7 +3243,7 @@
   }
   const refreshReadouts=()=>{ const p=snapshot(); renderReadouts(p, derived(p), windowStats(p)); };
   // The workings come from pk-math.js, loaded the first time a readout is opened.
-  const MATH_SRC="pk-math.js?v=2bc59a4aea";
+  const MATH_SRC="pk-math.js?v=610e1f3037";
   let mathLoading=false;
   function loadMath(){
     if(mathLoading) return;
@@ -3437,7 +3444,7 @@
 
   // When to sample (pk-tdm.js, 2.4): the model's times for this regimen, loaded when the section opens; each time has
   // a button that moves the time cursor there, widening the chart when the time is past its end
-  const TDM_SRC="pk-tdm.js?v=1c4fc05651";
+  const TDM_SRC="pk-tdm.js?v=faef16b95a";
   let tdmLoad=null;
   function loadTdm(){
     if(PK.tdmModule) return Promise.resolve();
@@ -3521,7 +3528,7 @@
   // `ref` names the reference side in the text ("the baseline" or "A").
   // The sentences under "What changed" (pk-explain.js): loaded just after the first paint, and awaited by a link
   // that opens with a baseline, so the list is there when the app shows
-  const EXPLAIN_SRC="pk-explain.js?v=aec2f18c19";
+  const EXPLAIN_SRC="pk-explain.js?v=12388a8782";
   let explainLoad=null;
   function loadExplain(){
     if(PK.explainModule) return Promise.resolve();
@@ -4540,7 +4547,7 @@
   /* ================= POPULATION ================= */
   // n virtual patients around the scenario (pop-worker.js, a Web Worker, so the page stays responsive). A result
   // is kept with the key of what it was computed for; the chart uses it only while that still matches.
-  const POP_SRC="pop-worker.js?v=a1638dbe2e";
+  const POP_SRC="pop-worker.js?v=20f78a468b";
   let popWorker=null, popResult=null, popPending=null, popTimer=null, popSeq=0;
   const popOpts=()=>({n:state.popn, cvCL:state.pcl, cvV:state.pv, seed:state.pseed, T:state.duration, mec:state.mec, mtc:state.mtc,
     auc:state.phi>0 && state.phi>state.plo ? [state.plo, state.phi] : null, pd:state.pd ? 1 : 0});
@@ -4651,7 +4658,7 @@
   byId("pdBtn").addEventListener("click",()=>{ state.pd=!state.pd; syncPd(); render(); });
 
   // The two charts themselves are ui-effect.js, loaded when the switch is first on or a link opens with it
-  const EFFECT_SRC="ui-effect.js?v=9706a2b989";
+  const EFFECT_SRC="ui-effect.js?v=d46dbe334e";
   let effectUI=null, effectLoad=null;
   function loadEffect(){
     if(effectUI) return Promise.resolve();
@@ -4798,7 +4805,7 @@
   }));
   // The glossary under the lessons: each term with its symbol and unit, a definition, and the lesson that shows it.
   // The glossary's terms come from pk-glossary.js, loaded the first time the Lessons tab opens.
-  const GLOSS_SRC="pk-glossary.js?v=4b10838869";
+  const GLOSS_SRC="pk-glossary.js?v=6842dd548f";
   let glossLoading=null;
   function loadGlossary(){
     if(PK.GLOSSARY){ if(!byId("glossList").children.length) buildGlossary(); return; }
@@ -4871,7 +4878,7 @@
   }
   // The lessons' texts, predictions and challenges come from pk-lessons.js, loaded with the Lessons tab or the
   // first lesson opened.
-  const LESSON_SRC="pk-lessons.js?v=9d72583926";
+  const LESSON_SRC="pk-lessons.js?v=039863e0a1";
   let lessonLoad=null, lessonPending=null;   // lessonPending: the texts a lesson just opened is waiting for
   function loadLessons(){
     if(PK.lessonModule) return Promise.resolve();
@@ -5362,7 +5369,7 @@
       if(err) return libMsg(err,"err");
       renderLibrary(); focusLib(id,"dup"); libMsg(`Duplicated as “${copy.name}”.`,"ok");
     }
-    else if(act==="export"){ downloadJSON(PK.exportLibrary([it]), `maatirx-${slug(it.name)}.json`); libMsg(`Exported “${it.name}”.`,"ok"); }
+    else if(act==="export"){ downloadJSON(PK.exportLibrary([it]), `dosecurve-${slug(it.name)}.json`); libMsg(`Exported “${it.name}”.`,"ok"); }
     else if(act==="del"){
       if(!armed(btn,"Confirm delete")) return;
       const err=libWrite(Object.assign({},lib,{items:lib.items.filter(x=>x.id!==id)}));
@@ -5376,7 +5383,7 @@
   byId("libSave").addEventListener("click",()=>libSave(false));
   byId("libSaveAs").addEventListener("click",()=>libSave(true));
   byId("libName").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); libSave(false); } });
-  byId("libExport").addEventListener("click",()=>{ downloadJSON(PK.exportLibrary(lib.items), `maatirx-scenarios-${stamp()}.json`); libMsg(`Exported ${lib.items.length} scenario${lib.items.length===1?"":"s"}.`,"ok"); });
+  byId("libExport").addEventListener("click",()=>{ downloadJSON(PK.exportLibrary(lib.items), `dosecurve-scenarios-${stamp()}.json`); libMsg(`Exported ${lib.items.length} scenario${lib.items.length===1?"":"s"}.`,"ok"); });
   byId("libImport").addEventListener("click",()=>{ byId("libFile").value=""; byId("libFile").click(); });
   byId("libFile").addEventListener("change",async()=>{
     const f=byId("libFile").files[0];
@@ -5452,7 +5459,7 @@
   }
   function fillPrintHead(){
     const link=pageUrl()+"#"+PK.encodeLink(linkState()), when=new Date().toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
-    let h=`<b>MaatiRx</b>. Educational model, not for clinical dosing.<br>`;
+    let h=`<b>DoseCurve</b>. Educational model, not for clinical dosing.<br>`;
     if(mode==="cmp"){ const {a,b}=pair(); h+=`A, ${esc(cmp.names.a)}: ${esc(scenarioSummary(a))}. ${esc(settingsLine(a))}<br>B, ${esc(cmp.names.b)}: ${esc(scenarioSummary(b))}. ${esc(settingsLine(b))}<br>`; }
     else { const p=snapshot(); h+=`${esc(scenarioSummary(p))}. ${esc(settingsLine(p))}<br>`; if(baseline) h+=`Compared with the baseline: ${esc(baseline.label)}<br>`; }
     h+=`<span class="ph-meta">Window ${trim(state.duration)} h, MEC ${trim(state.mec)}, MTC ${trim(state.mtc)} ${U().conc}, printed ${esc(when)}, ${esc(link)}</span>`;
@@ -5497,7 +5504,7 @@
   // An iframe for a course page or website: the compact embed view of this scenario.
   byId("embedBtn").addEventListener("click",()=>{
     const src=`${pageUrl()}?embed${isLight() ? "&theme=light" : ""}#${PK.encodeLink(linkState())}`;   // the embed keeps the theme in use
-    const code=`<iframe src="${src}" title="MaatiRx simulation" width="100%" height="780" style="border:0;border-radius:12px" loading="lazy"></iframe>`;
+    const code=`<iframe src="${src}" title="DoseCurve simulation" width="100%" height="780" style="border:0;border-radius:12px" loading="lazy"></iframe>`;
     const fallback=()=>window.prompt("Copy this embed code:", code);
     if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code).then(()=>toast("Embed code copied"), fallback);
     else fallback();
@@ -5519,7 +5526,7 @@
   addEventListener("beforeprint",()=>{ printDark=!isLight(); if(printDark){ document.documentElement.classList.add("light"); readK(); render(); } });
   addEventListener("afterprint",()=>{ if(printDark){ document.documentElement.classList.remove("light"); readK(); render(); } });
   syncThemeButtons();
-  // In the embed view, "Open in MaatiRx" takes the scenario as it is now to the full page.
+  // In the embed view, "Open in DoseCurve" takes the scenario as it is now to the full page.
   byId("embedOpen").addEventListener("click",()=>{ byId("embedOpen").href=pageUrl()+"#"+PK.encodeLink(linkState()); });
   // A problem or data-set link stays in the address bar only while that problem or data set is open.
   const clearTaskHash=()=>{ if(PK.decodeTaskLink(location.hash)) history.replaceState(null,"",location.pathname+location.search); };
@@ -5548,7 +5555,7 @@
       syncControls(); updateBaselineUI(); render();
     }
     byId("sharedMsg").textContent=st.newer
-      ? "Opened from a link made by a newer version of MaatiRx. Some settings may not have come through."
+      ? "Opened from a link made by a newer version of DoseCurve. Some settings may not have come through."
       : "Opened from a shared link.";
     byId("sharedPill").hidden=!!fromLibrary && !st.newer;
   }
@@ -5592,8 +5599,9 @@
   const ctrlEl=byId("controls"), railList=byId("railList"), railPin=byId("railPin");
   function buildRail(){
     railList.innerHTML=[...ctrlEl.querySelectorAll(".panel-pad > .sec")].filter(sec=> !sec.hidden && sec.offsetParent!==null && sec.querySelector(".sec-label"))
-      .map((sec,i)=>{ if(!sec.id) sec.id="sec"+i; const name=sec.querySelector(".sec-label").textContent.trim();
-        return `<button type="button" data-sec="${sec.id}" title="${esc(name)}" aria-label="${esc(name)}">${railIcon(name)}</button>`; }).join("");
+      .map((sec,i)=>{ if(!sec.id) sec.id="sec"+i; const name=sec.querySelector(".sec-label").textContent.trim(), icon=railIcon(name);
+        // a text icon (A·B) is part of the button's name, so a voice command can say what is shown
+        return `<button type="button" data-sec="${sec.id}" title="${esc(name)}" aria-label="${esc(icon[0]==="<" ? name : name+", "+icon)}">${icon}</button>`; }).join("");
   }
   // a line icon per section, 16 px, drawn in the text colour
   function railIcon(name){
@@ -5664,7 +5672,7 @@
       csv+=t.toFixed(3)+","+cs.map(c=>c.toFixed(5)).concat(state.pd ? curves.map((cv,j)=>eVal(cv,t,ces[j]).toFixed(3)) : [],
         delayed.map(cv=> ces[curves.indexOf(cv)].toFixed(5))).join(",")+"\n";
     }
-    download(new Blob([csv],{type:"text/csv"}), mode==="cmp"?"maatirx_compare.csv":"maatirx_data.csv");
+    download(new Blob([csv],{type:"text/csv"}), mode==="cmp"?"dosecurve_compare.csv":"dosecurve_data.csv");
     if(state.view==="last" && repeatedShown().length) toast(`CSV covers the full 0–${Tend} h window, not just the zoomed view`);
   });
 
@@ -5713,7 +5721,7 @@
     let blob;
     try{ blob=await plotPng(parts, await within(5000, embeddedFonts())); }
     catch(e){ blob=await plotPng(parts, ""); }   // offline, slow or refused: the image still exports, in fallback fonts
-    download(blob,"maatirx_plot.png");
+    download(blob,"dosecurve_plot.png");
   });
 
   function download(blob,name){
@@ -5730,7 +5738,7 @@
   let prob=null, prTopic="", prStreak=0, prSolved=0, prTried=0, prAnswered=false;
   const $=id=>document.getElementById(id);
   // The problems come from pk-practice.js, loaded the first time the tab or a practice link needs them.
-  const PRACTICE_SRC="pk-practice.js?v=ae88bde6e5";
+  const PRACTICE_SRC="pk-practice.js?v=71d1ec1677";
   let practiceLoad=null;
   function loadPractice(){
     if(PK.practiceModule) return Promise.resolve();
@@ -5837,7 +5845,7 @@
     $("wsSizeSeg").querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x===b); x.setAttribute("aria-pressed", x===b); });
   });
   // the worksheet's view and print are ui-worksheet.js, loaded with the first worksheet (2.15)
-  const WS_SRC="ui-worksheet.js?v=89cc0503d5";
+  const WS_SRC="ui-worksheet.js?v=8aafad02da";
   let wsUI=null;
   const loadWsUI=()=> wsUI ? Promise.resolve(wsUI) : new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=WS_SRC;
     sc.onload=()=> window.DCWorksheet ? res(wsUI=window.DCWorksheet({$, PK, esc, copyHash, clearTaskHash, reduceMotion})) : rej(new Error("no worksheet")); sc.onerror=()=> rej(new Error("load")); document.head.appendChild(sc); });
@@ -5916,7 +5924,7 @@
   $("tabCs").addEventListener("click",()=>{ openCases(null); pushTab("cs"); });
   // Cases load on first use from their own file, stamped by content hash like the engine, so a first visit to
   // the simulator doesn't pay for them.
-  const CASES_SRC="cases.js?v=b0907ff523";
+  const CASES_SRC="cases.js?v=9e724cac1f";
   let casesReady=null, casesMounted=false;
   // (the Bayesian cases need the estimator, pk-bayes.js, so it comes with them)
   function loadCases(){
@@ -5995,7 +6003,7 @@
   /* ================= 3D (2.18) ================= */
   // The chart in 3D: ui-chart3d.js with Three.js through the stage, loaded on the first press; the 2D chart stays
   // the default. It reads the chart's own curves and axes, and a drag in it sets the same state the controls do.
-  const C3D_SRC="ui-chart3d.js?v=5665d6071d";
+  const C3D_SRC="ui-chart3d.js?v=0fded86bf0";
   let c3dLoad=null;
   const loadScript=src=> new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   function load3d(){
@@ -6023,7 +6031,7 @@
   // The stage behind the page (stage.js, this site's own file, loaded after the first paint): the curves the chart has
   // just drawn, as a ribbon in 3D (Three.js, with Effects on) or in CSS, and the root sequence above the app.
   const ROOT_PAGE=/\/(index\.html)?$/.test(location.pathname) && !D.classList.contains("embed");
-  const STAGE_SRC="stage.js?v=1ee52f0bd3";
+  const STAGE_SRC="stage.js?v=3c76a180ff";
   if(!D.classList.contains("embed")) addEventListener("load",()=> setTimeout(()=> import("./"+STAGE_SRC)
     .then(m=>{ stage=m.start(PK); toStage(); mast(); }).catch(()=>{}), 60));
   const syncFx=()=> byId("fxBtn").setAttribute("aria-pressed", !D.classList.contains("fx-off"));

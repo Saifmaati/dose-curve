@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MaatiRx validation</title>
-<meta name="description" content="How MaatiRx's pharmacokinetic engine is checked: an independent solver on a scenario matrix, analytic identities, stated tolerances, and how to rerun it.">
+<title>DoseCurve validation</title>
+<meta name="description" content="How DoseCurve's pharmacokinetic engine is checked: an independent solver on a scenario matrix, analytic identities, stated tolerances, and how to rerun it.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script>(function(){ var d=document.documentElement, t=(location.search.match(/[?&]theme=(light|dark)(?:&|$)/)||[])[1];
   if(!t) try{ t=localStorage.getItem("dosecurve.theme"); }catch(e){}
@@ -68,19 +68,19 @@
 </style>
 </head>
 <body>
-<header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Maati<em>Rx</em></span></a><nav aria-label="Pages"><a href="methods.html">Model and methods</a><a href="./">Open the simulator</a></nav></header>
+<header class="bar"><a class="brand" href="./"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 16 C4.5 16 5 4.5 8 4.5 C11.5 4.5 12 13 15.5 13 C16.8 13 17.6 12.4 18.2 11.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i><span>Dose<em>Curve</em></span></a><nav aria-label="Pages"><a href="methods.html">Model and methods</a><a href="./">Open the simulator</a></nav></header>
 <!-- the sphere: one point per comparison below, lit as each passes; the word behind it is decorative (the summary says it) -->
 <section class="vhero" aria-hidden="true"><p class="vword" id="vWord">Validating</p><div class="vsphere" id="vSphere"><svg viewBox="-170 -170 340 340" id="vSvg"></svg></div><p class="vcap">Every comparison, run in your browser.</p></section>
 <main>
 <h1>Validation</h1>
-<p class="note">Educational model, not for clinical dosing. This page checks that MaatiRx solves its own model correctly. It does not show that the model predicts real patients. The model itself, equation by equation, is in <a href="methods.html">Model and methods</a>.</p>
+<p class="note">Educational model, not for clinical dosing. This page checks that DoseCurve solves its own model correctly. It does not show that the model predicts real patients. The model itself, equation by equation, is in <a href="methods.html">Model and methods</a>.</p>
 
 <!-- the waiting text has the result's three lines, at about their length, so the page doesn't jump when it arrives -->
 <div class="summary" id="summary" aria-live="polite"><div class="big">Running the checks in your browser…</div><div>The 146 scenarios' peaks, troughs, areas and times in window, the 20 Bayesian estimates' clearance and volume, the 12 antimicrobial regimens' fT>MIC, Cmax/MIC and AUC24/MIC, the 15 indirect responses at five times and at their largest change, and the 15 dialysis scenarios' levels and sessions are being compared with the independent solver's, to the tolerances below. The largest difference in each group will show here.</div><div class="muted">The date of the reference run, the Python, NumPy and SciPy versions it used, and the engine file checked will show here when the checks finish.</div></div>
 
 <h2>What is checked</h2>
 <ul>
-  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve, and for an effect-site delay two more follow the effect-site level, dCe/dt = ke0·(C − Ce), and its area. It was written from the equations, not translated from MaatiRx's JavaScript: the JavaScript builds linear curves, one- or two-compartment, and their effect-site levels from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
+  <li><b>An independent solver.</b> <code>validation/reference.py</code> integrates the model's differential equations with SciPy's <code>solve_ivp</code> (DOP853, relative tolerance 10⁻¹¹), piecewise between doses. An extra state accumulates the area under the curve, and for an effect-site delay two more follow the effect-site level, dCe/dt = ke0·(C − Ce), and its area. It was written from the equations, not translated from DoseCurve's JavaScript: the JavaScript builds linear curves, one- or two-compartment, and their effect-site levels from closed-form sums of exponentials and integrates saturable ones with a fixed-step RK4.</li>
   <li><b>A scenario matrix</b> of <span id="nScen">146</span> scenarios:
     <ul>
       <li>Routes: oral, IV bolus, IV infusion, and a mixed-route schedule.</li>
@@ -120,17 +120,17 @@
 <p class="muted">Published worked examples aren't included: none could be checked against an accessible source.</p>
 
 <h2>Results</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Results table"><table id="tbl"><caption>Each scenario: the reference value, MaatiRx's, and the difference.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Results table"><table id="tbl"><caption>Each scenario: the reference value, DoseCurve's, and the difference.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Peak (ref)</th><th scope="col">Peak Δ</th><th scope="col">Trough (ref)</th><th scope="col">Trough Δ</th><th scope="col">AUC (ref)</th><th scope="col">AUC Δ</th><th scope="col">In window (ref)</th><th scope="col">Δ pp</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
 <h2>Bayesian estimates (MAP)</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table" style="min-height:600px"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, MaatiRx's, and the difference.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="Bayesian estimates table" style="min-height:600px"><table id="mapTbl"><caption>Each scenario: the prior (the patient model's clearance and volume), the reference MAP estimate, DoseCurve's, and the difference.</caption>
 <thead><tr><th scope="col">Scenario</th><th scope="col">Levels</th><th scope="col">CL prior (L/h)</th><th scope="col">CL MAP (ref)</th><th scope="col">CL Δ</th><th scope="col">V prior (L)</th><th scope="col">V MAP (ref)</th><th scope="col">V Δ</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
 <h2>Antimicrobial PK/PD indices</h2>
-<div class="scroll" tabindex="0" role="region" aria-label="PK/PD indices table" style="min-height:384px"><table id="pkpdTbl"><caption>Each regimen at steady state: the reference value, MaatiRx's, and the difference.</caption>
+<div class="scroll" tabindex="0" role="region" aria-label="PK/PD indices table" style="min-height:384px"><table id="pkpdTbl"><caption>Each regimen at steady state: the reference value, DoseCurve's, and the difference.</caption>
 <thead><tr><th scope="col">Regimen</th><th scope="col">fT&gt;MIC (ref)</th><th scope="col">Δ pp</th><th scope="col">Cmax/MIC (ref)</th><th scope="col">Δ</th><th scope="col">AUC24/MIC (ref)</th><th scope="col">Δ</th><th scope="col">Within</th></tr></thead>
 <tbody></tbody></table></div>
 
@@ -199,9 +199,9 @@ if(!still) addEventListener("scroll",()=> requestAnimationFrame(draw), {passive:
 (function(){
   "use strict";
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ENGINE=["pk-engine.js?v=20a14eddb2","pk-hd.js?v=1c3ea1a9b2","pk-idr.js?v=cb6f86c822","pk-bayes.js?v=d7a51f2606"], WORKER="validation-worker.js?v=a7a2e4d40d";
+  const ENGINE=["pk-engine.js?v=adf4ff9a45","pk-hd.js?v=d13fd8fd48","pk-idr.js?v=b281c5fd28","pk-bayes.js?v=21a1045af5"], WORKER="validation-worker.js?v=c52ca6c802";
   const small=v=> v>=0.001 ? v.toFixed(3) : "under 0.001";
-  fetch("validation/reference-results.json?v=34248d58e5").then(r=>r.json()).then(REF=>{
+  fetch("validation/reference-results.json?v=47bb86493a").then(r=>r.json()).then(REF=>{
     // every comparison's result, in order, for the sphere at the top of the page
     window.dcN=4*REF.scenarios.length+2*REF.map.scenarios.length+3*REF.pkpd.scenarios.length+3*REF.idr.scenarios.length+2*REF.hd.scenarios.length;
     window.dcChecks=[];

@@ -10,7 +10,7 @@ const vm=require("node:vm");
 const SCOPE="https://example.github.io/dose-curve/", DEFAULT_SCOPE=SCOPE;
 const SRC=fs.readFileSync(path.join(__dirname,"..","sw.js"),"utf8");
 // The cache name carries a version that each release phase bumps; the tests follow whatever sw.js says.
-const CACHE=SRC.match(/const CACHE="(maatirx-v\d+)"/)[1];
+const CACHE=SRC.match(/const CACHE="(dosecurve-v\d+)"/)[1];
 // the validation results, named by their content hash as sw.js lists them
 const RESULTS=SRC.match(/"\.\/(validation\/reference-results\.json\?v=[0-9a-f]{10})"/)[1];
 
@@ -62,12 +62,12 @@ function makeWorker(SCOPE=DEFAULT_SCOPE){
     goOffline(){ online=false; }, goOnline(){ online=true; }, release(){ version++; }, moveAway(){ moved=true; }};
 }
 
-test("installing saves the app's icons and manifest; activating clears only older caches of the app (MaatiRx's, and DoseCurve's from before 2.20)", async()=>{
+test("installing saves the app's icons and manifest; activating clears only older caches of the app (DoseCurve's, and those named maatirx- in 2.20)", async()=>{
   const w=makeWorker();
   w.store.set("dosecurve-v0", new Map()); w.store.set("dosecurve-v1", new Map()); w.store.set("maatirx-v1", new Map()); w.store.set("someone-else", new Map());
   await w.lifecycle("install"); await w.lifecycle("activate");
   assert.deepEqual([...w.store.keys()].sort(), [CACHE,"someone-else"]);
-  assert.notEqual(CACHE, "maatirx-v1", "bumped since the first release");
+  assert.notEqual(CACHE, "dosecurve-v1", "bumped since the first release");
   ["", "site.webmanifest", "favicon.svg", "icon-192.png"].forEach(f=> assert.ok(w.cache().has(SCOPE+f), f));
 });
 

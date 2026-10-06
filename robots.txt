@@ -1,5 +1,4 @@
-# MaatiRx is a single public page. Crawlers only read robots.txt at a domain's root, so this file takes
-# effect once the site has its own domain; until then everything is crawlable anyway.
+# DoseCurve at https://maatirx.com/: everything is crawlable, and its four public pages are listed in the sitemap.
 User-agent: *
 Allow: /
 

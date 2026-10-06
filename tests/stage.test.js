@@ -262,7 +262,8 @@ test("2.14: the workspace: the chart fills a desktop screen, the controls are a 
   // the rail: 64 px, opening to 380 over the chart on hover, focus or a click (so the keyboard reaches every control)
   assert.match(page, /\.controls:is\(:hover,:focus-within,\.open\)\{width:380px;/);
   assert.match(page, /<nav class="rail" id="rail" aria-label="Control sections">/);
-  assert.match(page, /aria-label="\$\{esc\(name\)\}">\$\{railIcon\(name\)\}<\/button>/);
+  assert.match(page, /icon=railIcon\(name\)/);
+  assert.match(page, /aria-label="\$\{esc\(icon\[0\]==="<" \? name : name\+", "\+icon\)\}">\$\{icon\}<\/button>/, "named by its section, and by its text when the icon is text (2.21)");
   // the chart is drawn one unit to a pixel at its box's size in the workspace, and redrawn when that changes
   assert.match(page, /if\(inWorkspace\(\) && plotEl\.clientWidth>200 && plotEl\.clientHeight>200\)\{ PW=Math\.round\(plotEl\.clientWidth\); PH=Math\.round\(plotEl\.clientHeight\); \}/);
   assert.match(page, /new ResizeObserver\(\(\)=>\{ if\(sizeRaf\) return;/);

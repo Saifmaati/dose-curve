@@ -1,6 +1,26 @@
 # Changelog
 
-What changed in MaatiRx (called DoseCurve until 2.19), newest first. Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+What changed in DoseCurve, newest first (release 2.20.0 called it MaatiRx). Every release keeps older share links working and the default scenario's numbers unchanged: Cmax 9.3 mg/L, AUC 74.2 mg·h/L, 48% of the window in range.
+
+## 2.21.0 (2026-10-06)
+
+The name is **DoseCurve** again; the address stays **https://maatirx.com/**.
+
+- **The name.** The wordmark ("Dose" strong, "Curve" light), the opening screen ("Dose | Curve"), every page's title, the meta and link-preview tags, the app's install name, the citation files, the downloads (`dosecurve_*.csv`, `dosecurve_plot.png`, `dosecurve-*.json`), the README and the docs say DoseCurve, as they did before 2.20. A new link-preview image and new README screenshots. The 2.20.0 entry below keeps the name it shipped with.
+- **Founded by Saif Maati**, stated on the site and for search engines:
+  - on the footer's first line, beside the wordmark;
+  - on the educator page and in Model and methods' citation section;
+  - in the README;
+  - in the page description and an `author` tag;
+  - in the structured data search engines read: Saif Maati as a Person, DoseCurve's founder, and the app's author and creator.
+
+  The sitemap now lists the educator, methods and validation pages too.
+- **The address doesn't change.** https://maatirx.com/ serves the site, and the old github.io address keeps redirecting there. Share links, worksheet links, case and assignment links work as before.
+- **Nothing saved moves.** 2.20 never renamed what a browser saves, so the library, progress, settings, scenario files and completion codes are untouched. Completion codes made under either name verify.
+- **Saved work from the old address** is still offered and taken in at maatirx.com, under the new name in the notice.
+- **Offline:** cache `dosecurve-v50`; the 2.20 cache is cleared.
+- The linearity lesson no longer says the app models linear kinetics only; it points to the saturable lessons.
+- **Labels match what is shown:** the "Final τ" button and the control rail's "A·B" button now include their visible text in their spoken names, so voice control can name them (WCAG 2.5.3, flagged by axe 4.14).
 
 ## 2.20.0 (2026-10-04)
 
