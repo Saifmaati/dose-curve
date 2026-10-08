@@ -1,4 +1,4 @@
-/* MaatiRx hemodialysis
+/* DoseCurve hemodialysis
    Dialysis sessions add the dialyzer's clearance CLd to the patient's own while they run: the elimination rate is
    kₑ + CLd / V during a session and kₑ between them (one compartment, first-order elimination). Between any two
    events (a dose, the end of an infusion, the start or end of a session) the rates are constant, so the gut and body

@@ -1,4 +1,4 @@
-// MaatiRx service worker: after one visit the app opens without a connection.
+// DoseCurve service worker: after one visit the app opens without a connection.
 // - Pages come from the network first, so a new release shows up at once; the copy saved on the last visit is
 //   used only when the network can't be reached.
 // - The engine and the cases (pk-engine.js?v=<content hash>, cases.js?v=<hash>), the validation results (by hash too),
@@ -6,11 +6,11 @@
 //   each page names them by hash, and older copies are dropped when a new one is saved.
 // - Nothing else is touched: other sites' requests and anything but GET pass straight through. No user data is
 //   stored or sent; scenarios and the library stay in the page's own storage, as before.
-const CACHE="maatirx-v49";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
+const CACHE="dosecurve-v50";   // bumped at the end of every v1.0 phase, so a new release starts from a clean cache
 // cases.js is named by its content hash, as index.html loads it; a test keeps the two in step
 const CORE=["./","./site.webmanifest","./favicon.svg","./favicon-32.png","./apple-touch-icon.png","./icon-192.png","./icon-512.png",
-  "./cases.js?v=b0907ff523",
-  "./pk-sens.js?v=c3308f9aa7","./validation-worker.js?v=a7a2e4d40d","./ui-chart3d.js?v=5665d6071d","./ui-move.js?v=a2336f9d82","./ui-panels.js?v=35020f4867","./ui-worksheet.js?v=89cc0503d5","./ui-effect.js?v=9706a2b989","./ui-chartfx.js?v=f8021bc0ec","./pk-explain.js?v=aec2f18c19","./pk-tdm.js?v=1c4fc05651","./pk-hd.js?v=1c3ea1a9b2","./pk-sources.js?v=19a2732856","./pk-idr.js?v=cb6f86c822","./pk-bayes.js?v=d7a51f2606","./pk-lessons.js?v=9d72583926","./pk-practice.js?v=ae88bde6e5","./pk-math.js?v=2bc59a4aea","./pk-glossary.js?v=4b10838869","./pop-worker.js?v=a1638dbe2e","./validation.html","./educators.html","./stage.js?v=1ee52f0bd3","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=34248d58e5"];
+  "./cases.js?v=9e724cac1f",
+  "./pk-sens.js?v=0e00719e81","./validation-worker.js?v=c52ca6c802","./ui-chart3d.js?v=0fded86bf0","./ui-move.js?v=3510093108","./ui-panels.js?v=ed15fc8dd6","./ui-worksheet.js?v=8aafad02da","./ui-effect.js?v=d46dbe334e","./ui-chartfx.js?v=fbac72551a","./pk-explain.js?v=12388a8782","./pk-tdm.js?v=faef16b95a","./pk-hd.js?v=d13fd8fd48","./pk-sources.js?v=6b5fbf7ff9","./pk-idr.js?v=b281c5fd28","./pk-bayes.js?v=21a1045af5","./pk-lessons.js?v=039863e0a1","./pk-practice.js?v=71d1ec1677","./pk-math.js?v=610e1f3037","./pk-glossary.js?v=6842dd548f","./pop-worker.js?v=20f78a468b","./validation.html","./educators.html","./stage.js?v=3c76a180ff","./fonts/inter-latin.woff2","./fonts/newsreader-latin.woff2","./validation/reference-results.json?v=47bb86493a"];
 const PAGE="./";   // the app page's saved copy lives under this key
 const OLD_HOST="saifmaati.github.io";   // the address until 2.19, which redirects to maatirx.com once the domain is set
 const PAGES=["validation.html","methods.html"];   // other pages kept for offline use, each under its own address
@@ -23,7 +23,7 @@ self.addEventListener("install",e=>{
 });
 self.addEventListener("activate",e=>{
   e.waitUntil(caches.keys()
-    .then(keys=>Promise.all(keys.filter(k=>(k.startsWith("maatirx-") || k.startsWith("dosecurve-")) && k!==CACHE).map(k=>caches.delete(k))))   // (named dosecurve- until 2.19)
+    .then(keys=>Promise.all(keys.filter(k=>(k.startsWith("dosecurve-") || k.startsWith("maatirx-")) && k!==CACHE).map(k=>caches.delete(k))))   // (named maatirx- in 2.20)
     .then(()=>self.clients.claim()));
 });
 

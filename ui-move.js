@@ -1,4 +1,4 @@
-/* MaatiRx: bringing the work saved at the old address to https://maatirx.com/ (2.20)
+/* DoseCurve: bringing the work saved at the old address to https://maatirx.com/ (2.20)
    A browser keeps a site's saved data per address, so the scenario library, lesson, practice and assignment progress,
    a case being written and the settings saved at saifmaati.github.io/dose-curve/ don't follow the app to its new
    address by themselves. Once the old address redirects, its service worker still opens the saved app page there
@@ -199,18 +199,18 @@
     const to=home(location), link=to.url+encode(data, to.hash), sent=store(localStorage, SENT);
     const go={label:`Go to ${NEW}`, run:async()=>{ await letGo(); location.replace(same); }};
     if(link.length>MAX){
-      dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) is too much to carry in a link: close this, use Library → Export all here, then Import file at ${NEW}.</p>`,
+      dialog("DoseCurve has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) is too much to carry in a link: close this, use Library → Export all here, then Import file at ${NEW}.</p>`,
         [{label:"Close", run:d=> d.close()}, go]);
       return;
     }
     const bring=label=>({label, run:()=>{ store(localStorage, SENT, new Date().toISOString()); location.replace(link); }});
     if(sent){
       const day=new Date(sent).toLocaleDateString(undefined, {day:"numeric", month:"long", year:"numeric"});
-      dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) was brought there on ${esc(day)}. If it didn't arrive, bring it again: nothing is added twice.</p>`,
+      dialog("DoseCurve has moved", `<p>Its address is now <b>${NEW}</b>. What you saved here (${esc(what)}) was brought there on ${esc(day)}. If it didn't arrive, bring it again: nothing is added twice.</p>`,
         [go, bring("Bring it again")]);
       return;
     }
-    dialog("MaatiRx has moved", `<p>Its address is now <b>${NEW}</b>. A browser keeps saved work per address, so what you saved here (${esc(what)}) stays here unless you bring it.</p>
+    dialog("DoseCurve has moved", `<p>Its address is now <b>${NEW}</b>. A browser keeps saved work per address, so what you saved here (${esc(what)}) stays here unless you bring it.</p>
       <p class="lib-privacy">It travels in the link itself, inside this browser; nothing is sent to a server.</p>`,
       [bring(`Bring it to ${NEW}`), {label:"Not now", run:()=> location.replace(same)}]);
   }

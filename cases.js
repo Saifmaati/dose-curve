@@ -1,4 +1,4 @@
-/* MaatiRx clinical cases
+/* DoseCurve clinical cases
    Worked cases that bring the clinical patient model, the drug library and the grader together. Nothing here
    stores an answer the model could compute: every target check, hint, walkthrough number and reference regimen
    is worked out from the patient and the drug when the case is opened. Educational model, not for clinical dosing.
@@ -792,7 +792,7 @@
   function base32(bytes, n){ let bits=0, val=0, out=""; for(const b of bytes){ val=(val<<8)|b; bits+=8; while(bits>=5 && out.length<n){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } } return out; }
   // The readable payload: what the code vouches for.
   function completionPayload(o){
-    return ["MaatiRx completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
+    return ["DoseCurve completion v1", `assignment ${o.bundle}`, `id ${o.identifier}`, `items ${o.items.join(" ")}`, `score ${o.score}/${o.total}`, `date ${o.date}`].join("\n");
   }
   async function completionCode(key, payload){
     const k=await crypto.subtle.importKey("raw", utf8.encode(String(key)), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
@@ -1124,7 +1124,7 @@
     const ovText=ov.map(([k,v])=>`${{thalf:"half-life", V:"volume (per 70 kg)", F:"bioavailability"}[k]} ${nf(v,3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""} (library ${nf(lib[k],3)}${k==="thalf" ? " h" : k==="V" ? " L" : ""})`).join("; ");
     box.innerHTML=`<p><button class="abtn" id="csBack">${current.from ? "Back to the assignment" : "All cases"}</button></p>
       <p class="cs-tag">${h.esc(c.tag)}</p><h2 class="cs-h">${h.esc(c.title)}</h2>
-      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. MaatiRx checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
+      ${community ? `<p class="cs-banner">Community case, unreviewed: written by an instructor and shared by link. DoseCurve checks that some regimen on its grid meets the target in the model; it hasn't reviewed the premise, the target or the text.</p>` : ""}
       <p class="cs-disc">Educational model, not for clinical dosing.</p>
       <details class="cs-more cs-dossier" open><summary>Case facts</summary><dl class="cs-facts"><dt>Patient</dt><dd>${h.esc(who(c))}</dd>
         ${c.drug ? `<dt>Drug</dt><dd>${h.esc(drugOf(c.drug).name)} (${h.esc(drugOf(c.drug).strengths.form)})${ovText ? `; the author's values: ${h.esc(ovText)}` : ""}</dd>` : ""}

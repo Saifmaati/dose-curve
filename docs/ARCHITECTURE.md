@@ -1,6 +1,6 @@
-# How MaatiRx is built
+# How DoseCurve is built
 
-MaatiRx is a static site: plain HTML, CSS and JavaScript with no build step, no framework and no server. Everything
+DoseCurve is a static site: plain HTML, CSS and JavaScript with no build step, no framework and no server. Everything
 runs in the reader's browser. This page explains how the pieces fit, so a change can be made in the right place.
 
 ## The files

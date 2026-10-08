@@ -1,4 +1,4 @@
-/* MaatiRx practice problems
+/* DoseCurve practice problems
    The generated problems (each kind draws its numbers from a seed, states the question, works the solution and
    says how the simulation checks the answer), a problem from a seed, worksheets, and answer checking. The page
    loads this file with the Practice tab or a practice link (it registers itself as PK.practiceModule); in Node the

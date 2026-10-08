@@ -1,4 +1,4 @@
-/* MaatiRx: the validation page's checks
+/* DoseCurve: the validation page's checks
    Every comparison the validation page makes between the engine and the independent solver's reference results
    (validation/reference-results.json): each scenario's peak, trough, AUC and time in window, the Bayesian estimates,
    the antimicrobial indices, the indirect responses and the dialysis sessions. The page runs this as a Web Worker,

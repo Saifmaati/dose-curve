@@ -1,4 +1,4 @@
-/* MaatiRx PK engine
+/* DoseCurve PK engine
    One-compartment linear pharmacokinetics (first-order oral absorption, IV bolus, IV infusion),
    regular regimens with loading and missed doses, custom dose schedules, exposure metrics, the
    teaching presets, and the share-link codec. Pure functions with no DOM access: the page loads this file as window.PK and
@@ -1637,7 +1637,7 @@
       try{ data=JSON.parse(input); }catch(e){ return {library:emptyLibrary(), skipped:0, error:"not valid JSON"}; }
     }
     if(Array.isArray(data)) data={format:LIBRARY_FORMAT, version:0, items:data};
-    if(!data || typeof data!=="object" || data.format!==LIBRARY_FORMAT) return {library:emptyLibrary(), skipped:0, error:"not a MaatiRx (or DoseCurve) scenario file"};
+    if(!data || typeof data!=="object" || data.format!==LIBRARY_FORMAT) return {library:emptyLibrary(), skipped:0, error:"not a DoseCurve scenario file"};
     const raw=Array.isArray(data.items) ? data.items : [];
     const items=[], ids=new Set();
     let skipped=Math.max(0, raw.length-LIBRARY_LIMITS.importItems);
